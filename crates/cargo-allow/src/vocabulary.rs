@@ -63,6 +63,12 @@ fn render_vocabulary_human_styled(style: allow_report::Style) -> String {
         if !extra.is_empty() {
             out.push_str(&format!(" (aliases: {})", extra.join(", ")));
         }
+        // #4632: these kinds have no non-compat sensor, so the non-compat
+        // lanes reject them; mark that here so the vocabulary is the
+        // discoverability surface for the restriction too.
+        if group.compat_only {
+            out.push_str(" (--compat only for check/audit)");
+        }
         out.push('\n');
     }
     out.push('\n');

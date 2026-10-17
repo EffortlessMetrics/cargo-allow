@@ -755,6 +755,7 @@ fn render_detail(args: &ReportRenderArgs<'_>) -> String {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.denied_classes = args.denied_classes;
     context.style = if args.format == OutputFormat::Human && args.output.is_none() {
         crate::reporting::output_style()
     } else {

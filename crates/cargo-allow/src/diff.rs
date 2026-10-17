@@ -32,7 +32,7 @@ use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
     SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
     git_relative_config_path, load_read_only_world_with_selected_policy, parse_kind_filter,
-    policy_baseline_debt_entries, report_config, write_file,
+    policy_baseline_debt_entries, reject_compat_only_kind_filter, report_config, write_file,
 };
 
 struct CurrentWorld {
@@ -44,6 +44,9 @@ struct CurrentWorld {
 }
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
+    // #4632: `diff` has no compat lane, so a compat-only kind filter could
+    // only describe a diff that scanned nothing for that kind.
+    reject_compat_only_kind_filter("diff", false, args.kind.as_deref())?;
     // Auto-detect merge-base when --base is omitted (#2788).
     let base = match &args.base {
         Some(base) => base.clone(),

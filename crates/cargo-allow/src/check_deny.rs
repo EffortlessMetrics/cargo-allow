@@ -24,14 +24,21 @@ pub(crate) fn validate_deny_statuses(
     Ok(())
 }
 
-pub(crate) fn deny_escalation_failed(
+/// The requested `--deny` classes whose advisory count is currently positive
+/// — the classes that actually escalate this run to a failure. The report
+/// label threads them through so `Result: failed (...)` names the real
+/// trigger instead of only the blocking status counts (#4631).
+pub(crate) fn deny_escalation_fired_classes(
     deny: &[String],
     summary: &Summary,
     context: ReportContext<'_>,
-) -> bool {
-    deny.iter().any(|status| {
-        advisory_count_for_deny_field(summary, context, status).is_some_and(|count| count > 0)
-    })
+) -> Vec<String> {
+    deny.iter()
+        .filter(|status| {
+            advisory_count_for_deny_field(summary, context, status).is_some_and(|count| count > 0)
+        })
+        .cloned()
+        .collect()
 }
 
 #[cfg(test)]

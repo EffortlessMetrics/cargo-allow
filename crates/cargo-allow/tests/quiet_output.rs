@@ -89,6 +89,174 @@ fn quiet_keeps_blocking_outcomes_and_failure_reason() {
     remove_temp_root(root);
 }
 
+/// The shared `--quiet` help text promises claim-boundary suppression for
+/// every human report, but `explain`, `why`, `worklist`, `doctor`, and
+/// `prune` each still printed it (#4630). Each command pins both halves of
+/// the contract: the claim boundary disappears under `--quiet`, and the
+/// command's essential output (entry fields, counts, next steps) stays.
+#[test]
+fn quiet_drops_claim_boundary_from_explain_but_keeps_entry_report() {
+    let root = temp_root("quiet-explain");
+    init_fixture_repo(&root);
+    let id = first_entry_id(&root);
+
+    let loud = run_quiet_fixture_command(&root, false, &["explain", &id]);
+    let quiet = run_quiet_fixture_command(&root, true, &["explain", &id]);
+
+    assert!(
+        loud.contains("Claim boundary:"),
+        "explain should print the claim boundary without --quiet\nloud:\n{loud}"
+    );
+    assert!(
+        !quiet.contains("Claim boundary:"),
+        "quiet should drop the explain claim boundary\nquiet:\n{quiet}"
+    );
+    assert!(
+        quiet.contains(&format!("{id}\n")) && quiet.contains("current_status:"),
+        "quiet must keep the entry fields and posture\nquiet:\n{quiet}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn quiet_drops_claim_boundary_from_why_but_keeps_posture() {
+    let root = temp_root("quiet-why");
+    init_fixture_repo(&root);
+
+    let args = [
+        "why",
+        "--kind",
+        "non-rust",
+        "--path",
+        "docs/guide-0.md",
+        "--line",
+        "1",
+    ];
+    let loud = run_quiet_fixture_command(&root, false, &args);
+    let quiet = run_quiet_fixture_command(&root, true, &args);
+
+    assert!(
+        loud.contains("## Claim boundary"),
+        "why should print the claim boundary section without --quiet\nloud:\n{loud}"
+    );
+    assert!(
+        !quiet.contains("## Claim boundary"),
+        "quiet should drop the why claim boundary section\nquiet:\n{quiet}"
+    );
+    assert!(
+        quiet.contains("## Current posture") && quiet.contains("## Suggested next steps"),
+        "quiet must keep the posture and next-step sections\nquiet:\n{quiet}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn quiet_drops_claim_boundary_from_worklist_but_keeps_items() {
+    let root = temp_root("quiet-worklist");
+    init_fixture_repo(&root);
+
+    let loud = run_quiet_fixture_command(&root, false, &["worklist"]);
+    let quiet = run_quiet_fixture_command(&root, true, &["worklist"]);
+
+    assert!(
+        loud.contains("Claim boundary:"),
+        "worklist should print the claim boundary without --quiet\nloud:\n{loud}"
+    );
+    assert!(
+        !quiet.contains("Claim boundary:"),
+        "quiet should drop the worklist claim boundary\nquiet:\n{quiet}"
+    );
+    assert!(
+        quiet.contains("Work items:"),
+        "quiet must keep the work item counts\nquiet:\n{quiet}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn quiet_drops_claim_boundary_from_doctor_but_keeps_diagnostics() {
+    let root = temp_root("quiet-doctor");
+    init_fixture_repo(&root);
+
+    let loud = run_quiet_fixture_command(&root, false, &["doctor"]);
+    let quiet = run_quiet_fixture_command(&root, true, &["doctor"]);
+
+    assert!(
+        loud.contains("Claim boundary:"),
+        "doctor should print the claim boundary without --quiet\nloud:\n{loud}"
+    );
+    assert!(
+        !quiet.contains("Claim boundary:"),
+        "quiet should drop the doctor claim boundary\nquiet:\n{quiet}"
+    );
+    assert!(
+        quiet.contains("source tree root:") && quiet.contains("config status:"),
+        "quiet must keep the doctor diagnostics\nquiet:\n{quiet}"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn quiet_drops_claim_boundary_from_prune_but_keeps_counts() {
+    let root = temp_root("quiet-prune");
+    init_fixture_repo(&root);
+
+    let loud = run_quiet_fixture_command(&root, false, &["prune", "--stale", "--dry-run"]);
+    let quiet = run_quiet_fixture_command(&root, true, &["prune", "--stale", "--dry-run"]);
+
+    assert!(
+        loud.contains("Claim boundary:"),
+        "prune should print the claim boundary without --quiet\nloud:\n{loud}"
+    );
+    assert!(
+        !quiet.contains("Claim boundary:"),
+        "quiet should drop the prune claim boundary\nquiet:\n{quiet}"
+    );
+    assert!(
+        quiet.contains("stale entries: "),
+        "quiet must keep the stale-entry count\nquiet:\n{quiet}"
+    );
+
+    remove_temp_root(root);
+}
+
+/// Run one fixture subcommand with the shared `--quiet` global flag and
+/// return its stdout.
+fn run_quiet_fixture_command(root: &Path, quiet: bool, args: &[&str]) -> String {
+    let Some((command_name, rest)) = args.split_first() else {
+        std::panic::panic_any("quiet fixture command needs at least one argument");
+    };
+    let mut command = cargo_allow_command();
+    command.arg(command_name).arg("--root").arg(root);
+    if quiet {
+        command.arg("--quiet");
+    }
+    command.args(rest);
+    let output = command
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run {args:?}: {err}")));
+    assert_status(command_name, &output, true);
+    String::from_utf8_lossy(&output.stdout).into_owned()
+}
+
+/// The first `[[allow]]` id in the fixture policy, for `explain`.
+fn first_entry_id(root: &Path) -> String {
+    let policy = fs::read_to_string(root.join("policy/allow.toml"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy: {err}")));
+    let id = policy
+        .lines()
+        .find_map(|line| line.trim().strip_prefix("id = \""))
+        .and_then(|rest| rest.strip_suffix('"'))
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("fixture policy has no entry id: {policy}"))
+        });
+    id.to_string()
+}
+
 fn run_check(root: &Path, quiet: bool) -> String {
     run_check_expecting(root, quiet, true)
 }

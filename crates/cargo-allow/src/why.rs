@@ -7,7 +7,8 @@ use allow_rust::RustFileScanOutcome;
 
 use crate::{
     HumanJsonFormat, SourceTreeReportContext, current_dir, emit_text, load_world_for_path,
-    load_world_from_resolved_policy_with_options, parse_kind_filter, resolve_source_tree_root,
+    load_world_from_resolved_policy_with_options, parse_kind_filter,
+    reject_compat_only_kind_filter, resolve_source_tree_root,
 };
 
 #[path = "why_args.rs"]
@@ -86,6 +87,9 @@ fn receipt_ledger_path(
 }
 
 pub(crate) fn cmd_why(args: &WhyArgs) -> CargoAllowResult<()> {
+    // #4632: `why` has no compat lane, so a compat-only kind would select a
+    // finding no non-compat scan can ever produce.
+    reject_compat_only_kind_filter("why", false, Some(args.kind.as_str()))?;
     if let (Some(plan_path), Some(output_path)) = (args.plan.as_deref(), args.output.as_deref())
         && same_output_target(plan_path, output_path)?
     {

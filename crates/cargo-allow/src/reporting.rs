@@ -79,6 +79,10 @@ pub(crate) struct ReportRenderArgs<'a> {
     /// mode that produced a pass. Previously this reached the receipt only,
     /// which left every report claiming `advisory` regardless of mode (#2832).
     pub(crate) enforcement: Option<&'a str>,
+    /// The `--deny` classes whose positive counts escalated this run to a
+    /// failure, so the human/markdown `Result: failed (...)` label names the
+    /// actual trigger (#4631). `None` on every non-deny path.
+    pub(crate) denied_classes: Option<&'a [String]>,
     /// The paired `--artifact-dir` target when artifact emission is active,
     /// so the operation's own write posture reflects the files the run
     /// writes instead of a hardcoded read-only claim (#4566).
@@ -205,6 +209,7 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.denied_classes = args.denied_classes;
     context.style = style_for(args.format, args.output);
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
@@ -427,6 +432,7 @@ mod tests {
                 root: &root,
                 inventory_facts: InventoryFacts::scanned(InventorySource::GitTracked, 7),
                 inventory_source_identity: None,
+                denied_classes: None,
                 artifact_emission: None,
                 enforcement: None,
             })
