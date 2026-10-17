@@ -134,10 +134,12 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
-        // The parse is deliberately late: print_report above has already
-        // written this invocation's --command-summary-output sidecar (#4393
-        // requires every invocation to leave its own sidecar), so hoisting
-        // the parse would strand a stale sidecar on usage errors.
+        // The parse is deliberately late: the router's usage-failure contract
+        // requires the evaluation flow's route outputs (the report, the
+        // sidecar) to exist before the failure lands. The sidecar itself is
+        // safe either way — the CLI error path writes an error-classified
+        // summary for any failure (#4393) — but the parse must not preempt
+        // the flow that produces the rest.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;

@@ -414,12 +414,14 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             })?;
         // Return late output errors so the wrapper can replace an evaluated
         // receipt, remove the stale report and let the CLI replace its summary.
-        // The --emit parse is deliberately late for the same reason:
-        // print_report above has already written this invocation's
-        // --command-summary-output sidecar (#4393 requires every invocation
-        // to leave its own sidecar), so hoisting the parse would strand a
-        // stale sidecar on usage errors
-        // (check_emit_usage_failure_replaces_evaluated_outputs).
+        // The --emit parse is deliberately late for the same reason: the
+        // router's usage-failure contract requires the evaluation flow's route
+        // outputs (the json-route stdout detail, the replaced receipt, the
+        // sidecar) to exist before the failure lands
+        // (check_emit_usage_failure_replaces_evaluated_outputs). The sidecar
+        // specifically is safe either way — the CLI error path writes an
+        // error-classified summary for any failure (#4393) — but the parse
+        // must not preempt the flow that produces the rest.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;

@@ -477,10 +477,12 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         // (#4505): route bad --emit values through the same typed path.
         // (#4592: the collision guard runs before the report/receipt writes,
         // so a refusal writes no new outputs beside the live policy.)
-        // The parse is deliberately late: the report/receipt above have
-        // already carried this invocation's --command-summary-output sidecar
-        // duty (#4393), so hoisting the parse would strand a stale sidecar
-        // on usage errors.
+        // The parse is deliberately late: the router's usage-failure contract
+        // requires the evaluation flow's route outputs (the report, the
+        // receipt, the sidecar) to exist before the failure lands. The
+        // sidecar itself is safe either way — the CLI error path writes an
+        // error-classified summary for any failure (#4393) — but the parse
+        // must not preempt the flow that produces the rest.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
