@@ -606,7 +606,10 @@ pub fn validate_github_pr_check_v1(check: &CargoAllowGitHubPrCheckV1) -> Result<
 
 /// Build the retained adapter receipt from the exact consumed diff-report
 /// bytes, the exact assembled check-payload bytes, and the
-/// integrator-recorded publication outcome (#4609).
+/// integrator-recorded publication outcome (#4609). The builder validates
+/// its own output, so the returned receipt is one
+/// [`validate_github_pr_check_receipt_v1`] accepts — an out-of-vocabulary
+/// outcome or incomplete subject is a construction error, not a receipt.
 ///
 /// Both digests use the repository-canonical [`allow_core::sha256_v1_bytes`]
 /// form (`sha256:v1:` plus 64 hex digits). The builder is pure: it never
@@ -622,8 +625,11 @@ pub fn build_github_pr_check_receipt(
     annotated_count: u32,
     omitted_count: u32,
     provider_outcome: &str,
-) -> CargoAllowGitHubPrCheckReceiptV1 {
-    CargoAllowGitHubPrCheckReceiptV1 {
+) -> Result<CargoAllowGitHubPrCheckReceiptV1, String> {
+    // The builder is the only sanctioned construction path, so it validates
+    // its own output: a receipt an integrator can hold is one
+    // validate_github_pr_check_receipt_v1 accepts (PR #4618 review).
+    let receipt = CargoAllowGitHubPrCheckReceiptV1 {
         schema_id: GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_ID.to_string(),
         schema_version: GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_VERSION,
         subject: subject.clone(),
@@ -638,7 +644,9 @@ pub fn build_github_pr_check_receipt(
              provider outcome, and publication success is never \
              cargo-allow evidence."
             .to_string()),
-    }
+    };
+    validate_github_pr_check_receipt_v1(&receipt)?;
+    Ok(receipt)
 }
 
 /// Whether a digest string is in the canonical `sha256:v1:` form produced by
@@ -1035,7 +1043,7 @@ mod tests {
     const CANONICAL_DEF_DIGEST: &str =
         "sha256:v1:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34";
 
-    fn receipt() -> CargoAllowGitHubPrCheckReceiptV1 {
+    fn receipt() -> Result<CargoAllowGitHubPrCheckReceiptV1, String> {
         build_github_pr_check_receipt(
             &subject(),
             b"abc",
@@ -1049,7 +1057,7 @@ mod tests {
 
     #[test]
     fn receipt_builder_computes_canonical_sha256_v1_digests() -> Result<(), String> {
-        let receipt = receipt();
+        let receipt = receipt()?;
         if receipt.diff_report_digest != CANONICAL_ABC_DIGEST {
             return Err(format!("diff_report_digest was {receipt:?}"));
         }
@@ -1074,8 +1082,8 @@ mod tests {
 
     #[test]
     fn receipt_builder_is_deterministic() -> Result<(), String> {
-        let first = receipt();
-        let second = receipt();
+        let first = receipt()?;
+        let second = receipt()?;
         if first != second {
             return Err("same inputs produced two different receipts".to_string());
         }
@@ -1084,10 +1092,10 @@ mod tests {
 
     #[test]
     fn builder_receipt_validates_clean_across_recorded_outcomes() -> Result<(), String> {
-        validate_github_pr_check_receipt_v1(&receipt())
+        validate_github_pr_check_receipt_v1(&receipt()?)
             .map_err(|error| format!("builder receipt failed validation: {error}"))?;
         for outcome in GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1 {
-            let mut receipt = receipt();
+            let mut receipt = receipt()?;
             receipt.provider_outcome = outcome.to_string();
             validate_github_pr_check_receipt_v1(&receipt).map_err(|error| {
                 format!("recorded outcome {outcome} failed validation: {error}")
@@ -1098,7 +1106,7 @@ mod tests {
 
     #[test]
     fn validation_rejects_non_current_receipt_generation() -> Result<(), String> {
-        let mut wrong_id = receipt();
+        let mut wrong_id = receipt()?;
         wrong_id.schema_id = "cargo-allow.github-pr-check-receipt.v0".to_string();
         match validate_github_pr_check_receipt_v1(&wrong_id) {
             Ok(()) => Err("non-current receipt schema id passed validation".to_string()),
@@ -1110,7 +1118,7 @@ mod tests {
                 }
             }
         }?;
-        let mut wrong_version = receipt();
+        let mut wrong_version = receipt()?;
         wrong_version.schema_version = 2;
         match validate_github_pr_check_receipt_v1(&wrong_version) {
             Ok(()) => Err("non-current receipt schema version passed validation".to_string()),
@@ -1147,7 +1155,7 @@ mod tests {
             ("check_payload_digest", "empty", ""),
         ];
         for (field, label, digest) in cases {
-            let mut receipt = receipt();
+            let mut receipt = receipt()?;
             if field == "diff_report_digest" {
                 receipt.diff_report_digest = digest.to_string();
             } else {
@@ -1169,7 +1177,7 @@ mod tests {
     #[test]
     fn validation_rejects_provider_outcome_outside_vocabulary() -> Result<(), String> {
         for outcome in ["delivered", "", "PUBLISHED"] {
-            let mut receipt = receipt();
+            let mut receipt = receipt()?;
             receipt.provider_outcome = outcome.to_string();
             match validate_github_pr_check_receipt_v1(&receipt) {
                 Ok(()) => return Err(format!("outcome {outcome:?} passed validation")),
@@ -1187,7 +1195,9 @@ mod tests {
     fn validation_rejects_incomplete_subject_identity() -> Result<(), String> {
         let mut blanked = subject();
         blanked.repository = "   ".to_string();
-        let receipt = build_github_pr_check_receipt(
+        // The builder is the sanctioned construction path and refuses an
+        // incomplete subject outright (PR #4618 review).
+        if build_github_pr_check_receipt(
             &blanked,
             b"abc",
             b"def",
@@ -1195,7 +1205,14 @@ mod tests {
             0,
             0,
             GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED,
-        );
+        )
+        .is_ok()
+        {
+            return Err("the builder accepted an incomplete subject".to_string());
+        }
+        // Validator coverage: hand-blank an otherwise valid receipt.
+        let mut receipt = receipt()?;
+        receipt.subject.repository = "   ".to_string();
         match validate_github_pr_check_receipt_v1(&receipt) {
             Ok(()) => Err("incomplete receipt subject passed validation".to_string()),
             Err(error) => {
@@ -1210,7 +1227,7 @@ mod tests {
 
     #[test]
     fn receipt_matches_current_recomputes_binding_digest() -> Result<(), String> {
-        let receipt = receipt();
+        let receipt = receipt()?;
         if !receipt_matches_current(&receipt, b"abc") {
             return Err("current bytes identical to the binding did not match".to_string());
         }
@@ -1246,7 +1263,8 @@ mod tests {
             check.annotated_count,
             check.omitted_count,
             GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED,
-        );
+        )
+        .map_err(|error| format!("end-to-end receipt construction failed: {error}"))?;
         validate_github_pr_check_receipt_v1(&receipt)
             .map_err(|error| format!("end-to-end receipt was invalid: {error}"))?;
         if !receipt_matches_current(&receipt, &report_bytes) {
