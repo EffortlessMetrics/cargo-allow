@@ -2784,6 +2784,41 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                     "the manifest must retain every requested format and the semantic result: {manifest}"
                 ),
             )?;
+            // #4595: the manifest carries its computed set-level verdict, so a
+            // schema-only gate can tell a refused run from a green one.
+            require(
+                field(&manifest, &["validation_result"])
+                    == Some(&Value::from(if render_failed {
+                        "render_failure"
+                    } else if gate_failed {
+                        "semantic_non_green"
+                    } else {
+                        "complete"
+                    })),
+                format!("the manifest must carry its computed verdict: {manifest}"),
+            )?;
+            // #4597: check manifests name their mode, cite the invocation's
+            // --command-summary-output sidecar, and link the JSON detail
+            // artifact the same emission wrote (absent when json was not
+            // requested).
+            require(
+                field(&manifest, &["mode"]) == Some(&Value::from("no-new")),
+                format!("the manifest must record the check mode: {manifest}"),
+            )?;
+            require(
+                field(&manifest, &["core_command_summary_ref"])
+                    == Some(&Value::from("target/probe/summary.json")),
+                format!("the manifest must cite the summary sidecar: {manifest}"),
+            )?;
+            let expected_detail = if requested.iter().any(|format| *format == "json") {
+                Some(&Value::from("check-json.json"))
+            } else {
+                None
+            };
+            require(
+                field(&manifest, &["detailed_result_ref"]) == expected_detail,
+                format!("the manifest must link its detailed result: {manifest}"),
+            )?;
             let entries = field(&manifest, &["artifacts"])
                 .and_then(Value::as_array)
                 .ok_or_else(|| "manifest artifact entries are missing".to_string())?;

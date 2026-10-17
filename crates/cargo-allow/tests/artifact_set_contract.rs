@@ -64,6 +64,7 @@ fn complete_set() -> EvaluationArtifactSetV1 {
         detailed_result_ref: Some("check-receipt.json".to_string()),
         limitations: Vec::new(),
         validation_gaps: Vec::new(),
+        validation_result: allow_report::EvaluationArtifactSetResultV2::Complete,
         claim_boundary: vec!["one evaluation, many renderers".to_string()],
     }
 }

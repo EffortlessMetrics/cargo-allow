@@ -166,6 +166,13 @@ pub struct EvaluationArtifactSetV1 {
     /// sets.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub validation_gaps: Vec<String>,
+    /// The set-level validation verdict `validate()` computed at emission
+    /// time (#4595), serialized so a schema-only gate can distinguish a
+    /// refused run (PartialArtifacts / RenderFailure / OutputConflict /
+    /// InstrumentFailure) from a green Complete set without recomputing
+    /// anything. Required: a manifest without its verdict is not a
+    /// governed manifest.
+    pub validation_result: EvaluationArtifactSetResultV2,
 }
 
 impl EvaluationArtifactSetV1 {
@@ -414,6 +421,7 @@ mod tests {
             detailed_result_ref: Some("check-receipt.json".to_string()),
             limitations: Vec::new(),
             validation_gaps: Vec::new(),
+            validation_result: EvaluationArtifactSetResultV2::Complete,
             claim_boundary: vec!["one evaluation, many renderers".to_string()],
         }
     }
@@ -514,6 +522,35 @@ mod tests {
             .map_err(|error| error.to_string())?;
         if first != second {
             return Err("equal payloads rendered different bytes".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn manifest_serializes_and_requires_the_validation_verdict() -> Result<(), String> {
+        // #4595: the computed verdict serializes so a schema-only gate can
+        // distinguish a refused run from a green one, and the field is
+        // required on read — a manifest without its verdict (historical or
+        // hand-made) must not deserialize into a green-reading set.
+        let json = render_evaluation_artifact_set_v1(&artifact_set())
+            .map_err(|error| error.to_string())?;
+        let mut value: serde_json::Value =
+            serde_json::from_str(&json).map_err(|error| error.to_string())?;
+        if value
+            .get("validation_result")
+            .and_then(serde_json::Value::as_str)
+            != Some("complete")
+        {
+            return Err(format!("the verdict must serialize: {json}"));
+        }
+        value
+            .as_object_mut()
+            .ok_or_else(|| "the manifest is not an object".to_string())?
+            .remove("validation_result");
+        let stripped = serde_json::to_string(&value).map_err(|error| error.to_string())?;
+        let missing: Result<EvaluationArtifactSetV1, _> = serde_json::from_str(&stripped);
+        if missing.is_ok() {
+            return Err("a manifest without validation_result must not deserialize".to_string());
         }
         Ok(())
     }

@@ -52,6 +52,13 @@ impl SummaryOutputConfig {
 
 static SUMMARY_OUTPUT: OnceLock<SummaryOutputConfig> = OnceLock::new();
 
+/// The caller-requested `--command-summary-output` path for this
+/// invocation, when the flag configured one (#4393). The artifact-set
+/// manifest cites it as `core_command_summary_ref` (#4597).
+pub(crate) fn requested_summary_path() -> Option<&'static std::path::Path> {
+    SUMMARY_OUTPUT.get().map(|config| config.path.as_path())
+}
+
 /// A command's error-summary handoff for one CLI invocation.
 ///
 /// An evaluated domain error may retain the command's own summary only after

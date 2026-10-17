@@ -53,6 +53,7 @@ fn make_set(
         detailed_result_ref: None,
         limitations: Vec::new(),
         validation_gaps: Vec::new(),
+        validation_result: allow_report::EvaluationArtifactSetResultV2::Complete,
         claim_boundary: vec!["single evaluation, multi-format".to_string()],
     }
 }

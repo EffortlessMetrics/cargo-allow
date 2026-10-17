@@ -2961,6 +2961,16 @@
         "type": "string"
       }
     },
+    "validation_result": {
+      "enum": [
+        "complete",
+        "semantic_non_green",
+        "partial_artifacts",
+        "render_failure",
+        "output_conflict",
+        "instrument_failure"
+      ]
+    },
     "scanner_limitations": {
       "type": "array",
       "items": {
@@ -2988,7 +2998,8 @@
     "limitations",
     "claim_boundary",
     "inventory",
-    "scanner_limitations"
+    "scanner_limitations",
+    "validation_result"
   ],
   "title": "cargo-allow evaluation-artifact-set v1",
   "type": "object"
