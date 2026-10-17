@@ -405,6 +405,16 @@ fn classification_class_label(class: GitHubPrAnnotationClassV1) -> &'static str 
     class.as_str()
 }
 
+/// Classify the check result from one exact diff report.
+///
+/// #4607: a canonical report's `failed` flag reflects the cargo-allow posture
+/// gate, so the classifier derives the result from the finding-change rows;
+/// `InstrumentFailure` is for instrument-level conditions only. A gate
+/// failure explained by the report's own posture (blocking rows or a worse
+/// net posture) is `FindingsBlocking`; an advisory posture is
+/// `FindingsAdvisory`. Coverage classifies first, so a partial or base-less
+/// scan is non-clean for its own stated reason and its rows never earn
+/// ordinary posture labels.
 fn classify_result(
     report: &GitHubPrDiffReportViewV1,
     completeness: BaseScanCompletenessV1,
@@ -419,9 +429,6 @@ fn classify_result(
         // A report without a diff evaluation carries no semantic result.
         return GitHubPrCheckResultV1::InstrumentFailure;
     }
-    if report.failed || report.status == "failed" {
-        return GitHubPrCheckResultV1::InstrumentFailure;
-    }
     match completeness {
         BaseScanCompletenessV1::MissingBase => {
             return GitHubPrCheckResultV1::UnknownAttribution;
@@ -433,7 +440,7 @@ fn classify_result(
         }
         BaseScanCompletenessV1::Complete => {}
     }
-    if report.status != "passed" {
+    if !matches!(report.status.as_str(), "passed" | "failed") {
         return GitHubPrCheckResultV1::InstrumentFailure;
     }
     let net_posture = report
@@ -449,6 +456,12 @@ fn classify_result(
     }
     if net_posture == "review-required" {
         return GitHubPrCheckResultV1::FindingsAdvisory;
+    }
+    if report.failed || report.status == "failed" {
+        // The gate failed but the report's own posture does not explain it.
+        // The canonical emitter always pairs a failed gate with a worse or
+        // review-required posture, so this is broken instrument input.
+        return GitHubPrCheckResultV1::InstrumentFailure;
     }
     GitHubPrCheckResultV1::Passed
 }
@@ -506,4 +519,229 @@ pub fn validate_github_pr_check_v1(check: &CargoAllowGitHubPrCheckV1) -> Result<
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn subject() -> GitHubPrCheckSubjectV1 {
+        GitHubPrCheckSubjectV1 {
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            pr_number: 4607,
+            base: "main".to_string(),
+            merge_base: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+            head: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+        }
+    }
+
+    fn introduced_row() -> GitHubPrFindingChangeRowViewV1 {
+        GitHubPrFindingChangeRowViewV1 {
+            change: "new".to_string(),
+            movement: "introduced".to_string(),
+            posture_delta: "review_required".to_string(),
+            changed_in_diff: true,
+            key: "panic:src/new.rs".to_string(),
+            kind: "panic".to_string(),
+            path: "src/new.rs".to_string(),
+            line: Some(7),
+        }
+    }
+
+    /// The exact shape the canonical `cargo-allow diff` emitter produces for a
+    /// genuinely blocking PR (#4607): the posture gate failed, so `failed` and
+    /// `status` carry gate semantics while the posture explains the failure.
+    fn canonical_blocking_report(
+        net_posture: &str,
+        finding_changes: Vec<GitHubPrFindingChangeRowViewV1>,
+    ) -> GitHubPrDiffReportViewV1 {
+        GitHubPrDiffReportViewV1 {
+            schema_id: "cargo-allow.report.v1".to_string(),
+            status: "failed".to_string(),
+            failed: true,
+            inventory: None,
+            diff: Some(GitHubPrDiffViewV1 {
+                net_posture: net_posture.to_string(),
+                finding_changes,
+            }),
+        }
+    }
+
+    #[test]
+    fn canonical_failed_gate_with_introduced_row_is_findings_blocking() -> Result<(), String> {
+        let report = canonical_blocking_report("worse", vec![introduced_row()]);
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607",
+        );
+        if check.result != GitHubPrCheckResultV1::FindingsBlocking
+            || check.introduced_count != 1
+            || check.annotated_count != 1
+        {
+            return Err(format!("canonical blocking PR projected {check:?}"));
+        }
+        validate_github_pr_check_v1(&check)
+            .map_err(|error| format!("blocking check invalid: {error}"))?;
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_failed_gate_with_worse_posture_and_no_rows_is_findings_blocking()
+    -> Result<(), String> {
+        // A fail-severity policy edit (policy_change_failure) also fails the
+        // canonical gate. The emitter pairs it with a worse net posture, but
+        // the policy rows themselves are outside this adapter's view, so the
+        // check is blocking without inline annotations.
+        let report = canonical_blocking_report("worse", Vec::new());
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607-policy",
+        );
+        if check.result != GitHubPrCheckResultV1::FindingsBlocking || check.annotated_count != 0 {
+            return Err(format!("policy-failed gate projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn canonical_failed_gate_with_advisory_posture_is_findings_advisory() -> Result<(), String> {
+        // A missing change note on a review-severity policy edit fails the
+        // gate while the net posture stays advisory (review-required): the
+        // posture lets the adapter distinguish this from blocking findings.
+        let report = canonical_blocking_report("review-required", Vec::new());
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607-advisory",
+        );
+        if check.result != GitHubPrCheckResultV1::FindingsAdvisory {
+            return Err(format!("advisory gate failure projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn gate_failure_the_posture_cannot_explain_stays_instrument_failure() -> Result<(), String> {
+        // Not producer-reachable today: the canonical emitter always pairs a
+        // failed gate with a worse or review-required posture. A failed flag
+        // the posture cannot explain stays instrument failure, never clean.
+        let report = canonical_blocking_report("unchanged", Vec::new());
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607-unexplained",
+        );
+        if check.result != GitHubPrCheckResultV1::InstrumentFailure {
+            return Err(format!("unexplained gate failure projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn failed_partial_scan_projects_partial_not_instrument_failure() -> Result<(), String> {
+        // A partial scan fails the posture gate too (non-complete evidence is
+        // non-clean), but its own completeness is the stated reason: the
+        // result is Partial, and its rows stay unknown instead of blocking.
+        let report = canonical_blocking_report("worse", vec![introduced_row()]);
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::HeadPartial,
+            10,
+            "artifact-set-4607-partial",
+        );
+        if check.result != GitHubPrCheckResultV1::Partial
+            || check.introduced_count != 0
+            || check.unknown_count != 1
+        {
+            return Err(format!("failed partial scan projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn missing_base_gate_failure_projects_unknown_attribution() -> Result<(), String> {
+        let report = canonical_blocking_report("worse", vec![introduced_row()]);
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::MissingBase,
+            10,
+            "artifact-set-4607-missing-base",
+        );
+        if check.result != GitHubPrCheckResultV1::UnknownAttribution {
+            return Err(format!("missing-base gate failure projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn unknown_status_vocabulary_stays_instrument_failure() -> Result<(), String> {
+        let mut report = canonical_blocking_report("worse", vec![introduced_row()]);
+        report.failed = false;
+        report.status = "error".to_string();
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607-status",
+        );
+        if check.result != GitHubPrCheckResultV1::InstrumentFailure {
+            return Err(format!("unknown status projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn report_without_diff_evaluation_stays_instrument_failure() -> Result<(), String> {
+        let mut report = canonical_blocking_report("worse", vec![introduced_row()]);
+        report.diff = None;
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607-no-diff",
+        );
+        if check.result != GitHubPrCheckResultV1::InstrumentFailure {
+            return Err(format!("diff-less report projected {check:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn clean_gate_with_clean_posture_stays_passed() -> Result<(), String> {
+        let report = GitHubPrDiffReportViewV1 {
+            schema_id: "cargo-allow.report.v1".to_string(),
+            status: "passed".to_string(),
+            failed: false,
+            inventory: None,
+            diff: Some(GitHubPrDiffViewV1 {
+                net_posture: "unchanged".to_string(),
+                finding_changes: Vec::new(),
+            }),
+        };
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4607-clean",
+        );
+        if check.result != GitHubPrCheckResultV1::Passed {
+            return Err(format!("clean gate projected {check:?}"));
+        }
+        Ok(())
+    }
 }

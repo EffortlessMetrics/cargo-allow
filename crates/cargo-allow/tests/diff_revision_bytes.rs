@@ -266,6 +266,33 @@ fn optional_manifest_rejections_preserve_complete_binary_diff() -> Result<(), St
                         "optional manifest receipt lost source facts: {receipt}"
                     ));
                 }
+                // #4607: feed the real binary's complete blocking report to the
+                // PR-check consumer. The gate-failed artifact must classify as
+                // FindingsBlocking with the introduced row annotated — not as
+                // an instrument failure.
+                let pr_report: allow_report::GitHubPrDiffReportViewV1 =
+                    serde_json::from_value(report.clone()).map_err(|error| error.to_string())?;
+                let pr_check = allow_report::project_github_pr_check(
+                    &pr_report,
+                    &allow_report::GitHubPrCheckSubjectV1 {
+                        repository: "fixture/revision-bytes".to_string(),
+                        pr_number: 1,
+                        base: base.clone(),
+                        merge_base: base.clone(),
+                        head: head.clone(),
+                    },
+                    allow_report::BaseScanCompletenessV1::Complete,
+                    10,
+                    "fixture-report-blocking",
+                );
+                if pr_check.result != allow_report::GitHubPrCheckResultV1::FindingsBlocking
+                    || pr_check.introduced_count != 1
+                    || pr_check.annotated_count != 1
+                {
+                    return Err(format!(
+                        "complete blocking diff lost its findings-blocking result: {pr_check:?}"
+                    ));
+                }
             }
         }
     }
@@ -362,14 +389,12 @@ fn diff_preserves_partial_side_facts_across_formats() -> Result<(), String> {
             10,
             "fixture-report",
         );
-        // The adapter currently prioritizes a failed artifact as instrument
-        // failure. Either non-clean result must preserve the producer's exact
-        // completeness and cannot award ordinary movement counts.
-        if !matches!(
-            pr_check.result,
-            allow_report::GitHubPrCheckResultV1::Partial
-                | allow_report::GitHubPrCheckResultV1::InstrumentFailure
-        ) || pr_check.base_scan_completeness != completeness
+        // #4607: the canonical `failed` flag reflects the posture gate, so the
+        // failed partial-scan artifact classifies from its own completeness —
+        // `Partial`, never instrument failure — and cannot award ordinary
+        // movement counts.
+        if pr_check.result != allow_report::GitHubPrCheckResultV1::Partial
+            || pr_check.base_scan_completeness != completeness
             || pr_check.introduced_count != 0
             || pr_check.resolved_count != 0
         {
