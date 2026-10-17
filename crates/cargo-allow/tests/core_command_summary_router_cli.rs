@@ -2810,7 +2810,7 @@ fn check_emit_route_control(route: &str, scenario: &str) -> Result<(), String> {
                     == Some(&Value::from("target/probe/summary.json")),
                 format!("the manifest must cite the summary sidecar: {manifest}"),
             )?;
-            let expected_detail = if requested.iter().any(|format| *format == "json") {
+            let expected_detail = if requested.contains(&"json") {
                 Some(&Value::from("check-json.json"))
             } else {
                 None
