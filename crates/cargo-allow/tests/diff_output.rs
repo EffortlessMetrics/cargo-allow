@@ -1797,29 +1797,17 @@ fn diff_render_failed_emit_fails_with_typed_artifact_error() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !output.status.success(),
-        "a RenderFailed emit must fail: {stderr}"
+    // #4596: `human` can never render for diff, so the token is rejected
+    // at parse time (exit 2) instead of parse-accepting a guaranteed
+    // RenderFailed after writes.
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "an unrenderable emit token must be a usage error: {stderr}"
     );
     assert!(
-        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
-        "the typed RenderFailure error must render: {stderr}"
-    );
-    assert!(
-        stderr.contains("human_summary is not a report renderer"),
-        "the RenderFailure detail must name the format: {stderr}"
-    );
-    // #4503-class: the Next line must carry the format-level remedy, not the
-    // generic output-path hint.
-    assert!(
-        stderr.contains(
-            "Next: drop the failing format from --emit (or use that format's dedicated command), then retry."
-        ),
-        "the RenderFailure error must type its next step: {stderr}"
-    );
-    assert!(
-        !stderr.contains("check the output path is writable"),
-        "the output-path hint must not misdirect format recovery: {stderr}"
+        stderr.contains("unsupported --emit format for diff"),
+        "the usage error must name the command and token: {stderr}"
     );
     remove_temp_root(root);
 }
@@ -2092,6 +2080,64 @@ fn diff_explicit_head_emit_survives_a_removed_head_policy() {
     assert!(
         !output.status.success(),
         "removing the policy is a posture failure; only the artifacts must succeed"
+    );
+
+    remove_temp_root(root);
+}
+
+#[test]
+fn diff_collision_refusal_leaves_no_success_shaped_outputs() {
+    // #4592: on collision-guard refusal, diff must not leave success-shaped
+    // report/receipt files for an invocation that exited 2 (check rewinds
+    // its outputs; the diff/audit refusals fire before their writes).
+    let root = temp_root("diff-collision-refusal");
+    write_diff_fixture(
+        &root,
+        policy_with_evidence(None),
+        policy_with_evidence(None),
+    );
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .arg("diff")
+        .arg("--base")
+        .arg("HEAD")
+        .arg("--config")
+        .arg("policy/allow.toml")
+        .arg("--artifact-dir")
+        .arg("policy")
+        .arg("--emit")
+        .arg("json")
+        .arg("--receipt")
+        .arg(root.join("receipt.json"))
+        .arg("--output")
+        .arg(root.join("report.md"))
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !output.status.success(),
+        "a policy-colliding artifact dir must fail: {stderr}"
+    );
+    assert!(
+        stderr.contains("would contain the selected policy file"),
+        "the typed error must name the collision: {stderr}"
+    );
+    assert!(
+        !root.join("receipt.json").is_file(),
+        "no receipt may survive the refusal"
+    );
+    assert!(
+        !root.join("report.md").is_file(),
+        "no report may survive the refusal"
+    );
+    let policy_entries: Vec<_> = fs::read_dir(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("read policy dir: {err}")))
+        .map(|entry| entry.unwrap_or_else(|err| std::panic::panic_any(format!("{err}"))))
+        .map(|entry| entry.file_name().to_string_lossy().to_string())
+        .collect();
+    assert!(
+        policy_entries.iter().all(|name| name == "allow.toml"),
+        "the policy directory must hold only the policy file: {policy_entries:?}"
     );
 
     remove_temp_root(root);

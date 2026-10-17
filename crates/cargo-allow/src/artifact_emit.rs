@@ -23,7 +23,35 @@ pub struct ArtifactEmitContext<'a> {
 }
 
 /// Parse a `--emit` comma-separated value into a set of formats.
-pub fn parse_emit_formats(raw: &str) -> Result<Vec<RendererFormatV1>, String> {
+///
+/// `command` gates the parse: tokens that can never render for the given
+/// command are rejected here with the same Usage shape as unknown tokens,
+/// instead of parse-accepting a guaranteed `RenderFailed` after writes
+/// (#4596).
+pub fn parse_emit_formats(command: &str, raw: &str) -> Result<Vec<RendererFormatV1>, String> {
+    // Per-command render capability, mirroring render_one's arms.
+    let renderable: &[RendererFormatV1] = match command {
+        "audit" => &[
+            RendererFormatV1::Markdown,
+            RendererFormatV1::Json,
+            RendererFormatV1::Html,
+            RendererFormatV1::Sarif,
+        ],
+        _ => &[
+            RendererFormatV1::Markdown,
+            RendererFormatV1::Json,
+            RendererFormatV1::Sarif,
+            RendererFormatV1::Html,
+            RendererFormatV1::Receipt,
+        ],
+    };
+    let supported = |formats: &[RendererFormatV1]| {
+        formats
+            .iter()
+            .map(|format| format.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
     let mut formats = Vec::new();
     for token in raw.split(',') {
         let token = token.trim();
@@ -36,6 +64,13 @@ pub fn parse_emit_formats(raw: &str) -> Result<Vec<RendererFormatV1>, String> {
             "human" => RendererFormatV1::HumanSummary,
             _ => return Err(format!("unsupported --emit format: {token:?}")),
         };
+        if !renderable.contains(&format) {
+            return Err(format!(
+                "unsupported --emit format for {command}: {token:?} (this token can never render \\
+                 for {command}; supported: {})",
+                supported(renderable)
+            ));
+        }
         formats.push(format);
     }
     Ok(formats)

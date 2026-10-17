@@ -126,29 +126,17 @@ fn audit_render_failed_emit_fails_with_typed_artifact_error() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !output.status.success(),
-        "a RenderFailed emit must fail: {stderr}"
+    // #4596: unrenderable tokens are rejected at parse time (exit 2,
+    // E0001_USAGE) instead of parse-accepting a guaranteed RenderFailed
+    // after writes.
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "an unrenderable emit token must be a usage error: {stderr}"
     );
     assert!(
-        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
-        "the typed RenderFailure error must render: {stderr}"
-    );
-    assert!(
-        stderr.contains("human_summary is not a report renderer"),
-        "the RenderFailure detail must name the format: {stderr}"
-    );
-    // #4503-class: the Next line must carry the format-level remedy, not the
-    // generic output-path hint.
-    assert!(
-        stderr.contains(
-            "Next: drop the failing format from --emit (or use that format's dedicated command), then retry."
-        ),
-        "the RenderFailure error must type its next step: {stderr}"
-    );
-    assert!(
-        !stderr.contains("check the output path is writable"),
-        "the output-path hint must not misdirect format recovery: {stderr}"
+        stderr.contains("unsupported --emit format for audit"),
+        "the usage error must name the command and token: {stderr}"
     );
     remove_temp_root(root);
 }
@@ -747,32 +735,17 @@ fn audit_receipt_emit_fails_typed_not_panicked() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(
-        !output.status.success(),
-        "an unrenderable receipt emit must fail: {stderr}"
-    );
+    // #4596: `receipt` can never render for audit, so the token is
+    // rejected at parse time (exit 2) instead of parse-accepting a
+    // guaranteed RenderFailed after writes.
     assert_eq!(
         output.status.code(),
-        Some(1),
-        "the typed artifact path must exit 1, not the 101 panic path: {stderr}"
+        Some(2),
+        "an unrenderable receipt emit must be a usage error: {stderr}"
     );
     assert!(
-        !stderr.contains("panicked"),
-        "the renderer assert must not escape as a panic: {stderr}"
-    );
-    assert!(
-        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
-        "the typed RenderFailure error must render: {stderr}"
-    );
-    assert!(
-        stderr.contains("receipt artifacts support only"),
-        "the failure must name the receipt command contract: {stderr}"
-    );
-    assert!(
-        stderr.contains(
-            "Next: drop the failing format from --emit (or use that format's dedicated command), then retry."
-        ),
-        "the RenderFailure error must type its next step: {stderr}"
+        stderr.contains("unsupported --emit format for audit"),
+        "the usage error must name the command and token: {stderr}"
     );
     remove_temp_root(root);
 }
@@ -810,6 +783,8 @@ policy = \"cargo-allow\"
             "policy",
             "--emit",
             "markdown",
+            "--output",
+            "report.md",
         ])
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
@@ -825,6 +800,10 @@ policy = \"cargo-allow\"
     assert!(
         !root.join("policy/audit-markdown.md").is_file(),
         "no artifact may be written into the policy directory"
+    );
+    assert!(
+        !root.join("report.md").is_file(),
+        "no success-shaped report may survive the refusal"
     );
     remove_temp_root(root);
 }

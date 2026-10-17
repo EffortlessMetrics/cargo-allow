@@ -306,6 +306,11 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
         || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
+        // #4594: partial inventory in no-new mode fails the gate the same
+        // way the staged path does — a scan that silently missed tracked
+        // files must not read as a green pass.
+        || (inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
+            && mode == CheckMode::NoNew)
         || product_move_ledger_failed
         || extraction_shim_registry_failed
         || extraction_shim_sources_failed
@@ -409,7 +414,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             })?;
         // Return late output errors so the wrapper can replace an evaluated
         // receipt, remove the stale report and let the CLI replace its summary.
-        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+        let formats = artifact_emit::parse_emit_formats("check", emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
         let mut artifact_context = source_context.report(Some(baseline_debt_entries));

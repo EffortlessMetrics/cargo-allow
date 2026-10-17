@@ -1,0 +1,16 @@
+kind: Fixed
+body: >-
+  Four wave-5 follow-ups. Compat kind spellings are normalized once
+  (trim + lowercase) so `--kind UNSAFE`/`PANIC`/`NETWORK` dispatch to
+  the same legacy policies as their lowercase forms instead of failing
+  with a usage error that lists the lowercase spelling as supported
+  (#4589). The artifact-dir collision guard runs before the report and
+  receipt writes on `diff` (and before the report on `audit`), so a
+  refusal never leaves success-shaped outputs beside the live policy
+  (#4592). A partial inventory (a tracked file missing from the worktree
+  walk) now fails `check --mode no-new` exactly as the staged path
+  already did, instead of exiting 0 behind a `Outcome: partial_data
+  (blocking)` summary (#4594). And `--emit` tokens that can never render
+  for the given command (`human` anywhere, `receipt` on `audit`) are
+  rejected at parse time with the command named, instead of
+  parse-accepting a guaranteed `RenderFailed` after writes (#4596).
