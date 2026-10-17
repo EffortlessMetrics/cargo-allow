@@ -1,6 +1,6 @@
 ---
 name: cargo-allow-0.2-campaign
-description: Orchestrate and execute reversible implementation issues for the cargo-allow 0.2.0 campaign (#3768). Use to select next unblocked issues, classify session lanes, implement bounded changes, run validation, open/update PRs, hand off for current-head review, and reconcile merged state. Do not use as the primary substantive PR review skill or for unauthorized release operations.
+description: Orchestrate and execute reversible implementation issues for the cargo-allow 0.2.0 campaign (#3768). Use to select next unblocked issues, classify session lanes, implement bounded changes, run validation, open/update PRs, obtain current-head review, retain ownership through selected pre-merge CI and protected merge, and reconcile merged state. Do not use as the primary substantive PR review skill or for unauthorized release operations.
 ---
 
 # Cargo-Allow 0.2 Campaign Orchestrator
@@ -16,7 +16,7 @@ Activate this skill when the task is to:
 - hand off a finished author head to `review-current-head`;
 - reconcile a merged child issue on `main` and route to the next unblocked lane.
 
-Do not activate as the primary substantive PR review skill. Hand substantive PR review to `review-current-head` after the author head is final.
+Do not activate as the primary substantive PR review skill. Use `review-current-head` after the author head is final; a review pass or delegated reviewer does not transfer the lead's ownership of delivery.
 
 ## Required Live Inputs
 
@@ -76,7 +76,7 @@ Update or comment on the child issue with the exact blocker or stale premise and
 3. Check for an active PR or recent writer on that exact semantic owner.
 4. If an active viable PR exists, coordinate or review rather than forking.
 5. If a lane is stale, inspect its exact branch/head/comments/checks before deciding to continue or replace it.
-6. Never open two implementation PRs for one semantic authority.
+6. Prefer the existing candidate. Useful alternatives may be compared with focused proof, but select one candidate to land before expensive qualification; do not create duplicates merely to fill capacity.
 7. Prefer the smallest issue whose completion unblocks multiple later rails.
 8. Keep experimental siblings (`cargo-intent`, `cargo-proof`) optional; do not import them as `cargo-allow` release blockers.
 
@@ -100,19 +100,28 @@ claim boundary
 
 ## PR Lifecycle and Merge Rules
 
-1. Start from current `main`.
-2. Implement scoped changes on a bounded feature branch.
-3. Run narrow tests first, then affected/full proof.
+1. Reconcile current main and any existing candidate. Do not restack merely because unrelated main advanced.
+2. Implement one complete objective on a bounded branch, using subagents where they help and one integration owner.
+3. Run narrow tests and falsifying review first; select the candidate intended to land before expensive qualification. Other alternatives remain on focused proof.
 4. Run the default source-tree guard:
    ```bash
    cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
    ```
-5. Open or update PR using `.github/PULL_REQUEST_TEMPLATE.md` with exact head SHA.
-6. Hand off to `review-current-head` for independent review.
-7. If repairs are made, push repair and re-review affected dimensions.
-8. Merge only when live PR head equals reviewed head, PR is non-draft/mergeable, substantive review threads are resolved, and all required CI checks are terminal green.
-9. Synchronize `main`, rerun guards, and clean scratch/disposable worktrees.
-10. Update child issue and #3768.
+5. Inspect the actual CI triggers and publish the selected converged PR using `.github/PULL_REQUEST_TEMPLATE.md` with exact head SHA. Automatic PR proof remains live until its existing migration is qualified; do not invent a late-request command or weaken required checks.
+6. Obtain the substantive `review-current-head` pass, preserving honest review independence. Inspect formal reviews, inline/outdated unresolved threads and ordinary Conversation findings. Repair/refute material findings, reply before resolving, and confirm remote readback.
+7. Refresh affected review/proof after repairs. Reconcile any existing exact-candidate CI run rather than duplicating it; an old label or sibling result cannot qualify a successor. Independent objectives may qualify concurrently; no global max-one queue.
+8. Retain the useful owning lead through a normal CI wait using supported waits/events or bounded checks, without tight polling. Inspect actual terminal results and their tested subject. Missing, cancelled, skipped without justification, partial or wrong-subject evidence is not green. Classify red evidence before repair or justified retry.
+9. Make the separate final current-repository/product/integration judgment. Confirm live reviewed head/base/merge-base, current substantive findings, non-draft mergeability and all required proof. If delegated authority and those conditions hold, the same lead performs the normal protected expected-head squash; no routine new agent/human approval, auto-merge or merge queue.
+10. Read back the actual landing and reconcile the child and #3768. Reuse applicable proof instead of routine full post-merge replay; run affected checks for a real composition change. Retain useful evidence before cleaning task-owned disposable state.
+
+A real interruption or exhausted execution window gets a precise continuation with
+candidate, owner, request/run/attempt, evidence, findings and next action. Resume
+the existing transaction, including reading back an uncertain merge, rather than
+issuing duplicate effects. A normal CI wait is not an automatic handoff.
+The target is at most 20 minutes of complete CI execution, with queue time separate;
+do not omit obligations, hide setup or raise timeouts to claim compliance.
+Explicit Draft-only/read-only and reserved release/settings/credential boundaries
+remain. The root's selected-candidate policy applies to this route.
 
 ## Release Immutability Law
 
