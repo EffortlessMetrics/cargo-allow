@@ -477,7 +477,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         // (#4505): route bad --emit values through the same typed path.
         // (#4592: the collision guard runs before the report/receipt writes,
         // so a refusal never leaves success-shaped evidence on disk.)
-        let formats = artifact_emit::parse_emit_formats("diff", emit_raw).map_err(|error| {
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
         let emit_ctx = artifact_emit::ArtifactEmitContext {

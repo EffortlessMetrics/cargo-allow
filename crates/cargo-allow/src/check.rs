@@ -414,7 +414,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             })?;
         // Return late output errors so the wrapper can replace an evaluated
         // receipt, remove the stale report and let the CLI replace its summary.
-        let formats = artifact_emit::parse_emit_formats("check", emit_raw).map_err(|error| {
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
         let mut artifact_context = source_context.report(Some(baseline_debt_entries));

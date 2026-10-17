@@ -26,10 +26,10 @@ use compat_scan::{scan_legacy_rust_compat, scan_non_rust_compat};
 /// `.gitattributes` source, and the process/network surfaces derive findings
 /// from policy config, so the flag has no effect for them (#1948).
 fn compat_kind_ignores_include_untracked(compat_kind: &str, parsed_filter: &KindFilter) -> bool {
-    is_executable_compat_kind(&compat_kind)
-        || is_workflow_compat_kind(&compat_kind)
-        || is_process_compat_kind(&compat_kind)
-        || is_network_compat_kind(&compat_kind)
+    is_executable_compat_kind(compat_kind)
+        || is_workflow_compat_kind(compat_kind)
+        || is_process_compat_kind(compat_kind)
+        || is_network_compat_kind(compat_kind)
         || parsed_filter.kind == FindingKind::GeneratedCode
 }
 

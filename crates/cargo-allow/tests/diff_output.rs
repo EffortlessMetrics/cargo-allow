@@ -1797,17 +1797,29 @@ fn diff_render_failed_emit_fails_with_typed_artifact_error() {
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run diff: {err}")));
     let stderr = String::from_utf8_lossy(&output.stderr);
-    // #4596: `human` can never render for diff, so the token is rejected
-    // at parse time (exit 2) instead of parse-accepting a guaranteed
-    // RenderFailed after writes.
-    assert_eq!(
-        output.status.code(),
-        Some(2),
-        "an unrenderable emit token must be a usage error: {stderr}"
+    assert!(
+        !output.status.success(),
+        "a RenderFailed emit must fail: {stderr}"
     );
     assert!(
-        stderr.contains("unsupported --emit format for diff"),
-        "the usage error must name the command and token: {stderr}"
+        stderr.contains("error[E0007_ARTIFACT]: artifact emit RenderFailure"),
+        "the typed RenderFailure error must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("human_summary is not a report renderer"),
+        "the RenderFailure detail must name the format: {stderr}"
+    );
+    // #4503-class: the Next line must carry the format-level remedy, not the
+    // generic output-path hint.
+    assert!(
+        stderr.contains(
+            "Next: drop the failing format from --emit (or use that format's dedicated command), then retry."
+        ),
+        "the RenderFailure error must type its next step: {stderr}"
+    );
+    assert!(
+        !stderr.contains("check the output path is writable"),
+        "the output-path hint must not misdirect format recovery: {stderr}"
     );
     remove_temp_root(root);
 }
