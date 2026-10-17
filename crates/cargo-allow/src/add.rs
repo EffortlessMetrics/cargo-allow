@@ -1,6 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
-    MatchOutcome, SimpleDate, json_escape, normalize_path,
+    MatchOutcome, SimpleDate, normalize_path,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -26,7 +26,7 @@ use add_entry::{
 pub(crate) use add_policy::transpose_for_existing_target;
 #[cfg(test)]
 use add_render::render_add_summary;
-use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summary_styled};
+use add_render::{render_add_summary_json, render_add_summary_styled};
 pub(super) use add_types::AddContext;
 
 use crate::command_support::select_mutation_policy;
@@ -371,13 +371,18 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                     style,
                 )
             }
-            HumanJsonFormat::Json => render_add_summary_broad_json(
+            HumanJsonFormat::Json => render_add_summary_json(
                 &broad,
+                // #4604: a broad scope baseline selects no individual
+                // finding — the governed summary marks the route with a
+                // null selected_finding instead of a second, drift-prone
+                // hand-rolled shape.
+                None,
                 policy_output.as_deref(),
                 args.force,
                 args.dry_run,
                 args.update,
-                &context,
+                context,
             ),
         };
         (broad, summary)
@@ -471,7 +476,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             }
             HumanJsonFormat::Json => render_add_summary_json(
                 &entry,
-                finding,
+                Some(finding),
                 policy_output.as_deref(),
                 args.force,
                 args.dry_run,
@@ -747,35 +752,6 @@ fn render_add_summary_broad_human(
     )
 }
 
-fn render_add_summary_broad_json(
-    entry: &AllowEntry,
-    policy_output: Option<&str>,
-    force: bool,
-    dry_run: bool,
-    live_update: bool,
-    context: &AddContext<'_>,
-) -> String {
-    let action = if dry_run {
-        "dry-run"
-    } else if force {
-        "overwrite"
-    } else {
-        "write"
-    };
-    let mutation_receipt =
-        add_mutation_receipt(entry, context, policy_output, dry_run, live_update);
-    format!(
-        "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",
-        json_escape(&entry.id),
-        json_escape(&entry.kind.to_string()),
-        json_escape(&entry.path_or_glob()),
-        entry.occurrence_limit.unwrap_or(0),
-        json_escape(policy_output.unwrap_or("stdout")),
-        json_escape(action),
-        allow_report::render_mutation_receipt_json(&mutation_receipt, ""),
-    )
-}
-
 fn selected_add_outcome(
     outcomes: &[MatchOutcome],
     finding_index: usize,
@@ -864,7 +840,7 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
     });
     render_add_summary_json(
         &add_entry,
-        &add_finding,
+        Some(&add_finding),
         Some("policy/allow.proposed.toml"),
         false,
         false,

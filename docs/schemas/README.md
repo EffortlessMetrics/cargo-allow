@@ -88,28 +88,26 @@ partial; #3876 owns single-resolution command consumption.
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Advisory drift refresh receipt | `cargo-allow.refresh.v1` | `cargo-allow refresh --allow-id <id> --format json` |
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json --summary-output <path>` |
-| Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json --summary-output <path>` |
-| Broad-scope add summary (compact envelope, no schema contract) | — | `cargo-allow add --glob <glob> --summary-format json --summary-output <path>` |
+| Add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json --summary-output <path>`; a broad `--glob` run marks the route with a null `selected_finding` and carries its ratchet floor as `allow_entry.occurrence_limit` |
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json --summary-output <path>` |
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 | Lifecycle cadence | `cargo-allow.cadence.v1` | `cargo-allow cadence --format json` |
 | Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... diff --base <rev>`, `... init`, `... propose`, `... add ...`, `... refresh --allow-id <id>`, `... prune`, `... migrate --from <path>`, `... explain <id>`, `... why`, `... worklist` |
 
-### Broad-scope add summary envelope (#4570)
+### Broad-scope add summary (#4604)
 
-`add --glob` emits a compact JSON envelope instead of the single-entry
-`cargo-allow.add.v1` schema. It has no schema file and carries exactly these
-top-level fields: `id`, `kind`, `scope` (the `--glob`), `occurrence_limit`
-(the ratchet floor pinned to the current in-scope count), `policy_output`
-(the written target, or `"stdout"` when nothing was persisted — always
-`"stdout"` under `--dry-run`), `action` — one of `write` (default
-`--write`), `overwrite` (`--force` without `--dry-run`), or `dry-run`
-(`--dry-run` takes precedence over `--force`) — and `mutation_receipt`
-(the shared mutation-receipt envelope, whose `result` is `stdout` under
-`--dry-run`). Treat the envelope as positional documentation, not a
-governed schema: fields may be added, and consumers must branch on
-`action` and `mutation_receipt.result`, not on absent keys.
+`add --glob --summary-format json` emits the same governed
+`cargo-allow.add.v1` schema as the single-entry route; there is no second
+envelope. The route is marked inside the governed shape: `selected_finding`
+(top level and in `summary`) is `null`, `allow_entry.glob` carries the
+`--glob`, and `allow_entry.occurrence_limit` carries the ratchet floor
+pinned to the current in-scope count (#2056). There is no `action` field:
+the mutation receipt's own `result` is the single source of write posture
+(`"stdout"` when nothing was persisted, always under `--dry-run`), and the
+candidate/dry-run distinctions ride `options` (`policy_output`, `force`)
+plus the receipt's `next_commands`. Consumers must not branch on absent
+keys; branch on the receipt's `result` and the null `selected_finding`.
 
 ## Common command summary
 

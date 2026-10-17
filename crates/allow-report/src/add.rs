@@ -38,7 +38,11 @@ pub fn render_add_human_styled(report: AddReport<'_>, style: Style) -> String {
     out.push_str(&format!("classification: {}\n", entry.classification));
     out.push_str(&format!(
         "matched finding: {}\n",
-        finding_location_text(selected_finding)
+        match selected_finding {
+            Some(finding) => finding_location_text(finding),
+            // #4604: a broad scope baseline selects no individual finding.
+            None => "none (broad scope baseline)".to_string(),
+        }
     ));
     if let Some(output) = report.policy_output {
         out.push_str(&format!("output: {output}\n"));
@@ -79,8 +83,12 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
         json_escape(&entry.id)
     ));
     out.push_str(&format!(
-        "    \"selected_finding\": \"{}\",\n",
-        json_escape(&finding_location_text(selected_finding))
+        "    \"selected_finding\": {},\n",
+        match selected_finding {
+            Some(finding) => format!("\"{}\"", json_escape(&finding_location_text(finding))),
+            // #4604: null marks the broad-scope route in the governed shape.
+            None => "null".to_string(),
+        }
     ));
     out.push_str("    \"human_review_required\": true\n");
     out.push_str("  },\n");
@@ -122,16 +130,26 @@ pub fn render_add_json(report: AddReport<'_>) -> String {
             render_last_seen_json(entry.last_seen.as_ref(), "    ")
         ),
     ]);
+    // The broad-scope ratchet floor (#2056) rides the governed summary for
+    // entries that carry one; single-path entries omit the key entirely
+    // (#4604).
+    if let Some(limit) = entry.occurrence_limit {
+        entry_fields.push(format!("    \"occurrence_limit\": {limit}"));
+    }
     out.push_str(&format!(
         "  \"allow_entry\": {{\n{}\n  }},\n",
         entry_fields.join(",\n")
     ));
     out.push_str("  \"selected_finding\": ");
-    out.push_str(&render_explain_finding_json(
-        selected_finding,
-        "selected",
-        "  ",
-    ));
+    match selected_finding {
+        Some(selected_finding) => out.push_str(&render_explain_finding_json(
+            selected_finding,
+            "selected",
+            "  ",
+        )),
+        // #4604: null marks the broad-scope route in the governed shape.
+        None => out.push_str("null"),
+    }
     out.push_str("\n}\n");
     out
 }

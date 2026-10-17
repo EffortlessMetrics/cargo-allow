@@ -577,10 +577,12 @@ expires_or_review_after_required = true
 }
 
 #[test]
-fn add_dry_run_broad_json_summary_reports_dry_run_action() {
-    // #4549: the broad (glob) JSON summary carried action "write" and the
-    // requested candidate path even under --dry-run; the posture must match
-    // what the operation actually did.
+fn add_dry_run_broad_json_summary_keeps_the_stdout_posture() {
+    // #4549 → #4604: the broad (glob) JSON summary once carried action
+    // "write" and the requested candidate path even under --dry-run; the
+    // governed shape has no action field at all — the mutation receipt's
+    // own result is the posture truth, and a dry run keeps the stdout
+    // posture (#4549) while null selected_finding marks the route (#4604).
     let root = temp_root("add-dry-run-broad-posture");
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
@@ -648,16 +650,21 @@ expires_or_review_after_required = true
     let summary: serde_json::Value = serde_json::from_str(&summary_text)
         .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
     assert_eq!(
-        summary.get("action").and_then(serde_json::Value::as_str),
-        Some("dry-run"),
-        "the broad action must not claim a write under --dry-run: {summary_text}"
+        summary.pointer("/selected_finding").map(|v| v.is_null()),
+        Some(true),
+        "the broad route must mark itself with a null selected_finding: {summary_text}"
+    );
+    assert_eq!(
+        summary.get("action"),
+        None,
+        "the redundant action field must be gone from the governed shape: {summary_text}"
     );
     assert_eq!(
         summary
-            .get("policy_output")
-            .and_then(serde_json::Value::as_str),
-        Some("stdout"),
-        "the broad policy_output must report stdout under --dry-run: {summary_text}"
+            .pointer("/options/policy_output")
+            .map(|v| v.is_null()),
+        Some(true),
+        "the governed options must report no policy output under --dry-run: {summary_text}"
     );
     assert_eq!(
         summary
