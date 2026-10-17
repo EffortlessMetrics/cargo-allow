@@ -1,11 +1,15 @@
 //! `cargo-allow add --from-plan <path>`: apply a versioned add-finding plan
 //! (produced by `why --plan`) to the live ledger as a fail-closed transaction.
 //!
-//! The plan envelope is enforced exactly as published in
-//! `docs/schemas/add-finding-plan.schema.json` (#4605): unknown fields are
-//! rejected (within a frozen schema_version they are schema-invalid), and
-//! every schema-required field must be present. Forward-compatible producers
-//! bump `schema_version`, which the generation gate rejects.
+//! The plan envelope's field set and required-field presence are enforced
+//! exactly as published in `docs/schemas/add-finding-plan.schema.json`
+//! (#4605): unknown fields are rejected (within a frozen schema_version they
+//! are schema-invalid), and every schema-required field must be present.
+//! Nested content of the display/metadata fields is parsed for presence and
+//! JSON type only — the applier never consumes it, and the published types
+//! for that content stay the producer's obligation (validated by the
+//! producer-side contract test). Forward-compatible producers bump
+//! `schema_version`, which the generation gate rejects.
 //!
 //! The plan carries **coordinates and identity bindings only** — never operator
 //! judgment. This command re-scans the live source tree, recomputes every
@@ -56,15 +60,19 @@ use effortless_repo_edit::{
 
 /// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope (#4605).
 ///
-/// The accepted envelope is exactly the published
-/// `docs/schemas/add-finding-plan.schema.json` contract. Within a frozen
+/// The accepted envelope matches the published
+/// `docs/schemas/add-finding-plan.schema.json` contract at the envelope
+/// level: field set and required-field presence. Within a frozen
 /// `schema_version` document, the schema's `additionalProperties: false` makes
 /// any unknown field schema-invalid by definition, so `deny_unknown_fields`
 /// rejects it here too; a forward-compatible producer must bump
 /// `schema_version`, which the version gate in [`validate_plan_generation`]
 /// rejects. Every field in the schema's `required` list is a required struct
 /// field here, so the applier's acceptance contract matches the guarantee a
-/// schema-validating producer already promises. `evaluation` is declared in
+/// schema-validating producer already promises. The nested content of the
+/// display/metadata fields is parsed for presence and JSON type only — the
+/// published types for that content stay the producer's obligation, pinned by
+/// the producer-side schema-validation test. `evaluation` is declared in
 /// the schema's `properties` but not `required`, so it is accepted when
 /// present and tolerated when absent — but an undeclared field is still
 /// unknown and rejected.
