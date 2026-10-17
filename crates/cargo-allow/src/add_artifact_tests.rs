@@ -4,7 +4,7 @@ use crate::artifact_contract_support::{assert_inventory_contract, parse_json_art
 use serde_json::Value;
 
 #[test]
-fn render_broad_add_summary_json_matches_the_governed_schema() {
+fn render_broad_add_summary_json_matches_the_governed_schema() -> Result<(), String> {
     // #4604: the broad (glob) route emits the same governed
     // `cargo-allow.add.v1` shape as the path/line route — no second,
     // drift-prone hand-rolled shape. The route is marked by a null
@@ -84,6 +84,22 @@ fn render_broad_add_summary_json_matches_the_governed_schema() {
         None,
         "the redundant drift-prone action field is gone: {json}"
     );
+    validate_add_schema(&json, &value)?;
+    Ok(())
+}
+
+/// Full governed-schema validation for an add summary: `parse_json_artifact`
+/// pins identity fields, and this rejects extra/invalid fields against the
+/// checked-in `docs/schemas/add.schema.json` itself (PR #4619 review).
+fn validate_add_schema(json: &str, value: &Value) -> Result<(), String> {
+    let schema =
+        serde_json::from_str::<Value>(include_str!("../../../docs/schemas/add.schema.json"))
+            .map_err(|error| format!("add schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("add schema compilation: {error}"))?;
+    validator.validate(value).map_err(|error| {
+        format!("add summary does not validate against the governed schema: {error}\n{json}")
+    })
 }
 
 #[test]
@@ -131,7 +147,7 @@ fn render_broad_add_summary_human_styles_fixed_baseline_marker() {
 }
 
 #[test]
-fn render_add_summary_json_records_entry_and_selected_finding() {
+fn render_add_summary_json_records_entry_and_selected_finding() -> Result<(), String> {
     let mut finding = test_finding_at_line(
         FindingKind::Panic,
         Some("unwrap"),
@@ -223,6 +239,8 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
         Some("parser"),
         "add selected finding source package"
     );
+    validate_add_schema(&json, &value)?;
+    Ok(())
 }
 
 #[test]
