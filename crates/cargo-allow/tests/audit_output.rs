@@ -175,6 +175,8 @@ fn audit_bad_emit_value_fails_with_typed_usage_error() {
             "artifacts",
             "--emit",
             "bogus-format",
+            "--output",
+            "report.md",
         ])
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
@@ -199,6 +201,16 @@ fn audit_bad_emit_value_fails_with_typed_usage_error() {
     assert!(
         !stderr.contains("cargo-allow audit: unsupported"),
         "the bare untyped stderr line must be gone: {stderr}"
+    );
+    // The --emit parse rides the pre-write gate (#4592 review follow-up):
+    // the usage refusal must leave no report and no artifact directory.
+    assert!(
+        !root.join("report.md").is_file(),
+        "no report may survive the pre-write refusal"
+    );
+    assert!(
+        !root.join("artifacts").exists(),
+        "the artifact directory must not be created by a refused run"
     );
     remove_temp_root(root);
 }

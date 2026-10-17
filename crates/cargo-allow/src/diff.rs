@@ -85,13 +85,26 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
     )?;
     // #4592: refuse an artifact directory that would contain the selected
     // policy BEFORE any report/receipt output is written, so a refusal
-    // never leaves success-shaped evidence on disk.
-    if let (Some(artifact_dir), Some(_)) = (&args.artifact_dir, &args.emit) {
-        artifact_emit::ensure_artifact_dir_separate(artifact_dir, Some(&root.join(&policy_path)))
+    // never leaves success-shaped evidence on disk. The --emit parse rides
+    // the same pre-write gate: an unknown token is a usage error (#4505),
+    // not something a written receipt should survive.
+    let emit_formats = match (&args.artifact_dir, &args.emit) {
+        (Some(artifact_dir), Some(emit_raw)) => {
+            artifact_emit::ensure_artifact_dir_separate(
+                artifact_dir,
+                Some(&root.join(&policy_path)),
+            )
             .map_err(|error| {
-            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-        })?;
-    }
+                CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+            })?;
+            Some(
+                artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+                    CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+                })?,
+            )
+        }
+        _ => None,
+    };
 
     let base_cfg = allow_diff::policy_config_at_revision(&root, &base, &policy_path)?
         .unwrap_or_else(AllowConfig::empty);
@@ -472,14 +485,11 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
         write_file(path, &receipt)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
-    if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        // The identical mistake on `check` exits 2 with a typed Usage error
-        // (#4505): route bad --emit values through the same typed path.
+    if let (Some(artifact_dir), Some(formats)) =
+        (args.artifact_dir.as_deref(), emit_formats.as_deref())
+    {
         // (#4592: the collision guard runs before the report/receipt writes,
         // so a refusal never leaves success-shaped evidence on disk.)
-        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
-            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-        })?;
         let emit_ctx = artifact_emit::ArtifactEmitContext {
             command: "diff",
             findings: &findings_for_report,
@@ -492,7 +502,7 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "diff",
-                formats: &formats,
+                formats,
                 result_class: if failed {
                     allow_report::EvaluationResultClassV2::Blocking
                 } else {

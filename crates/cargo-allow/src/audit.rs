@@ -95,13 +95,23 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
     }
     // #4592: refuse an artifact directory that would contain the selected
     // policy BEFORE any report/receipt output is written, so a refusal
-    // never leaves success-shaped evidence on disk.
-    if let (Some(artifact_dir), Some(_)) = (&args.artifact_dir, &args.emit) {
-        artifact_emit::ensure_artifact_dir_separate(artifact_dir, protected_policy.as_deref())
-            .map_err(|error| {
-                CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-            })?;
-    }
+    // never leaves success-shaped evidence on disk. The --emit parse rides
+    // the same pre-write gate: an unknown token is a usage error (#4505),
+    // not something a written report should survive.
+    let emit_formats = match (&args.artifact_dir, &args.emit) {
+        (Some(artifact_dir), Some(emit_raw)) => {
+            artifact_emit::ensure_artifact_dir_separate(artifact_dir, protected_policy.as_deref())
+                .map_err(|error| {
+                    CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+                })?;
+            Some(
+                artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+                    CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+                })?,
+            )
+        }
+        _ => None,
+    };
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let as_of = allow_core::SimpleDate::today_utc_approx();
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit, as_of);
@@ -131,12 +141,9 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         artifact_emission: args.artifact_dir.as_deref(),
     })?;
 
-    if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        // The identical mistake on `check` exits 2 with a typed Usage error
-        // (#4505): route bad --emit values through the same typed path.
-        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
-            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-        })?;
+    if let (Some(artifact_dir), Some(formats)) =
+        (args.artifact_dir.as_deref(), emit_formats.as_deref())
+    {
         let source_ctx = SourceTreeReportContext::new(&root, inventory_facts);
         let mut artifact_context =
             source_ctx.report(Some(policy_baseline_debt_entries(&report_cfg)));
@@ -155,7 +162,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "audit",
-                formats: &formats,
+                formats,
                 result_class: allow_report::EvaluationResultClassV2::Advisory,
                 blocking: false,
                 resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
