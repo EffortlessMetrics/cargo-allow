@@ -600,6 +600,11 @@ pub struct ReportContext<'a> {
     /// `RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING`. Absent in error
     /// receipts emitted before a policy was successfully loaded.
     pub lifecycle_posture: Option<&'a str>,
+    /// The `--deny` advisory classes whose positive counts escalated this run
+    /// to a failure (#4631). The failure-reason label names these so
+    /// `Result: failed (...)` reports the actual trigger instead of only the
+    /// blocking status counts. Absent on every non-deny path.
+    pub denied_classes: Option<&'a [String]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -671,6 +676,7 @@ impl<'a> ReportContext<'a> {
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
             lifecycle_posture: None,
+            denied_classes: None,
         }
     }
 

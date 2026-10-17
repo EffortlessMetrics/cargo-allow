@@ -21,7 +21,7 @@ mod check_lane_posture;
 use check_lane_posture::check_failed_for_outcomes;
 #[path = "check_deny.rs"]
 mod check_deny;
-use check_deny::{deny_escalation_failed, validate_deny_statuses};
+use check_deny::{deny_escalation_fired_classes, validate_deny_statuses};
 #[path = "check_product_move_guard.rs"]
 mod check_product_move_guard;
 use check_product_move_guard::product_move_ledger_fails_check;
@@ -300,10 +300,15 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         );
     }
     let source_coupling_failed = !source_coupling_diagnostics.is_empty();
+    let deny_fired_classes = if args.deny.is_empty() {
+        Vec::new()
+    } else {
+        deny_escalation_fired_classes(&args.deny, &summary, context)
+    };
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
-        || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
+        || !deny_fired_classes.is_empty()
         || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
         || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
         // #4594: partial inventory in no-new mode fails the gate the same
@@ -332,6 +337,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         } else {
             RECEIPT_ENFORCEMENT_ENFORCING
         }),
+        denied_classes: Some(&deny_fired_classes),
         artifact_emission: args.artifact_dir.as_deref(),
     };
     if should_emit_report_stdout(
@@ -611,10 +617,15 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
     }
+    let deny_fired_classes = if args.deny.is_empty() {
+        Vec::new()
+    } else {
+        deny_escalation_fired_classes(&args.deny, &summary, context)
+    };
     let failed = check_failed_for_outcomes(&outcomes, &staged.findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
-        || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
+        || !deny_fired_classes.is_empty()
         || (staged.inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
             && mode == CheckMode::NoNew)
         || (staged.inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew);
@@ -636,6 +647,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             } else {
                 RECEIPT_ENFORCEMENT_ENFORCING
             }),
+            denied_classes: Some(&deny_fired_classes),
             // Staged evaluation rejects artifact flags outright (#4547).
             artifact_emission: None,
         })?;

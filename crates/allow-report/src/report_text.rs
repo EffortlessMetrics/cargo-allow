@@ -155,7 +155,7 @@ pub fn render_human_with_context(
         out.push('\n');
     }
     if failed {
-        let label = match check_failure_reason(&summary) {
+        let label = match check_failure_reason(&summary, context.denied_classes.unwrap_or(&[])) {
             Some(reason) => format!("failed ({reason})"),
             None => "failed".to_string(),
         };
@@ -217,27 +217,29 @@ pub(crate) fn blocks_check_str(status: &str) -> bool {
 }
 
 /// Build a human-readable reason for why a check failed, based on blocking
-/// status counts from the summary. Returns None if no blocking statuses are
-/// present (the failure may come from evidence links, federation divergence,
-/// inventory parse errors, or other out-of-band conditions).
-fn check_failure_reason(summary: &Summary) -> Option<String> {
-    let mut parts: Vec<(String, usize)> = Vec::new();
+/// status counts from the summary plus the `--deny` classes whose positive
+/// counts escalated the run (#4631). Returns None if neither is present (the
+/// failure may come from evidence links, federation divergence, inventory
+/// parse errors, or other out-of-band conditions).
+fn check_failure_reason(summary: &Summary, denied_classes: &[String]) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
     for status in BLOCKING_STATUSES {
         let count = summary.count(status);
         if count > 0 {
-            parts.push((status.as_str().replace('_', " "), count));
+            parts.push(format!("{count} {}", status.as_str().replace('_', " ")));
         }
+    }
+    if !denied_classes.is_empty() {
+        // The deny list promotes advisory count classes to blocking failures,
+        // so the label must name them: `--mode audit --deny stale` exits 1
+        // even though every blocking count is advisory-only there, and the
+        // old label blamed counts that did not trigger the exit.
+        parts.push(format!("{}, denied", denied_classes.join(", ")));
     }
     if parts.is_empty() {
         return None;
     }
-    Some(
-        parts
-            .iter()
-            .map(|(label, count)| format!("{count} {label}"))
-            .collect::<Vec<_>>()
-            .join(", "),
-    )
+    Some(parts.join(", "))
 }
 
 fn render_audit_summary_human(
@@ -363,7 +365,7 @@ pub fn render_markdown_with_context(
     out.push_str(&format!(
         "**Result:** {}\n\n",
         if failed {
-            match check_failure_reason(&summary) {
+            match check_failure_reason(&summary, context.denied_classes.unwrap_or(&[])) {
                 Some(reason) => format!("failed ({reason})"),
                 None => "failed".to_string(),
             }
@@ -1173,7 +1175,7 @@ mod tests {
     fn check_failure_reason_lists_blocking_status_counts() {
         let outcomes = review_outcomes();
         let summary = Summary::from_outcomes(&outcomes);
-        let reason = check_failure_reason(&summary);
+        let reason = check_failure_reason(&summary, &[]);
 
         assert!(reason.is_some(), "should have a reason");
         let reason = reason.unwrap_or_default();
@@ -1204,7 +1206,44 @@ mod tests {
         ];
         let summary = Summary::from_outcomes(&outcomes);
 
-        assert!(check_failure_reason(&summary).is_none());
+        assert!(check_failure_reason(&summary, &[]).is_none());
+    }
+
+    #[test]
+    fn check_failure_reason_names_denied_classes_on_deny_escalation() {
+        // #4631: `--mode audit --deny stale` exits 1 because the denied class
+        // fired, so the label must carry `stale ... denied` even though the
+        // blocking counts alone are advisory in audit mode.
+        let outcomes = vec![
+            outcome(MatchStatus::New, "new source exception"),
+            outcome(MatchStatus::Stale, "stale policy entry"),
+        ];
+        let summary = Summary::from_outcomes(&outcomes);
+        let denied = vec!["stale".to_string()];
+        let reason = check_failure_reason(&summary, &denied);
+
+        let reason = reason.unwrap_or_else(|| {
+            std::panic::panic_any("deny escalation should produce a reason".to_string())
+        });
+        assert!(
+            reason.contains("stale") && reason.contains("denied"),
+            "reason should name the denied class: {reason}"
+        );
+
+        let text = render_human_with_context(
+            "check",
+            &[],
+            &outcomes,
+            true,
+            ReportContext {
+                denied_classes: Some(&denied),
+                ..ReportContext::default()
+            },
+        );
+        assert!(
+            text.contains("Result: failed (") && text.contains("stale, denied"),
+            "human label should name the denied trigger:\n{text}"
+        );
     }
 
     #[test]
