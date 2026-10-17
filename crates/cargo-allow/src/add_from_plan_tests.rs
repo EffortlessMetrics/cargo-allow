@@ -301,8 +301,20 @@ fn full_schema_valid_plan() -> Value {
         "policy": {"path": "policy/allow.toml", "digest": DIGEST_B},
         "finding": {
             "kind": "panic", "family": "unwrap", "path": "src/lib.rs", "line": 1, "column": 20,
-            "identity": {"language": "rust"}, "digest": DIGEST_A,
-            "source_file_digest": DIGEST_B, "selector": {"callee": "unwrap"},
+            "identity": {
+                "language": "rust", "crate_name": "parser", "module": "parse",
+                "container": "parse_span", "ast_kind": "method_call", "symbol": "unwrap",
+                "callee": "unwrap", "macro_name": null, "lint": null,
+                "receiver_fingerprint": null, "target_fingerprint": "policy:allow-0001",
+                "normalized_snippet_hash": "fnv1a64:1234", "line_hint": 1, "column_hint": 20,
+            },
+            "digest": DIGEST_A, "source_file_digest": DIGEST_B,
+            "selector": {
+                "ast_kind": "method_call", "container": "parse_span", "callee": "unwrap",
+                "macro_name": null, "lint": null, "symbol": "unwrap",
+                "receiver_fingerprint": null, "target_fingerprint": "toml",
+                "normalized_snippet_hash": "fnv1a64:1234", "line_hint": 1, "glob": null,
+            },
         },
         "outcome": {"status": "new", "allow_id": null, "message": "unreceipted panic.unwrap"},
         "candidates": [],
@@ -325,10 +337,20 @@ const REQUIRED_BUT_UNREAD_PLAN_FIELDS: [&str; 7] = [
 ];
 
 #[test]
-fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() {
+fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() -> Result<(), String> {
     // A full v1 plan (including every schema-required display field) parses
-    // cleanly.
+    // cleanly — and is itself schema-valid, so the positive control proves a
+    // schema-valid required-only plan reaches the applier (PR #4622 review).
     let full_plan = full_schema_valid_plan();
+    let schema = serde_json::from_str::<serde_json::Value>(include_str!(
+        "../../../docs/schemas/add-finding-plan.schema.json"
+    ))
+    .map_err(|error| format!("add-finding-plan schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("add-finding-plan schema compilation: {error}"))?;
+    validator
+        .validate(&full_plan)
+        .map_err(|error| format!("the positive-control plan must be schema-valid: {error}"))?;
     assert!(parse_plan_strict(full_plan.to_string().as_bytes()).is_ok());
 
     // Not JSON at all.
@@ -349,6 +371,7 @@ fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() {
         policy.insert("digest".to_string(), json!(42));
     }
     assert!(parse_plan_strict(wrong_type.to_string().as_bytes()).is_err());
+    Ok(())
 }
 
 #[test]
