@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  Three add-command robustness fixes. A broad `--glob` add re-run
+  against a scope the live ledger already baselines with an identical
+  broad selector now refuses with a typed usage error naming the
+  covering entry, instead of exiting 0 and appending a duplicate that
+  flips the scope to `ambiguous` at the next check; differently-shaped
+  coverage (anchored self-receipts, path/line receipts) stays writable
+  (#4603). `add --path/--line` without `--kind` now reaches the CLI and
+  infers the kind as #3194 promised — the clap gate had shipped the
+  inference unreachable; `--glob` without `--kind` still fails with the
+  typed broad-scope error (#4606). The "no current finding found near"
+  and ambiguous-add usage errors carry typed next steps instead of the
+  contradictory generic syntax-remedy line (#4610).
