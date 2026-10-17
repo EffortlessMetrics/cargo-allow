@@ -51,3 +51,9 @@ allow_ids = ["allow-11364"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:00ba8439e14ebc9f6a2dd8000933080bef63efe462f28f90029f3b3a037bbab5"
 reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.proof_plans: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-1157"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4848e0cae377fb1bc2be37254310c00c330e66953638b31b3c4d657468889138"
+reason = "Self-covering record for this note file itself (#3792 precedent): the authored revision note is a tracked source file and carries the same reviewed-exception posture as the receipts it records (#4605)."
