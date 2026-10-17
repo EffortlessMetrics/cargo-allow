@@ -7,12 +7,46 @@
 //! rows keep their earned movement classes, truncation is deterministic and
 //! never becomes Complete, and private absolute paths are rejected.
 
+use allow_core::sha256_v1_bytes;
 use serde::{Deserialize, Serialize};
 
 pub const GITHUB_PR_CHECK_V1_SCHEMA_VERSION: u32 = 1;
 pub const GITHUB_PR_CHECK_V1_SCHEMA_ID: &str = "cargo-allow.github-pr-check.v1";
 
+/// Receipt schema generation constants. The retained receipt is its own
+/// durable artifact with its own schema identity, distinct from the projected
+/// check it binds (#4609).
+pub const GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_VERSION: u32 = 1;
+pub const GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_ID: &str = "cargo-allow.github-pr-check-receipt.v1";
+
+/// Integrator-recorded provider outcome: the assembled check payload was
+/// published to the provider.
+pub const GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED: &str = "published";
+/// Integrator-recorded provider outcome: the publication attempt failed
+/// because the provider was unreachable or unavailable.
+pub const GITHUB_PR_CHECK_PROVIDER_OUTCOME_PROVIDER_UNAVAILABLE: &str = "provider_unavailable";
+/// Integrator-recorded provider outcome: the publication attempt was made and
+/// failed for a reason other than provider availability.
+pub const GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLICATION_FAILED: &str = "publication_failed";
+/// Integrator-recorded provider outcome: no publication attempt was made.
+pub const GITHUB_PR_CHECK_PROVIDER_OUTCOME_NOT_ATTEMPTED: &str = "not_attempted";
+
+/// The closed vocabulary of accepted
+/// [`CargoAllowGitHubPrCheckReceiptV1::provider_outcome`] values.
+pub const GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1: [&str; 4] = [
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED,
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_PROVIDER_UNAVAILABLE,
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLICATION_FAILED,
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_NOT_ATTEMPTED,
+];
+
 /// Closed check-result vocabulary. Only exact current `Passed` is clean.
+///
+/// `Stale` and `ProviderUnavailable` are integrator-facing: the in-repo
+/// projection never produces them. The integrator constructs the result with
+/// `Stale` when [`receipt_matches_current`] reports a binding-digest
+/// mismatch, and with `ProviderUnavailable` from its own GitHub API
+/// interaction; this vocabulary keeps both outcomes non-clean.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GitHubPrCheckResultV1 {
@@ -154,22 +188,32 @@ pub struct CargoAllowGitHubPrCheckV1 {
     pub claim_boundary: String,
 }
 
-/// Retained adapter receipt: what the adapter consumed, projected, and
-/// published. Check publication success is not cargo-allow evidence.
+/// Retained adapter receipt: which exact diff-report bytes and assembled
+/// check payload the projection consumed, plus the integrator-recorded
+/// provider outcome. cargo-allow never calls the GitHub API: publication is
+/// the integrator's action, the integrator records its outcome from the
+/// closed [`GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1`] vocabulary, and check
+/// publication success is not cargo-allow evidence.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CargoAllowGitHubPrCheckReceiptV1 {
     pub schema_id: String,
     pub schema_version: u32,
     pub subject: GitHubPrCheckSubjectV1,
-    /// sha256 of the consumed diff report artifact.
+    /// Canonical `sha256:v1:` digest of the exact consumed diff-report bytes,
+    /// computed with the repository-canonical `allow_core::sha256_v1_bytes`.
     pub diff_report_digest: String,
-    /// sha256 of the assembled check payload.
+    /// Canonical `sha256:v1:` digest of the exact assembled check-payload
+    /// bytes, computed with the repository-canonical
+    /// `allow_core::sha256_v1_bytes`.
     pub check_payload_digest: String,
     pub result: GitHubPrCheckResultV1,
     pub annotated_count: u32,
     pub omitted_count: u32,
-    /// Provider outcome: the adapter records ProviderUnavailable when the
-    /// GitHub API fails after a valid local projection.
+    /// Integrator-recorded outcome of the check-publication attempt, from the
+    /// closed [`GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1`] vocabulary. cargo-allow
+    /// has no network access and cannot observe the GitHub API: the
+    /// integrator records which outcome occurred, and
+    /// [`validate_github_pr_check_receipt_v1`] accepts only recorded values.
     pub provider_outcome: String,
     pub claim_boundary: String,
 }
@@ -212,9 +256,10 @@ pub fn project_github_pr_check(
     }
 
     // Stale subject: the report must bind the exact head being checked.
-    // Binding is supplied through the report's inventory completeness field
-    // contract; a stale artifact is detected by the caller-supplied binding
-    // digest mismatch recorded by the adapter receipt, not re-invented here.
+    // The projection never re-invents staleness: the integrator detects a
+    // stale artifact with `receipt_matches_current`, which recomputes the
+    // receipt's diff-report binding digest against the current bytes, and
+    // records `GitHubPrCheckResultV1::Stale` itself.
 
     let mut introduced = 0u32;
     let mut worsened = 0u32;
@@ -559,6 +604,107 @@ pub fn validate_github_pr_check_v1(check: &CargoAllowGitHubPrCheckV1) -> Result<
     Ok(())
 }
 
+/// Build the retained adapter receipt from the exact consumed diff-report
+/// bytes, the exact assembled check-payload bytes, and the
+/// integrator-recorded publication outcome (#4609).
+///
+/// Both digests use the repository-canonical [`allow_core::sha256_v1_bytes`]
+/// form (`sha256:v1:` plus 64 hex digits). The builder is pure: it never
+/// touches the network and never verifies publication — the integrator
+/// records `provider_outcome` from the closed
+/// [`GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1`] vocabulary, and
+/// [`validate_github_pr_check_receipt_v1`] enforces the recorded shapes.
+pub fn build_github_pr_check_receipt(
+    subject: &GitHubPrCheckSubjectV1,
+    consumed_diff_report_bytes: &[u8],
+    assembled_check_payload_bytes: &[u8],
+    result: GitHubPrCheckResultV1,
+    annotated_count: u32,
+    omitted_count: u32,
+    provider_outcome: &str,
+) -> CargoAllowGitHubPrCheckReceiptV1 {
+    CargoAllowGitHubPrCheckReceiptV1 {
+        schema_id: GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_ID.to_string(),
+        schema_version: GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_VERSION,
+        subject: subject.clone(),
+        diff_report_digest: sha256_v1_bytes(consumed_diff_report_bytes),
+        check_payload_digest: sha256_v1_bytes(assembled_check_payload_bytes),
+        result,
+        annotated_count,
+        omitted_count,
+        provider_outcome: provider_outcome.to_string(),
+        claim_boundary: ("Adapter receipt binding one exact diff-report payload and \
+             one assembled check payload; the integrator records the \
+             provider outcome, and publication success is never \
+             cargo-allow evidence."
+            .to_string()),
+    }
+}
+
+/// Whether a digest string is in the canonical `sha256:v1:` form produced by
+/// `allow_core::sha256_v1_bytes` (`sha256:v1:` plus 64 hex digits).
+fn is_sha256_v1_digest(value: &str) -> bool {
+    let Some(hex) = value.strip_prefix("sha256:v1:") else {
+        return false;
+    };
+    hex.len() == 64 && hex.chars().all(|character| character.is_ascii_hexdigit())
+}
+
+/// Validate a retained receipt's structural law: current receipt schema
+/// generation, canonical `sha256:v1:` digests, a complete subject identity,
+/// a provider outcome from the closed recorded vocabulary, and a non-empty
+/// claim boundary. Counts are `u32`, so non-negativity is inherent.
+pub fn validate_github_pr_check_receipt_v1(
+    receipt: &CargoAllowGitHubPrCheckReceiptV1,
+) -> Result<(), String> {
+    if receipt.schema_id != GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_ID
+        || receipt.schema_version != GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_VERSION
+    {
+        return Err("non-current github-pr-check receipt generation".to_string());
+    }
+    for (field, digest) in [
+        ("diff_report_digest", &receipt.diff_report_digest),
+        ("check_payload_digest", &receipt.check_payload_digest),
+    ] {
+        if !is_sha256_v1_digest(digest) {
+            return Err(format!(
+                "{field} is not a canonical sha256:v1 digest: {digest:?}"
+            ));
+        }
+    }
+    if receipt.subject.repository.trim().is_empty()
+        || receipt.subject.head.trim().is_empty()
+        || receipt.subject.merge_base.trim().is_empty()
+    {
+        return Err("receipt subject identity is incomplete".to_string());
+    }
+    if !GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1.contains(&receipt.provider_outcome.as_str()) {
+        return Err(format!(
+            "provider_outcome {:?} is outside the recorded vocabulary {:?}",
+            receipt.provider_outcome, GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1
+        ));
+    }
+    if receipt.claim_boundary.trim().is_empty() {
+        return Err("receipt claim boundary is missing".to_string());
+    }
+    Ok(())
+}
+
+/// Recompute the receipt's diff-report binding against the current
+/// diff-report bytes: `true` only when the current bytes hash to the
+/// receipt's recorded `diff_report_digest` (#4609).
+///
+/// This is the caller-supplied binding-digest mismatch check the projection
+/// comment describes. The projection never sees bytes, so the integrator
+/// consults this helper — typically after rerunning the diff evaluation —
+/// and constructs `GitHubPrCheckResultV1::Stale` itself on `false`.
+pub fn receipt_matches_current(
+    receipt: &CargoAllowGitHubPrCheckReceiptV1,
+    current_diff_report_bytes: &[u8],
+) -> bool {
+    receipt.diff_report_digest == sha256_v1_bytes(current_diff_report_bytes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -882,5 +1028,242 @@ mod tests {
                 }
             }
         }
+    }
+
+    const CANONICAL_ABC_DIGEST: &str =
+        "sha256:v1:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
+    const CANONICAL_DEF_DIGEST: &str =
+        "sha256:v1:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34";
+
+    fn receipt() -> CargoAllowGitHubPrCheckReceiptV1 {
+        build_github_pr_check_receipt(
+            &subject(),
+            b"abc",
+            b"def",
+            GitHubPrCheckResultV1::FindingsBlocking,
+            1,
+            0,
+            GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED,
+        )
+    }
+
+    #[test]
+    fn receipt_builder_computes_canonical_sha256_v1_digests() -> Result<(), String> {
+        let receipt = receipt();
+        if receipt.diff_report_digest != CANONICAL_ABC_DIGEST {
+            return Err(format!("diff_report_digest was {receipt:?}"));
+        }
+        if receipt.check_payload_digest != CANONICAL_DEF_DIGEST {
+            return Err(format!("check_payload_digest was {receipt:?}"));
+        }
+        if receipt.schema_id != GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_ID
+            || receipt.schema_version != GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_VERSION
+        {
+            return Err(format!("receipt schema identity drifted: {receipt:?}"));
+        }
+        if receipt.subject != subject()
+            || receipt.result != GitHubPrCheckResultV1::FindingsBlocking
+            || receipt.annotated_count != 1
+            || receipt.omitted_count != 0
+            || receipt.provider_outcome != GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED
+        {
+            return Err(format!("receipt fields were not recorded: {receipt:?}"));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_builder_is_deterministic() -> Result<(), String> {
+        let first = receipt();
+        let second = receipt();
+        if first != second {
+            return Err("same inputs produced two different receipts".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn builder_receipt_validates_clean_across_recorded_outcomes() -> Result<(), String> {
+        validate_github_pr_check_receipt_v1(&receipt())
+            .map_err(|error| format!("builder receipt failed validation: {error}"))?;
+        for outcome in GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1 {
+            let mut receipt = receipt();
+            receipt.provider_outcome = outcome.to_string();
+            validate_github_pr_check_receipt_v1(&receipt).map_err(|error| {
+                format!("recorded outcome {outcome} failed validation: {error}")
+            })?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn validation_rejects_non_current_receipt_generation() -> Result<(), String> {
+        let mut wrong_id = receipt();
+        wrong_id.schema_id = "cargo-allow.github-pr-check-receipt.v0".to_string();
+        match validate_github_pr_check_receipt_v1(&wrong_id) {
+            Ok(()) => Err("non-current receipt schema id passed validation".to_string()),
+            Err(error) => {
+                if error.contains("receipt generation") {
+                    Ok(())
+                } else {
+                    Err(format!("unexpected validation error: {error}"))
+                }
+            }
+        }?;
+        let mut wrong_version = receipt();
+        wrong_version.schema_version = 2;
+        match validate_github_pr_check_receipt_v1(&wrong_version) {
+            Ok(()) => Err("non-current receipt schema version passed validation".to_string()),
+            Err(error) => {
+                if error.contains("receipt generation") {
+                    Ok(())
+                } else {
+                    Err(format!("unexpected validation error: {error}"))
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn validation_rejects_non_canonical_digests() -> Result<(), String> {
+        let cases: [(&str, &str, &str); 6] = [
+            (
+                "diff_report_digest",
+                "bare hex",
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+            ),
+            ("diff_report_digest", "empty", ""),
+            ("diff_report_digest", "truncated", "sha256:v1:ba7816"),
+            (
+                "check_payload_digest",
+                "unversioned prefix",
+                "sha256:cb8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34",
+            ),
+            (
+                "check_payload_digest",
+                "non-hex",
+                "sha256:v1:zz8379ac2098aa165029e3938a51da0bcecfc008fd6795f401178647f96c5b34",
+            ),
+            ("check_payload_digest", "empty", ""),
+        ];
+        for (field, label, digest) in cases {
+            let mut receipt = receipt();
+            if field == "diff_report_digest" {
+                receipt.diff_report_digest = digest.to_string();
+            } else {
+                receipt.check_payload_digest = digest.to_string();
+            }
+            match validate_github_pr_check_receipt_v1(&receipt) {
+                Ok(()) => return Err(format!("{label} {field} passed validation")),
+                Err(error) => {
+                    if error.contains("sha256:v1 digest") {
+                        continue;
+                    }
+                    return Err(format!("{label} {field} failed unexpectedly: {error}"));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn validation_rejects_provider_outcome_outside_vocabulary() -> Result<(), String> {
+        for outcome in ["delivered", "", "PUBLISHED"] {
+            let mut receipt = receipt();
+            receipt.provider_outcome = outcome.to_string();
+            match validate_github_pr_check_receipt_v1(&receipt) {
+                Ok(()) => return Err(format!("outcome {outcome:?} passed validation")),
+                Err(error) => {
+                    if !error.contains("provider_outcome") {
+                        return Err(format!("outcome {outcome:?} failed unexpectedly: {error}"));
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn validation_rejects_incomplete_subject_identity() -> Result<(), String> {
+        let mut blanked = subject();
+        blanked.repository = "   ".to_string();
+        let receipt = build_github_pr_check_receipt(
+            &blanked,
+            b"abc",
+            b"def",
+            GitHubPrCheckResultV1::Passed,
+            0,
+            0,
+            GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED,
+        );
+        match validate_github_pr_check_receipt_v1(&receipt) {
+            Ok(()) => Err("incomplete receipt subject passed validation".to_string()),
+            Err(error) => {
+                if error.contains("subject identity") {
+                    Ok(())
+                } else {
+                    Err(format!("unexpected validation error: {error}"))
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn receipt_matches_current_recomputes_binding_digest() -> Result<(), String> {
+        let receipt = receipt();
+        if !receipt_matches_current(&receipt, b"abc") {
+            return Err("current bytes identical to the binding did not match".to_string());
+        }
+        if receipt_matches_current(&receipt, b"abcd") {
+            return Err("changed bytes matched the stale receipt binding".to_string());
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn receipt_binds_projected_check_end_to_end() -> Result<(), String> {
+        // The honest integrator flow: project the check, serialize both
+        // payloads, build the receipt over the exact bytes, validate it, and
+        // use `receipt_matches_current` to detect a stale artifact — the
+        // integrator (never the projection) then records `Stale`.
+        let report = canonical_blocking_report("worse", vec![introduced_row()]);
+        let check = project_github_pr_check(
+            &report,
+            &subject(),
+            BaseScanCompletenessV1::Complete,
+            10,
+            "artifact-set-4609",
+        );
+        let report_bytes = serde_json::to_vec(&report)
+            .map_err(|error| format!("report payload did not serialize: {error}"))?;
+        let check_bytes = serde_json::to_vec(&check)
+            .map_err(|error| format!("check payload did not serialize: {error}"))?;
+        let receipt = build_github_pr_check_receipt(
+            &subject(),
+            &report_bytes,
+            &check_bytes,
+            check.result,
+            check.annotated_count,
+            check.omitted_count,
+            GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED,
+        );
+        validate_github_pr_check_receipt_v1(&receipt)
+            .map_err(|error| format!("end-to-end receipt was invalid: {error}"))?;
+        if !receipt_matches_current(&receipt, &report_bytes) {
+            return Err("receipt did not match its own diff-report bytes".to_string());
+        }
+        let mut rerun_report = report.clone();
+        if let Some(diff) = rerun_report.diff.as_mut() {
+            diff.net_posture = "unchanged".to_string();
+        }
+        let current_bytes = serde_json::to_vec(&rerun_report)
+            .map_err(|error| format!("rerun payload did not serialize: {error}"))?;
+        if receipt_matches_current(&receipt, &current_bytes) {
+            return Err("changed report bytes matched the stale receipt".to_string());
+        }
+        let mut stale_receipt = receipt;
+        stale_receipt.result = GitHubPrCheckResultV1::Stale;
+        validate_github_pr_check_receipt_v1(&stale_receipt)
+            .map_err(|error| format!("integrator-recorded stale receipt was invalid: {error}"))
     }
 }
