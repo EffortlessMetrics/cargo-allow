@@ -73,6 +73,7 @@ fn set_with_statuses(statuses: &[(&str, &str)]) -> EvaluationArtifactSetV1 {
         detailed_result_ref: None,
         limitations: Vec::new(),
         validation_gaps: Vec::new(),
+        validation_result: allow_report::EvaluationArtifactSetResultV2::Complete,
         claim_boundary: vec!["bounded artifact set".to_string()],
     }
 }

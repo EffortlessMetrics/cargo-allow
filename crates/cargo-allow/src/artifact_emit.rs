@@ -162,6 +162,36 @@ fn semantic_result_digest(config: &EmitConfig<'_>, ctx: &ArtifactEmitContext<'_>
     sha256_bytes(&serde_json::to_vec(&payload).unwrap_or_default())
 }
 
+/// Cite the summary sidecar root-relative when it lives under the source
+/// root, so the manifest ref is stable across checkout locations (#4597);
+/// otherwise cite the caller's path as given. Separators normalize to `/`.
+///
+/// Both sides resolve through the filesystem when they exist: the scan root
+/// is canonicalized by the inventory (macOS aliases `/var` under
+/// `/private/var`), and the sidecar already exists when print_report ran
+/// first (#4393). Windows canonical paths carry a `\\?\` verbatim prefix the
+/// root text never has (#4399).
+fn summary_ref_text(path: &std::path::Path, ctx: &ArtifactEmitContext<'_>) -> String {
+    let as_given = path.to_string_lossy().replace('\\', "/");
+    let Some(root) = ctx.report_context.inventory.root else {
+        return as_given;
+    };
+    let mut resolved = std::fs::canonicalize(path)
+        .map(|canonical| canonical.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_else(|_| as_given.clone());
+    if let Some(stripped) = resolved.strip_prefix("//?/") {
+        resolved = stripped.to_string();
+    }
+    let root_text = root.replace('\\', "/");
+    match resolved.strip_prefix(root_text.as_str()) {
+        Some(relative) if relative.starts_with('/') || relative.is_empty() => {
+            relative.trim_start_matches('/').to_string()
+        }
+        Some(relative) => relative.to_string(),
+        None => as_given,
+    }
+}
+
 /// Configuration for the artifact set emission.
 pub struct EmitConfig<'a> {
     pub operation: &'a str,
@@ -170,6 +200,9 @@ pub struct EmitConfig<'a> {
     pub blocking: bool,
     pub resolved_config_identity: &'a str,
     pub source_subject: &'a str,
+    /// The invoking check's mode (`no-new`, ...), when the command has one
+    /// (#4597). Audit and diff have no mode and leave `None`.
+    pub mode: Option<&'a str>,
 }
 
 /// The common source-tree inventory facts of one evaluation, bound from
@@ -313,6 +346,13 @@ pub fn emit_artifact_set(
         }
     }
 
+    // The command-specific detailed result is the JSON detail artifact the
+    // same emission just wrote (#4597); a run that did not request json
+    // (or whose json render failed) has no detailed result to cite.
+    let detailed_result_ref = entries
+        .iter()
+        .find(|entry| entry.format == RendererFormatV1::Json && entry.status == "Written")
+        .map(|entry| entry.file_name.clone());
     let mut set = EvaluationArtifactSetV1 {
         schema_id: "cargo-allow.evaluation-artifact-set.v1".to_string(),
         schema_version: 1,
@@ -320,7 +360,7 @@ pub fn emit_artifact_set(
         tool_version: env!("CARGO_PKG_VERSION").to_string(),
         operation: operation.to_string(),
         command: ctx.command.to_string(),
-        mode: None,
+        mode: config.mode.map(str::to_string),
         inventory: inventory_value_for_artifacts(ctx),
         scanner_limitations: allow_report::SCANNER_LIMITATIONS
             .iter()
@@ -333,8 +373,14 @@ pub fn emit_artifact_set(
         blocking: config.blocking,
         requested_formats: formats.to_vec(),
         artifacts: entries,
-        core_command_summary_ref: None,
-        detailed_result_ref: None,
+        // The invocation's own --command-summary-output sidecar, when the
+        // flag configured one (#4393); cited so the manifest links the
+        // summary consumers were told to read (#4597). Cited root-relative
+        // when it lives under the source root, so the ref is stable across
+        // checkout locations.
+        core_command_summary_ref: crate::core_command_router::requested_summary_path()
+            .map(|path| summary_ref_text(path, ctx)),
+        detailed_result_ref,
         limitations: Vec::new(),
         claim_boundary: allow_report::claim_boundary_for_schema_id(
             allow_report::EVALUATION_ARTIFACT_SET_V1_SCHEMA_ID,
@@ -343,6 +389,9 @@ pub fn emit_artifact_set(
         .map(|flag| flag.to_string())
         .collect(),
         validation_gaps: Vec::new(),
+        // Placeholder until validate() runs below; the manifest is rendered
+        // only after the computed verdict is written back (#4595).
+        validation_result: EvaluationArtifactSetResultV2::Complete,
     };
 
     let validation = set.validate();
@@ -360,6 +409,9 @@ pub fn emit_artifact_set(
     if !validation.gaps.is_empty() {
         set.validation_gaps = validation.gaps.clone();
     }
+    // #4595: serialize the computed verdict so a schema-only gate can tell a
+    // refused run from a green one without recomputing validate().
+    set.validation_result = validation.result;
 
     let manifest_name = EvaluationArtifactSetV1::artifact_file_name(
         operation,

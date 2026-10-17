@@ -358,7 +358,7 @@ promote policy, authorize publication, or establish release readiness.
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
 - [cadence.schema.json](cadence.schema.json)
-- [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status plus, for non-Complete sets, the recorded `validation_gaps`)
+- [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status, the required `validation_result` verdict, plus, for non-Complete sets, the recorded `validation_gaps`)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) v1, [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2, and [operator-latency.v3.schema.json](operator-latency.v3.schema.json) v3 historical compatibility schemas; [operator-latency.v4.schema.json](operator-latency.v4.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)

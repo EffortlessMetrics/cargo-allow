@@ -507,6 +507,9 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                     .policy_digest_text()
                     .unwrap_or_default(),
                 source_subject: &format!("diff:{}", args.base.as_deref().unwrap_or("HEAD")),
+                // Diff has no mode; the base revision is recorded in
+                // source_subject, not here (#4597).
+                mode: None,
             },
             &emit_ctx,
         )

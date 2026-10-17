@@ -21,6 +21,7 @@ fn config<'a>(identity: &'a str, source: &'a str) -> EmitConfig<'a> {
         blocking: false,
         resolved_config_identity: identity,
         source_subject: source,
+        mode: Some("no-new"),
     }
 }
 

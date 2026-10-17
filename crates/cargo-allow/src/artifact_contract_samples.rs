@@ -451,7 +451,7 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                         },
                     ],
                     core_command_summary_ref: None,
-                    detailed_result_ref: None,
+                    detailed_result_ref: Some("audit-json.json".to_string()),
                     limitations: Vec::new(),
                     claim_boundary: allow_report::CLAIM_BOUNDARY
                         .iter()
@@ -472,6 +472,7 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                         .map(|limitation| limitation.to_string())
                         .collect(),
                     validation_gaps: Vec::new(),
+                    validation_result: allow_report::EvaluationArtifactSetResultV2::Complete,
                 },
             )
             .expect("evaluation artifact set renders"),
@@ -481,6 +482,7 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                 "blocking",
                 "claim_boundary",
                 "command",
+                "detailed_result_ref",
                 "inventory",
                 "limitations",
                 "operation",
@@ -494,6 +496,7 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                 "source_subject",
                 "tool",
                 "tool_version",
+                "validation_result",
             ],
         },
         ArtifactSample {

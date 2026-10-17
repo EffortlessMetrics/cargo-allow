@@ -453,6 +453,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                 blocking: failed,
                 resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
                 source_subject: &source_subj,
+                mode: Some(mode.as_str()),
             },
             &emit_ctx,
         )

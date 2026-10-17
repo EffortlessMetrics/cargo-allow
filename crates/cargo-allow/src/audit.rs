@@ -164,6 +164,9 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
                 blocking: false,
                 resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
                 source_subject: &source_subj,
+                // Audit has no mode; the kind filter is recorded in
+                // source_subject, not here (#4597).
+                mode: None,
             },
             &emit_ctx,
         )
