@@ -1,0 +1,53 @@
+# #4605: the receipted dead-code suppressions backing the enforced
+# add-finding-plan envelope.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11357"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:56cf060a7bb7953f2a11b676acd9d88f82c9508502c68198005aac5c1e2959a4"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.tool_version: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11358"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1692b9c22c2f888a0fec65636c1646407a432427f6c3d6f3318334f5083f51fb"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.claim_boundary: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11359"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2aa4b22b913699417e2decb28ee16dab3338b40f21687e3b2f9d495721bdf052"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.scanner_limitations: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11360"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:10b66d0396ccdffdeb9188e09f04619ef91cff6f20506303afd8ae54190ffda7"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.inventory: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11361"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3e076889b9239992b3f84869c441d574f53bd17880badc2932e7e04a2f5ce12b"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.evaluation: schema-optional evaluation object tolerated for producer compatibility, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11362"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a7960c013c89c7c1b98eb118a3d6bd7dfb84bc00024ffd5dad41be0952edaa0c"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.candidates: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11363"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3cf284ad7fafefcd43227d4a8826abbc7d5ae643a6e451bb557446af99252af6"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.required_fields: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
+
+[[records]]
+allow_ids = ["allow-11364"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:00ba8439e14ebc9f6a2dd8000933080bef63efe462f28f90029f3b3a037bbab5"
+reason = "Authored revision note for the receipted #[expect(dead_code)] suppression on LoadedPlan.proof_plans: presence required by the published add-finding-plan schema, content never consumed by the applier (#4605)."
