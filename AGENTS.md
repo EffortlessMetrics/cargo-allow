@@ -19,9 +19,10 @@ they narrow the scope.
 
 ## Selected-candidate CI and continuous ownership
 
-Develop and review cheaply with warm focused proof. Useful alternative Drafts
-may be compared, but expensive pre-merge qualification is for the candidate
-selected to land, not each alternative. Selection is per objective, never a
+Develop and review cheaply with warm focused proof. Compare alternatives before
+PR publication while opening a Draft still triggers hosted CI. After the explicit
+request cutover, useful alternative Drafts can stay cheap. Expensive pre-merge
+qualification is for the candidate selected to land, not each alternative. Selection is per objective, never a
 repository-wide one-PR queue. Do not duplicate an existing implementation merely
 to consume agent capacity.
 
@@ -145,8 +146,12 @@ After merge, verify the actual landing and reconcile the issue. Reuse still-vali
 candidate proof; run affected integration checks when the landed composition
 requires them, not the full suite again merely because a merge occurred. Preserve
 required enforcement while the automatic-main CI migration is incomplete.
-Clean only task-owned disposable artifacts/worktrees after retaining useful proof;
-do not delete another lane's caches, evidence or unfinished work.
+After a green merge, sync `main` and perform post-merge cleanup of temporary local
+artifacts, especially when disk/memory pressure is present. Inspect ownership and
+retain useful proof first; clean `target/cargo-allow`, `target/package`, scratch
+files, stale branches and disposable worktrees created for the lane only when
+they are no longer needed. Do not delete another lane's caches, evidence or
+unfinished work, and do not discard useful warm build state without a reason.
 
 ## Implementation Defaults
 
