@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  The github-pr-check adapter's retained receipt is now implemented as
+  far as the product boundary allows: a pure builder binds the exact
+  consumed diff-report bytes and assembled check-payload bytes with
+  canonical `sha256:v1:` digests, receipt validation enforces the schema
+  generation, digest format, subject identity, and the closed
+  integrator-recorded `provider_outcome` vocabulary (`published`,
+  `provider_unavailable`, `publication_failed`, `not_attempted`), and a
+  `receipt_matches_current` matcher recomputes the binding digest for
+  stale-artifact detection. Docs no longer claim the adapter observes
+  GitHub API failures — cargo-allow has no network access; publication
+  stays the integrator's action and `Stale`/`ProviderUnavailable` are
+  integrator-constructed results (#4609).
