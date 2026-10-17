@@ -24643,3 +24643,217 @@ glob = ".allow/revisions/4583-evaluation-artifact-set-schema.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11357"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::tool_version"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11357: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11357"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 84
+column = 5
+
+[[allow]]
+id = "allow-11358"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::claim_boundary"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11358: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11358"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 91
+column = 5
+
+[[allow]]
+id = "allow-11359"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::scanner_limitations"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11359: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11359"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 98
+column = 5
+
+[[allow]]
+id = "allow-11360"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::inventory"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11360: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11360"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 105
+column = 5
+
+[[allow]]
+id = "allow-11361"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::evaluation"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11361: schema-optional evaluation object tolerated for producer compatibility (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11361"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 114
+column = 5
+
+[[allow]]
+id = "allow-11362"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::candidates"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11362: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11362"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 127
+column = 5
+
+[[allow]]
+id = "allow-11363"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::required_fields"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11363: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11363"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 134
+column = 5
+
+[[allow]]
+id = "allow-11364"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::proof_plans"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11364: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11364"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 141
+column = 5
+
+[[allow]]
+id = "allow-1157"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4605-from-plan-envelope.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the eight #4605 plan-envelope suppression receipts (#3792 precedent)."
+evidence = ["issue:4605", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4605-from-plan-envelope.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4605-from-plan-envelope.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
