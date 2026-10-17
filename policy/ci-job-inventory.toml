@@ -22,7 +22,7 @@ routing_owner = "core/ci"
 blocking = true
 
 [[jobs]]
-name = "test-core-platforms (macos-14, aarch64-apple-darwin)"
+name = "test-core-platforms (macos-26, aarch64-apple-darwin)"
 purpose = "CoreCompileTest"
 routing_owner = "core/ci"
 blocking = true

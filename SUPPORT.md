@@ -52,7 +52,7 @@ promises — see *Not yet decided* below.
 | --- | --- | --- |
 | `x86_64-unknown-linux-gnu` | ci_proven | `test`, `msrv`, `package-smoke`, `shallow-diff-smoke` jobs on `ubuntu-latest`; release install-smoke on tag push |
 | `x86_64-pc-windows-msvc` | ci_proven | `test-core-platforms` runs the full release set; release install-smoke on tag push |
-| `aarch64-apple-darwin` | ci_proven_bounded | `test-core-platforms` runs the release set and semantic fixture on `macos-14`; persistent scan-cache fixture is excluded |
+| `aarch64-apple-darwin` | ci_proven_bounded | `test-core-platforms` runs the release set and semantic fixture on `macos-26`; persistent scan-cache fixture is excluded |
 | `x86_64-apple-darwin` | ci_proven_bounded | `test-core-platforms` runs the release set and semantic fixture on `macos-15-intel`; persistent scan-cache fixture is excluded |
 
 macOS is listed explicitly rather than omitted. cargo-allow may well build

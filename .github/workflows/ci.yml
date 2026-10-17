@@ -41,13 +41,13 @@ jobs:
           # widening the scope is recorded work for the tiering lane
           # after those are fixed.
           # The pinned actionlint release predates GitHub's
-          # macos-15-intel label (the measured baseline names that
-          # lane), so that finding is ignored precisely. The embedded
+          # macos-15-intel and macos-26 labels (the current matrix names each
+          # lane), so those findings are ignored precisely. The embedded
           # shellcheck layer stays off in stage 1: the retained scripts
           # carry pre-existing style findings and shellcheck state is
           # already visible in the editor/lane surfaces; wiring it in
           # is recorded work for the tiering lane.
-          /tmp/actionlint -color -shellcheck=             -ignore 'label "macos-15-intel" is unknown'             .github/workflows/ci.yml
+          /tmp/actionlint -color -shellcheck=             -ignore 'label "macos-15-intel" is unknown'             -ignore 'label "macos-26" is unknown'             .github/workflows/ci.yml
       - name: Formatting
         id: fmt
         run: cargo fmt --all -- --check
@@ -899,7 +899,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-          - os: macos-14
+          - os: macos-26
             target: aarch64-apple-darwin
           - os: macos-15-intel
             target: x86_64-apple-darwin
