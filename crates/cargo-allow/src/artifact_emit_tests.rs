@@ -274,3 +274,58 @@ fn best_effort_canonical_degrades_gracefully_on_unresolvable_inputs() {
         std::path::Path::new("")
     );
 }
+
+#[test]
+fn summary_ref_requires_a_component_boundary_under_the_root() -> Result<(), String> {
+    // PR #4614 review: a sibling directory sharing the root's name prefix
+    // ("/work/proj-other" vs root "/work/proj") is not under the root — the
+    // ref must fall back to the caller's path, not a truncated fragment.
+    let base = std::env::temp_dir().join(format!(
+        "cargo-allow-summary-boundary-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos()
+    ));
+    let root = base.join("proj");
+    let sibling = base.join("proj-other");
+    std::fs::create_dir_all(root.join("target")).map_err(|error| error.to_string())?;
+    std::fs::create_dir_all(&sibling).map_err(|error| error.to_string())?;
+    let sidecar = sibling.join("summary.json");
+    std::fs::write(&sidecar, b"{}\n").map_err(|error| error.to_string())?;
+
+    let mut inventory_root = root
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    while inventory_root.ends_with('/') {
+        inventory_root.pop();
+    }
+    let report = allow_report::ReportContext::source_syntax(
+        "source_syntax",
+        Some(inventory_root.as_str()),
+        None,
+        None,
+    );
+    let ctx = ArtifactEmitContext {
+        command: "check",
+        findings: &[],
+        outcomes: &[],
+        failed: false,
+        report_context: &report,
+        receipt_context: None,
+    };
+    let reference = summary_ref_text(&sidecar, &ctx);
+    let _ = std::fs::remove_dir_all(&base);
+    let as_given = sidecar
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    if reference != as_given {
+        // A sibling prefix must never root-relativize: the buggy strip
+        // returned the fragment "-other/summary.json" here.
+        return Err(format!(
+            "sibling sidecar must be cited as given ({as_given}), got: {reference}"
+        ));
+    }
+    Ok(())
+}
