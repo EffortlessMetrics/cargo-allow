@@ -21,7 +21,7 @@ pub(crate) use add_args::AddArgs;
 pub(crate) use add_entry::select_add_finding;
 use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, next_allow_id,
+    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
 };
 pub(crate) use add_policy::transpose_for_existing_target;
 #[cfg(test)]
@@ -343,6 +343,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 ),
             ));
         }
+        // #4603: before writing, refuse a re-run against a scope the ledger
+        // already baselines with an identical broad selector — a second
+        // equal-strength selector would tie with it and flip every in-scope
+        // finding to `Ambiguous`, silently converting a satisfied ledger into
+        // a blocking one. Coverage by differently-shaped (anchored) entries
+        // and partially-matched scopes without an identical baseline keep the
+        // current write behavior.
+        ensure_broad_scope_addable(&cfg, &broad)?;
         broad.occurrence_limit = Some(count);
         let summary = match args.summary_format {
             HumanJsonFormat::Human => {

@@ -1,6 +1,6 @@
 use super::{
-    AddBroadRequest, allow_entry_broad, count_in_scope_findings, ensure_addable_outcome,
-    next_allow_id,
+    AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
+    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
 };
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowErrorKind, Finding, FindingKind, Lifecycle, MatchStatus,
@@ -164,4 +164,124 @@ fn count_in_scope_findings_excludes_out_of_scope_and_non_matching() {
         1,
         "only the in-scope unwrap matches"
     );
+}
+
+fn broad_unwrap_entry(id: &str) -> AllowEntry {
+    allow_entry_broad(AddBroadRequest {
+        id: id.to_string(),
+        kind: FindingKind::Panic,
+        family: Some("unwrap".to_string()),
+        callee: Some("unwrap".to_string()),
+        glob: "src/foo.rs".to_string(),
+        owner: "core".to_string(),
+        classification: "baseline_debt".to_string(),
+        reason: "baseline".to_string(),
+        evidence: Vec::new(),
+        review_after: "2099-12-31".to_string(),
+        expires: None,
+    })
+}
+
+/// #4603: when the live ledger already holds the identical broad baseline, a
+/// repeated broad add must be refused with the typed Usage posture error
+/// naming the covering entry, instead of appending an equal-strength duplicate
+/// that would flip the satisfied scope to `Ambiguous`.
+#[test]
+fn ensure_broad_scope_addable_refuses_an_identical_broad_baseline()
+-> Result<(), Box<dyn std::error::Error>> {
+    let entry = broad_unwrap_entry("allow-broad");
+    let mut cfg = AllowConfig::empty();
+    // Mirror what cmd_add wrote on the first run: the broad entry with the
+    // in-scope count pinned as its ratchet floor.
+    let mut receipted = entry.clone();
+    let findings = vec![panic_unwrap_finding("src/foo.rs", 1)];
+    receipted.occurrence_limit = Some(count_in_scope_findings(&findings, &receipted));
+    cfg.allow.push(receipted);
+
+    let error = match ensure_broad_scope_addable(&cfg, &entry) {
+        Err(error) => error,
+        Ok(()) => {
+            return Err("an identical broad baseline must be refused".into());
+        }
+    };
+    assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
+    let message = error.to_string();
+    assert!(
+        message.contains("already baselined by existing entry"),
+        "the refusal must name the satisfied posture: {message}"
+    );
+    assert!(
+        message.contains("allow-broad"),
+        "the refusal must name the covering entry: {message}"
+    );
+    assert!(
+        message.contains("`ambiguous`"),
+        "the refusal must name the ambiguity the duplicate would create: {message}"
+    );
+    assert!(
+        message.contains("use list or explain before editing policy"),
+        "the refusal must mirror the --path/--line posture remedy: {message}"
+    );
+    Ok(())
+}
+
+/// #4603 judgment: coverage by a differently-shaped (anchored) entry stays
+/// writable — an anchored receipt outscores a broad selector, so the match
+/// winner stays unique and no ambiguity is created. This is the documented
+/// init self-receipt then broad-baseline adoption flow.
+#[test]
+fn ensure_broad_scope_addable_keeps_differently_shaped_coverage_writable()
+-> Result<(), Box<dyn std::error::Error>> {
+    let finding = panic_unwrap_finding("src/foo.rs", 1);
+    // The live ledger receipts the occurrence with an anchored --path/--line
+    // entry, not a broad baseline.
+    let anchored = allow_entry_from_finding(AddEntryRequest {
+        finding: &finding,
+        id: "allow-anchored".to_string(),
+        owner: "core".to_string(),
+        classification: "reviewed_exception".to_string(),
+        reason: "receipt one occurrence".to_string(),
+        evidence: vec!["test:fixture".to_string()],
+        review_after: "2099-12-31".to_string(),
+        expires: None,
+    });
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(anchored);
+
+    let entry = broad_unwrap_entry("allow-broad");
+    match ensure_broad_scope_addable(&cfg, &entry) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            Err(format!("differently-shaped coverage must stay writable, got: {error}").into())
+        }
+    }
+}
+
+/// #4603 judgment: a broad baseline over a different callee is a different
+/// selector shape, not a duplicate.
+#[test]
+fn ensure_broad_scope_addable_keeps_a_different_callee_baseline_writable()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut expect_receipt = broad_unwrap_entry("allow-expect");
+    expect_receipt.family = Some("expect".to_string());
+    expect_receipt.selector.callee = Some("expect".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(expect_receipt);
+
+    let entry = broad_unwrap_entry("allow-broad");
+    match ensure_broad_scope_addable(&cfg, &entry) {
+        Ok(()) => Ok(()),
+        Err(error) => {
+            Err(format!("a different-callee baseline is not a duplicate, got: {error}").into())
+        }
+    }
+}
+
+/// A first-time broad baseline on an empty ledger has nothing to duplicate.
+#[test]
+fn ensure_broad_scope_addable_allows_a_first_time_baseline() {
+    let entry = broad_unwrap_entry("allow-broad");
+    let cfg = AllowConfig::empty();
+
+    assert!(ensure_broad_scope_addable(&cfg, &entry).is_ok());
 }
