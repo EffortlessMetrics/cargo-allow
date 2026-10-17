@@ -89,7 +89,7 @@ pub(super) fn render_add_summary_styled(
         allow_report::AddReport::new(
             context.inventory,
             entry,
-            finding,
+            Some(finding),
             policy_output,
             false,
             mutation_receipt,
@@ -100,7 +100,11 @@ pub(super) fn render_add_summary_styled(
 
 pub(super) fn render_add_summary_json(
     entry: &AllowEntry,
-    finding: &Finding,
+    // `Some` for the `--path`/`--line` route; `None` for a broad (`--glob`)
+    // scope baseline, which selects no individual finding (#4604) — the
+    // governed summary's `selected_finding` renders null as the route
+    // marker.
+    finding: Option<&Finding>,
     policy_output: Option<&str>,
     force: bool,
     dry_run: bool,

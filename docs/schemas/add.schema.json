@@ -78,7 +78,10 @@
           "type": "string"
         },
         "selected_finding": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "human_review_required": {
           "const": true
@@ -151,6 +154,11 @@
           "type": "integer",
           "minimum": 0
         },
+        "occurrence_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "The broad-scope ratchet floor pinned to the in-scope count (#2056); present only when the entry carries one."
+        },
         "selector": {
           "$ref": "#/$defs/selector"
         },
@@ -167,7 +175,14 @@
       }
     },
     "selected_finding": {
-      "$ref": "#/$defs/finding"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/finding"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "$defs": {
