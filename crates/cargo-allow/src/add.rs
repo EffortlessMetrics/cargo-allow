@@ -81,10 +81,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(plan_path) = args.from_plan.as_deref() {
         return add_from_plan::cmd_add_from_plan(args, plan_path);
     }
-    // --kind can be inferred from --path/--line if not explicitly given (#3194).
-    // The inference happens after load_world scans the source tree; here we
-    // just defer the kind resolution. If --path/--line are absent and --kind
-    // is not given, the original error fires.
+    // --kind can be inferred from --path/--line if not explicitly given
+    // (#3194); since #4606 clap lets that invocation through
+    // (`required_unless_present_any` includes `--path`), so the inference
+    // below is reachable from the CLI. --glob without --kind also reaches
+    // this function and fails with the typed broad-scope error below;
+    // --from-plan never reaches this point.
     let declared_kind = args.kind.clone();
     let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
@@ -202,8 +204,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()))
     };
 
-    // Resolve the kind filter: declared via --kind, or required for --glob.
-    // For --path/--line, inference from the scanned finding is handled below (#3194).
+    // Resolve the kind filter: declared via --kind, or required for --glob —
+    // this typed guard is the real gate for a CLI `add --glob` without
+    // --kind since the clap requirement was relaxed in #4606 (it also covers
+    // direct AddArgs construction). For --path/--line, inference from the
+    // scanned finding is handled below (#3194).
     let parsed_kind = match &declared_kind {
         Some(k) => parse_kind_filter(k)?,
         None if args.glob.is_some() => {

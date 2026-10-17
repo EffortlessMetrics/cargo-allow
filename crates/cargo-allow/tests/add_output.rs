@@ -973,3 +973,135 @@ expires_or_review_after_required = true
 
     remove_temp_root(root);
 }
+
+fn add_inference_fixture(label: &str) -> PathBuf {
+    // One unwrap finding at src/lib.rs:1 and the minimal live policy.
+    let root = temp_root(label);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    root
+}
+
+/// #4606/#3194: `add --path --line` without `--kind` must reach cmd_add and
+/// infer the kind from the scanned finding — before #4606 clap rejected the
+/// invocation with "required arguments were not provided: --kind" before the
+/// inference branch could run.
+#[test]
+fn add_path_line_without_kind_infers_the_kind_from_the_finding() -> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-kind-inference");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "kind inference fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "path+line without --kind must reach kind inference and succeed: {stderr}"
+    );
+    assert!(
+        stdout.contains("[[allow]]") && stdout.contains("kind = \"panic\""),
+        "the candidate must carry the inferred panic kind: {stdout}"
+    );
+    assert!(
+        !stderr.contains("required arguments were not provided"),
+        "clap must not reject the inference invocation: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4606: the relaxed clap gate must not let an invalid combination through —
+/// `add --glob` without `--kind` still fails, now with the typed broad-scope
+/// usage error from cmd_add (a broad scope cannot infer a kind).
+#[test]
+fn add_glob_without_kind_fails_with_the_typed_broad_scope_error() -> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-glob-without-kind");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--glob",
+            "src/lib.rs",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "glob without kind fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "glob without --kind must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("--kind is required with --glob"),
+        "the typed broad-scope error must fire: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4606: with no kind, no target selector, and no plan, `add` still fails
+/// fast at parse time with clap's missing-argument error — unchanged.
+#[test]
+fn add_without_kind_or_target_still_requires_kind_at_parse_time() -> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-still-requires-kind");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["add", "--owner", "core/fixture", "--reason", "bare fixture"])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "bare add must be rejected at parse time: {stderr}"
+    );
+    assert!(
+        stderr.contains("required arguments were not provided"),
+        "clap must still require --kind without a target selector: {stderr}"
+    );
+    assert!(
+        stderr.contains("--kind"),
+        "the rejection must name --kind: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}

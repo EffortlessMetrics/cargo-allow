@@ -10,13 +10,16 @@ pub(crate) struct AddArgs {
     /// Policy config path.
     #[arg(long)]
     pub(crate) config: Option<PathBuf>,
-    /// Finding kind to add. Required for ordinary target selection; omitted with
-    /// `--from-plan`, where the kind is taken from the plan.
+    /// Finding kind to add. Required unless `--from-plan`, `--path`, or
+    /// `--glob` is present: `--from-plan` takes the kind from the plan,
+    /// `--path`/`--line` infers it from the scanned finding (#3194, made
+    /// reachable by #4606), and `--glob` without `--kind` fails in cmd_add
+    /// with the typed broad-scope error (a broad scope cannot infer a kind).
     /// Same vocabulary as check/audit/diff: panic, unsafe, lint-exception,
     /// non-rust, generated, policy-exception.
     #[arg(
         long,
-        required_unless_present = "from_plan",
+        required_unless_present_any = ["from_plan", "path", "glob"],
         conflicts_with = "from_plan",
         value_parser = parse_kind_filter_arg
     )]
