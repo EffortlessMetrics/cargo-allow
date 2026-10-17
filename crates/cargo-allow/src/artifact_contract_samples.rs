@@ -472,7 +472,12 @@ pub(crate) fn core_artifact_samples() -> Vec<ArtifactSample> {
                         .map(|limitation| limitation.to_string())
                         .collect(),
                     validation_gaps: Vec::new(),
-                    validation_result: allow_report::EvaluationArtifactSetResultV2::Complete,
+                    // The sample models an audit run (result_class
+                    // advisory), and validate() classifies a fully written
+                    // non-Passed set as semantic_non_green — the sample's
+                    // verdict must match what the emitter would compute.
+                    validation_result:
+                        allow_report::EvaluationArtifactSetResultV2::SemanticNonGreen,
                 },
             )
             .expect("evaluation artifact set renders"),

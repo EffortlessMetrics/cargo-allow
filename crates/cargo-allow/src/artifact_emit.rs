@@ -184,11 +184,12 @@ fn summary_ref_text(path: &std::path::Path, ctx: &ArtifactEmitContext<'_>) -> St
     }
     let root_text = root.replace('\\', "/");
     match resolved.strip_prefix(root_text.as_str()) {
-        Some(relative) if relative.starts_with('/') || relative.is_empty() => {
-            relative.trim_start_matches('/').to_string()
-        }
-        Some(relative) => relative.to_string(),
-        None => as_given,
+        // A component boundary must separate root from sidecar: a sibling
+        // directory sharing the root's name prefix ("/work/proj-other")
+        // is not under the root ("/work/proj") and must fall back to the
+        // caller's path instead of a truncated fragment (PR #4614 review).
+        Some(relative) if relative.starts_with('/') => relative.trim_start_matches('/').to_string(),
+        _ => as_given,
     }
 }
 
@@ -348,11 +349,18 @@ pub fn emit_artifact_set(
 
     // The command-specific detailed result is the JSON detail artifact the
     // same emission just wrote (#4597); a run that did not request json
-    // (or whose json render failed) has no detailed result to cite.
-    let detailed_result_ref = entries
-        .iter()
-        .find(|entry| entry.format == RendererFormatV1::Json && entry.status == "Written")
-        .map(|entry| entry.file_name.clone());
+    // (or whose json render failed) has no detailed result to cite. Diff is
+    // excluded: its artifact JSON is the generic posture view, not the CLI's
+    // ledger-context diff detail (PR #4614 review), so it cites nothing
+    // until the artifact carries that detail.
+    let detailed_result_ref = if ctx.command == "diff" {
+        None
+    } else {
+        entries
+            .iter()
+            .find(|entry| entry.format == RendererFormatV1::Json && entry.status == "Written")
+            .map(|entry| entry.file_name.clone())
+    };
     let mut set = EvaluationArtifactSetV1 {
         schema_id: "cargo-allow.evaluation-artifact-set.v1".to_string(),
         schema_version: 1,

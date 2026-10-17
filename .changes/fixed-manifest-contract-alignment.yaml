@@ -11,4 +11,5 @@ body: >-
   populated in production: check manifests name their mode, every manifest
   cites its invocation's `--command-summary-output` sidecar (root-relative
   when it lives under the source root) when one was configured, and every
-  manifest links the JSON detail artifact the same emission wrote (#4597).
+  manifest links the JSON detail artifact the same emission wrote when json
+  was requested and written (#4597).
