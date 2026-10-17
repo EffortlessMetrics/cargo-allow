@@ -145,7 +145,12 @@ pub fn render_explain_human_styled(report: ExplainReport<'_>, style: Style) -> S
         }
     }
     out.push('\n');
-    out.push_str(CLAIM_BOUNDARY_TEXT);
+    // `--quiet` drops the claim boundary the same way the check/list reports
+    // do (#4630): it is shared boilerplate, not entry evidence. Every entry
+    // field, count, and next step stays.
+    if !crate::contracts::is_quiet() {
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+    }
     out
 }
 

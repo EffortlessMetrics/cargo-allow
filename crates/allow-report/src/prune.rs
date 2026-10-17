@@ -53,8 +53,12 @@ pub fn render_prune_human_with_context_styled(
         out.push_str(&style.status("stale", "stale"));
         out.push_str(" allow entries found.\n");
         out.push('\n');
-        out.push_str(CLAIM_BOUNDARY_TEXT);
-        out.push('\n');
+        // `--quiet` drops the claim boundary the same way the check report
+        // does (#4630); the count and mode lines stay.
+        if !crate::contracts::is_quiet() {
+            out.push_str(CLAIM_BOUNDARY_TEXT);
+            out.push('\n');
+        }
         return out;
     }
     out.push_str("| Allow ID | Kind | Family | Owner | Classification | Scope | Reason |\n");
@@ -88,8 +92,12 @@ pub fn render_prune_human_with_context_styled(
         );
     }
     out.push('\n');
-    out.push_str(CLAIM_BOUNDARY_TEXT);
-    out.push('\n');
+    // `--quiet` drops the claim boundary the same way the check report does
+    // (#4630); the table and write posture stay.
+    if !crate::contracts::is_quiet() {
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+        out.push('\n');
+    }
     out
 }
 
