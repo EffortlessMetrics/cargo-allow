@@ -165,14 +165,31 @@ fn semantic_result_digest(config: &EmitConfig<'_>, ctx: &ArtifactEmitContext<'_>
 /// Cite the summary sidecar root-relative when it lives under the source
 /// root, so the manifest ref is stable across checkout locations (#4597);
 /// otherwise cite the caller's path as given. Separators normalize to `/`.
+///
+/// Both sides resolve through the filesystem when they exist: the scan root
+/// is canonicalized by the inventory (macOS aliases `/var` under
+/// `/private/var`), and the sidecar already exists when print_report ran
+/// first (#4393). Windows canonical paths carry a `\\?\` verbatim prefix the
+/// root text never has (#4399).
 fn summary_ref_text(path: &std::path::Path, ctx: &ArtifactEmitContext<'_>) -> String {
-    let text = path.to_string_lossy().replace('\\', "/");
-    if let Some(root) = ctx.report_context.inventory.root {
-        if let Ok(relative) = path.strip_prefix(root) {
-            return relative.to_string_lossy().replace('\\', "/");
-        }
+    let as_given = path.to_string_lossy().replace('\\', "/");
+    let Some(root) = ctx.report_context.inventory.root else {
+        return as_given;
+    };
+    let mut resolved = std::fs::canonicalize(path)
+        .map(|canonical| canonical.to_string_lossy().replace('\\', "/"))
+        .unwrap_or_else(|_| as_given.clone());
+    if let Some(stripped) = resolved.strip_prefix("//?/") {
+        resolved = stripped.to_string();
     }
-    text
+    let root_text = root.replace('\\', "/");
+    match resolved.strip_prefix(root_text.as_str()) {
+        Some(relative) if relative.starts_with('/') || relative.is_empty() => {
+            relative.trim_start_matches('/').to_string()
+        }
+        Some(relative) => relative.to_string(),
+        None => as_given,
+    }
 }
 
 /// Configuration for the artifact set emission.
