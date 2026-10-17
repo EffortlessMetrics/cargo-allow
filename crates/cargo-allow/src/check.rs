@@ -225,9 +225,28 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         root,
         cfg,
         findings,
-        inventory_facts,
+        mut inventory_facts,
         federation,
     } = world;
+    // #4590/#4593: the compat world's inventory facts never carry a policy
+    // digest, so the receipt dropped policy-byte provenance and every emit
+    // failed the artifact-set identity gate. Bind the digest of the legacy
+    // policy file the compat world actually loaded (audit.rs does the same).
+    let compat_selected_policy = if args.compat {
+        crate::compat::compat_selected_policy_path(
+            args.config.as_deref(),
+            &root,
+            args.kind.as_deref(),
+        )
+    } else {
+        None
+    };
+    if let Some(legacy_policy) = &compat_selected_policy {
+        let digest = std::fs::read_to_string(legacy_policy)
+            .ok()
+            .map(|text| allow_core::sha256_v1_bytes(text.as_bytes()));
+        inventory_facts = inventory_facts.with_optional_policy_digest(digest);
+    }
     let federation_bundle = FederationReportBundle::from_evaluation(&federation);
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let mode = CheckMode::parse(
@@ -379,13 +398,15 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        artifact_emit::ensure_artifact_dir_separate(
-            artifact_dir,
-            crate::policy_config::config_path(&root, args.config.as_deref()).as_deref(),
-        )
-        .map_err(|error| {
-            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-        })?;
+        // #4591: under --compat the run loads a legacy policy file, not the
+        // canonically discovered one; protect the file actually selected.
+        let protected_policy = compat_selected_policy
+            .clone()
+            .or_else(|| crate::policy_config::config_path(&root, args.config.as_deref()));
+        artifact_emit::ensure_artifact_dir_separate(artifact_dir, protected_policy.as_deref())
+            .map_err(|error| {
+                CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+            })?;
         // Return late output errors so the wrapper can replace an evaluated
         // receipt, remove the stale report and let the CLI replace its summary.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
