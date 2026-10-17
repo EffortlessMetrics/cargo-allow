@@ -1,0 +1,13 @@
+kind: Fixed
+body: >-
+  The broad-add `--glob` diagnosis is now driven by the findings the
+  operator actually has. When structural-identity findings under the glob
+  were blocked only by a missing `--callee`, the message lists the
+  actual callees present under the glob instead of a hardcoded
+  `--callee unwrap` example that dead-ends on any other callee; when
+  the blocked findings carry no callee at all (unsafe, indexing, lint),
+  the message says a `--glob` baseline cannot express them and points at
+  the per-occurrence `--path/--line` receipts. When `--family`/`--callee`
+  filters excluded all matching findings under a non-empty glob, the
+  message names the excluding filters instead of claiming the glob was
+  empty (#4586/#4587/#4588).

@@ -402,6 +402,12 @@ expires_or_review_after_required = true
         stderr.contains("--callee"),
         "the error must direct at --callee: {stderr}"
     );
+    // #4588: the suggested callees come from the findings under the glob,
+    // not a hardcoded example.
+    assert!(
+        stderr.contains("callees present under this glob: unwrap"),
+        "the error must list the actual callees: {stderr}"
+    );
     assert!(
         !stderr.contains("no current panic findings match glob"),
         "the glob-blaming error must be gone: {stderr}"
@@ -946,9 +952,19 @@ expires_or_review_after_required = true
         Some(2),
         "a family-excluded glob must be a usage error: {stderr}"
     );
+    // #4587: the glob DOES hold matching-kind findings excluded only by
+    // --family, so the message must name the filters, not blame the glob.
     assert!(
-        stderr.contains("no current panic findings match glob"),
-        "a family-excluded glob is genuinely empty for this request: {stderr}"
+        stderr.contains("findings match glob `src/lib.rs`"),
+        "the message must reference the glob: {stderr}"
+    );
+    assert!(
+        stderr.contains("--family"),
+        "the message must name the excluding filter: {stderr}"
+    );
+    assert!(
+        !stderr.contains("cannot baseline an empty scope"),
+        "the glob is not empty; the empty-scope message must not fire: {stderr}"
     );
     assert!(
         !stderr.contains("structural selector identity"),

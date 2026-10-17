@@ -261,28 +261,77 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             // filter the broad selector will: a family-excluded glob is
             // genuinely empty for this request, and sending the operator
             // to --callee cannot make it match (#4576 review).
-            let kind_findings_under_glob = findings
+            let kind_findings_under_glob: Vec<_> = findings
                 .iter()
                 .filter(|finding| {
                     finding.kind == parsed_kind.kind
-                        && args
-                            .family
-                            .as_deref()
-                            .is_none_or(|family| finding.family.as_deref() == Some(family))
                         && allow_core::glob_matches(&glob, &finding.path)
                 })
+                .collect();
+            let family_matched_count = kind_findings_under_glob
+                .iter()
+                .filter(|finding| {
+                    args.family
+                        .as_deref()
+                        .is_none_or(|family| finding.family.as_deref() == Some(family))
+                })
                 .count();
-            if kind_findings_under_glob > 0
+            if family_matched_count > 0
                 && parsed_kind.kind.requires_source_selector_identity()
                 && args.callee.is_none()
             {
+                // #4586/#4588: the remedy must come from the findings the
+                // operator actually has — a hardcoded example dead-ends on
+                // any other callee and on callee-less classes (unsafe,
+                // indexing, lint), where no --callee can ever succeed.
+                let callees: std::collections::BTreeSet<&str> = kind_findings_under_glob
+                    .iter()
+                    .filter(|finding| {
+                        args.family
+                            .as_deref()
+                            .is_none_or(|family| finding.family.as_deref() == Some(family))
+                    })
+                    .filter_map(|finding| finding.identity.callee.as_deref())
+                    .collect();
+                let remedy = if callees.is_empty() {
+                    format!(
+                        "{kind} findings under this glob carry no callee, so a --glob baseline \
+                         cannot express their structural identity; receipt each occurrence with \
+                         --path/--line instead"
+                    )
+                } else {
+                    format!(
+                        "pass --callee <name> (callees present under this glob: {})",
+                        callees.into_iter().collect::<Vec<_>>().join(", ")
+                    )
+                };
                 return Err(CargoAllowError::with_kind(
                     CargoAllowErrorKind::Usage,
                     format!(
                         "{} findings require a structural selector identity for a --glob baseline; \
-                         pass --callee <name> (for example --callee unwrap) so the broad selector can match \
-                         — --family alone cannot satisfy the structural gate",
+                         {remedy} — --family alone cannot satisfy the structural gate",
                         kind
+                    ),
+                ));
+            }
+            // #4587: when the glob does hold {kind} findings excluded only
+            // by --family/--callee, the empty-scope text would blame a glob
+            // that is not the blocker.
+            if !kind_findings_under_glob.is_empty() {
+                let filter_names = if args.family.is_some() && args.callee.is_some() {
+                    "--family/--callee"
+                } else if args.family.is_some() {
+                    "--family"
+                } else {
+                    "--callee"
+                };
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Usage,
+                    format!(
+                        "{} findings match glob `{}`, but your {filter_names} filter(s) excluded all of them; \
+                         a --glob baseline receipts every finding the selector matches — \
+                         widen or drop the filter(s)",
+                        kind, glob
                     ),
                 ));
             }
