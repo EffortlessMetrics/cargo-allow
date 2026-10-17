@@ -346,6 +346,60 @@ pub(crate) fn sample_migrate_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+pub(crate) fn sample_migrate_bespoke_json_for_contract_test() -> String {
+    // Live-render mirror of the bespoke-ledger migrate route (#4626): the
+    // real importer consumes an xtask-ripr ledger (same content as
+    // tests/fixtures/migration/bespoke-ledger-semantic-v1.toml; inlined so
+    // the source-coupling guard keeps bin source free of cross-crate path
+    // reads) and the summary carries `input.kind: "bespoke"` with the
+    // bespoke-ledger legacy source, so the published input.kind enum cannot
+    // silently drop the bespoke route again.
+    const BESPOKE_SEMANTIC_LEDGER: &str = r#"
+schema_version = 1
+dialect = "xtask-ripr"
+
+[[entries]]
+id = "fixture-semantic-unwrap"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "parser"
+reason = "Semantic selector pins unwrap on optional after validation."
+classification = "reviewed_panic_exception"
+evidence = ["test:bespoke_semantic_round_trip"]
+created = "2026-06-18"
+review_after = "2026-12-18"
+selector = "method_call"
+container = "load"
+callee = "unwrap"
+receiver = "optional_value"
+"#;
+    let cfg = allow_policy::import_bespoke_ledger_text(None, BESPOKE_SEMANTIC_LEDGER)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("bespoke fixture import: {err}")))
+        .unwrap_or_else(|| {
+            std::panic::panic_any("bespoke fixture should import as a bespoke ledger")
+        });
+    let (signal, label) = allow_policy_legacy::baseline_debt_projection(&["bespoke-ledger"]);
+    render_migrate_summary_json(
+        &cfg,
+        &MigrateContext {
+            inventory_source: "filesystem_fallback".to_string(),
+            source_tree_root: Some("H:/Code/Rust/xtask-ripr-consumer".to_string()),
+            inventory_files: Some(12),
+            inventory_completeness: Some("fallback".to_string()),
+            repository_identity: None,
+            input_kind: "bespoke".to_string(),
+            input_path: "ledgers/bespoke-ledger-semantic-v1.toml".to_string(),
+            legacy_source_files: vec!["bespoke-ledger-semantic-v1.toml".to_string()],
+            legacy_compat_kinds: vec!["bespoke-ledger"],
+            baseline_debt_projection: allow_report::MigrateBaselineDebtProjection { signal, label },
+        },
+        Path::new("policy/allow.toml"),
+        false,
+    )
+}
+
+#[cfg(test)]
 #[path = "migrate_artifact_tests.rs"]
 mod artifact_tests;
 #[cfg(test)]
