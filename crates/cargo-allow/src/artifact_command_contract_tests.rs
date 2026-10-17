@@ -196,4 +196,50 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         Some("linked_proposal"),
         "spec-system graph link field"
     );
+
+    let spec_system_doctor_json = spec_system::sample_spec_system_doctor_json_for_contract_test();
+    let spec_system_doctor = parse_json_artifact(
+        "spec-system-doctor",
+        &spec_system_doctor_json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        spec_system_doctor
+            .pointer("/readiness/ready")
+            .and_then(Value::as_bool),
+        Some(true),
+        "spec-system doctor readiness ready"
+    );
+    let federation_check = spec_system_doctor
+        .pointer("/readiness/checks/9")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "spec-system doctor readiness should render the federation_ledgers check last",
+            )
+        });
+    assert_eq!(
+        federation_check.get("kind").and_then(Value::as_str),
+        Some("federation_ledgers"),
+        "spec-system doctor readiness federation check kind"
+    );
+    assert_eq!(
+        federation_check.get("path").and_then(Value::as_str),
+        Some(".allow/config.toml"),
+        "spec-system doctor readiness federation check path"
+    );
+    assert_eq!(
+        federation_check.get("found").and_then(Value::as_bool),
+        Some(false),
+        "spec-system doctor readiness federation check found"
+    );
+    assert!(
+        federation_check.get("valid").is_some_and(Value::is_null),
+        "spec-system doctor readiness federation check valid should stay null when the registry is not configured"
+    );
+    assert_eq!(
+        federation_check.get("status").and_then(Value::as_str),
+        Some("ready"),
+        "spec-system doctor readiness federation check status"
+    );
 }

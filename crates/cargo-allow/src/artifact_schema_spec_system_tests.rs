@@ -74,6 +74,7 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
             "support_tiers",
             "active_goal",
             "templates",
+            "federation_ledgers",
         ],
     );
     assert_enum_equals(
