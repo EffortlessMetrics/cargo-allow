@@ -44,7 +44,7 @@ use crate::{
     SourceTreeReportContext, assert_path_within_root, config_path, current_dir,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_read_only_world_and_cache, load_staged_world, policy_baseline_debt_entries, print_report,
-    report_config, spec_precommit, spec_system, write_file,
+    reject_compat_only_kind_filter, report_config, spec_precommit, spec_system, write_file,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
@@ -98,6 +98,9 @@ pub(crate) fn cmd_check_with_persistent_cache(
                 "--staged source-exception evaluation does not support --compat",
             ));
         }
+        // #4632: staged evaluation has no compat lane either, so a
+        // compat-only kind would filter the gate to nothing here as well.
+        reject_compat_only_kind_filter("check", false, args.kind.as_deref())?;
         if args.include_untracked {
             return Err(CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Usage,
@@ -151,6 +154,9 @@ pub(crate) fn cmd_check_with_persistent_cache(
         });
     }
 
+    // #4632: fail closed before any scan when the kind filter names a
+    // compat-only surface the non-compat lane never wires in.
+    reject_compat_only_kind_filter("check", args.compat, args.kind.as_deref())?;
     match cmd_check_source_tree(args, persistent_cache) {
         Ok(()) => Ok(()),
         Err(err) => {

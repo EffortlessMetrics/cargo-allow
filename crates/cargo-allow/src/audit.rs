@@ -9,8 +9,8 @@ pub(crate) use audit_args::ReportArgs;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, ProfileArg, ReportRenderArgs,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
-    load_read_only_world, policy_baseline_debt_entries, print_report, report_config,
-    reporting::SourceTreeReportContext, spec_system,
+    load_read_only_world, policy_baseline_debt_entries, print_report,
+    reject_compat_only_kind_filter, report_config, reporting::SourceTreeReportContext, spec_system,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
@@ -36,6 +36,10 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             mode: None,
         });
     }
+
+    // #4632: fail closed before any scan when the kind filter names a
+    // compat-only surface the non-compat lane never wires in.
+    reject_compat_only_kind_filter("audit", args.compat, args.kind.as_deref())?;
 
     crate::emit_scan_status("audit", args.format, args.output.as_deref(), None);
 
