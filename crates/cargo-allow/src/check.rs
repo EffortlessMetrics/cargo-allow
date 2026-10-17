@@ -196,14 +196,6 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     if let Some(receipt) = &args.receipt {
         assert_path_within_root(&resolved_root, receipt)?;
     }
-    // Parse --emit before any scan or output work: an unknown token is a
-    // usage error (#4505) and must be refused before anything is written.
-    let emit_formats = match (&args.artifact_dir, &args.emit) {
-        (Some(_), Some(emit_raw)) => Some(artifact_emit::parse_emit_formats(emit_raw).map_err(
-            |error| CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error),
-        )?),
-        _ => None,
-    };
     let world = if args.compat {
         let (root, cfg, findings, inventory_facts) = load_compat_world(
             args.root.root.as_deref(),
@@ -410,9 +402,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         write_file(path, &receipt)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
-    if let (Some(artifact_dir), Some(formats)) =
-        (args.artifact_dir.as_deref(), emit_formats.as_deref())
-    {
+    if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
         // #4591: under --compat the run loads a legacy policy file, not the
         // canonically discovered one; protect the file actually selected.
         let protected_policy = compat_selected_policy
@@ -424,6 +414,9 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             })?;
         // Return late output errors so the wrapper can replace an evaluated
         // receipt, remove the stale report and let the CLI replace its summary.
+        let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
         let mut artifact_context = source_context.report(Some(baseline_debt_entries));
         evidence.apply_to(&mut artifact_context);
         artifact_context.mode = Some(mode.as_str());
@@ -449,7 +442,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             artifact_dir,
             &artifact_emit::EmitConfig {
                 operation: "check",
-                formats,
+                formats: &formats,
                 result_class,
                 blocking: failed,
                 resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
