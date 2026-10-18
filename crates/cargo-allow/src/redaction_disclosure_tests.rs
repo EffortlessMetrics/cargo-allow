@@ -350,3 +350,44 @@ fn disclosure_predicate_reads_scan_redacted_findings_shape() {
         "the snippet-hash anchor is preserved for exact-occurrence matching"
     );
 }
+
+#[test]
+fn guard_respects_the_kind_filtered_configuration() {
+    // PR #4633 review: the guard runs on the kind-filtered configuration —
+    // an entry outside the filtered kind is never evaluated, so it must not
+    // fail the run.
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry(
+        "allow-0001",
+        selector(SelectorFields {
+            callee: Some("unwrap".to_string()),
+            ..SelectorFields::default()
+        }),
+    ));
+    let mut other = entry(
+        "allow-0002",
+        selector(SelectorFields {
+            callee: Some("unwrap".to_string()),
+            ..SelectorFields::default()
+        }),
+    );
+    other.kind = FindingKind::NonRustFile;
+    cfg.allow.push(other);
+
+    // Emulate report_config's --kind panic filter before the guard.
+    let mut filtered = AllowConfig::empty();
+    filtered.allow = cfg
+        .allow
+        .iter()
+        .filter(|candidate| candidate.kind == FindingKind::Panic)
+        .cloned()
+        .collect();
+
+    let dead = redaction_dead_entries(&filtered);
+    let ids = dead.iter().map(|(id, _)| *id).collect::<Vec<_>>();
+    assert_eq!(
+        ids,
+        vec!["allow-0001"],
+        "only the in-kind dead entry is disclosed; the out-of-kind dead entry never fails the run"
+    );
+}

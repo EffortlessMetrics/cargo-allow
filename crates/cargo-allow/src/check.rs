@@ -228,12 +228,6 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         mut inventory_facts,
         federation,
     } = world;
-    // #4628: entries meet the redacted scan here — the earliest point in the
-    // enforcing gate that can name the entries that can never match. Raised
-    // for the compat world too: legacy allowlists pin the same cleared
-    // selector fields (callee, lint). See `redaction_disclosure` for why this
-    // is a hard error and why it is not raised at world load.
-    crate::redaction_disclosure::reject_redaction_dead_entries(&cfg)?;
     // #4590/#4593: the compat world's inventory facts never carry a policy
     // digest, so the receipt dropped policy-byte provenance and every emit
     // failed the artifact-set identity gate. Bind the digest of the legacy
@@ -255,6 +249,14 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     }
     let federation_bundle = FederationReportBundle::from_evaluation(&federation);
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    // #4628: entries meet the redacted scan here — the earliest point in the
+    // enforcing gate that can name the entries that can never match. Raised
+    // on the kind-filtered configuration (PR #4633 review): an entry outside
+    // the filtered kind is never evaluated, so it must not fail the run.
+    // Raised for the compat world too: legacy allowlists pin the same cleared
+    // selector fields (callee, lint). See `redaction_disclosure` for why this
+    // is a hard error and why it is not raised at world load.
+    crate::redaction_disclosure::reject_redaction_dead_entries(&report_cfg)?;
     let mode = CheckMode::parse(
         args.mode
             .as_deref()
@@ -577,8 +579,9 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     let report_cfg = report_config(&staged.cfg, args.kind.as_deref())?;
     // #4628: the staged scan applies the same identity redaction (same
     // scanner), so the staged lane must fail closed on structural entries
-    // exactly like the tracked-worktree gate.
-    crate::redaction_disclosure::reject_redaction_dead_entries(&staged.cfg)?;
+    // exactly like the tracked-worktree gate — on the kind-filtered
+    // configuration, for the same #4633-review reason.
+    crate::redaction_disclosure::reject_redaction_dead_entries(&report_cfg)?;
     let mode = CheckMode::parse(
         args.mode
             .as_deref()
