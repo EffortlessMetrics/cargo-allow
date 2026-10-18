@@ -487,6 +487,13 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         (entry, summary)
     };
 
+    // #4628: warn (never refuse) when the entry about to be written pins
+    // selector fields that identity redaction clears before matching — such an
+    // entry only matches unredacted scans, and the operator may be receipting
+    // for an unredacted pipeline.
+    if let Some(warning) = crate::redaction_disclosure::redaction_dead_entry_add_warning(&entry) {
+        eprintln!("{warning}");
+    }
     cfg.allow.push(entry.clone());
     validate_policy(&cfg)?;
     let evidence_source_tree_files =
