@@ -992,6 +992,51 @@ fn spec_system_doctor_recognizes_allow_init_layout() {
         }),
         "doctor should recognize owned import root: {json}"
     );
+    // PR #4638 review: pin the allow_imports check's full shape and its
+    // emitter position — after templates, before federation_ledgers.
+    let allow_imports = readiness_check(&value, "allow_imports")
+        .expect("allow-profiles doctor readiness should carry the allow_imports check");
+    assert_eq!(
+        allow_imports.pointer("/path").and_then(Value::as_str),
+        Some(".allow/imports"),
+        "allow_imports path: {json}"
+    );
+    assert_eq!(
+        allow_imports.pointer("/found").and_then(Value::as_bool),
+        Some(true),
+        "allow_imports found: {json}"
+    );
+    assert_eq!(
+        allow_imports.pointer("/valid").and_then(Value::as_bool),
+        Some(true),
+        "allow_imports valid: {json}"
+    );
+    let check_kinds: Vec<&str> = value
+        .pointer("/readiness/checks")
+        .and_then(Value::as_array)
+        .map(|checks| {
+            checks
+                .iter()
+                .filter_map(|check| check.get("kind").and_then(Value::as_str))
+                .collect()
+        })
+        .unwrap_or_default();
+    let templates_position = check_kinds
+        .iter()
+        .position(|kind| *kind == "templates")
+        .expect("templates check should render");
+    let imports_position = check_kinds
+        .iter()
+        .position(|kind| *kind == "allow_imports")
+        .expect("allow_imports check should render");
+    let federation_position = check_kinds
+        .iter()
+        .position(|kind| *kind == "federation_ledgers")
+        .expect("federation_ledgers check should render");
+    assert!(
+        templates_position < imports_position && imports_position < federation_position,
+        "allow_imports must sit between templates and federation_ledgers: {check_kinds:?}"
+    );
     remove_doctor_fixture_dir(root);
 }
 
