@@ -360,7 +360,8 @@
             "support_tiers",
             "active_goal",
             "templates",
-            "federation_ledgers"
+            "federation_ledgers",
+            "allow_imports"
           ]
         },
         "path": {

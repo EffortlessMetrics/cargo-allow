@@ -308,3 +308,57 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         "spec-system doctor readiness federation check status"
     );
 }
+
+#[test]
+fn spec_system_doctor_allow_profiles_sample_renders_the_allow_imports_check() {
+    // #4636: the allow-profiles provenance inserts the allow_imports check
+    // between templates and federation_ledgers; the sample locks the real
+    // render shape against the published readiness kind enum.
+    let spec_system_doctor_allow_profiles = parse_json_artifact(
+        "spec_system_doctor_allow_profiles",
+        &spec_system::sample_spec_system_doctor_allow_profiles_json_for_contract_test(),
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        spec_system_doctor_allow_profiles
+            .pointer("/config_provenance")
+            .and_then(Value::as_str),
+        Some("allow_profiles"),
+        "spec-system doctor allow-profiles provenance"
+    );
+    let allow_imports_check = spec_system_doctor_allow_profiles
+        .pointer("/readiness/checks/9")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "spec-system doctor allow-profiles readiness should render the allow_imports check after templates",
+            )
+        });
+    assert_eq!(
+        allow_imports_check.get("kind").and_then(Value::as_str),
+        Some("allow_imports"),
+        "spec-system doctor allow-profiles allow_imports check kind"
+    );
+    assert_eq!(
+        allow_imports_check.get("path").and_then(Value::as_str),
+        Some(".allow/imports"),
+        "spec-system doctor allow-profiles allow_imports check path"
+    );
+    assert_eq!(
+        allow_imports_check.get("found").and_then(Value::as_bool),
+        Some(true),
+        "spec-system doctor allow-profiles allow_imports check found"
+    );
+    let federation_check = spec_system_doctor_allow_profiles
+        .pointer("/readiness/checks/10")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "spec-system doctor allow-profiles readiness should still end with federation_ledgers",
+            )
+        });
+    assert_eq!(
+        federation_check.get("kind").and_then(Value::as_str),
+        Some("federation_ledgers"),
+        "spec-system doctor allow-profiles readiness federation check kind"
+    );
+}

@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  The spec-system readiness kind enum learned `allow_imports` (#4636,
+  same emitter/schema drift class as #4625): the check is inserted
+  between templates and federation_ledgers whenever the profile config
+  carries allow-profiles provenance, and a second live-render doctor
+  sample locks that real render shape — config provenance
+  `allow_profiles`, the allow_imports check after templates, and
+  federation_ledgers last — so sample-based contract CI now covers the
+  third emitter value.

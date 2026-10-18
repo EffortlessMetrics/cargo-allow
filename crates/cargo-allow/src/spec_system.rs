@@ -687,6 +687,20 @@ pub(crate) fn sample_spec_system_doctor_json_for_contract_test() -> String {
 }
 
 #[cfg(test)]
+pub(crate) fn sample_spec_system_doctor_allow_profiles_json_for_contract_test() -> String {
+    // Live-render mirror of `doctor --profile spec-system` on a tree whose
+    // profile config carries allow-profiles provenance (#4636): the emitter
+    // inserts the allow_imports check between templates and
+    // federation_ledgers for this provenance, so the published
+    // readiness_check kind enum carries it and the sample locks the real
+    // render shape.
+    let mut report = doctor_report_fixture("doctor");
+    report.config_provenance = ProfileConfigProvenance::AllowProfiles.as_str().to_string();
+    report.readiness = Some(doctor_readiness_fixture_allow_profiles());
+    spec_system_render::render_spec_system_json(&report)
+}
+
+#[cfg(test)]
 fn doctor_report_fixture(command: &'static str) -> SpecSystemReport {
     SpecSystemReport {
         command: command.to_string(),
@@ -820,6 +834,41 @@ fn doctor_readiness_fixture() -> SpecSystemReadiness {
             },
         ],
     }
+}
+
+#[cfg(test)]
+fn doctor_readiness_fixture_allow_profiles() -> SpecSystemReadiness {
+    // Mirrors `collect_spec_system_readiness` for allow-profiles provenance
+    // (#4636): the emitter inserts the allow_imports check between templates
+    // and federation_ledgers for this provenance, so the sample locks its
+    // real render shape against the published enum.
+    let mut readiness = doctor_readiness_fixture();
+    let insert_at = readiness
+        .checks
+        .iter()
+        .position(|check| check.kind == "templates")
+        .map(|index| index + 1)
+        .unwrap_or(readiness.checks.len());
+    readiness.checks.insert(
+        insert_at,
+        SpecSystemReadinessCheck {
+            kind: "allow_imports",
+            path: Some(DEFAULT_OWNED_IMPORTS_ROOT.to_string()),
+            found: true,
+            valid: Some(true),
+            status: "ready",
+            message: "owned import root .allow/imports exists".to_string(),
+        },
+    );
+    if let Some(profile_config) = readiness
+        .checks
+        .iter_mut()
+        .find(|check| check.kind == "profile_config")
+    {
+        profile_config.message =
+            "spec-system profile config parsed (provenance: allow_profiles)".to_string();
+    }
+    readiness
 }
 
 #[cfg(test)]
