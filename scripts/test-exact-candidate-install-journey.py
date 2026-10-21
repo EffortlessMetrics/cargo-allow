@@ -215,7 +215,7 @@ class ReceiptTests(unittest.TestCase):
         return repo, work
 
     def test_wrapper_cleanup_order_and_refusals(self):
-        for mode in ("success", "child-failure", "leftover-child", "cleanup-refusal"):
+        for mode in ("success", "child-failure", "leftover-child", "leftover-files", "cleanup-refusal"):
             with self.subTest(mode=mode), tempfile.TemporaryDirectory(dir=self.root) as case:
                 previous = self.root
                 self.root = Path(case)
@@ -229,6 +229,9 @@ class ReceiptTests(unittest.TestCase):
                     (parent / "source-candidate-smoke.receipt.json").write_text(json.dumps(self.source), encoding="utf-8")
                     if mode in ("child-failure", "leftover-child"):
                         (parent / "retained-child").mkdir()
+                    if mode == "leftover-files":
+                        (parent / "second-finding-plan.json").write_bytes(b"retained plan")
+                        (parent / "second-add.log").write_bytes(b"retained log")
                     if mode == "child-failure":
                         raise subprocess.CalledProcessError(73, "source journey")
 
@@ -259,6 +262,10 @@ class ReceiptTests(unittest.TestCase):
                         self.assertFalse(final.exists())
                         self.assertEqual(len(calls), 1 if mode == "cleanup-refusal" else 0)
                         self.assertEqual(len(list(work.glob("exact-candidate-source-journey.*"))), 1)
+                        if mode == "leftover-files":
+                            child_dir = next(work.glob("exact-candidate-source-journey.*"))
+                            self.assertEqual((child_dir / "second-finding-plan.json").read_bytes(), b"retained plan")
+                            self.assertEqual((child_dir / "second-add.log").read_bytes(), b"retained log")
 
     def test_wrapper_preserves_preexisting_output_and_consumer(self):
         repo, work = self.wrapper_fixture()

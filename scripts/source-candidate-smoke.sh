@@ -583,7 +583,9 @@ print(json.dumps({"path": target["path"], "line": target["line"]}))
 second_path="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["path"])')"
 second_line="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["line"])')"
 "${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" >/dev/null
-why_plan="${WORK_DIR}/second-finding-plan.json"
+# Transient plan/log files belong to the owned scratch directory removed by
+# cleanup(), not the caller's durable receipt directory.
+why_plan="${work_dir}/second-finding-plan.json"
 "${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" --plan "${why_plan}" >/dev/null
 [[ -f "${why_plan}" ]] || fail "why --plan did not write ${why_plan}"
 
@@ -613,8 +615,8 @@ if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second fi
     fail "stale why plan was accepted by add --from-plan"
 fi
 printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
-if ! "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" > "${WORK_DIR}/second-add.log" 2>&1; then
-  cat "${WORK_DIR}/second-add.log" >&2
+if ! "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" > "${work_dir}/second-add.log" 2>&1; then
+  cat "${work_dir}/second-add.log" >&2
   fail "the restored second finding was not accepted by add --from-plan"
 fi
 step_second_finding_exit=0
