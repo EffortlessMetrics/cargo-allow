@@ -54,11 +54,12 @@
     "finding_step": "audit_with_finding",
     "repair_or_rollback_step": "policy_rollback_after_prune",
     "artifact_schema_ids": [
+      "cargo-allow.add.v1",
       "cargo-allow.doctor.v1",
-      "cargo-allow.report.v1",
       "cargo-allow.list.v1",
+      "cargo-allow.prune.v1",
       "cargo-allow.refresh.v1",
-      "cargo-allow.prune.v1"
+      "cargo-allow.report.v1"
     ],
     "steps_expected": [
       "version",
@@ -71,7 +72,11 @@
       "diff_against_exact_base",
       "prune_stale_preview_write",
       "final_check_no_new",
-      "policy_rollback_after_prune"
+      "policy_rollback_after_prune",
+      "second_finding_why_plan_add",
+      "targeted_recheck_after_add",
+      "list_wide_projection",
+      "clean_repo_init_audit_check"
     ],
     "steps_executed": [
       { "id": "version", "exit_code": 0, "artifact_schema_id": null },
@@ -84,7 +89,11 @@
       { "id": "diff_against_exact_base", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
       { "id": "prune_stale_preview_write", "exit_code": 0, "artifact_schema_id": "cargo-allow.prune.v1" },
       { "id": "final_check_no_new", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
-      { "id": "policy_rollback_after_prune", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" }
+      { "id": "policy_rollback_after_prune", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" },
+      { "id": "second_finding_why_plan_add", "exit_code": 0, "artifact_schema_id": "cargo-allow.add.v1" },
+      { "id": "targeted_recheck_after_add", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
+      { "id": "list_wide_projection", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" },
+      { "id": "clean_repo_init_audit_check", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" }
     ]
   },
   "negative_controls": [

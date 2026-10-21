@@ -1,6 +1,8 @@
 schema_version = 1
 
 # User-assigned completion of the residual PR3507 hardening on current main.
+# Re-review repairs require all 15 ordered journey steps and preserve nested
+# cleanup refusals; the clean consumer is independently marker-owned.
 # Fingerprints come from official plan/apply and enforcing diff run39555932361.
 [[records]]
 allow_ids = ["allow-3357-exact-journey-driver"]

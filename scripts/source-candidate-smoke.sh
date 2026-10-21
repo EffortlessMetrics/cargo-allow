@@ -62,6 +62,13 @@ PY
     local operation_status=$?
     local cleanup_status=0
     trap - EXIT
+    # The internal trap may have refused removal of a consumer or scratch
+    # directory. Never erase that evidence through an independently owned
+    # ancestor, including the source snapshot, after any internal failure.
+    if [[ "${operation_status}" -ne 0 ]]; then
+      printf 'source-candidate-smoke: child failed; retaining owned paths under %s\n' "${temp_root}" >&2
+      exit "${operation_status}"
+    fi
     if [[ -n "${snapshot_root}" ]]; then
       if python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
         --purpose source-candidate-snapshot --token "${snapshot_token}"; then
@@ -73,9 +80,20 @@ PY
     # A refused child removal must not be bypassed by recursively deleting
     # its parent. Keep the marker-owned paths for diagnosis in that case.
     if [[ "${cleanup_status}" -eq 0 && -n "${test_root_token}" ]]; then
-      if python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
-        --purpose source-candidate-test-root --token "${test_root_token}"; then
-        test_root_token=""
+      if python3 - "${temp_root}" <<'PY'
+import sys
+from pathlib import Path
+
+if {path.name for path in Path(sys.argv[1]).iterdir()} != {".candidate-harness-owner.json"}:
+    raise SystemExit("source-candidate-smoke: inner child state remains; refusing parent cleanup")
+PY
+      then
+        if python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
+          --purpose source-candidate-test-root --token "${test_root_token}"; then
+          test_root_token=""
+        else
+          cleanup_status=$?
+        fi
       else
         cleanup_status=$?
       fi
@@ -157,6 +175,9 @@ read -r consumer_dir consumer_token < <(
   printf '%s' "${consumer_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
 schema_id="cargo-allow.source-candidate-smoke-receipt.v1"
+clean_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+clean_dir=""
+clean_token=""
 
 src_path="${ROOT}/crates/cargo-allow/src"
 src_stash="${work_dir}/stashed-cargo-allow-src"
@@ -179,12 +200,18 @@ cleanup() {
   local cleanup_status=0
   trap - EXIT
   if restore_source_tree; then
-    if python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
-      --purpose source-candidate-consumer --token "${consumer_token}"; then
-      python3 "${lifecycle}" remove --root "${source_parent}" --path "${work_dir}" \
-        --purpose source-candidate-smoke --token "${work_token}" || cleanup_status=$?
-    else
-      cleanup_status=$?
+    if [[ -n "${clean_dir}" ]]; then
+      python3 "${lifecycle}" remove --root "${clean_parent}" --path "${clean_dir}" \
+        --purpose source-candidate-clean-consumer --token "${clean_token}" || cleanup_status=$?
+    fi
+    if [[ "${cleanup_status}" -eq 0 ]]; then
+      if python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
+        --purpose source-candidate-consumer --token "${consumer_token}"; then
+        python3 "${lifecycle}" remove --root "${source_parent}" --path "${work_dir}" \
+          --purpose source-candidate-smoke --token "${work_token}" || cleanup_status=$?
+      else
+        cleanup_status=$?
+      fi
     fi
   else
     cleanup_status=$?
@@ -652,8 +679,11 @@ log "step list --wide projection"
 step_list_wide_exit=0
 
 log "step clean repository: init → audit → check --mode no-new"
-clean_dir="${consumer_dir}-clean"
-mkdir -p "${clean_dir}/src"
+clean_json="$(python3 "${lifecycle}" allocate --root "${clean_parent}" --purpose source-candidate-clean-consumer)"
+read -r clean_dir clean_token < <(
+  printf '%s' "${clean_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
+mkdir "${clean_dir}/src"
 printf 'pub fn ok() -> u8 { 7 }\n' > "${clean_dir}/src/lib.rs"
 "${cargo_bin}" init --root "${clean_dir}" >/dev/null
 clean_policy="${clean_dir}/policy/allow.toml"
@@ -1265,6 +1295,10 @@ steps_expected = [
     "prune_stale_preview_write",
     "final_check_no_new",
     "policy_rollback_after_prune",
+    "second_finding_why_plan_add",
+    "targeted_recheck_after_add",
+    "list_wide_projection",
+    "clean_repo_init_audit_check",
 ]
 steps_executed = [
     {

@@ -8,6 +8,7 @@ import copy
 import importlib.util
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -126,6 +127,36 @@ class ReceiptTests(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     VALIDATOR.publish_receipt(self.package_valid(), self.source_valid(), self.args)
                 self.assertFalse(self.args.receipt.exists())
+
+    def test_required_journey_steps_cannot_be_omitted_or_reordered(self):
+        final = VALIDATOR.assemble_receipt(self.package, self.source, self.args)
+        late_steps = ("second_finding_why_plan_add", "targeted_recheck_after_add",
+                      "list_wide_projection", "clean_repo_init_audit_check")
+        for kind, original in (("source", self.source), ("final", final)):
+            for mutation in (*late_steps, "expected-order", "executed-order", "both-orders"):
+                with self.subTest(kind=kind, mutation=mutation):
+                    forged = copy.deepcopy(original)
+                    journey = forged["journey"]
+                    if mutation in late_steps:
+                        journey["steps_expected"].remove(mutation)
+                        journey["steps_executed"] = [step for step in journey["steps_executed"]
+                                                     if step["id"] != mutation]
+                    else:
+                        if mutation in ("expected-order", "both-orders"):
+                            journey["steps_expected"].reverse()
+                        if mutation in ("executed-order", "both-orders"):
+                            journey["steps_executed"].reverse()
+                    with self.assertRaises(SystemExit):
+                        VALIDATOR.validate_steps(journey)
+                    if kind == "source":
+                        self.args.journey_receipt.write_text(json.dumps(forged), encoding="utf-8")
+                        with self.assertRaises(SystemExit):
+                            self.source_valid()
+                    else:
+                        self.args.receipt.write_text(json.dumps(forged), encoding="utf-8")
+                        with self.assertRaises(SystemExit):
+                            VALIDATOR.validate_final_receipt(self.args.receipt, self.args.schema,
+                                                             self.args.fixture)
 
     def test_final_binding_detects_projection_and_input_changes(self):
         final = VALIDATOR.assemble_receipt(self.package, self.source, self.args)
@@ -346,6 +377,7 @@ class ReceiptTests(unittest.TestCase):
                 "set -euo pipefail\n"
                 f"log='{log.as_posix()}'\n"
                 "lifecycle=unused consumer_parent=unused consumer_dir=unused consumer_token=unused\n"
+                "clean_parent=unused clean_dir=unused clean_token=unused\n"
                 "source_parent=unused work_dir=unused work_token=unused\n"
                 "restore_source_tree() { return 0; }\n"
                 f"python3() {{ printf '%s\\n' \"$*\" >> \"$log\"; return {failure}; }}\n"
@@ -354,8 +386,103 @@ class ReceiptTests(unittest.TestCase):
             result = subprocess.run([bash, "-c", program], capture_output=True, text=True)
             self.assertEqual(result.returncode, failure, result.stderr)
             attempts = log.read_text().splitlines()
-            self.assertEqual(len(attempts), 1 if failure else 2)
-            self.assertIn("source-candidate-consumer", attempts[0])
+            self.assertEqual(len(attempts), 1 if failure else 3)
+            self.assertIn("source-candidate-clean-consumer", attempts[0])
+            if not failure:
+                self.assertIn("source-candidate-consumer", attempts[1])
+
+    def test_nested_source_cleanup_preserves_refusals_and_unowned_siblings(self):
+        bash = shutil.which("bash")
+        if not bash or not shutil.rmtree.avoids_symlink_attacks:
+            self.skipTest("requires bash and symlink-safe lifecycle deletion")
+        script = (ROOT / "scripts/source-candidate-smoke.sh").read_text(encoding="utf-8")
+        inner = "cleanup() {" + script.split("\ncleanup() {", 1)[1].split("\ntrap cleanup EXIT", 1)[0]
+        outer = "snapshot_cleanup() {" + script.split("\n  snapshot_cleanup() {", 1)[1].split(
+            "\n  trap snapshot_cleanup EXIT", 1)[0]
+        clean_setup = script.split('log "step clean repository:', 1)[1].split("\n", 1)[1].split(
+            '"${cargo_bin}" init', 1)[0]
+        self.assertIn("source-candidate-clean-consumer", clean_setup)
+        lifecycle = WRAPPER.LIFECYCLE
+
+        def assignments(**values):
+            return "".join(f"{key}={shlex.quote(str(value))}\n" for key, value in values.items())
+
+        for explicit in (False, True):
+            for failure in ("none", "consumer", "clean", "leftover"):
+                with self.subTest(explicit=explicit, failure=failure):
+                    case = self.root / f"nested-{explicit}-{failure}"
+                    case.mkdir()
+                    test_root, root_token = lifecycle.allocate(case, "source-candidate-test-root", False)
+                    snapshot, snapshot_token = lifecycle.allocate(test_root, "source-candidate-snapshot", False)
+                    consumer_parent = case if explicit else test_root
+                    if explicit:
+                        consumer = consumer_parent / "caller-consumer"
+                        consumer.mkdir()
+                        consumer, consumer_token = lifecycle.claim(consumer, "source-candidate-consumer")
+                    else:
+                        consumer, consumer_token = lifecycle.allocate(
+                            consumer_parent, "source-candidate-consumer", False)
+                    (consumer / "evidence").write_bytes(b"retain on refusal")
+                    sibling = Path(f"{consumer}-clean") / "src/lib.rs"
+                    if explicit:
+                        sibling.parent.mkdir(parents=True)
+                        sibling.write_bytes(b"unowned caller content")
+                    work, work_token = lifecycle.allocate(case, "source-candidate-smoke", False)
+                    (work / "evidence").write_bytes(b"retain on refusal")
+                    if failure == "consumer":
+                        marker = lifecycle.load_marker(consumer)
+                        marker["token"] = "wrong-token"
+                        (consumer / lifecycle.MARKER).write_text(json.dumps(marker), encoding="utf-8")
+                    if failure == "leftover":
+                        (test_root / "unclaimed-child").mkdir()
+                    clean_log = case / "clean-path.log"
+                    inner_file = case / "inner.sh"
+                    corrupt_clean = (
+                        'python3 - "${clean_dir}" <<\'PY\'\n'
+                        "import json, sys\nfrom pathlib import Path\n"
+                        "marker = Path(sys.argv[1]) / '.candidate-harness-owner.json'\n"
+                        "value = json.loads(marker.read_text())\nvalue['token'] = 'wrong-token'\n"
+                        "marker.write_text(json.dumps(value))\nPY\n"
+                    ) if failure == "clean" else ""
+                    inner_file.write_text(
+                        "set -euo pipefail\n" + assignments(
+                            lifecycle=ROOT / "scripts/candidate-harness-owned-dir.py",
+                            consumer_parent=consumer_parent, consumer_dir=consumer,
+                            consumer_token=consumer_token, source_parent=case, work_dir=work,
+                            work_token=work_token, clean_parent=test_root, clean_dir="", clean_token="",
+                            clean_log=clean_log)
+                        + "restore_source_tree() { return 0; }\n" + inner + "\ntrap cleanup EXIT\n"
+                        + clean_setup + 'printf "%s\\n" "${clean_dir}" > "${clean_log}"\n'
+                        + corrupt_clean + "exit 0\n", encoding="utf-8")
+                    program = "set -euo pipefail\n" + assignments(
+                        lifecycle=ROOT / "scripts/candidate-harness-owned-dir.py", temp_root=test_root,
+                        test_root_token=root_token, snapshot_root=snapshot, snapshot_token=snapshot_token,
+                        TMPDIR=case) + outer + "\ntrap snapshot_cleanup EXIT\n" + shlex.join(
+                            [bash, str(inner_file)]) + "\n"
+                    result = subprocess.run([bash, "-c", program], capture_output=True, text=True)
+                    clean = Path(clean_log.read_text().strip())
+                    self.assertEqual(clean.parent, test_root)
+                    self.assertNotEqual(clean, sibling.parent.parent)
+                    if explicit:
+                        self.assertEqual(sibling.read_bytes(), b"unowned caller content")
+                    if failure == "none":
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        for removed in (test_root, snapshot, consumer, work, clean):
+                            self.assertFalse(removed.exists(), removed)
+                    else:
+                        self.assertNotEqual(result.returncode, 0, result.stderr)
+                        self.assertTrue(test_root.is_dir())
+                        if failure == "leftover":
+                            self.assertIn("inner child state remains", result.stderr)
+                            self.assertTrue((test_root / "unclaimed-child").is_dir())
+                            for removed in (snapshot, consumer, work, clean):
+                                self.assertFalse(removed.exists(), removed)
+                        else:
+                            self.assertIn("ownership marker mismatch", result.stderr)
+                            self.assertTrue(snapshot.is_dir())
+                            self.assertEqual((consumer / "evidence").read_bytes(), b"retain on refusal")
+                            self.assertEqual((work / "evidence").read_bytes(), b"retain on refusal")
+                            self.assertEqual(clean.exists(), failure == "clean")
 
 
 if __name__ == "__main__":

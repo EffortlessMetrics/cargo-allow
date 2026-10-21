@@ -25,6 +25,10 @@ const STEPS_EXPECTED: &[&str] = &[
     "prune_stale_preview_write",
     "final_check_no_new",
     "policy_rollback_after_prune",
+    "second_finding_why_plan_add",
+    "targeted_recheck_after_add",
+    "list_wide_projection",
+    "clean_repo_init_audit_check",
 ];
 
 #[test]

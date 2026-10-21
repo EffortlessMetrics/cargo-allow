@@ -45,10 +45,18 @@
       "diff_against_exact_base",
       "prune_stale_preview_write",
       "final_check_no_new",
-      "policy_rollback_after_prune"
+      "policy_rollback_after_prune",
+      "second_finding_why_plan_add",
+      "targeted_recheck_after_add",
+      "list_wide_projection",
+      "clean_repo_init_audit_check"
     ],
     "steps_executed": [
-      { "id": "version", "exit_code": 0, "artifact_schema_id": null },
+      {
+        "id": "version",
+        "exit_code": 0,
+        "artifact_schema_id": null
+      },
       {
         "id": "doctor_no_policy",
         "exit_code": 0,
@@ -98,6 +106,26 @@
         "id": "policy_rollback_after_prune",
         "exit_code": 0,
         "artifact_schema_id": "cargo-allow.list.v1"
+      },
+      {
+        "id": "second_finding_why_plan_add",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.add.v1"
+      },
+      {
+        "id": "targeted_recheck_after_add",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.report.v1"
+      },
+      {
+        "id": "list_wide_projection",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.list.v1"
+      },
+      {
+        "id": "clean_repo_init_audit_check",
+        "exit_code": 0,
+        "artifact_schema_id": "cargo-allow.report.v1"
       }
     ]
   },

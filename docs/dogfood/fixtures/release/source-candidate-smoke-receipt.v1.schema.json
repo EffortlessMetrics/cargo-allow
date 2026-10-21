@@ -105,8 +105,25 @@
         "fixture_generation": { "type": "string" },
         "steps_expected": {
           "type": "array",
+          "const": [
+            "version",
+            "doctor_no_policy",
+            "audit_with_finding",
+            "bootstrap_propose_write",
+            "check_no_new_pass",
+            "list_explain_worklist",
+            "refresh_location_drift_preview_write",
+            "diff_against_exact_base",
+            "prune_stale_preview_write",
+            "final_check_no_new",
+            "policy_rollback_after_prune",
+            "second_finding_why_plan_add",
+            "targeted_recheck_after_add",
+            "list_wide_projection",
+            "clean_repo_init_audit_check"
+          ],
           "items": { "type": "string" },
-          "minItems": 1
+          "minItems": 15
         },
         "steps_executed": {
           "type": "array",
@@ -120,7 +137,7 @@
               "artifact_schema_id": { "type": ["string", "null"] }
             }
           },
-          "minItems": 1
+          "minItems": 15
         }
       }
     },

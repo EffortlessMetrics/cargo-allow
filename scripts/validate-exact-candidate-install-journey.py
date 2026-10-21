@@ -38,6 +38,10 @@ EXPECTED_JOURNEY_STEPS = {
     "prune_stale_preview_write": "cargo-allow.prune.v1",
     "final_check_no_new": "cargo-allow.report.v1",
     "policy_rollback_after_prune": "cargo-allow.list.v1",
+    "second_finding_why_plan_add": "cargo-allow.add.v1",
+    "targeted_recheck_after_add": "cargo-allow.report.v1",
+    "list_wide_projection": "cargo-allow.list.v1",
+    "clean_repo_init_audit_check": "cargo-allow.report.v1",
 }
 EXPECTED_SOURCE_NEGATIVES = {
     "omitted_journey_step_cannot_claim_passed": "OmittedStep",
@@ -53,11 +57,7 @@ EXPECTED_SOURCE_NEGATIVES = {
     "optional_profile_without_packaged_assets": "NotProven",
 }
 EXPECTED_ARTIFACT_SCHEMAS = {
-    "cargo-allow.doctor.v1",
-    "cargo-allow.report.v1",
-    "cargo-allow.list.v1",
-    "cargo-allow.refresh.v1",
-    "cargo-allow.prune.v1",
+    schema_id for schema_id in EXPECTED_JOURNEY_STEPS.values() if schema_id is not None
 }
 
 
@@ -192,16 +192,17 @@ def negative_map(receipt: dict[str, Any], path: str) -> dict[str, dict[str, Any]
 
 def validate_steps(journey: dict[str, Any]) -> None:
     expected = journey.get("steps_expected", [])
-    if len(set(expected)) != len(expected) or not set(EXPECTED_JOURNEY_STEPS).issubset(expected):
-        fail("journey expected steps are duplicate or incomplete")
+    canonical = list(EXPECTED_JOURNEY_STEPS)
+    if expected != canonical:
+        fail("journey expected steps are missing, extra, or out of order")
     executed = {}
     for step in journey.get("steps_executed", []):
         identifier = step.get("id")
         if identifier in executed or type(step.get("exit_code")) is not int or step["exit_code"] != 0:
             fail("journey executed steps are duplicate or failed")
         executed[identifier] = step
-    if not set(expected).issubset(executed):
-        fail("journey omitted an expected executed step")
+    if [identifier for identifier in executed if identifier in EXPECTED_JOURNEY_STEPS] != canonical:
+        fail("journey required executed steps are missing or out of order")
     for identifier, schema_id in EXPECTED_JOURNEY_STEPS.items():
         if executed[identifier].get("artifact_schema_id") != schema_id:
             fail(f"journey step {identifier} has the wrong artifact schema")
