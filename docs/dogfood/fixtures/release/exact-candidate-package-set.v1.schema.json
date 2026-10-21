@@ -137,8 +137,9 @@
     "install": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["method", "version_output", "exit_code"],
+      "required": ["method", "version_output", "exit_code", "binary_sha256"],
       "properties": {
+        "binary_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "method": {
           "type": "string",
           "enum": [

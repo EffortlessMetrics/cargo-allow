@@ -72,9 +72,13 @@
         "package_set_receipt_sha256",
         "journey_receipt_sha256",
         "candidate_fixture_sha256",
+        "candidate_topology_sha256",
+        "installed_binary_sha256",
         "crate_order"
       ],
       "properties": {
+        "candidate_topology_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "installed_binary_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "package_set_schema_id": {
           "const": "cargo-allow.exact-candidate-package-set.v1"
         },
@@ -107,8 +111,7 @@
         "method",
         "version_output",
         "source_checkout_denied",
-        "source_hidden_journey_passed",
-        "no_undeclared_source_reads",
+        "observed_source_fallback_paths_hidden",
         "path_redacted"
       ],
       "properties": {
@@ -117,8 +120,7 @@
         },
         "version_output": { "type": "string", "minLength": 1 },
         "source_checkout_denied": { "const": true },
-        "source_hidden_journey_passed": { "const": true },
-        "no_undeclared_source_reads": { "const": true },
+        "observed_source_fallback_paths_hidden": { "const": true },
         "path_redacted": { "const": true }
       }
     },

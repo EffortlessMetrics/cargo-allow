@@ -187,10 +187,16 @@ bash scripts/exact-candidate-install-journey.sh
 
 It emits `target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json`
 (`cargo-allow.exact-candidate-install-journey.v1`). The receipt carries the
-SHA-256 digests of the package-set receipt, journey receipt, and canonical
-candidate fixture; it requires source-checkout denial, sibling-mismatch
-negatives, a finding/rollback path, and cleanup of the temporary consumer and
-journey artifacts. It proves a pre-publication exact-candidate journey only;
+SHA-256 digests of the package-set receipt, retained source journey receipt,
+installed binary, canonical candidate fixture, and selected topology. It binds
+exact candidate heads and ordered package/version identities, requires complete
+journey steps and negative controls, and publishes `Passed` only after owned
+cleanup and cross-validation succeed. The source receipt remains beside the
+final receipt and both are uploaded by CI. Pre-existing output/consumer paths
+and cleanup refusals are preserved; a failed run must use a fresh output path.
+Source hiding proves only the observed fallback paths (`crates/cargo-allow/src`
+and `docs/templates`) were hidden during the ordinary scan, not universal read
+tracing. It proves a pre-publication exact-candidate journey only;
 it does not publish, tag, or install from a registry.
 
 The exact installed upgrade/rollback slice extends that proof across the

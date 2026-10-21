@@ -166,31 +166,34 @@ templates_stash="${work_dir}/stashed-docs-templates"
 restore_source_tree() {
   if [[ -d "${src_stash}" ]]; then
     [[ ! -e "${src_path}" ]] || fail "refusing to overwrite existing source tree during restore"
-    python3 "${lifecycle}" restore --stash "${src_stash}" --destination "${src_path}"
+    python3 "${lifecycle}" restore --stash "${src_stash}" --destination "${src_path}" || return $?
   fi
   if [[ -d "${templates_stash}" ]]; then
     [[ ! -e "${templates_path}" ]] || fail "refusing to overwrite existing templates during restore"
-    python3 "${lifecycle}" restore --stash "${templates_stash}" --destination "${templates_path}"
-  fi
-}
-
-# The lifecycle remove refuses symlink-unsafe platforms (Windows without
-# symlink privilege). Fall back to a direct removal of the journey-owned
-# temporary directory; other removal failures still propagate.
-lifecycle_remove_tolerant() {
-  local out
-  if ! out="$(python3 "${lifecycle}" remove --root "$1" --path "$2" --purpose "$3" --token "$4" 2>&1)"; then
-    case "${out}" in
-      *symlink-safe*) rm -rf "${2}" ;;
-      *) printf '%s\n' "${out}" >&2; return 1 ;;
-    esac
+    python3 "${lifecycle}" restore --stash "${templates_stash}" --destination "${templates_path}" || return $?
   fi
 }
 
 cleanup() {
-  restore_source_tree
-  lifecycle_remove_tolerant "${consumer_parent}" "${consumer_dir}" source-candidate-consumer "${consumer_token}"
-  lifecycle_remove_tolerant "${source_parent}" "${work_dir}" source-candidate-smoke "${work_token}"
+  local operation_status=$?
+  local cleanup_status=0
+  trap - EXIT
+  if restore_source_tree; then
+    if python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
+      --purpose source-candidate-consumer --token "${consumer_token}"; then
+      python3 "${lifecycle}" remove --root "${source_parent}" --path "${work_dir}" \
+        --purpose source-candidate-smoke --token "${work_token}" || cleanup_status=$?
+    else
+      cleanup_status=$?
+    fi
+  else
+    cleanup_status=$?
+  fi
+  if [[ "${cleanup_status}" -ne 0 ]]; then
+    printf 'source-candidate-smoke: cleanup refused; retaining owned paths for diagnosis\n' >&2
+    if [[ "${operation_status}" -eq 0 ]]; then operation_status="${cleanup_status}"; fi
+  fi
+  exit "${operation_status}"
 }
 trap cleanup EXIT
 
@@ -243,6 +246,7 @@ else
     || fail "expected installed binary at ${install_root}/bin/cargo-allow(.exe)"
 fi
 
+binary_sha256="$(python3 -c 'import hashlib,sys; from pathlib import Path; print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())' "${cargo_bin}" | tr -d '\r')"
 log "cargo-allow --version"
 version_output="$("${cargo_bin}" --version | tr -d '\r')"
 printf '%s\n' "${version_output}"
@@ -1218,6 +1222,7 @@ INSTALL_METHOD="${install_method}" \
 OS_NAME="${os_name}" \
 ARCH_NAME="${arch_name}" \
 VERSION_OUTPUT="${version_output}" \
+BINARY_PATH="${cargo_bin}" BINARY_SHA256="${binary_sha256}" \
 STEP_VERSION_EXIT="${step_version_exit}" \
 STEP_DOCTOR_EXIT="${step_doctor_exit}" \
 STEP_AUDIT_EXIT="${step_audit_exit}" \
@@ -1235,8 +1240,13 @@ STEP_LIST_WIDE_EXIT="${step_list_wide_exit}" \
 STEP_CLEAN_REPO_EXIT="${step_clean_repo_exit}" \
 NEGATIVES_JSON="${negatives_json}" \
 python3 <<'PY'
+import hashlib
 import json
 import os
+from pathlib import Path
+
+if hashlib.sha256(Path(os.environ["BINARY_PATH"]).read_bytes()).hexdigest() != os.environ["BINARY_SHA256"]:
+    raise SystemExit("installed binary changed during the source journey")
 
 def code(name: str) -> int:
     return int(os.environ[name])
@@ -1368,6 +1378,7 @@ receipt = {
         "network_posture": "not_required_for_core_journey",
     },
     "installed_binary": {
+        "binary_sha256": os.environ["BINARY_SHA256"],
         "version_output": os.environ["VERSION_OUTPUT"],
         "path_redacted": True,
     },

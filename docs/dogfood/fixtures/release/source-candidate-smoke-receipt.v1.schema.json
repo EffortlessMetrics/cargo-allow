@@ -86,8 +86,9 @@
     "installed_binary": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["version_output"],
+      "required": ["version_output", "binary_sha256"],
       "properties": {
+        "binary_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "version_output": { "type": "string", "minLength": 1 },
         "path_redacted": { "type": "boolean" }
       }

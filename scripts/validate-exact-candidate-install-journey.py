@@ -12,8 +12,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
+import tempfile
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -25,8 +27,30 @@ EXPECTED_NEGATIVES = {
     "older_internal_package_version": "InternalVersionConflict",
 }
 EXPECTED_JOURNEY_STEPS = {
-    "audit_with_finding",
-    "policy_rollback_after_prune",
+    "version": None,
+    "doctor_no_policy": "cargo-allow.doctor.v1",
+    "audit_with_finding": "cargo-allow.report.v1",
+    "bootstrap_propose_write": None,
+    "check_no_new_pass": "cargo-allow.report.v1",
+    "list_explain_worklist": "cargo-allow.list.v1",
+    "refresh_location_drift_preview_write": "cargo-allow.refresh.v1",
+    "diff_against_exact_base": "cargo-allow.report.v1",
+    "prune_stale_preview_write": "cargo-allow.prune.v1",
+    "final_check_no_new": "cargo-allow.report.v1",
+    "policy_rollback_after_prune": "cargo-allow.list.v1",
+}
+EXPECTED_SOURCE_NEGATIVES = {
+    "omitted_journey_step_cannot_claim_passed": "OmittedStep",
+    "prune_preview_apply_subject_agree": "PreviewApplyDisagree",
+    "refresh_preview_apply_subject_agree": "PreviewApplyDisagree",
+    "malformed_smoke_receipt_cannot_claim_passed": "MalformedArtifact",
+    "post_install_source_hidden_ordinary_scan": "CheckoutIsolated",
+    "missing_asset_not_satisfied_by_source_checkout": "MissingAsset",
+    "wrong_installed_binary_version": "StaleCandidate",
+    "ordinary_scan_does_not_require_network": "NetworkIsolated",
+    "unexpected_network_requirement_during_ordinary_scan": "NetworkRequired",
+    "failed_policy_rollback_after_prune": "RecoveryFailed",
+    "optional_profile_without_packaged_assets": "NotProven",
 }
 EXPECTED_ARTIFACT_SCHEMAS = {
     "cargo-allow.doctor.v1",
@@ -64,7 +88,10 @@ def schema_type(value: Any, expected: str) -> bool:
 
 
 def validate_schema(value: Any, schema: dict[str, Any], path: str = "$") -> None:
-    if "const" in schema and value != schema["const"]:
+    if "const" in schema and (
+        value != schema["const"]
+        or isinstance(value, bool) != isinstance(schema["const"], bool)
+    ):
         fail(f"{path}: expected const {schema['const']!r}, got {value!r}")
     if "enum" in schema and value not in schema["enum"]:
         fail(f"{path}: value {value!r} is not in enum")
@@ -120,9 +147,24 @@ def expected_crates(fixture_path: Path) -> list[str]:
     crates = fixture.get("crates")
     if not isinstance(crates, list) or not all(isinstance(item, str) for item in crates):
         fail(f"candidate fixture has no string crates list: {fixture_path}")
-    if not crates:
+    if not crates or len(set(crates)) != len(crates):
         fail(f"candidate fixture must contain at least one crate: {fixture_path}")
     return crates
+
+
+def expected_candidates(fixture_path: Path, topology_path: Path) -> list[tuple[str, str]]:
+    names = expected_crates(fixture_path)
+    topology = tomllib.loads(topology_path.read_text(encoding="utf-8"))
+    versions = {}
+    for row in topology.get("package", []):
+        name = row.get("cargo_package_name")
+        if name in names:
+            if name in versions or not isinstance(row.get("package_version"), str):
+                fail(f"ambiguous or missing topology version for {name}")
+            versions[name] = row["package_version"]
+    if set(versions) != set(names):
+        fail("topology does not identify every canonical candidate")
+    return [(name, versions[name]) for name in names]
 
 
 def negative_map(receipt: dict[str, Any], path: str) -> dict[str, dict[str, Any]]:
@@ -131,17 +173,43 @@ def negative_map(receipt: dict[str, Any], path: str) -> dict[str, dict[str, Any]
         fail(f"{path}.negative_controls must be an array")
     result: dict[str, dict[str, Any]] = {}
     for item in values:
-        if isinstance(item, dict) and isinstance(item.get("id"), str):
-            result[item["id"]] = item
+        if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+            fail(f"{path}.negative_controls has an invalid row")
+        if item["id"] in result:
+            fail(f"{path}.negative_controls has duplicate id {item['id']}")
+        result[item["id"]] = item
     return result
 
 
+def validate_steps(journey: dict[str, Any]) -> None:
+    expected = journey.get("steps_expected", [])
+    if len(set(expected)) != len(expected) or not set(EXPECTED_JOURNEY_STEPS).issubset(expected):
+        fail("journey expected steps are duplicate or incomplete")
+    executed = {}
+    for step in journey.get("steps_executed", []):
+        identifier = step.get("id")
+        if identifier in executed or type(step.get("exit_code")) is not int or step["exit_code"] != 0:
+            fail("journey executed steps are duplicate or failed")
+        executed[identifier] = step
+    if not set(expected).issubset(executed):
+        fail("journey omitted an expected executed step")
+    for identifier, schema_id in EXPECTED_JOURNEY_STEPS.items():
+        if executed[identifier].get("artifact_schema_id") != schema_id:
+            fail(f"journey step {identifier} has the wrong artifact schema")
+
+
+def validate_head(receipt: dict[str, Any]) -> None:
+    if not re.fullmatch(r"[0-9a-f]{40}", str(receipt.get("candidate", {}).get("git_head", ""))):
+        fail("candidate git head must be an exact commit")
+
+
 def validate_package_receipt(
-    receipt_path: Path, schema_path: Path, fixture_path: Path
+    receipt_path: Path, schema_path: Path, fixture_path: Path, topology_path: Path
 ) -> dict[str, Any]:
     receipt = load_json(receipt_path)
     schema = load_json(schema_path)
     validate_schema(receipt, schema, "package_receipt")
+    validate_head(receipt)
     crates = expected_crates(fixture_path)
     if receipt.get("result") != "Passed":
         fail("package receipt is not Passed")
@@ -153,6 +221,20 @@ def validate_package_receipt(
     rows = receipt.get("package_set", {}).get("crates")
     if not isinstance(rows, list) or len(rows) != len(crates):
         fail("package receipt does not contain all canonical crate rows")
+    identities = expected_candidates(fixture_path, topology_path)
+    if [(row["name"], row["version"]) for row in rows] != identities:
+        fail("package receipt identities do not match the selected topology")
+    for row in rows:
+        if row["crate_file"] != f"{row['name']}-{row['version']}.crate" or row["no_path_deps"] is not True:
+            fail("package row filename or path-dependency posture disagrees with identity")
+    if receipt["install"]["exit_code"] != 0:
+        fail("package install did not succeed")
+    if receipt["install"]["version_output"] != f"cargo-allow {dict(identities)['cargo-allow']}":
+        fail("package install version does not match the selected topology")
+    for key, expected in {"fresh_cargo_home": True, "install_from_extracted_package": True,
+                          "internal_deps_patched": False, "workspace_paths_absent": True}.items():
+        if receipt["isolation"].get(key) is not expected:
+            fail(f"package isolation.{key} disagrees with exact install")
     if receipt.get("isolation", {}).get("source_checkout_denied") is not True:
         fail("package receipt does not prove source-checkout denial")
     if receipt.get("install", {}).get("method") != "cargo_install_path_extracted_with_local_registry":
@@ -176,13 +258,23 @@ def validate_journey_receipt(receipt_path: Path, schema_path: Path) -> dict[str,
     validate_schema(receipt, schema, "journey_receipt")
     if receipt.get("result") != "Passed":
         fail("journey receipt is not Passed")
+    validate_head(receipt)
+    validate_steps(receipt["journey"])
+    negatives = negative_map(receipt, "source_receipt")
+    for identifier, classification in EXPECTED_SOURCE_NEGATIVES.items():
+        row = negatives.get(identifier, {})
+        if row.get("passed") is not True or row.get("result_class") != classification:
+            fail(f"source receipt missing successful negative {identifier}: {classification}")
     return receipt
 
 
 def validate_final_receipt(
     receipt_path: Path, schema_path: Path, fixture_path: Path
 ) -> dict[str, Any]:
-    receipt = validate_journey_receipt(receipt_path, schema_path)
+    receipt = load_json(receipt_path)
+    validate_schema(receipt, load_json(schema_path), "final_receipt")
+    if receipt.get("result") != "Passed":
+        fail("final receipt is not Passed")
     crates = expected_crates(fixture_path)
     candidate = receipt.get("candidate", {})
     provenance = receipt.get("provenance", {})
@@ -194,6 +286,8 @@ def validate_final_receipt(
         "package_set_receipt_sha256",
         "journey_receipt_sha256",
         "candidate_fixture_sha256",
+        "installed_binary_sha256",
+        "candidate_topology_sha256",
     ):
         if not re.fullmatch(r"[0-9a-f]{64}", str(provenance.get(key, ""))):
             fail(f"final receipt has invalid digest at provenance.{key}")
@@ -201,20 +295,17 @@ def validate_final_receipt(
         fail("final receipt fixture digest does not match the fixture on disk")
     if receipt.get("install", {}).get("source_checkout_denied") is not True:
         fail("final receipt does not prove source-checkout denial")
-    if receipt.get("install", {}).get("source_hidden_journey_passed") is not True:
-        fail("final receipt does not prove source-hidden journey")
-    if receipt.get("install", {}).get("no_undeclared_source_reads") is not True:
-        fail("final receipt does not prove no undeclared source reads")
+    if receipt.get("install", {}).get("observed_source_fallback_paths_hidden") is not True:
+        fail("final receipt does not prove observed fallback paths were hidden")
     journey = receipt.get("journey", {})
-    if not EXPECTED_JOURNEY_STEPS.issubset(set(journey.get("steps_expected", []))):
-        fail("final receipt omitted the finding or rollback journey step")
+    validate_steps(journey)
     artifact_ids = set(journey.get("artifact_schema_ids", []))
     if not EXPECTED_ARTIFACT_SCHEMAS.issubset(artifact_ids):
         fail("final receipt omitted a validated journey artifact schema")
     negatives = negative_map(receipt, "final_receipt")
     required_final_negatives = {
         "source_checkout_denied_during_exact_install": "CheckoutIsolated",
-        "source_checkout_read_after_install_rejected": "CheckoutIsolated",
+        "observed_source_fallback_paths_hidden": "CheckoutIsolated",
         "missing_candidate_sibling_rejected": "PackageMissing",
         "wrong_candidate_sibling_version_rejected": "InternalVersionConflict",
     }
@@ -236,20 +327,141 @@ def validate_final_receipt(
     return receipt
 
 
+def validate_binding(package: dict[str, Any], source: dict[str, Any], final: dict[str, Any],
+                     args: argparse.Namespace) -> None:
+    if load_json(args.package_receipt) != package or load_json(args.journey_receipt) != source:
+        fail("input receipt changed after validation")
+    for label, receipt in (("package", package), ("source", source), ("final", final)):
+        if receipt["candidate"]["git_head"] != args.current_head:
+            fail(f"{label} candidate head does not match the requested head")
+        if receipt["candidate"]["workspace_version"] != package["candidate"]["workspace_version"]:
+            fail(f"{label} candidate workspace version disagrees with package")
+    if source["candidate"]["install_method"] != "prebuilt_override":
+        fail("source journey did not use the supplied installed binary")
+    digest = sha256_file(args.binary)
+    if digest != package["install"]["binary_sha256"] or digest != source["installed_binary"]["binary_sha256"]:
+        fail("actual installed binary bytes disagree with package/source receipts")
+    if source["installed_binary"]["version_output"] != package["install"]["version_output"]:
+        fail("package/source installed versions disagree")
+    if final["install"]["version_output"] != source["installed_binary"]["version_output"]:
+        fail("final/source installed versions disagree")
+    for key, expected in {
+        "package_set_receipt_sha256": sha256_file(args.package_receipt),
+        "journey_receipt_sha256": sha256_file(args.journey_receipt),
+        "candidate_fixture_sha256": sha256_file(args.fixture),
+        "candidate_topology_sha256": sha256_file(args.topology),
+        "installed_binary_sha256": digest,
+    }.items():
+        if final["provenance"][key] != expected:
+            fail(f"final receipt {key} does not match the actual input")
+    for key in ("steps_expected", "steps_executed"):
+        if final["journey"][key] != source["journey"][key]:
+            fail(f"final/source journey {key} disagree")
+    schemas = sorted({row["artifact_schema_id"] for row in source["journey"]["steps_executed"]
+                      if row.get("artifact_schema_id")})
+    if final["journey"]["artifact_schema_ids"] != schemas:
+        fail("final/source journey artifact schemas disagree")
+
+
+def assemble_receipt(package: dict[str, Any], source: dict[str, Any],
+                     args: argparse.Namespace) -> dict[str, Any]:
+    """Build a candidate in memory; no Passed output is visible before validation."""
+    return {
+        "schema_version": 1,
+        "schema_id": "cargo-allow.exact-candidate-install-journey.v1",
+        "tool": "cargo-allow",
+        "result": "Passed",
+        "claim_boundary": [
+            "canonical_thirteen_crate_candidate", "isolated_exact_candidate_install",
+            "source_checkout_denied_during_install",
+            "observed_source_fallback_paths_hidden_for_ordinary_scan",
+            "digest_bound_package_source_and_binary_evidence",
+            "first_hour_finding_repair_and_policy_rollback",
+            "temporary_consumer_and_journey_state_cleanup", "not_published_or_registry_release",
+        ],
+        "candidate": {**package["candidate"], "crate_count": len(package["package_set"]["order"])},
+        "provenance": {
+            "package_set_schema_id": package["schema_id"],
+            "journey_schema_id": source["schema_id"],
+            "package_set_receipt_sha256": sha256_file(args.package_receipt),
+            "journey_receipt_sha256": sha256_file(args.journey_receipt),
+            "candidate_fixture_sha256": sha256_file(args.fixture),
+            "candidate_topology_sha256": sha256_file(args.topology),
+            "installed_binary_sha256": sha256_file(args.binary),
+            "crate_order": package["package_set"]["order"],
+        },
+        "install": {
+            "method": package["install"]["method"],
+            "version_output": source["installed_binary"]["version_output"],
+            "source_checkout_denied": True,
+            "observed_source_fallback_paths_hidden": True,
+            "path_redacted": True,
+        },
+        "journey": {
+            "finding_step": "audit_with_finding",
+            "repair_or_rollback_step": "policy_rollback_after_prune",
+            "artifact_schema_ids": sorted({row["artifact_schema_id"] for row in source["journey"]["steps_executed"]
+                                           if row.get("artifact_schema_id")}),
+            "steps_expected": source["journey"]["steps_expected"],
+            "steps_executed": source["journey"]["steps_executed"],
+        },
+        "negative_controls": [
+            {"id": identifier, "result_class": classification, "passed": True}
+            for identifier, classification in (
+                ("source_checkout_denied_during_exact_install", "CheckoutIsolated"),
+                ("observed_source_fallback_paths_hidden", "CheckoutIsolated"),
+                ("missing_candidate_sibling_rejected", "PackageMissing"),
+                ("wrong_candidate_sibling_version_rejected", "InternalVersionConflict"),
+            )
+        ],
+        "cleanup": {
+            "temporary_consumer_removed": True, "temporary_config_removed": True,
+            "journey_artifacts_removed": True, "durable_exact_candidate_install_preserved": True,
+        },
+        "limitations": [
+            "observed_source_fallback_paths_only_not_universal_read_tracing",
+            "package_fetch_warm_may_use_crates_io_before_offline_install",
+            "hosted_package_smoke_is_the_primary_linux_evidence", "no_publication_tagging_or_registry_release",
+        ],
+    }
+
+
+def publish_receipt(package: dict[str, Any], source: dict[str, Any], args: argparse.Namespace) -> None:
+    if args.receipt.exists():
+        fail("refusing to overwrite an existing final receipt")
+    final = assemble_receipt(package, source, args)
+    validate_binding(package, source, final, args)
+    pending = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=args.receipt.parent,
+                                         prefix=".pending-receipt-", delete=False) as handle:
+            pending = Path(handle.name)
+            json.dump(final, handle, indent=2)
+            handle.write("\n")
+        validate_final_receipt(pending, args.schema, args.fixture)
+        os.replace(pending, args.receipt)
+    finally:
+        if pending is not None:
+            pending.unlink(missing_ok=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("package", "source", "journey", "final"))
     parser.add_argument("--receipt", type=Path, required=True)
     parser.add_argument("--schema", type=Path, required=True)
     parser.add_argument("--fixture", type=Path, required=True)
+    parser.add_argument("--topology", type=Path, default=Path(__file__).resolve().parent.parent / "policy/product-package-topology-v2.toml")
     parser.add_argument("--package-receipt", type=Path)
     parser.add_argument("--package-schema", type=Path)
     parser.add_argument("--journey-receipt", type=Path)
     parser.add_argument("--journey-schema", type=Path)
+    parser.add_argument("--binary", type=Path)
+    parser.add_argument("--current-head")
     args = parser.parse_args()
 
     if args.mode == "package":
-        validate_package_receipt(args.receipt, args.schema, args.fixture)
+        validate_package_receipt(args.receipt, args.schema, args.fixture, args.topology)
         print(f"validated exact candidate package receipt: {args.receipt}")
         return 0
 
@@ -260,7 +472,7 @@ def main() -> int:
 
     if args.mode == "final":
         validate_final_receipt(args.receipt, args.schema, args.fixture)
-        print(f"validated final exact candidate receipt: {args.receipt}")
+        print(f"validated final receipt structure only (no input binding): {args.receipt}")
         return 0
 
     if args.package_receipt is None or args.package_schema is None:
@@ -268,20 +480,12 @@ def main() -> int:
     if args.journey_receipt is None or args.journey_schema is None:
         fail("journey mode requires --journey-receipt and --journey-schema")
 
-    package = validate_package_receipt(args.package_receipt, args.package_schema, args.fixture)
+    if args.binary is None or args.current_head is None:
+        fail("cross-receipt validation requires --binary and --current-head")
+    package = validate_package_receipt(args.package_receipt, args.package_schema, args.fixture, args.topology)
     journey = validate_journey_receipt(args.journey_receipt, args.journey_schema)
     final = validate_final_receipt(args.receipt, args.schema, args.fixture)
-    package_digest = sha256_file(args.package_receipt)
-    journey_digest = sha256_file(args.journey_receipt)
-    provenance = final["provenance"]
-    if provenance.get("package_set_receipt_sha256") != package_digest:
-        fail("final receipt package-set digest does not match input receipt")
-    if provenance.get("journey_receipt_sha256") != journey_digest:
-        fail("final receipt journey digest does not match input receipt")
-    if final["candidate"]["workspace_version"] != package["candidate"]["workspace_version"]:
-        fail("final/package workspace versions disagree")
-    if journey["candidate"]["workspace_version"] != final["candidate"]["workspace_version"]:
-        fail("final/journey workspace versions disagree")
+    validate_binding(package, journey, final, args)
     print(f"validated exact candidate install journey receipt: {args.receipt}")
     return 0
 

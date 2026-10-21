@@ -16,7 +16,7 @@
   ],
   "candidate": {
     "workspace_version": "0.1.10",
-    "git_head": null,
+    "git_head": "0000000000000000000000000000000000000000",
     "package_set_provenance": "workspace_path_install_after_optional_package_gate",
     "install_method": "cargo_install_path"
   },
@@ -28,6 +28,7 @@
     "network_posture": "not_required_for_core_journey"
   },
   "installed_binary": {
+    "binary_sha256": "9a2b7ce54e17aaba0e2ee0a504f44b2d7321c15ad844b214c0a75ac7b88c5fbb",
     "version_output": "cargo-allow 0.1.10",
     "path_redacted": true
   },
