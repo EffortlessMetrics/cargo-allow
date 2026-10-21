@@ -25,3 +25,9 @@ allow_ids = ["allow-4643-worklist-page-tests"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:ef319b1cd12cb687c44e3c67e3875fef42892e6aba1d0fe0f89511d51710392b"
 reason = "In-memory falsifiers reject coverage omissions, substituted bytes, changed source/date, invalid bounds and incomplete routing."
+
+[[records]]
+allow_ids = ["allow-4643-worklist-page-review"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b700557f6ffff1a717994f99f74efc09c75c7096f5b1a0be85cd735c857f843b"
+reason = "Retain the exact-pair independent review disposition and historical blockers; source fixes require fresh review and hosted qualification before readiness."

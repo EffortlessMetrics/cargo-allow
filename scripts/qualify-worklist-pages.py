@@ -138,7 +138,8 @@ def validate_coverage(raw, read_member, ceiling=60000):
     keys(before, "head parent tracked_sha256 policy_sha256 binary_sha256 utc_day")
     require(encoded(before) == encoded(after), "source, binary or UTC date changed during coverage")
     require(re.fullmatch(r"[0-9a-f]{40}", before["head"]) is not None, "invalid source head")
-    require(re.fullmatch(r"[0-9a-f]{40}", before["parent"]) is not None, "invalid source parent")
+    require(before["parent"] is None or re.fullmatch(r"[0-9a-f]{40}", before["parent"]) is not None,
+            "invalid source parent")
     for field in ("tracked_sha256", "policy_sha256", "binary_sha256"):
         require(re.fullmatch(r"[0-9a-f]{64}", before[field]) is not None, "invalid source digest")
     require(datetime.strptime(before["utc_day"], "%Y-%m-%d").date().isoformat() == before["utc_day"], "invalid UTC day")
@@ -233,7 +234,10 @@ def snapshot(root, binary, env):
         path = root / os.fsdecode(name)
         require(not path.is_symlink() and path.is_file(), "tracked input is missing or a symlink")
         hashed.update(name + b"\0" + hashlib.sha256(path.read_bytes()).digest())
-    return {"head": git("rev-parse", "HEAD").decode().strip(), "parent": git("rev-parse", "HEAD^").decode().strip(),
+    # Root and depth-one ordinary checkouts have no available parent. The
+    # agent-loop consumer separately requires its real mutation parent.
+    ancestry = git("rev-list", "--parents", "-n", "1", "HEAD").decode().split()
+    return {"head": ancestry[0], "parent": ancestry[1] if len(ancestry) > 1 else None,
             "tracked_sha256": hashed.hexdigest(),
             "policy_sha256": digest((root / "policy/allow.toml").read_bytes()),
             "binary_sha256": digest(binary.read_bytes()),

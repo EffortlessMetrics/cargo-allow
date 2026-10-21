@@ -74,6 +74,30 @@ def fixture(total=693, probe=650):
     return record, files
 
 
+def operator_fixture(name, elapsed=1):
+    """Synthetic retained inputs shared with the actual CI consumer fixture."""
+    assert name in ("worklist", "agent_loop_worklist")
+    assert type(elapsed) is int and 0 <= elapsed <= 60000
+    agent = name == "agent_loop_worklist"
+    record, files = fixture(26, 25 if agent else None)
+    for source in (record["source_before"], record["source_after"]):
+        source.update(head=("b" if agent else "a") * 40, parent="a" * 40, binary_sha256="0" * 64)
+    for row in [record["full"], *record["pages"]]:
+        row["elapsed_ms"] = 0
+    record["pages"][record["routing_pages"] - 1]["elapsed_ms"] = elapsed
+    record.update(sample_elapsed_ms=elapsed, traversal_elapsed_ms=elapsed, qualification_elapsed_ms=elapsed)
+    files["coverage.json"] = pages.encoded(record)
+    selected = record["sample_page"]
+    prefix = f"artifacts/{name}-pages/"
+    sample = {"name": name, "phase": "agent_loop" if agent else "targeted", "cache_mode": "not_applicable",
+              "status": "passed", "elapsed_ms": elapsed,
+              "argv": ["qualify-worklist-pages", "--limit", "25", "--routing-probe", pages.PROBE if agent else "none"],
+              "artifact": {"path": prefix + selected, "sha256": pages.digest(files[selected])},
+              "semantic_artifact": {"path": prefix + "coverage.json", "sha256": pages.digest(files["coverage.json"])},
+              "payload_bytes": len(files[selected]), "semantic_payload_bytes": len(files["coverage.json"])}
+    return sample, {prefix + path: data for path, data in files.items()}
+
+
 class CoverageTests(unittest.TestCase):
     def admit(self, record, files):
         return pages.validate_coverage(pages.encoded(record), files.__getitem__)
@@ -89,6 +113,26 @@ class CoverageTests(unittest.TestCase):
         for size in (0, 1, 25, 26, 50):
             with self.subTest(size=size):
                 self.admit(*fixture(size, None))
+
+    def test_shared_operator_fixtures_and_unavailable_parent(self):
+        for name in ("worklist", "agent_loop_worklist"):
+            for elapsed in (0, 1, 60000):
+                with self.subTest(name=name, elapsed=elapsed):
+                    sample, files = operator_fixture(name, elapsed)
+                    root = MemoryPath(files)
+                    pages.validate_sample(sample, root, 60000, "0" * 64, "a" * 40)
+                    path = sample["semantic_artifact"]["path"]
+                    record = pages.decode(files[path])
+                    for source in (record["source_before"], record["source_after"]):
+                        source["parent"] = None
+                    files[path] = pages.encoded(record)
+                    sample["semantic_artifact"]["sha256"] = pages.digest(files[path])
+                    sample["semantic_payload_bytes"] = len(files[path])
+                    if name == "worklist":
+                        pages.validate_sample(sample, root, 60000, "0" * 64, "a" * 40)
+                    else:
+                        with self.assertRaisesRegex(ValueError, "source commit drift"):
+                            pages.validate_sample(sample, root, 60000, "0" * 64, "a" * 40)
 
     def test_windows_report_paths_preserve_actual_command_spelling(self):
         for native, report in ((r"C:\repo", "C:/repo"), (r"\\?\C:\repo", "C:/repo"),

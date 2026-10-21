@@ -130,7 +130,7 @@
           "pattern": "^[0-9a-f]{40}$"
         },
         "parent": {
-          "type": "string",
+          "type": ["string", "null"],
           "pattern": "^[0-9a-f]{40}$"
         },
         "tracked_sha256": {

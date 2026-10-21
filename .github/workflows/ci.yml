@@ -609,19 +609,6 @@ jobs:
                   )
 
           ceiling = receipt["budget"]["ceiling_ms"]
-          # Coverage admission recursively rehashes the full population and
-          # every actual page; companion existence alone proves nothing.
-          import importlib.util
-          spec = importlib.util.spec_from_file_location("worklist_pages", "scripts/qualify-worklist-pages.py")
-          worklist_pages = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(worklist_pages)
-          for name in ("worklist", "agent_loop_worklist"):
-              rows = [sample for sample in samples if sample["name"] == name]
-              assert len(rows) == 1, f"expected one {name} sample"
-              worklist_pages.validate_sample(
-                  rows[0], artifact_root, ceiling, receipt["binary"]["sha256"],
-                  receipt["repository"]["commit"],
-              )
           assert all(
               is_nonnegative_integer(sample["elapsed_ms"]) and sample["elapsed_ms"] <= ceiling
               for sample in receipt["samples"]
@@ -659,6 +646,19 @@ jobs:
           assert overhead["overhead_ms"] == (
               overhead["wrapped_elapsed_ms"] - overhead["bare_elapsed_ms"]
           )
+          # Coverage admission recursively rehashes the full population and
+          # every actual page; companion existence alone proves nothing.
+          import importlib.util
+          spec = importlib.util.spec_from_file_location("worklist_pages", "scripts/qualify-worklist-pages.py")
+          worklist_pages = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(worklist_pages)
+          for name in ("worklist", "agent_loop_worklist"):
+              rows = [sample for sample in samples if sample["name"] == name]
+              assert len(rows) == 1, f"expected one {name} sample"
+              worklist_pages.validate_sample(
+                  rows[0], artifact_root, ceiling, receipt["binary"]["sha256"],
+                  receipt["repository"]["commit"],
+              )
           print(f"validated {len(samples)} operator-latency samples")
           PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
