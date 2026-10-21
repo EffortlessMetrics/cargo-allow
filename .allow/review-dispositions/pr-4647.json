@@ -6,42 +6,35 @@
   "base_ref": "main",
   "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
   "head_ref": "fix/consumed-index-checksum",
-  "head_sha": "d9082ba537c418e108f855db1b8cbc9505297737",
+  "head_sha": "43a8dc2fad77a2072e0d0ac377f1bd0f3911fcf0",
   "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
-  "reviewed_diff_digest": "sha256:v1:37c4adccb3555de4498e765e51bc767b849d8b4497a094325d17c366ac904426",
+  "reviewed_diff_digest": "sha256:v1:26b9d4a5651610ae6c66e913eda313a953e980d8cf6cc1fba7690517c2d4103c",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "Codex /root/receipt_review independently reviewed this exact pair without authoring or changing it. /root authored the source and retained record. Shared model family, prior context, workspace and GitHub account transport are disclosed; no independent human approval is claimed.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597377443"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597515527"
     }
   },
-  "claimed_verdict": "review_blocked",
-  "findings": [
-    {
-      "id": "BLK-CARGO-COLOR",
-      "severity": "blocking",
-      "owned_seam": "isolated-registry checksum control",
-      "source_path": "scripts/exact-candidate-index-checksum.py",
-      "source_line": 89,
-      "repair_route": "Explicitly disable color in both recorded Cargo commands and characterize forced parent color; obtain fresh affected exact-head review and hosted qualification.",
-      "claim_boundary": "Actual retained positive exit0 and negative exit101 for allow-core0.2.0 were rejected by the unchanged oracle because inherited forced color decorates the error prefix. This review names historical d908; later source edits require fresh review."
-    }
-  ],
+  "claimed_verdict": "review_clean",
+  "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597232284",
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597377443",
-    "Schema title, explicit supporting-contract classification and index documentation repair accepted. No generic schema or source-ownership guard weakened.",
-    "Artifact12333895194 SHA2565c9c7198108c3e2297d9592320eb40cccd28b12f250ae2d39c7bde28aab567e5 independently verified; selected allow-core0.2.0 index/al/lo/allow-core, positive0, negative101; negative.stderr SHA256f3809e93a3de15fae4ac957cfb8bee4df157b9f8a9a36cf576f418a1775ef57e contains an ANSI-colored checksum refusal.",
-    "Indented Cargo causes are a separate bounded parser-coverage gap; exact package/version equality must remain. Timeout is nonblocking robustness scope. Existing-output deletion would weaken evidence custody. No present symlink race witness was established in owned fresh directories.",
-    "The four exact-path admissions preserve all1157 original policy entries and801989 original bytes. d908 no-new and explicit-head required-change-note checks pass. Local Cargo, denied journey fixture/MSYS actions and original-checkout reads remain stopped."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597515527",
+    "Fresh independent affected review binds source/governance head 43a8dc2 to base/merge-base 40f6. Both actual recorded Cargo command paths now explicitly use --color never. The parser permits only leading horizontal whitespace and compares the complete quoted package/version; unrelated names, versions and zero/bool exits remain rejected. Eight in-memory tests passed; they do not establish real Cargo execution.",
+    "Historical 765bae1 control retained the exact allow-core 0.2.0 selected index mutation, unmutated exit 0 and mutated exit 101. Artifact 12333895194 and negative stderr hashes were independently verified; ANSI color caused the old refusal matcher to reject the real checksum error. This source repair is tied to that evidence, not an assumed old-row identity.",
+    "Prior schema title/registration/index defects remain repaired. Fifth official exact-path review-record admission and exact transition note reconcile. The original 801,989 policy bytes, all 1,157 entries, and the prior four scoped additions are unchanged. No date extension, cap increase, broadened selector or fabricated admission.",
+    "Exact 43a8dc2 native no-new/new0 and explicit-head required-change-note guards pass. The historical blocked/stale record was inspected honestly; this sole-disposition child now retains the clean source review and needs fresh metadata/current-pair validation.",
+    "Graphite forced-color and indented-cause concerns are addressed. Timeout remains a nonblocking robustness limitation, not a demonstrated false success. No current owned-directory symlink-race witness was established. Refusal to replace preexisting output preserves custody.",
+    "Actual current-head Cargo qualification and other hosted checks remain pending. Independent worklist prerequisite #4643 is implemented separately in PR #4648 and is not waived. PR #4642 remains frozen; no local Cargo, fixture/MSYS retry, original-checkout read, publication or cleanup release occurred.",
+    "The branch-protection required_status_checks configuration read returned 403 Resource not accessible by integration. That read is stopped; no equivalent alternate access or permission/protection change was attempted. Ordinary authorized PR/check inspection and server-enforced protected merge remain required.",
+    "Claim boundary: checksum target selection, unchanged-input checks, machine diagnostic identity and evidence retention. Source review does not prove runtime qualification, arbitrary concurrent filesystem safety, institutional independence or merge readiness."
   ],
   "required_ci": {
-    "owner": "Completion worker must repair current blockers, retain fresh independent source and sole-disposition child review, verify every applicable final-head check, settle worklist prerequisite #4643 without cap increase or finding suppression, then perform fresh protected-merge preflight. Failed/pending/skipped evidence is not waived.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39571646148/job/119128242984"
+    "owner": "Completion worker must independently review this sole-disposition child, verify native ancestor-bound review bootstrap and every applicable current-head check, integrate the independently reviewed worklist prerequisite without weakening either gate, then perform exact-pair protected-merge preflight and resulting-main guard. Failed, pending, stale, skipped or unavailable evidence is not waived. All custody holds remain.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39575263781"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4647",
-  "reviewed_at_utc": "2026-10-21T09:06:59Z"
+  "reviewed_at_utc": "2026-10-21T09:19:16Z"
 }
