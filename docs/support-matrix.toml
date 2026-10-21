@@ -85,10 +85,10 @@ evidence = "ci.yml job `test-core-platforms` runs the release set on windows-lat
 install_evidence = "release.yml `install-smoke` matrix includes windows-latest against the published crate on tag push"
 
 [[platform]]
-runner = "macos-14"
+runner = "macos-26"
 target = "aarch64-apple-darwin"
 tier = "ci_proven_bounded"
-evidence = "ci.yml job `test-core-platforms` runs the release set and semantic fixture on macos-14"
+evidence = "ci.yml job `test-core-platforms` runs the release set and semantic fixture on macos-26"
 note = "allow-rust persistent scan-cache fixture is excluded because the hosted runner exposes /var as /private/var."
 
 [[platform]]
@@ -192,7 +192,7 @@ release_tag = "v0.2.0"
 channel = "stable"
 github_prerelease = false
 identity_digest = "sha256:v1:bcdc6652a4f090df10bb8d5e251054b0c3767a05ec5172272a812627d8d28d02"
-selection_digest = "sha256:v1:e175c5da7aab215d335b42e054dfe46f98478a1511307e8ccde90f0502d94cd5"
+selection_digest = "sha256:v1:00906ac64c1e951a822ef0eef951983a94a8161d177d98c09c51d315e533a988"
 claim_boundary = "The machine-readable final-selection freeze for the 0.2.0 release proof denominator. It records which support, platform, channel, asset, sibling-product, pilot, and upgrade claims the final release makes and explicitly declines, bound to one typed release identity by recomputed digests. It is not a support policy, a channel-truth projection, installed-experience proof, or a publication authorization; unselected and not-proven rows narrow the release claims and never inherit success."
 
 [[final_selection.rows]]
@@ -230,7 +230,7 @@ dimension = "platform"
 subject = "aarch64-apple-darwin"
 disposition = "not_included"
 proof_owner = "ci.yml job `test-core-platforms` (bounded evidence only)"
-required_evidence = "bounded release-set suite on macos-14; bounded CI provenness is support evidence, never a selected final claim"
+required_evidence = "bounded release-set suite on macos-26; bounded CI provenness is support evidence, never a selected final claim"
 evidence_reference = ".github/workflows/ci.yml"
 claim_effect = "the final release makes no macOS ARM support claim; the platform remains outside the selected denominator"
 staleness_inputs = ["runner inventory in ci.yml"]
