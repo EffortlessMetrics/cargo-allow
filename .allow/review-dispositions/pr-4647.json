@@ -1,0 +1,47 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4647,
+  "base_ref": "main",
+  "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "head_ref": "fix/consumed-index-checksum",
+  "head_sha": "d9082ba537c418e108f855db1b8cbc9505297737",
+  "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "reviewed_diff_digest": "sha256:v1:37c4adccb3555de4498e765e51bc767b849d8b4497a094325d17c366ac904426",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Codex /root/receipt_review independently reviewed this exact pair without authoring or changing it. /root authored the source and retained record. Shared model family, prior context, workspace and GitHub account transport are disclosed; no independent human approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597377443"
+    }
+  },
+  "claimed_verdict": "review_blocked",
+  "findings": [
+    {
+      "id": "BLK-CARGO-COLOR",
+      "severity": "blocking",
+      "owned_seam": "isolated-registry checksum control",
+      "source_path": "scripts/exact-candidate-index-checksum.py",
+      "source_line": 89,
+      "repair_route": "Explicitly disable color in both recorded Cargo commands and characterize forced parent color; obtain fresh affected exact-head review and hosted qualification.",
+      "claim_boundary": "Actual retained positive exit0 and negative exit101 for allow-core0.2.0 were rejected by the unchanged oracle because inherited forced color decorates the error prefix. This review names historical d908; later source edits require fresh review."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597232284",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597377443",
+    "Schema title, explicit supporting-contract classification and index documentation repair accepted. No generic schema or source-ownership guard weakened.",
+    "Artifact12333895194 SHA2565c9c7198108c3e2297d9592320eb40cccd28b12f250ae2d39c7bde28aab567e5 independently verified; selected allow-core0.2.0 index/al/lo/allow-core, positive0, negative101; negative.stderr SHA256f3809e93a3de15fae4ac957cfb8bee4df157b9f8a9a36cf576f418a1775ef57e contains an ANSI-colored checksum refusal.",
+    "Indented Cargo causes are a separate bounded parser-coverage gap; exact package/version equality must remain. Timeout is nonblocking robustness scope. Existing-output deletion would weaken evidence custody. No present symlink race witness was established in owned fresh directories.",
+    "The four exact-path admissions preserve all1157 original policy entries and801989 original bytes. d908 no-new and explicit-head required-change-note checks pass. Local Cargo, denied journey fixture/MSYS actions and original-checkout reads remain stopped."
+  ],
+  "required_ci": {
+    "owner": "Completion worker must repair current blockers, retain fresh independent source and sole-disposition child review, verify every applicable final-head check, settle worklist prerequisite #4643 without cap increase or finding suppression, then perform fresh protected-merge preflight. Failed/pending/skipped evidence is not waived.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39571646148/job/119128242984"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4647",
+  "reviewed_at_utc": "2026-10-21T09:06:59Z"
+}

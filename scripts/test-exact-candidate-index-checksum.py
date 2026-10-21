@@ -4,8 +4,10 @@
 import copy
 import importlib.util
 import json
+import os
 from pathlib import Path
 import unittest
+from unittest.mock import patch
 
 SPEC = importlib.util.spec_from_file_location(
     "checksum", Path(__file__).with_name("exact-candidate-index-checksum.py")
@@ -110,6 +112,8 @@ class ConsumedChecksumTests(unittest.TestCase):
         message = "error: checksum for `allow-core v0.2.0` changed between lock files\n"
         self.assertTrue(checksum.checksum_refused(101, message, self.selected()))
         self.assertTrue(checksum.checksum_refused(101, "error: failed to verify the checksum of `allow-core v0.2.0`\n", self.selected()))
+        self.assertTrue(checksum.checksum_refused(101, "Caused by:\n  failed to verify the checksum of `allow-core v0.2.0`\n", self.selected()))
+        self.assertTrue(checksum.checksum_refused(101, "\tchecksum for `allow-core v0.2.0` changed between lock files\n", self.selected()))
         for status, stderr in ((0, message), (True, message), (1, "missing file /tmp/index-checksum-control"),
                                (101, message.replace("allow-core", "allow-core-other")),
                                (101, message.replace("allow-core", "other-allow-core")),
@@ -119,6 +123,15 @@ class ConsumedChecksumTests(unittest.TestCase):
                                (101, "error: unrelated failure")):
             with self.subTest(status=status, stderr=stderr):
                 self.assertFalse(checksum.checksum_refused(status, stderr, self.selected()))
+
+    def test_recorded_metadata_command_overrides_forced_parent_color(self):
+        with patch.dict(os.environ, {"CARGO_TERM_COLOR": "always"}):
+            argv = checksum.metadata_command(Path("candidate/Cargo.toml"), Path("registry"))
+        self.assertEqual(argv[:4], ["cargo", "--color", "never", "metadata"])
+        self.assertIn("--offline", argv)
+        self.assertIn("--locked", argv)
+        self.assertEqual(argv[argv.index("--manifest-path") + 1], str(Path("candidate/Cargo.toml")))
+        self.assertEqual(argv[-1], 'source.candidate-local-registry.local-registry="registry"')
 
 
 if __name__ == "__main__":

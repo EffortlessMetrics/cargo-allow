@@ -86,10 +86,19 @@ def mutate_index(files: dict[str, bytes], selected: dict, archive: bytes) -> tup
 
 def checksum_refused(exit_code: int, stderr: str, selected: dict) -> bool:
     # A path containing 'checksum' or an unrelated Cargo error is not the oracle.
-    refusal = re.search(r"(?im)^(?:error:\s*)?(?:checksum for |failed to verify the checksum of )`([^`\n]+)`", stderr)
+    refusal = re.search(r"(?im)^[ \t]*(?:error:[ \t]*)?(?:checksum for |failed to verify the checksum of )`([^`\n]+)`", stderr)
     identity = selected["package_name"] + " v" + selected["package_version"]
     return (type(exit_code) is int and exit_code != 0 and refusal is not None
             and refusal.group(1) == identity)
+
+
+def metadata_command(manifest: Path, registry: Path) -> list[str]:
+    # CI forces parent color. The recorded child command must explicitly keep
+    # machine-parsed diagnostics plain without relaxing package identity.
+    return ["cargo", "--color", "never", "metadata", "--format-version", "1", "--offline", "--locked",
+            "--manifest-path", str(manifest),
+            "--config", 'source.crates-io.replace-with="candidate-local-registry"',
+            "--config", "source.candidate-local-registry.local-registry=" + json.dumps(str(registry))]
 
 
 def registry_inputs(root: Path) -> dict[str, str]:
@@ -142,10 +151,7 @@ def main() -> int:
                 (registry / path).write_bytes(mutated)
             cargo_home = args.work_dir / (label + "-cargo-home")
             cargo_home.mkdir()
-            argv = ["cargo", "metadata", "--format-version", "1", "--offline", "--locked",
-                    "--manifest-path", str(args.manifest),
-                    "--config", 'source.crates-io.replace-with="candidate-local-registry"',
-                    "--config", "source.candidate-local-registry.local-registry=" + json.dumps(str(registry))]
+            argv = metadata_command(args.manifest, registry)
             environment = {**os.environ, "CARGO_HOME": str(cargo_home)}
             with (args.output / (label + ".stdout")).open("wb") as stdout, (args.output / (label + ".stderr")).open("wb") as stderr:
                 run = subprocess.run(argv, cwd=args.manifest.parent, env=environment, stdout=stdout, stderr=stderr, check=False)
