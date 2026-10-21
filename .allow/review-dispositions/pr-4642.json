@@ -6,28 +6,34 @@
   "base_ref": "main",
   "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
   "head_ref": "fix/exact-candidate-receipt-hardening",
-  "head_sha": "900a9dbf82d23fb27ed0776cf346ab418a85f32d",
+  "head_sha": "f5ef635bb0788046668c41cfa90a57a08d728039",
   "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
-  "reviewed_diff_digest": "sha256:v1:dc322ccf1a3a1d922721e41d5059eca927d149e983e1f256b73f1afea6e89512",
+  "reviewed_diff_digest": "sha256:v1:0e3d096ad31e5dac19f8df3088ce5191a5de062208ba62e27e814573a4fb9daa",
   "review_protocol": "review-current-head-gen1",
-  "actor_class": "same_maintainer",
-  "reviewer_identity": "Codex author retaining the pending qualification state. Historical source review was independently performed by /root/receipt_review, a nonauthor; the governance delta and failure-artifact upload repair still need fresh review.",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Codex /root/receipt_review independently reviewed the exact source/governance pair without authoring or repairing this PR. /root authored the source and this retained record. Shared model family, workspace, conversation context and GitHub account transport are disclosed; no independent human approval is claimed.",
   "independent_review": {
-    "not_proven": {
-      "reason": "Fresh review of the complete governance and artifact-retention head is pending. Prior source-only review at900a9db is not a verdict on subsequent changes."
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4642#pullrequestreview-5595951533"
     }
   },
-  "claimed_verdict": "partial",
+  "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "Initial source review found and independently verified repair of topology drift, Python boolean/numeric equality and duplicate JSON keys.",
-    "PR4642 CodeRabbit threadPRRT_kwDOSnyN3s6upl2R correctly identifies a missing retained-child source receipt upload path; repaired locally, awaiting exact-head verification."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4642#pullrequestreview-5595951533",
+    "Fresh review binds complete f5ef635 source/governance diff to base and merge-base 40f6. All 14 offline Python groups pass. Prior topology drift, boolean/numeric equality and duplicate-key defects were independently reproduced and repaired; fresh cleanup-time and validation-time mutation probes reject, with a valid control succeeding.",
+    "Four official exact-path admissions preserve all 1157 pre-existing entries and the 801989-byte baseline policy prefix. Actual why/plan/apply receipts retained; no broad allow, expiry extension, fabricated admission or policy weakening. The exact-head no-new guard and required-note diff both pass. Native policy CRLF preserved; command-local core.whitespace=cr-at-eol diff check passes.",
+    "CodeRabbit thread PRRT_kwDOSnyN3s6upl2R identified missing retained-child receipt artifact coverage. The added exact-candidate-source-journey.*/source-candidate-smoke.receipt.json glob matches the failed child layout, and the native thread is resolved. Quota-limited bot observations are not clean independent review evidence.",
+    "Current scanner artifact was built on GitHub-hosted Windows from 900a9db/tree b5932ce0e06d8d9762244022806f0868baf84cb5 in run 39556273941. Binary SHA256 42a8870f68fcc7785bc6a825e63628310adbe60730677db0e8715f0dd1f9bde6 and tracked Rust/Cargo/toolchain inputs verified. Actual rustc 1.99.1, not MSRV 1.95 proof. No local Cargo compilation. Existing installed scanner E0003 was a stale parser rejecting supported calendar_expiry_blocks_no_new, not malformed policy.",
+    "Hosted review-readiness check 119080602425 exposes the reviewed f5ef digest 0e3d096a. Local git diff --abbrev=8 reproduces it exactly; local automatic abbreviation 7 yields a different patch digest. This is an existing environment-sensitive adapter limitation, not a source change or fabricated identity.",
+    "Current CI run 39557291856 is not qualified. operator-latency job 119080849738 failed a real payload ceiling: worklist 1,195,286 B exceeds 524,288 B. All 693 rows bind unchanged base-policy entries; 689 rows on unchanged source paths alone compactly serialize 1,012,176 B. None of the four new admissions appears. Retained artifact 12326148156 supports the diagnosis. No threshold, policy or expiry waiver and no full exact-base rerun is claimed. Platform/package/UB observations were pending at source review.",
+    "Claim boundary: receipt identity/validation and owned-directory cleanup/publication ordering. Observed hidden source fallback paths are instrumented harness evidence, not universal read tracing. This clean source verdict does not prove full CI, release qualification, publication authority or retirement release."
   ],
   "required_ci": {
-    "owner": "Completion worker must finish current-source ledger and note qualification, obtain fresh exact-head independent review, verify all applicable terminal checks and resolve substantive feedback before Ready or protected merge.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39555932361"
+    "owner": "Completion worker must verify the sole-review-record child preserves the independently reviewed source, obtain independent metadata review, resolve the real operator-latency failure through an authorized supported route, verify all applicable exact-pair terminal checks and substantive feedback, then perform fresh Ready/protected-merge preflight and resulting-main guard. Failed, pending, stale, skipped or unavailable evidence is not waived. Original dirty source and recovery copies stay protected until explicit cleanup release.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39557291856"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4642",
-  "reviewed_at_utc": "2026-10-21T06:38:00Z"
+  "reviewed_at_utc": "2026-10-21T06:54:24.092881Z"
 }
