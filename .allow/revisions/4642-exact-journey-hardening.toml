@@ -1,0 +1,27 @@
+schema_version = 1
+
+# User-assigned completion of the residual PR3507 hardening on current main.
+# Fingerprints come from official plan/apply and enforcing diff run39555932361.
+[[records]]
+allow_ids = ["allow-3357-exact-journey-driver"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2ef32cce516015d421616a310f0ebcacf1d9b059a14487a33683bfa3c3d14e5f"
+reason = "Exact-file admission for the installed journey driver: validates receipt identities, retains source evidence, and publishes success only after owned cleanup. No publication authority."
+
+[[records]]
+allow_ids = ["allow-3357-exact-journey-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:defe1940bcae732712c3cfa36e57edd07a99cb63b4ee07558fb07721ae6a13dc"
+reason = "Exact-file admission for offline adversarial controls of receipt validation and cleanup refusal. Independent source review confirms the repaired false-success controls; installed qualification remains separately required."
+
+[[records]]
+allow_ids = ["allow-4642-change-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c18726eb836121bfeb7832f76be8023aad64c7647a7ab45fcabcb382dc0ec615"
+reason = "Exact-file admission for this revision record, retaining the four official transition fingerprints and authored rationale without broadening any existing allowance."
+
+[[records]]
+allow_ids = ["allow-4642-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a133668ad8f0e29a8cc44c85a1d2ba86e3d17e0868b71c64dc0b3308565606b1"
+reason = "Exact-file admission for the PR4642 review record. Its pending state remains partial until a fresh independent review is retained; this admission grants no review or merge approval."

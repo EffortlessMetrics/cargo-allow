@@ -1,0 +1,33 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4642,
+  "base_ref": "main",
+  "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "head_ref": "fix/exact-candidate-receipt-hardening",
+  "head_sha": "900a9dbf82d23fb27ed0776cf346ab418a85f32d",
+  "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "reviewed_diff_digest": "sha256:v1:dc322ccf1a3a1d922721e41d5059eca927d149e983e1f256b73f1afea6e89512",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "Codex author retaining the pending qualification state. Historical source review was independently performed by /root/receipt_review, a nonauthor; the governance delta and failure-artifact upload repair still need fresh review.",
+  "independent_review": {
+    "not_proven": {
+      "reason": "Fresh review of the complete governance and artifact-retention head is pending. Prior source-only review at900a9db is not a verdict on subsequent changes."
+    }
+  },
+  "claimed_verdict": "partial",
+  "findings": [],
+  "threads_inspected": [
+    "Initial source review found and independently verified repair of topology drift, Python boolean/numeric equality and duplicate JSON keys.",
+    "PR4642 CodeRabbit threadPRRT_kwDOSnyN3s6upl2R correctly identifies a missing retained-child source receipt upload path; repaired locally, awaiting exact-head verification."
+  ],
+  "required_ci": {
+    "owner": "Completion worker must finish current-source ledger and note qualification, obtain fresh exact-head independent review, verify all applicable terminal checks and resolve substantive feedback before Ready or protected merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39555932361"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4642",
+  "reviewed_at_utc": "2026-10-21T06:38:00Z"
+}
