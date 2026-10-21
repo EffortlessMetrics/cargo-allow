@@ -18,6 +18,7 @@ if ! command -v "${py}" >/dev/null 2>&1; then
 fi
 
 bash -n scripts/perf-budget-smoke.sh
+"${py}" -B scripts/test-qualify-worklist-pages.py
 "${py}" - <<'PY'
 import json
 import os
@@ -107,7 +108,8 @@ for marker in (
     "agent_loop_check",
     "cargo-allow.add-finding-plan.v1",
     "add-plan-application",
-    "new_unreceipted_finding",
+    "measure_worklist_pages",
+    "qualify-worklist-pages.py",
     "hooks_wrapped_check",
     "hooks_bare_check",
     "--mode explicit-tool-under-test",

@@ -168,6 +168,7 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "release-manifest-v2"
                 && name != "package-candidate-v2"
                 && name != "isolated-install-receipt-v2"
+                && name != "cargo-allow.worklist-page-coverage.v1"
                 && name != "exact-candidate-receipt-v2"
                 && name != "github-pr-check-v1"
                 && name != "rc-publication-incident-v1"

@@ -44,7 +44,9 @@ use worklist_evidence::work_items_from_evidence_diagnostics_with_source_tree_fil
 use worklist_federation::work_items_from_federation_divergences;
 #[cfg(test)]
 pub(crate) use worklist_item_kind::WORK_ITEM_KINDS;
+#[cfg(test)]
 use worklist_items::work_items_from_outcomes;
+use worklist_items::work_items_from_outcomes_at;
 #[cfg(test)]
 pub(crate) use worklist_priority::{DIFFICULTY_LEVELS, RISK_LEVELS};
 use worklist_queue::{
@@ -92,16 +94,12 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         EvidenceValidationMode::ReportOnly,
     )?;
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
-    let outcomes = evaluate(
-        &report_cfg,
-        &findings,
-        CheckMode::NoNew,
-        allow_core::SimpleDate::today_utc_approx(),
-    );
+    let today = allow_core::SimpleDate::today_utc_approx();
+    let outcomes = evaluate(&report_cfg, &findings, CheckMode::NoNew, today);
     let filters = worklist_filters(args);
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
-    let mut items = work_items_from_outcomes(&report_cfg, &findings, &outcomes);
+    let mut items = work_items_from_outcomes_at(&report_cfg, &findings, &outcomes, today);
     items.extend(work_items_from_policy_advisories(
         &report_cfg,
         &findings,

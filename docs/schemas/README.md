@@ -355,6 +355,7 @@ promote policy, authorize publication, or establish release readiness.
 - [migrate.schema.json](migrate.schema.json)
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
+- [cargo-allow.worklist-page-coverage.v1.schema.json](cargo-allow.worklist-page-coverage.v1.schema.json) supporting operator qualification companion binding all bounded pages to the complete unfiltered population (not a governed source-tree artifact)
 - [cadence.schema.json](cadence.schema.json)
 - [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status, the required `validation_result` verdict, plus, for non-Complete sets, the recorded `validation_gaps`)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
