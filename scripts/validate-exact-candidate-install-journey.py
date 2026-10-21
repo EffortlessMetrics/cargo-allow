@@ -66,8 +66,17 @@ def fail(message: str) -> None:
 
 
 def load_json(path: Path) -> dict[str, Any]:
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                fail(f"duplicate JSON property {key!r}: {path}")
+            result[key] = value
+        return result
+
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
+        value = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=unique_object,
+                           parse_constant=lambda value: fail(f"invalid JSON constant {value}: {path}"))
     except (OSError, json.JSONDecodeError) as error:
         fail(f"could not read JSON {path}: {error}")
     if not isinstance(value, dict):
@@ -329,8 +338,23 @@ def validate_final_receipt(
 
 def validate_binding(package: dict[str, Any], source: dict[str, Any], final: dict[str, Any],
                      args: argparse.Namespace) -> None:
-    if load_json(args.package_receipt) != package or load_json(args.journey_receipt) != source:
-        fail("input receipt changed after validation")
+    inputs = {
+        "package_set_receipt_sha256": args.package_receipt,
+        "journey_receipt_sha256": args.journey_receipt,
+        "candidate_fixture_sha256": args.fixture,
+        "candidate_topology_sha256": args.topology,
+        "installed_binary_sha256": args.binary,
+    }
+    digests = {key: sha256_file(path) for key, path in inputs.items()}
+    # Publication must validate the current files and topology, rather than
+    # attach their latest digests to objects validated before the journey ran.
+    current_package = validate_package_receipt(
+        args.package_receipt, args.package_schema, args.fixture, args.topology)
+    current_source = validate_journey_receipt(args.journey_receipt, args.journey_schema)
+    for current, previous in ((current_package, package), (current_source, source)):
+        # Python object equality equates JSON false with 0 (and true with 1).
+        if json.dumps(current, sort_keys=True) != json.dumps(previous, sort_keys=True):
+            fail("input receipt changed after validation")
     for label, receipt in (("package", package), ("source", source), ("final", final)):
         if receipt["candidate"]["git_head"] != args.current_head:
             fail(f"{label} candidate head does not match the requested head")
@@ -338,20 +362,14 @@ def validate_binding(package: dict[str, Any], source: dict[str, Any], final: dic
             fail(f"{label} candidate workspace version disagrees with package")
     if source["candidate"]["install_method"] != "prebuilt_override":
         fail("source journey did not use the supplied installed binary")
-    digest = sha256_file(args.binary)
+    digest = digests["installed_binary_sha256"]
     if digest != package["install"]["binary_sha256"] or digest != source["installed_binary"]["binary_sha256"]:
         fail("actual installed binary bytes disagree with package/source receipts")
     if source["installed_binary"]["version_output"] != package["install"]["version_output"]:
         fail("package/source installed versions disagree")
     if final["install"]["version_output"] != source["installed_binary"]["version_output"]:
         fail("final/source installed versions disagree")
-    for key, expected in {
-        "package_set_receipt_sha256": sha256_file(args.package_receipt),
-        "journey_receipt_sha256": sha256_file(args.journey_receipt),
-        "candidate_fixture_sha256": sha256_file(args.fixture),
-        "candidate_topology_sha256": sha256_file(args.topology),
-        "installed_binary_sha256": digest,
-    }.items():
+    for key, expected in digests.items():
         if final["provenance"][key] != expected:
             fail(f"final receipt {key} does not match the actual input")
     for key in ("steps_expected", "steps_executed"):
@@ -361,6 +379,8 @@ def validate_binding(package: dict[str, Any], source: dict[str, Any], final: dic
                       if row.get("artifact_schema_id")})
     if final["journey"]["artifact_schema_ids"] != schemas:
         fail("final/source journey artifact schemas disagree")
+    if any(sha256_file(inputs[key]) != digest for key, digest in digests.items()):
+        fail("input changed during binding validation")
 
 
 def assemble_receipt(package: dict[str, Any], source: dict[str, Any],

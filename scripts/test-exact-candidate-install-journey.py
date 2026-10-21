@@ -164,6 +164,33 @@ class ReceiptTests(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 VALIDATOR.validate_final_receipt(self.args.receipt, self.args.schema, self.args.fixture)
 
+    def test_publication_revalidates_current_topology_and_json_types(self):
+        package, source = self.package_valid(), self.source_valid()
+        topology = self.root / "topology.toml"
+        topology.write_bytes(self.args.topology.read_bytes())
+        self.args.topology = topology
+        original_topology = topology.read_text(encoding="utf-8")
+        topology.write_text(original_topology.replace('package_version = "0.2.0"',
+                                                     'package_version = "9.9.9"'), encoding="utf-8")
+        with self.assertRaisesRegex(SystemExit, "identities"):
+            VALIDATOR.publish_receipt(package, source, self.args)
+        self.assertFalse(self.args.receipt.exists())
+        topology.write_text(original_topology, encoding="utf-8")
+        self.package["install"]["exit_code"] = False
+        self.write_inputs()
+        with self.assertRaises(SystemExit):
+            VALIDATOR.publish_receipt(package, source, self.args)
+        self.assertFalse(self.args.receipt.exists())
+
+    def test_duplicate_json_properties_and_nonfinite_numbers_are_rejected(self):
+        for invalid in ('{"passed": false, "passed": true}',
+                        '{"nested": {"passed": false, "passed": true}}',
+                        '{"number": NaN}', '{"number": Infinity}'):
+            with self.subTest(invalid=invalid):
+                self.args.receipt.write_text(invalid, encoding="utf-8")
+                with self.assertRaises(SystemExit):
+                    VALIDATOR.load_json(self.args.receipt)
+
     def test_schema_failure_never_publishes_or_leaves_pending_output(self):
         self.args.schema = self.root / "reject-schema.json"
         self.args.schema.write_text('{"const":"reject"}', encoding="utf-8")
