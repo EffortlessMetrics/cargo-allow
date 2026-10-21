@@ -316,6 +316,7 @@ jobs:
         run: python3 scripts/test-exact-candidate-package-candidate.py
       - name: Exact isolated local-registry install (#2925)
         run: |
+          python3 scripts/test-exact-candidate-index-checksum.py
           bash scripts/exact-candidate-isolated-install.sh
           python3 scripts/exact-candidate-isolated-install.py --mode classify \
             --candidate-artifact target/exact-candidate-package-candidate/package-candidate-v2.json \
@@ -379,7 +380,9 @@ jobs:
         if: always()
         with:
           name: exact-candidate-isolated-install-receipt
-          path: target/exact-candidate-isolated-install/isolated-install.receipt.json
+          path: |
+            target/exact-candidate-isolated-install/isolated-install.receipt.json
+            target/exact-candidate-isolated-install/index-checksum-control-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
@@ -653,6 +656,19 @@ jobs:
           assert overhead["overhead_ms"] == (
               overhead["wrapped_elapsed_ms"] - overhead["bare_elapsed_ms"]
           )
+          # Coverage admission recursively rehashes the full population and
+          # every actual page; companion existence alone proves nothing.
+          import importlib.util
+          spec = importlib.util.spec_from_file_location("worklist_pages", "scripts/qualify-worklist-pages.py")
+          worklist_pages = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(worklist_pages)
+          for name in ("worklist", "agent_loop_worklist"):
+              rows = [sample for sample in samples if sample["name"] == name]
+              assert len(rows) == 1, f"expected one {name} sample"
+              worklist_pages.validate_sample(
+                  rows[0], artifact_root, ceiling, receipt["binary"]["sha256"],
+                  receipt["repository"]["commit"],
+              )
           print(f"validated {len(samples)} operator-latency samples")
           PY
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
