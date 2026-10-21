@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/index-checksum-control-v1.schema.json",
-  "title": "Consumed registry index checksum control",
+  "title": "cargo-allow consumed registry index checksum control",
   "description": "Diagnostic evidence for #2925. A passed record requires real unmutated success and a checksum-specific refusal for the selected resolved dependency. The runner owns semantic validation; schema conformity alone does not prove execution.",
   "type": "object",
   "additionalProperties": false,
