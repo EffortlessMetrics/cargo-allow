@@ -316,6 +316,7 @@ jobs:
         run: python3 scripts/test-exact-candidate-package-candidate.py
       - name: Exact isolated local-registry install (#2925)
         run: |
+          python3 scripts/test-exact-candidate-index-checksum.py
           bash scripts/exact-candidate-isolated-install.sh
           python3 scripts/exact-candidate-isolated-install.py --mode classify \
             --candidate-artifact target/exact-candidate-package-candidate/package-candidate-v2.json \
@@ -375,7 +376,9 @@ jobs:
         if: always()
         with:
           name: exact-candidate-isolated-install-receipt
-          path: target/exact-candidate-isolated-install/isolated-install.receipt.json
+          path: |
+            target/exact-candidate-isolated-install/isolated-install.receipt.json
+            target/exact-candidate-isolated-install/index-checksum-control-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

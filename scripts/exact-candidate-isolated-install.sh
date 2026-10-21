@@ -312,36 +312,23 @@ if [ "$mutated_exit" -eq 0 ]; then
     NEGATIVE_FAILURES=$((NEGATIVE_FAILURES + 1))
 fi
 
-# Negative: index checksum mismatch
-rm -rf "${work_parent}/registry-index" && cp -r "$registry" "${work_parent}/registry-index"
-index_row="$(find "${work_parent}/registry-index/index" -type f -print -quit)"
-python3 - "$index_row" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-lines = [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
-entries = [json.loads(line) for line in lines]
-for entry in entries:
-    if entry.get("cksum"):
-        entry["cksum"] = "0" * 64  # Valid Cargo index encoding, deliberately wrong bytes.
-        break
-path.write_text("\n".join(json.dumps(entry) for entry in entries) + "\n", encoding="utf-8")
-PY
+# Negative: mutate an exact consumed dependency, not an arbitrary (possibly
+# unused root) index row. The helper retains both controls even on failure.
 set +e
-CARGO_HOME="$install_home" cargo metadata --format-version 1 --offline \
-    --manifest-path "${extracted_bin_pkg}/Cargo.toml" \
-    --config "source.crates-io.replace-with='candidate-local-registry'" \
-    --config "source.candidate-local-registry.local-registry='${work_parent}/registry-index'" \
-    > /dev/null 2>"${work_parent}/index-checksum-negative.stderr"
+python3 scripts/exact-candidate-index-checksum.py \
+    --registry "$registry" \
+    --metadata "${offline_root}/resolved-metadata.json" \
+    --consumed-rows target/exact-candidate-isolated-install/consumed-rows.json \
+    --manifest "${extracted_bin_pkg}/Cargo.toml" \
+    --work-dir "${work_parent}/index-checksum-control" \
+    --output "${OUTPUT_DIR}/index-checksum-control-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}" \
+    --repository-commit "$(git rev-parse HEAD)"
 index_exit=$?
 set -e
-if [ "$index_exit" -eq 0 ] || ! grep -qi checksum "${work_parent}/index-checksum-negative.stderr"; then
+if [ "$index_exit" -ne 0 ]; then
     echo "negative index-checksum mismatch did not produce the expected checksum refusal" >&2
     NEGATIVE_FAILURES=$((NEGATIVE_FAILURES + 1))
 fi
-cat "${work_parent}/index-checksum-negative.stderr"
 
 # Negative: offline external input incomplete
 rm -rf "${work_parent}/registry-external" && cp -r "$registry" "${work_parent}/registry-external"

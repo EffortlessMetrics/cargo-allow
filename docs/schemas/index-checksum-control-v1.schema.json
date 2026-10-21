@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/index-checksum-control-v1.schema.json",
+  "title": "Consumed registry index checksum control",
+  "description": "Diagnostic evidence for #2925. A passed record requires real unmutated success and a checksum-specific refusal for the selected resolved dependency. The runner owns semantic validation; schema conformity alone does not prove execution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "repository_commit",
+    "result",
+    "commands",
+    "error"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.index-checksum-control.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "repository_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "metadata_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "consumed_rows_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "manifest_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "registry_inputs": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-f]{64}$"
+      }
+    },
+    "mutation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "package_version",
+        "package_id",
+        "source",
+        "crate_digest",
+        "index_checksum",
+        "index_path",
+        "original_checksum",
+        "mutated_checksum",
+        "original_index_digest",
+        "mutated_index_digest"
+      ],
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_id": {
+          "type": "string",
+          "pattern": "^registry\\+"
+        },
+        "source": {
+          "type": "string",
+          "pattern": "^registry\\+"
+        },
+        "crate_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "index_checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "index_path": {
+          "type": "string",
+          "pattern": "^index/"
+        },
+        "original_checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "mutated_checksum": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "original_index_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "mutated_index_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "commands": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "argv",
+          "cwd",
+          "cargo_home",
+          "exit_code",
+          "stdout_digest",
+          "stderr_digest"
+        ],
+        "properties": {
+          "cwd": { "type": "string", "minLength": 1 },
+          "label": {
+            "enum": [
+              "positive",
+              "negative"
+            ]
+          },
+          "argv": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "cargo_home": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exit_code": {
+            "type": "integer"
+          },
+          "stdout_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "stderr_digest": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "passed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "metadata_digest",
+          "consumed_rows_digest",
+          "manifest_digest",
+          "mutation",
+          "registry_inputs"
+        ],
+        "properties": {
+          "error": {
+            "type": "null"
+          },
+          "commands": {
+            "minItems": 2,
+            "prefixItems": [
+              {
+                "properties": {
+                  "label": {
+                    "const": "positive"
+                  },
+                  "exit_code": {
+                    "const": 0
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "label": {
+                    "const": "negative"
+                  },
+                  "exit_code": {
+                    "not": {
+                      "const": 0
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
