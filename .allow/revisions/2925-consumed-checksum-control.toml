@@ -31,3 +31,9 @@ allow_ids = ["allow-2925-consumed-checksum-review"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:8bb9d6d3ed8dc67917375cc352ba904758ef3ef0e7221a30a5806b717891608b"
 reason = "Retain independent exact-head review and honest blocked/stale currentness; a later source repair requires fresh review and current hosted checks."
+
+[[records]]
+allow_ids = ["allow-4649-prerequisite-review"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:969e2aa1abcbda944f1b92a357adefd4c1ac98149fb846f873697f1fa7892a8e"
+reason = "Retain the independent combined-prerequisite review record without treating separate-source reviews or partial disposition as merge readiness."

@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4649,
+  "base_ref": "main",
+  "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "head_ref": "fix/receipt-prerequisite-integration",
+  "head_sha": "fd702b567caafba354545cab91f3ff8e61be217c",
+  "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "reviewed_diff_digest": "sha256:v1:e0413b5131f201eba2ce2bf612c677c73377ca65bcd1cdeb28b6fb1ae04ef4a0",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "unavailable",
+  "reviewer_identity": "Combined exact-head review has been requested as the next qualification step. Author /root retained this partial record; separate source reviews do not establish combined review.",
+  "independent_review": {
+    "not_proven": {
+      "reason": "Fresh combined-source review is pending after source integration and its scoped review-record admission."
+    }
+  },
+  "claimed_verdict": "partial",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597650781",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4648#pullrequestreview-5597719621",
+    "Separate reviewed sources393635a and aac44b6 are preserved as parents. Merge conflicts resolve only by retaining both schema/index declarations and exact policy suffixes. Original801989 bytes/1157 entries and10 prior scoped additions are unchanged.",
+    "Historical source checksum qualification succeeded; worklist consumer fixture succeeded but real CLI and combined runtime remain pending. This partial record makes no clean-review or readiness claim.",
+    "Original receipt PR4642 remains frozen. All denied operations and cleanup/resource holds remain; no local Cargo, fixture/Bash retry, cap increase, finding suppression or publication."
+  ],
+  "required_ci": {
+    "owner": "Completion worker must obtain fresh independent complete combined-source review, retain its exact disposition, independently review the metadata child and native bootstrap, and verify every applicable final-head check before protected merge. Then verify main and refresh frozen receipt PR4642. No failed/pending/stale/skipped evidence waived.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4649"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4649",
+  "reviewed_at_utc": "2026-10-21T09:40:09Z"
+}
