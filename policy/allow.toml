@@ -24967,3 +24967,113 @@ glob = ".allow/review-dispositions/pr-4647.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-driver"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/qualify-worklist-pages.py"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file operator qualification helper: retain every unfiltered full-population row and verify bounded actual CLI pages, source/date identity and routing costs."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/qualify-worklist-pages.py"
+target_fingerprint = "py"
+glob = "scripts/qualify-worklist-pages.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.worklist-page-coverage.v1.schema.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file supporting coverage schema; requires full population and every bounded page with immutable cap and explicit command, source and latency identities."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.worklist-page-coverage.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.worklist-page-coverage.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-qualify-worklist-pages.py"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file in-memory falsifiers for complete worklist page coverage, payload bounds, recursive hash validation, source/date stability and late-probe routing costs."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-qualify-worklist-pages.py"
+target_fingerprint = "py"
+glob = "scripts/test-qualify-worklist-pages.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4643-worklist-page-qualification.toml"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file transition note for the bounded worklist coverage admissions; all prior ledger entries and dates remain unchanged."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4643-worklist-page-qualification.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4643-worklist-page-qualification.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-review"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4648.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file independent review disposition binds the complete source pair, findings, repair route and separate hosted CI obligations; historical blocked evidence is not a clean-review claim."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4648#pullrequestreview-5597548670"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4648.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4648.json"
+
+[allow.last_seen]
+line = 1
+column = 1
