@@ -194,6 +194,8 @@ journey steps and negative controls, and publishes `Passed` only after owned
 cleanup and cross-validation succeed. The source receipt remains beside the
 final receipt and both are uploaded by CI. Pre-existing output/consumer paths
 and cleanup refusals are preserved; a failed run must use a fresh output path.
+CI selects `WORK_DIR` using its run ID and attempt, and uploads receipts only
+from that directory, so restored target outputs remain untouched.
 Source hiding proves only the observed fallback paths (`crates/cargo-allow/src`
 and `docs/templates`) were hidden during the ordinary scan, not universal read
 tracing. It proves a pre-publication exact-candidate journey only;

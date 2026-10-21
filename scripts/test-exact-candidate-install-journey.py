@@ -277,6 +277,38 @@ class ReceiptTests(unittest.TestCase):
             WRAPPER.run(repo)
         self.assertEqual((work / "caller-file").read_bytes(), b"preserve")
 
+    def test_wrapper_fresh_run_output_preserves_default(self):
+        repo, previous_work = self.wrapper_fixture()
+        previous_work.mkdir()
+        previous_receipt = previous_work / "exact-candidate-install-journey.receipt.json"
+        previous_receipt.write_bytes(b"previous run evidence\n")
+        work = repo / "target/exact-candidate-install-journey-123-2"
+
+        def child(*args, **kwargs):
+            parent = Path(kwargs["env"]["WORK_DIR"])
+            self.assertEqual(parent.parent, work)
+            (parent / "source-candidate-smoke.receipt.json").write_text(
+                json.dumps(self.source), encoding="utf-8")
+
+        def remove(root, directory, purpose, token):
+            self.assertEqual(root, work)
+            self.assertEqual(WRAPPER.LIFECYCLE.load_marker(directory)["token"], token)
+            for leaf in directory.iterdir():
+                leaf.unlink()
+            directory.rmdir()
+
+        with mock.patch.dict(os.environ, {"WORK_DIR": str(work)}, clear=True), \
+             mock.patch.object(WRAPPER.LIFECYCLE, "run_git", return_value=SimpleNamespace(stdout=HEAD)), \
+             mock.patch.object(WRAPPER.subprocess, "run", side_effect=child), \
+             mock.patch.object(WRAPPER.LIFECYCLE, "remove", side_effect=remove):
+            final = WRAPPER.run(repo)
+            self.assertEqual(final.parent, work)
+            self.assertEqual(VALIDATOR.load_json(final)["result"], "Passed")
+            self.assertEqual(previous_receipt.read_bytes(), b"previous run evidence\n")
+            with self.assertRaisesRegex(SystemExit, "newly allocated"):
+                WRAPPER.run(repo)
+            self.assertEqual(previous_receipt.read_bytes(), b"previous run evidence\n")
+
     def test_wrapper_refuses_symlinked_output(self):
         repo, work = self.wrapper_fixture()
         outside = self.root / "outside"
