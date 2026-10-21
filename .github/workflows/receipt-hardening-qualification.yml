@@ -1,7 +1,6 @@
-name: Receipt hardening qualification
+name: Receipt hardening native scanner
 
-# Temporary evidence branch only; this workflow is not part of PR4642.
-# The checkout is the independently reviewed source, never this workflow head.
+# Temporary evidence branch only; excluded from PR4642.
 on:
   push:
     branches: [qualify/exact-candidate-receipt-hardening]
@@ -10,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  current-source-ledger:
-    runs-on: ubuntu-latest
+  current-native-scanner:
+    runs-on: windows-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -20,60 +19,37 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
-      - name: Build the reviewed current-source scanner
+      - name: Build the exact reviewed native scanner
         run: cargo build -p cargo-allow --bin cargo-allow --locked
-      - name: Generate scoped plans and apply them with official tooling
+      - name: Record source and executable identity
+        shell: pwsh
         run: |
-          set -euo pipefail
-          out=target/receipt-hardening-qualification
-          mkdir -p "$out"
-          git rev-parse HEAD > "$out/source-head.txt"
-          test "$(cat "$out/source-head.txt")" = 900a9dbf82d23fb27ed0776cf346ab418a85f32d
-          printf '%s\n' "$GITHUB_SHA" > "$out/workflow-head.txt"
-          rustc --version > "$out/rustc-version.txt"
-          target/debug/cargo-allow --version > "$out/scanner-version.txt"
-          sha256sum target/debug/cargo-allow > "$out/scanner-sha256.txt"
-          cp policy/allow.toml "$out/policy-before.toml"
-          for item in driver tests; do
-            if [[ "$item" = driver ]]; then
-              path=scripts/exact-candidate-install-journey.py
-              classification=release_packaging_harness
-              reason='Runs the exact installed candidate journey and publishes digest-bound success only after owned cleanup; no package publication.'
-            else
-              path=scripts/test-exact-candidate-install-journey.py
-              classification=release_packaging_test
-              reason='Offline adversarial receipt validation and cleanup-order controls for the exact installed candidate journey; never invokes Cargo.'
-            fi
-            target/debug/cargo-allow why --kind non-rust --path "$path" --line 1 \
-              --format json --output "$out/$item-why.json" --plan "$out/$item-plan.json"
-            target/debug/cargo-allow add --from-plan "$out/$item-plan.json" --update \
-              --id "allow-3357-exact-journey-$item" --owner core/release \
-              --classification "$classification" --reason "$reason" --review-after 2027-01-21 \
-              --evidence issue:3357 --evidence test:scripts/test-exact-candidate-install-journey.py \
-              --summary-format json --summary-output "$out/$item-application.json"
-            target/debug/cargo-allow why --kind non-rust --path "$path" --line 1 \
-              --format json --output "$out/$item-recheck.json"
-          done
-          cp policy/allow.toml "$out/policy-after.toml"
-          git diff --binary -- policy/allow.toml > "$out/policy.patch"
-      - name: Inspect enforcing guard and exact change-note requirements
-        run: |
-          set -euo pipefail
-          out=target/receipt-hardening-qualification
-          guard=0
-          target/debug/cargo-allow check --mode no-new --format markdown \
-            --receipt "$out/check.receipt.json" --output "$out/check.md" || guard=$?
-          difference=0
-          target/debug/cargo-allow diff --base 40f6e20831ee4958ce96ff8a37366e15acae1f95 \
-            --require-change-note --write-change-note-template "$out/change-note-template.toml" \
-            --format json --output "$out/diff.json" || difference=$?
-          printf '{"guard_exit":%s,"diff_exit":%s}\n' "$guard" "$difference" > "$out/status.json"
-          test "$guard" = 0 && test "$difference" = 0
-      - name: Retain exact-source qualification evidence
-        if: always()
+          $subject = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $subject -ne '900a9dbf82d23fb27ed0776cf346ab418a85f32d') { throw 'Unexpected source head' }
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { throw 'Source changed during build' }
+          $out = 'target/receipt-native-scanner'
+          New-Item -ItemType Directory -Path $out | Out-Null
+          Copy-Item -LiteralPath target/debug/cargo-allow.exe -Destination $out
+          $identity = [ordered]@{
+            subject_head = $subject
+            subject_tree = (git rev-parse 'HEAD^{tree}')
+            workflow_head = $env:GITHUB_SHA
+            workflow_run_id = $env:GITHUB_RUN_ID
+            target = 'x86_64-pc-windows-msvc'
+            command = 'cargo build -p cargo-allow --bin cargo-allow --locked'
+            rustc = (rustc --version)
+            tool_version = (& target/debug/cargo-allow.exe --version)
+            binary_sha256 = (Get-FileHash -LiteralPath target/debug/cargo-allow.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+            lock_sha256 = (Get-FileHash -LiteralPath Cargo.lock -Algorithm SHA256).Hash.ToLowerInvariant()
+          }
+          $identity | ConvertTo-Json | Set-Content -LiteralPath "$out/identity.json" -Encoding utf8
+          git ls-tree -r HEAD -- crates Cargo.toml Cargo.lock rust-toolchain.toml | Set-Content -LiteralPath "$out/build-input-tree.txt" -Encoding utf8
+          Get-Content -LiteralPath "$out/identity.json"
+      - name: Retain native scanner and provenance
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: receipt-hardening-qualification-900a9db
-          path: target/receipt-hardening-qualification/
+          name: receipt-native-scanner-900a9db
+          path: target/receipt-native-scanner/
           if-no-files-found: error
           retention-days: 14
