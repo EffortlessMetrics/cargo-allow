@@ -329,6 +329,10 @@ jobs:
           bash scripts/extraction-cutover-build-receipt.sh repo-snapshot
           bash scripts/extraction-cutover-build-receipt.sh repo-edit
       - name: Exact candidate install journey (#3357)
+        env:
+          # Restored target caches may contain an earlier default output.
+          # Keep it untouched and bind this run's receipt uploads below.
+          WORK_DIR: ${{ github.workspace }}/target/exact-candidate-install-journey-${{ github.run_id }}-${{ github.run_attempt }}
         run: bash scripts/exact-candidate-install-journey.sh
       - name: Exact candidate journey contract characterization (#3357)
         run: bash scripts/test-exact-candidate-install-journey.sh
@@ -390,7 +394,10 @@ jobs:
         if: always()
         with:
           name: exact-candidate-install-journey-receipt
-          path: target/exact-candidate-install-journey/exact-candidate-install-journey.receipt.json
+          path: |
+            target/exact-candidate-install-journey-${{ github.run_id }}-${{ github.run_attempt }}/exact-candidate-install-journey.receipt.json
+            target/exact-candidate-install-journey-${{ github.run_id }}-${{ github.run_attempt }}/source-candidate-smoke.receipt.json
+            target/exact-candidate-install-journey-${{ github.run_id }}-${{ github.run_attempt }}/exact-candidate-source-journey.*/source-candidate-smoke.receipt.json
           if-no-files-found: warn
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()

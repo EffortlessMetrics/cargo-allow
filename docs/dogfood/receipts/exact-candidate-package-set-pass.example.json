@@ -10,9 +10,9 @@
     "source_candidate_not_published_install_journey"
   ],
   "candidate": {
-    "workspace_version": "0.1.10",
+    "workspace_version": "0.2.0",
     "crate_set_schema_id": "cargo-allow.candidate-crate-set.v1",
-    "git_head": null
+    "git_head": "0000000000000000000000000000000000000000"
   },
   "environment": {
     "os": "linux",
@@ -41,119 +41,119 @@
     "crates": [
       {
         "name": "allow-core",
-        "version": "0.1.10",
-        "crate_file": "allow-core-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-core-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-core-0.1.10",
+        "extracted_dir": "allow-core-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-policy",
-        "version": "0.1.10",
-        "crate_file": "allow-policy-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-policy-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-policy-0.1.10",
+        "extracted_dir": "allow-policy-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-inventory",
-        "version": "0.1.10",
-        "crate_file": "allow-inventory-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-inventory-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-inventory-0.1.10",
+        "extracted_dir": "allow-inventory-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-files",
-        "version": "0.1.10",
-        "crate_file": "allow-files-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-files-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-files-0.1.10",
+        "extracted_dir": "allow-files-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-rust",
-        "version": "0.1.10",
-        "crate_file": "allow-rust-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-rust-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-rust-0.1.10",
+        "extracted_dir": "allow-rust-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-match",
-        "version": "0.1.10",
-        "crate_file": "allow-match-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-match-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-match-0.1.10",
+        "extracted_dir": "allow-match-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-report",
-        "version": "0.1.10",
-        "crate_file": "allow-report-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-report-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-report-0.1.10",
+        "extracted_dir": "allow-report-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-policy-legacy",
-        "version": "0.1.10",
-        "crate_file": "allow-policy-legacy-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-policy-legacy-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-policy-legacy-0.1.10",
+        "extracted_dir": "allow-policy-legacy-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "allow-diff",
-        "version": "0.1.10",
-        "crate_file": "allow-diff-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "allow-diff-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "allow-diff-0.1.10",
+        "extracted_dir": "allow-diff-0.2.0",
         "no_path_deps": true
       },
       {
         "name": "effortless-repo-protocol",
-        "version": "0.1.10",
-        "crate_file": "effortless-repo-protocol-0.1.10.crate",
+        "version": "0.1.0",
+        "crate_file": "effortless-repo-protocol-0.1.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "effortless-repo-protocol-0.1.10",
+        "extracted_dir": "effortless-repo-protocol-0.1.0",
         "no_path_deps": true
       },
       {
         "name": "effortless-repo-snapshot",
-        "version": "0.1.10",
-        "crate_file": "effortless-repo-snapshot-0.1.10.crate",
+        "version": "0.1.0",
+        "crate_file": "effortless-repo-snapshot-0.1.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "effortless-repo-snapshot-0.1.10",
+        "extracted_dir": "effortless-repo-snapshot-0.1.0",
         "no_path_deps": true
       },
       {
         "name": "effortless-repo-edit",
-        "version": "0.1.10",
-        "crate_file": "effortless-repo-edit-0.1.10.crate",
+        "version": "0.1.0",
+        "crate_file": "effortless-repo-edit-0.1.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "effortless-repo-edit-0.1.10",
+        "extracted_dir": "effortless-repo-edit-0.1.0",
         "no_path_deps": true
       },
       {
         "name": "cargo-allow",
-        "version": "0.1.10",
-        "crate_file": "cargo-allow-0.1.10.crate",
+        "version": "0.2.0",
+        "crate_file": "cargo-allow-0.2.0.crate",
         "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
         "size_bytes": 1,
-        "extracted_dir": "cargo-allow-0.1.10",
+        "extracted_dir": "cargo-allow-0.2.0",
         "no_path_deps": true
       }
     ]
@@ -167,8 +167,9 @@
   },
   "install": {
     "method": "cargo_install_path_extracted_with_local_registry",
-    "version_output": "cargo-allow 0.1.10",
-    "exit_code": 0
+    "version_output": "cargo-allow 0.2.0",
+    "exit_code": 0,
+    "binary_sha256": "9a2b7ce54e17aaba0e2ee0a504f44b2d7321c15ad844b214c0a75ac7b88c5fbb"
   },
   "negative_controls": [
     {
