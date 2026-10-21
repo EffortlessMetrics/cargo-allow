@@ -4,38 +4,38 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4642,
   "base_ref": "main",
-  "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "base_sha": "e6cd32e67aed6060d1c881b17e61301bd61596bc",
   "head_ref": "fix/exact-candidate-receipt-hardening",
-  "head_sha": "e5d5b2f5126cc2bbe0fc3ed824253eede116062d",
-  "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
-  "reviewed_diff_digest": "sha256:v1:db040ac693294669cea778754f721cc9bdceca6e8f5aef1e3a77b747bde6e590",
+  "head_sha": "a15f54aeff4ecbb14d1de643175730c17d3d174f",
+  "merge_base": "e6cd32e67aed6060d1c881b17e61301bd61596bc",
+  "reviewed_diff_digest": "sha256:v1:7dc43459f47f5c7054157291fdbf6f111333670df8bc65879fc06b3240ba9a47",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "Codex /root/receipt_review independently reviewed the exact source/governance pair without authoring or repairing this PR. /root authored the source and this retained record. Shared model family, workspace, conversation context and GitHub account transport are disclosed; no independent human approval is claimed.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4642#pullrequestreview-5596406653"
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4642#pullrequestreview-5598619712"
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4642#pullrequestreview-5596406653",
-    "Fresh independent affected review binds e5d5b2f to main/base/merge-base 40f6 and synthetic 031db41f parents. All earlier full-source/governance reviews retain their historical subjects; the current review reloads the complete two-file delta and current lifecycle, plan consumers, wrapper, tests, threads and CI.",
-    "Actual fb12 package job 119088629816 passed the installed source journey but refused final publication because temporary files remained. e5 moves the second-finding why plan and add log into marker-owned work_dir, with both plan consumers and failure-log read aligned. Cleanup tokens, failure propagation, allowed-leaf refusal and final publication ordering remain unchanged. The new leftover-files subcase preserves leaked files byte-for-byte, forbids parent cleanup and final receipt publication; this oracle was inspected, not executed locally.",
-    "Four official exact-path admissions preserve 1157 existing entries and the 801989-byte baseline policy prefix. Exact e5 no-new and required-change-note receipts pass. No broad allowance, expiry extension, fabricated admission or policy waiver. Python AST and CR-aware whitespace checks pass.",
-    "Historical 14 offline test groups passed before subsequent CI integration repairs. Local 15-test fixture writes/cleanup were denied before bodies, and the later Bash syntax invocation could not initialize its MSYS named object. Original-checkout Git read was separately denied. None was retried, rerouted or delegated; no local Cargo ran. Existing authorized GitHub-hosted qualification is a separate route.",
-    "Actual 9ee package job 119091200625 failed at the isolated-registry index-checksum negative. Exact journey and all 15-test characterization were skipped. The unchanged control selects an arbitrary first index row; unused-row causation remains an inference because selected-row identity was not logged. Current e5 runtime qualification remains pending in CI 39562929155.",
-    "The real operator-latency worklist failure 1195286 B > 524288 B remains unresolved; all 693 earlier artifact rows bind unchanged base policy. Current owner #4374 explicitly routes the CI unblock to #4643. Issue timeline, all 7 open PRs and related historical branches showed no verified active repair writer. No competing repair, queue truncation, threshold raise or suppression is included.",
-    "Current-source Windows scanner from run 39556273941 binds 900a9db/tree b5932ce0 and SHA256 42a8870f68fcc7785bc6a825e63628310adbe60730677db0e8715f0dd1f9bde6; Rust/Cargo/toolchain inputs remain identical. Actual compiler 1.99.1 is not MSRV 1.95 proof. Stale installed parser rejected supported calendar_expiry_blocks_no_new; no policy field was removed.",
-    "CodeRabbit retained-child receipt glob finding remains repaired and resolved. Hosted diff digest uses environment-sensitive Git abbreviation; local --abbrev=8 reproduces the exact e5 native digest. Quota-limited bot responses are not clean review proof.",
-    "Claim boundary: exact receipt identity/validation and owned cleanup/publication ordering. Instrumented hidden fallback paths are not universal read tracing. Source review does not establish runtime qualification, merge readiness, publication authority or cleanup release."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4642#pullrequestreview-5598619712",
+    "Fresh full source review covers all 19 effective changed paths, complete driver/validator, package/source producers, ownership lifecycle, tests, schemas/examples, release/upgrade consumers and merged CI. Live head a15f54a, base/main/merge-base e6cd32e and synthetic 82e1d88 parents were verified immediately before posting; synthetic tree equals head tree 8d4cbd00d10913cf62ba69c25627e8ac5a5e51ac.",
+    "Integration preserves all 810552 main policy bytes and 1168 entries, then appends the exact four previously admitted receipt entries. No suppression, allowance broadening, expiry extension or threshold increase. Receipt implementations and regressions are byte-identical to fee except the shell test invocation now prints verbose method names. Python AST, strict JSON and CR-aware whitespace checks pass.",
+    "The merged checksum prerequisite deterministically mutates a consumed dependency and retains exact mutation identity. The merged worklist gate retains complete unbounded populations and qualifies all bounded pages, totals, continuation, object/order/hash identity and unchanged 524288-byte cap. Both prerequisite repairs landed via protected PR4649 at e6cd32e; their evidence remains bound to their own source.",
+    "Exact a15 native no-new receipt reports passed/new=0 and explicit-pair required-change-note diff reports passed with zero policy failures. The verified native scanner remains the older hosted 900a9db binary SHA256 42a8870f68fcc7785bc6a825e63628310adbe60730677db0e8715f0dd1f9bde6. Its original provenance is retained; current Rust inputs are not asserted identical after merged worklist changes. These source checks do not prove compilation or runtime behavior. Current hosted CI builds the integrated source.",
+    "Current a15 operator job119179682708 succeeded. Separate read-only artifact verification covers all 58 pages, 704 ordinary and 705 agent items, all object/order/ID/hash/total obligations and retained source identities. Artifact12340637314 SHA256 5fe3ebc0fb699584722892b6e291d34ae8e4e91b7e0cd5fac084115cc17f6635. Routing 1266/2484ms, full qualification 37276/40242ms and composite 44842ms are separate observations, not an aggregate performance guarantee.",
+    "At review time package119179682685, platform/coverage and UB evidence remain incomplete. All 15 named characterization tests, including test_wrapper_fresh_run_output_preserves_default, and real installed-journey receipts still require hosted execution. Earlier fee journey and all 15 tests were skipped after checksum-control failure; historical 14-test success is not current proof.",
+    "CodeRabbit retained-child receipt upload finding PRRT_kwDOSnyN3s6upl2R remains fixed and resolved. Absolute run/attempt WORK_DIR and all three upload paths agree. Native review-readiness119179936630 correctly refuses the historical e5/base40f6 record; this sole-disposition child must receive independent metadata review and current native bootstrap before Ready.",
+    "Local fixture write/cleanup, MSYS initialization and original-checkout read denials remain stopped. No retry, equivalent reroute, permission change or local Cargo/heavy build. Existing authorized hosted runners provide separate runtime qualification.",
+    "Claim boundary: exact receipt identity, strict validation and owned cleanup/publication ordering. Instrumented hidden fallback paths are not universal read tracing or hostile concurrent-writer proof. Examples remain synthetic structural fixtures. This source review does not establish complete runtime qualification, merge readiness, publication authority or cleanup release."
   ],
   "required_ci": {
-    "owner": "Completion worker must independently review this sole-disposition child, verify native exact-pair review bootstrap and all applicable current-head checks, obtain the existing #4643 worklist repair and resolve isolated checksum-control qualification through its current owner route, then perform fresh Ready/protected-merge preflight and resulting-main guard. Failed, pending, stale, skipped or unavailable evidence is not waived. Originals remain protected until explicit cleanup release.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39562929155"
+    "owner": "Completion worker must independently review this sole-disposition child, verify native exact-pair review bootstrap, all 15 named tests and actual package/journey receipts, intake final UB evidence and all substantive feedback, and obtain terminal applicable current-head checks. Then perform fresh Ready/protected-merge preflight and resulting-main source guard before explicit cleanup-coordinator release. Failed, pending, stale, skipped or unavailable evidence is not waived. Originals remain protected.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39587174267"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4642",
-  "reviewed_at_utc": "2026-10-21T07:38:58Z"
+  "reviewed_at_utc": "2026-10-21T10:57:08Z"
 }
