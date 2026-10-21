@@ -1,0 +1,39 @@
+schema_version = 1
+
+# Exact-file admissions for the consumed-dependency checksum-control repair.
+# Fingerprints come from official plan/apply and the required-note template.
+[[records]]
+allow_ids = ["allow-2925-consumed-checksum-driver"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ee33fef39002939c7918b777bf2c7e3e0c87f4d3e361baca3f10c682d3d695d3"
+reason = "Exact-file admission for the consumed-registry-dependency checksum control, retaining positive and negative execution evidence without changing registry inputs or publication authority."
+
+[[records]]
+allow_ids = ["allow-2925-consumed-checksum-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:60eac25ee22ff51a4dd29f148707a2ef537cb70f9e0d0723f59f2e84fa3a3ff6"
+reason = "Exact-file admission for this scoped transition record. All preexisting ledger entries and dates remain unchanged."
+
+[[records]]
+allow_ids = ["allow-2925-consumed-checksum-schema"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6fdac407cf1999515f81146521f7964d75bf27a176bef16668bc4f7a624f694a"
+reason = "Exact-file admission for the diagnostic contract binding the selected mutation and actual command results; schema conformity does not establish Cargo execution."
+
+[[records]]
+allow_ids = ["allow-2925-consumed-checksum-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f4998568db8cfc9a0985d07fbc32d310f12372604fc7136d78feade3a68b5062"
+reason = "Exact-file admission for in-memory negative controls of root/version selection, duplicates, byte drift and unrelated checksum errors. Real Cargo refusal remains a hosted qualification obligation."
+
+[[records]]
+allow_ids = ["allow-2925-consumed-checksum-review"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8bb9d6d3ed8dc67917375cc352ba904758ef3ef0e7221a30a5806b717891608b"
+reason = "Retain independent exact-head review and honest blocked/stale currentness; a later source repair requires fresh review and current hosted checks."
+
+[[records]]
+allow_ids = ["allow-4649-prerequisite-review"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:969e2aa1abcbda944f1b92a357adefd4c1ac98149fb846f873697f1fa7892a8e"
+reason = "Retain the independent combined-prerequisite review record without treating separate-source reviews or partial disposition as merge readiness."

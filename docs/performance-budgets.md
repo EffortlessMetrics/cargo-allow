@@ -300,6 +300,40 @@ they carry movement rows, not the package inventory.
 
 ## What drives the cost
 
+### Complete worklists and bounded reads (#4643 / #4374)
+
+The full queue remains a retained population and scale oracle. On 2026-10-21,
+the earlier hosted full worklist was 1,195,286 bytes for 693 items and failed
+the 524,288-byte bound. That observation remains a failure of the full-payload
+read; pagination does not make those bytes smaller or discard due findings.
+
+The `worklist` and `agent_loop_worklist` samples now invoke actual CLI pages
+with `--limit 25 --offset 0,25,...`, without filters. Every page and the coverage
+companion must fit the unchanged 524,288-byte cap. The full artifact has no
+bounded-payload pass claim. Full item objects, global IDs, order, totals,
+context, summaries and exact coverage must match the retained full queue.
+A single oversized page fails. The CI consumer rehashes every referenced
+member and reruns these comparisons, including original byte counts.
+
+The ordinary sample measures the first page. Agent routing measures the wall
+time through the first page that actually contains the unreceipted probe,
+including every preceding page. Its artifact points at that observed page;
+its semantic artifact is the complete coverage companion. The 22-row operator
+matrix is unchanged. Each actual command and the measured routing operation
+remain subject to the 60,000 ms ceiling. Full traversal and qualification
+elapsed times are recorded separately; they are not relabeled as a bounded
+single-read pass. The agent-loop composite wall clock conservatively includes
+the complete population/coverage qualification as well as routing and repair.
+
+Every command's exact argv, cwd, exit, bytes, digest and elapsed time are
+retained. Tracked source bytes, policy bytes, binary identity, Git head and UTC
+day are checked before and after the full/page sequence. A date or source
+change fails that attempt with its original artifacts retained. This is
+before/after stability evidence, not an atomic snapshot or universal tracing
+of concurrent filesystem changes. An explicit-date production-evaluator test
+covers the inclusive `review_after` boundary without changing the host clock,
+policy dates or CLI semantics.
+
 The `audit`/`check` cost is dominated by:
 1. Full `git ls-files` inventory walk
 2. Tree-sitter parse of every `.rs` file

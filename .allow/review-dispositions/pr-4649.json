@@ -1,0 +1,40 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4649,
+  "base_ref": "main",
+  "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "head_ref": "fix/receipt-prerequisite-integration",
+  "head_sha": "f2e5fa1248262b573396830d29b8947e4830a62f",
+  "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "reviewed_diff_digest": "sha256:v1:95537e020dfd99e62cfb04328174997a0dfb27edf2de39a16102749552eca307",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Codex /root/receipt_review independently reviewed the complete combined source pair, owners and consumers without authoring or changing it. /root authored source and this retained record. Shared model family, prior context, workspace and GitHub account transport are disclosed; no independent human approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4649#pullrequestreview-5597905956"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4649#pullrequestreview-5597905956",
+    "Fresh independent full combined-source review binds f2e5fa1/tree82b7f363 to main/base/merge-base40f6 and full diff95537e02. All23 changed files, relevant owners/consumers, source preservation, policy and workflow obligations were reviewed. Synthetic merge5faccacd parents verified.",
+    "Ordinary mergefd702b5 retains exact checksum393635a and worklistaac44b6 parents. Three manual conflicts preserve both supporting-schema declarations/index lines and concatenate exact policy suffixes; automatic workflow merge retains both checksum and recursive worklist obligations. Helpers and Rust source are byte-identical to their separate reviewed branches.",
+    "All801989 original policy bytes and1157 entries, plus both five-entry reviewed suffixes, are unchanged. One official exact-path integration-review admission has its exact append-only transition note. Exact f2 no-new/new0 and explicit full-SHA required-note guards pass.",
+    "Current checksum393 package job119143875980 passes: actual consumed allow-core0.2.0, positive0/negative101, exact mutation/command/input/output identities retained. Worklist source2c5 operator passes all22samples, all28pages/fullpopulation preserved. Combined f2 operator119152950105 also passes real smoke and actual receipt admission. These observations do not replace all final-head qualification.",
+    "The60,000ms per-command/routing ceiling is unchanged. Complete traversal/qualification and advisory composite wall costs remain separately retained; historical2c5 traversal61,123ms and composite76,118ms are not an aggregate60-second pass. Original payload cap524288 and all population/global-ID/order/hash obligations remain.",
+    "Threads PRRT_kwDOSnyN3s6utRNc and PRRT_kwDOSnyN3s6utRN4 are nonblocking broken-alias robustness suggestions without a current false-success witness; the proposed is_symlink check after resolve does not validate the original leaf. PRRT_kwDOSnyN3s6utRNs is nonblocking owned-output concurrency scope; lexical checks do not establish atomic exclusion. PRRT_kwDOSnyN3s6utRNy is refuted: swallowing a finally-write failure can preserve a pending successful return, whereas current propagation fails closed.",
+    "No arbitrary concurrent-writer safety, universal tracing, independent-account approval or aggregate-latency claim is made. Package, coverage/platform and UB qualification remain separate current-head obligations. This sole-disposition child needs independent metadata and native currentness review.",
+    "Original receipt PR4642 remains frozen feea1e7. All denied original-checkout, fixture writes/cleanup, MSYS and protection-config reads remain stopped; no local Cargo, cap increase, finding suppression, permission/protection change, package publication or cleanup release."
+  ],
+  "required_ci": {
+    "owner": "Completion worker must independently review this sole-disposition child, verify native ancestor-bound review bootstrap and every applicable final-head check, reconcile conversations, then fresh head-pinned protected merge and resulting-main guard. Only afterward refresh receipt PR4642 and qualify all15 actual tests before its protected merge and explicit cleanup release. Failed/pending/stale/skipped evidence is not waived.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39579059181"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4649",
+  "reviewed_at_utc": "2026-10-21T09:52:13Z"
+}
