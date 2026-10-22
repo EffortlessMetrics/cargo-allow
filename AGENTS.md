@@ -5,14 +5,53 @@
 Start from live state. Check branch, status, open PRs, relevant CI, release
 state, repo guidance, and dirty worktree state before choosing a lane.
 
-Work one coherent lane at a time. Keep each change narrow, reviewable, and tied
-to a clear proof obligation. Prefer one PR per product or maintenance slice.
+Keep each lane coherent, reviewable, and tied to a clear proof obligation.
+Independent objectives may proceed concurrently; one lead owns each candidate's
+integration and one writer mutates its branch at a time. Include the code, tests
+and documentation needed to complete the objective rather than splitting them
+artificially. Larger focused PRs are acceptable with adequate review and proof.
 For campaign execution and issue routing, follow
 [`.agents/skills/cargo-allow-0.2-campaign/SKILL.md`](.agents/skills/cargo-allow-0.2-campaign/SKILL.md).
 
 When the user says to proceed in an active swarm, PR, or release lane, treat
 that as authorization to carry the lane through its normal lifecycle unless
 they narrow the scope.
+
+## Selected-candidate CI and continuous ownership
+
+Develop and review cheaply with warm focused proof. Compare alternatives before
+PR publication while opening a Draft still triggers hosted CI. After the explicit
+request cutover, useful alternative Drafts can stay cheap. Expensive pre-merge
+qualification is for the candidate selected to land, not each alternative. Selection is per objective, never a
+repository-wide one-PR queue. Do not duplicate an existing implementation merely
+to consume agent capacity.
+
+The intended lifecycle is explicit late qualification, normally at most 20 minutes
+of complete CI execution, followed by a distinct final current-repository/product
+judgment and protected expected-head squash. Queue time is separate. The same
+useful lead normally retains context through the CI wait, result inspection,
+merge and landing readback. Use supported waits/events or bounded checks, not
+tight polling or a compulsory new agent/human handoff. A real interruption retains
+the exact candidate, run/attempt, findings, owner and next action.
+
+Use the actual installed interface and inspect its triggers. Current automatic
+PR/push workflows are not changed by these instructions; coordinate their existing
+CI-economy owners rather than silently skipping proof or inventing a command.
+`premerge-ci-request` / `request-premerge-ci` are proposals, not installed names.
+No routine auto-merge or merge queue. A retained label, sibling's green result or
+successful source review cannot authorize a different head. Reconcile an existing
+run before requesting another; classify a failure before repair or justified retry.
+
+Inspect submitted reviews, inline threads including outdated unresolved threads,
+and ordinary Conversation findings. Missing/partial reads and provider quota skips
+are not a clean review. Repair or refute material findings with current evidence,
+reply before resolving a thread, and read back both transitions. An earlier clean
+review does not suppress a later valid finding. Preserve unaffected proof while
+refreshing the dimensions changed by a repair or actual integration interaction.
+
+When the task delegates ordinary integration and the final conditions below hold,
+finish the protected merge without another routine approval. Explicit read-only,
+Draft-only, release, settings and credential boundaries remain unchanged.
 
 ## cargo-allow Product Boundary
 
@@ -103,9 +142,16 @@ Report checks as pass, fail, or not run. Include relevant failures and
 validation gaps. Do not claim tests, builds, publishes, deployments, merges, or
 releases succeeded without direct evidence.
 
-After a green merge, sync `main`, rerun the required guard, and clean
-`target/cargo-allow`, `target/package`, scratch files, stale branches, and
-disposable worktrees created for the lane.
+After merge, verify the actual landing and reconcile the issue. Reuse still-valid
+candidate proof; run affected integration checks when the landed composition
+requires them, not the full suite again merely because a merge occurred. Preserve
+required enforcement while the automatic-main CI migration is incomplete.
+After a green merge, sync `main` and perform post-merge cleanup of temporary local
+artifacts, especially when disk/memory pressure is present. Inspect ownership and
+retain useful proof first; clean `target/cargo-allow`, `target/package`, scratch
+files, stale branches and disposable worktrees created for the lane only when
+they are no longer needed. Do not delete another lane's caches, evidence or
+unfinished work, and do not discard useful warm build state without a reason.
 
 ## Implementation Defaults
 
