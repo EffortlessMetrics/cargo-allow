@@ -624,12 +624,14 @@ mod parse_name_status_tests {
     }
 
     #[test]
-    fn parse_name_status_records_preserves_embedded_spaces_in_paths() {
-        let records = parse_name_status_records("A\0docs/my note v2.md\0").expect("parses");
+    fn parse_name_status_records_preserves_embedded_spaces_in_paths() -> Result<(), String> {
+        let records = parse_name_status_records("A\0docs/my note v2.md\0")
+            .map_err(|error| error.to_string())?;
         assert_eq!(
             records,
             vec![("A".to_string(), "docs/my note v2.md".to_string())],
             "-z paths carry spaces verbatim"
         );
+        Ok(())
     }
 }
