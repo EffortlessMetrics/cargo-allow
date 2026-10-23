@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import os
 import secrets
@@ -216,7 +217,19 @@ def restore(stash: Path, destination: Path) -> None:
     if destination.exists() or destination.is_symlink():
         fail(f"refusing to overwrite existing restore destination: {destination}")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    os.rename(stash, destination)
+    try:
+        os.rename(stash, destination)
+    except OSError as error:
+        # Stash roots live under the system temp directory while
+        # destinations live under the repository's target/ tree; on runner
+        # images where those are different filesystems, os.rename raises
+        # EXDEV ("Invalid cross-device link"). Fall back to a copy+delete
+        # move, which preserves the guard above (the destination did not
+        # exist) and the stash's contents.
+        if error.errno != errno.EXDEV:
+            raise
+        shutil.copytree(stash, destination, symlinks=True)
+        shutil.rmtree(stash)
 
 
 def snapshot(root: Path, repository: Path, purpose: str) -> tuple[Path, str, str]:
