@@ -994,8 +994,11 @@ fn spec_system_doctor_recognizes_allow_init_layout() {
     );
     // PR #4638 review: pin the allow_imports check's full shape and its
     // emitter position — after templates, before federation_ledgers.
-    let allow_imports = readiness_check(&value, "allow_imports")
-        .expect("allow-profiles doctor readiness should carry the allow_imports check");
+    let allow_imports = readiness_check(&value, "allow_imports").unwrap_or_else(|| {
+        std::panic::panic_any(
+            "allow-profiles doctor readiness should carry the allow_imports check",
+        )
+    });
     assert_eq!(
         allow_imports.pointer("/path").and_then(Value::as_str),
         Some(".allow/imports"),
@@ -1024,15 +1027,15 @@ fn spec_system_doctor_recognizes_allow_init_layout() {
     let templates_position = check_kinds
         .iter()
         .position(|kind| *kind == "templates")
-        .expect("templates check should render");
+        .unwrap_or_else(|| std::panic::panic_any("templates check should render"));
     let imports_position = check_kinds
         .iter()
         .position(|kind| *kind == "allow_imports")
-        .expect("allow_imports check should render");
+        .unwrap_or_else(|| std::panic::panic_any("allow_imports check should render"));
     let federation_position = check_kinds
         .iter()
         .position(|kind| *kind == "federation_ledgers")
-        .expect("federation_ledgers check should render");
+        .unwrap_or_else(|| std::panic::panic_any("federation_ledgers check should render"));
     assert!(
         templates_position < imports_position && imports_position < federation_position,
         "allow_imports must sit between templates and federation_ledgers: {check_kinds:?}"
