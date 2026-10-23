@@ -226,8 +226,20 @@ fn changed_paths(
     from: &str,
     to: &str,
 ) -> CargoAllowResult<Vec<allow_report::FrozenSubjectChangeV1>> {
+    // `--no-renames` decomposes a rename into `D <old>` + `A <new>` (#4650).
+    // With rename detection (git's default), a single `R100\t<old>\t<new>`
+    // record kept both paths in one string, classification consulted the OLD
+    // path's prefix, and a plain `git mv docs/x.md
+    // crates/allow-core/src/x.md` passed the lock while adding a file INTO a
+    // load-bearing tree. The decomposed statuses reuse the ordinary
+    // addition/deletion handling the lock already classifies exactly, in the
+    // safe direction for both rename orientations.
+    // `-z` hardens the parse for embedded tabs and spaces: each record is
+    // exactly `STATUS NUL path NUL` — rename/copy score fields are off with
+    // `--no-renames` and git applies no C-style path quoting in `-z` mode —
+    // so the path reaching classification is git's real path verbatim.
     let output = Command::new("git")
-        .args(["diff", "--name-status", from, to])
+        .args(["diff", "--name-status", "--no-renames", "-z", from, to])
         .current_dir(root)
         .output()
         .map_err(|error| instrument(format!("git diff: {error}")))?;
@@ -237,14 +249,9 @@ fn changed_paths(
             String::from_utf8_lossy(&output.stderr).trim()
         )));
     }
+    let stdout = String::from_utf8_lossy(&output.stdout);
     let mut changes = Vec::new();
-    for line in String::from_utf8_lossy(&output.stdout).lines() {
-        if line.trim().is_empty() {
-            continue;
-        }
-        let mut parts = line.splitn(2, '\t');
-        let status = parts.next().unwrap_or("M").to_string();
-        let path = parts.next().unwrap_or_default().to_string();
+    for (status, path) in parse_name_status_records(&stdout)? {
         // Prove append-only from the diff content: for the exception
         // ledger, a diff with no removal or modification lines cannot
         // change gate semantics or candidate bytes.
@@ -257,6 +264,25 @@ fn changed_paths(
         });
     }
     Ok(changes)
+}
+
+/// Parse a `--name-status -z` record stream into (status, path) pairs.
+///
+/// Each record is exactly `STATUS NUL path NUL`; a status without a
+/// following path is a malformed stream (real git never produces one, so
+/// this arms the instrument failure for corrupted or hand-fed input).
+fn parse_name_status_records(stdout: &str) -> CargoAllowResult<Vec<(String, String)>> {
+    let mut fields = stdout.split('\0').filter(|field| !field.is_empty());
+    let mut records = Vec::new();
+    while let Some(status) = fields.next() {
+        let Some(path) = fields.next() else {
+            return Err(instrument(format!(
+                "malformed --name-status -z record stream: status {status:?} has no path field"
+            )));
+        };
+        records.push((status.to_string(), path.to_string()));
+    }
+    Ok(records)
 }
 
 fn diff_is_append_only(
@@ -329,6 +355,7 @@ mod tests {
 #[cfg(test)]
 mod check_fixture_tests {
     use super::FrozenSubjectLockCheckArgs;
+    use super::changed_paths;
     use super::cmd_check;
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -378,6 +405,12 @@ mod check_fixture_tests {
         write(&root, ".gitignore", "target/\n");
         write(&root, "README.md", "# fixture\n");
         write(&root, "policy/allow.toml", "[workspace]\nroot = \".\"\n");
+        // Tracked rename sources for the #4650 regression tests: a rename
+        // only appears in `git diff from..to` (and only decomposes into
+        // `D` + `A`) when the source exists in the frozen `from` tree, so
+        // the fixtures rename these baseline paths.
+        write(&root, "docs/moved-note.md", "prose\n");
+        write(&root, "crates/allow-core/src/lib.rs", "// frozen source\n");
         git(&root, &["add", "-A"]);
         git(&root, &["commit", "-qm", "frozen baseline"]);
         let frozen = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
@@ -472,5 +505,133 @@ mod check_fixture_tests {
         let outcome = cmd_check(&root, &args(&missing));
         assert!(outcome.is_err(), "a missing receipt must fail the check");
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn check_rename_into_load_bearing_trees_requires_invalidation() -> Result<(), String> {
+        // Regression (#4650): rename detection is git's default, so an
+        // ordinary `git mv` from a non-load-bearing tree produced one
+        // `R100\t<old>\t<new>` record whose combined string classified by
+        // the OLD path's prefix and the lock returned AllowedNonLoadBearing
+        // while a file was being added INTO a load-bearing tree. The diff
+        // must decompose to `D <old>` + `A <new>` so the addition rejects
+        // the lock exactly like any ordinary load-bearing addition.
+        for (dest, tree) in [
+            ("crates/allow-core/src/moved-note.rs", "shipped source"),
+            ("policy/moved-note.toml", "policy"),
+            ("docs/schemas/moved-note-v1.schema.json", "schemas"),
+        ] {
+            let (root, receipt) = setup_repo("rename-in");
+            if let Some(parent) = std::path::Path::new(dest).parent() {
+                // `git mv` requires the destination directory to exist on
+                // disk; a failure here surfaces as the mv error below.
+                let _ = std::fs::create_dir_all(root.join(parent));
+            }
+            git(&root, &["mv", "docs/moved-note.md", dest]);
+            commit_all(&root, "rename into a load-bearing tree");
+            let frozen = json_field(&receipt, "commit");
+            let changes =
+                changed_paths(&root, &frozen, "HEAD").map_err(|error| error.to_string())?;
+            let moved: Vec<(&str, &str)> = changes
+                .iter()
+                .map(|change| (change.status.as_str(), change.path.as_str()))
+                .collect();
+            assert!(
+                !moved.iter().any(|(status, _)| status.starts_with('R')),
+                "renames must be decomposed before classification, got {moved:?}"
+            );
+            assert!(
+                moved.contains(&("A", dest)),
+                "the new path must reach classification as an addition, got {moved:?}"
+            );
+            assert!(
+                moved.contains(&("D", "docs/moved-note.md")),
+                "the old path must reach classification as a deletion, got {moved:?}"
+            );
+            let outcome = cmd_check(&root, &args(&receipt));
+            assert!(
+                outcome.is_err(),
+                "renaming into {tree} must require invalidation"
+            );
+            let Some(error) = outcome.err() else {
+                return Err(format!("renaming into {tree} passed the lock"));
+            };
+            assert_eq!(
+                error.kind(),
+                allow_core::CargoAllowErrorKind::Usage,
+                "load-bearing movement must map to the Usage exit class (exit 2)"
+            );
+            let _ = std::fs::remove_dir_all(&root);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn check_rename_out_of_shipped_source_requires_invalidation() -> Result<(), String> {
+        // The reverse orientation decomposes the same way: `D <old>` in the
+        // load-bearing tree classifies exactly like an ordinary load-bearing
+        // deletion, so movement out of the frozen subject still demands
+        // invalidation instead of riding on the new path's classification.
+        let (root, receipt) = setup_repo("rename-out");
+        git(
+            &root,
+            &["mv", "crates/allow-core/src/lib.rs", "docs/moved-lib.rs"],
+        );
+        commit_all(&root, "rename out of shipped source");
+        let outcome = cmd_check(&root, &args(&receipt));
+        assert!(
+            outcome.is_err(),
+            "renaming shipped source out of the tree must require invalidation"
+        );
+        let Some(error) = outcome.err() else {
+            return Err("renaming out of shipped source passed the lock".to_string());
+        };
+        assert_eq!(
+            error.kind(),
+            allow_core::CargoAllowErrorKind::Usage,
+            "load-bearing deletion must map to the Usage exit class (exit 2)"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod parse_name_status_tests {
+    use super::*;
+
+    #[test]
+    fn parse_name_status_records_pairs_statuses_with_paths() -> Result<(), String> {
+        let records = parse_name_status_records("A\0crates/new.rs\0D\0docs/old.md\0")
+            .map_err(|error| error.to_string())?;
+        let expected = vec![
+            ("A".to_string(), "crates/new.rs".to_string()),
+            ("D".to_string(), "docs/old.md".to_string()),
+        ];
+        assert_eq!(records, expected, "well-formed -z records parse as pairs");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_name_status_records_rejects_a_status_without_a_path() {
+        // Real git never emits this; a truncated or hand-fed stream must
+        // arm the instrument failure instead of mispairing fields.
+        let result = parse_name_status_records("M\0policy/allow.toml\0trailing-status\0");
+        assert!(
+            result.is_err(),
+            "a trailing status without a path must be a malformed stream"
+        );
+    }
+
+    #[test]
+    fn parse_name_status_records_preserves_embedded_spaces_in_paths() -> Result<(), String> {
+        let records = parse_name_status_records("A\0docs/my note v2.md\0")
+            .map_err(|error| error.to_string())?;
+        assert_eq!(
+            records,
+            vec![("A".to_string(), "docs/my note v2.md".to_string())],
+            "-z paths carry spaces verbatim"
+        );
+        Ok(())
     }
 }
