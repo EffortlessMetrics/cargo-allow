@@ -349,6 +349,11 @@ fn spec_system_doctor_allow_profiles_sample_renders_the_allow_imports_check() {
         Some(true),
         "spec-system doctor allow-profiles allow_imports check found"
     );
+    assert_eq!(
+        allow_imports_check.get("valid").and_then(Value::as_bool),
+        Some(true),
+        "spec-system doctor allow-profiles allow_imports check valid"
+    );
     let federation_check = spec_system_doctor_allow_profiles
         .pointer("/readiness/checks/10")
         .unwrap_or_else(|| {
