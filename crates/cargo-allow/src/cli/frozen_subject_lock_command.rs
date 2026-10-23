@@ -250,25 +250,39 @@ fn changed_paths(
         )));
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut fields = stdout.split('\0').filter(|field| !field.is_empty());
     let mut changes = Vec::new();
-    while let Some(status) = fields.next() {
-        let Some(path) = fields.next() else {
-            return Err(instrument(format!(
-                "git diff {from}..{to}: malformed --name-status -z record stream"
-            )));
-        };
+    for (status, path) in parse_name_status_records(&stdout)? {
         // Prove append-only from the diff content: for the exception
         // ledger, a diff with no removal or modification lines cannot
         // change gate semantics or candidate bytes.
-        let append_only = path == "policy/allow.toml" && diff_is_append_only(root, from, to, path)?;
+        let append_only =
+            path == "policy/allow.toml" && diff_is_append_only(root, from, to, &path)?;
         changes.push(allow_report::FrozenSubjectChangeV1 {
-            status: status.to_string(),
-            path: path.to_string(),
+            status,
+            path,
             append_only,
         });
     }
     Ok(changes)
+}
+
+/// Parse a `--name-status -z` record stream into (status, path) pairs.
+///
+/// Each record is exactly `STATUS NUL path NUL`; a status without a
+/// following path is a malformed stream (real git never produces one, so
+/// this arms the instrument failure for corrupted or hand-fed input).
+fn parse_name_status_records(stdout: &str) -> CargoAllowResult<Vec<(String, String)>> {
+    let mut fields = stdout.split('\0').filter(|field| !field.is_empty());
+    let mut records = Vec::new();
+    while let Some(status) = fields.next() {
+        let Some(path) = fields.next() else {
+            return Err(instrument(format!(
+                "malformed --name-status -z record stream: status {status:?} has no path field"
+            )));
+        };
+        records.push((status.to_string(), path.to_string()));
+    }
+    Ok(records)
 }
 
 fn diff_is_append_only(
@@ -579,5 +593,43 @@ mod check_fixture_tests {
         );
         let _ = std::fs::remove_dir_all(&root);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod parse_name_status_tests {
+    use super::*;
+
+    #[test]
+    fn parse_name_status_records_pairs_statuses_with_paths() -> Result<(), String> {
+        let records = parse_name_status_records("A\0crates/new.rs\0D\0docs/old.md\0")
+            .map_err(|error| error.to_string())?;
+        let expected = vec![
+            ("A".to_string(), "crates/new.rs".to_string()),
+            ("D".to_string(), "docs/old.md".to_string()),
+        ];
+        assert_eq!(records, expected, "well-formed -z records parse as pairs");
+        Ok(())
+    }
+
+    #[test]
+    fn parse_name_status_records_rejects_a_status_without_a_path() {
+        // Real git never emits this; a truncated or hand-fed stream must
+        // arm the instrument failure instead of mispairing fields.
+        let result = parse_name_status_records("M\0policy/allow.toml\0trailing-status\0");
+        assert!(
+            result.is_err(),
+            "a trailing status without a path must be a malformed stream"
+        );
+    }
+
+    #[test]
+    fn parse_name_status_records_preserves_embedded_spaces_in_paths() {
+        let records = parse_name_status_records("A\0docs/my note v2.md\0").expect("parses");
+        assert_eq!(
+            records,
+            vec![("A".to_string(), "docs/my note v2.md".to_string())],
+            "-z paths carry spaces verbatim"
+        );
     }
 }
