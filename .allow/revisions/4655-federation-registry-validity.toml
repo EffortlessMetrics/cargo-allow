@@ -1,0 +1,16 @@
+# #4655: the federation registry-validity disclosure receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1173"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a025d93cf53461ef72aaf2ab01f411b74587acc843b5870fec279bb63a588912"
+reason = "Authored revision note for the receipted #[expect(dead_code)]-style suppressions and test fixture entries backing the federation registry-validity disclosure (#4655): the guard receipts name the exact attribute or fixture they justify."
+
+[[records]]
+allow_ids = ["allow-1174"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:45a3cacd2185d5b24d1587d154a459e4892c3c302df07a7adaa07474ec0bacf2"
+reason = "Authored revision note for the receipted #[expect(dead_code)]-style suppressions and test fixture entries backing the federation registry-validity disclosure (#4655): the guard receipts name the exact attribute or fixture they justify."
