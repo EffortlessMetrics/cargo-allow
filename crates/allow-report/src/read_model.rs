@@ -73,19 +73,25 @@ pub fn ledger_read_statuses<'a>(
 /// The effective read status for ONE outcome row against the entry-level
 /// projection from [`ledger_read_statuses`] (#4238).
 ///
-/// A finding-level `New` is authoritative and must never be downgraded to the
-/// entry-level lifecycle annotation: the matcher re-raises findings under
-/// expired broad (identity-free, unbounded) entries as `New`, and replacing
-/// that row status with the date-first `Expired` projection masked a no-new
-/// failure at the check gate while `diff --base` still counted it. Every
-/// other row keeps the entry projection, so plain `Matched` rows stay
+/// A finding-level hard failure is authoritative and must never be downgraded
+/// to the entry-level lifecycle annotation (#4644, #4238). The matcher
+/// re-raises findings under expired broad (identity-free, unbounded) entries
+/// as `New`; #4644 extends the same protection to every no-new failure
+/// status, because the date-first `Expired`/`ReviewDue` projection used to
+/// swallow finding-level `EvidenceMissing` (required SAFETY comment, required
+/// entry evidence) and `InvalidSelector` (required or mismatched
+/// `policy:<allow-id>`) rows, letting `check --mode no-new` pass exactly when
+/// a mandatory requirement was unmet. Equal-strength ambiguity and
+/// malformed-policy refusals keep the same protection.
+///
+/// Every other row keeps the entry projection, so plain `Matched` rows stay
 /// annotated as `Expired`/`ReviewDue` for visibility (the L1/L6 surface).
 pub fn ledger_outcome_status(
     projected_statuses: &BTreeMap<&str, MatchStatus>,
     outcome: &MatchOutcome,
 ) -> MatchStatus {
-    if outcome.status == MatchStatus::New {
-        return MatchStatus::New;
+    if outcome.status.is_failure_in_no_new() {
+        return outcome.status;
     }
     outcome
         .allow_id
@@ -295,6 +301,85 @@ mod tests {
             MatchStatus::Expired,
             "a plain Matched row keeps the entry expiry annotation"
         );
+    }
+
+    #[test]
+    fn outcome_status_keeps_hard_requirement_failures_over_lifecycle_annotation() {
+        // #4644: a date-first entry projection must not swallow finding-level
+        // mandatory requirement failures. Under one overdue entry the
+        // `EvidenceMissing` (required SAFETY comment or entry evidence) and
+        // `InvalidSelector` (required or mismatched `policy:<allow-id>`)
+        // rows keep their blocking statuses through the gate projection,
+        // equal-strength `Ambiguous` keeps its own status, and a plain
+        // `Matched` row keeps the entry expiry annotation for visibility.
+        let mut entry = test_entry(None);
+        entry.lifecycle.expires = Some("2020-01-01".to_string());
+        entry.lifecycle.review_after = Some("2019-06-01".to_string());
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(entry);
+        let hard_failures = [
+            MatchStatus::EvidenceMissing,
+            MatchStatus::InvalidSelector,
+            MatchStatus::MissingRequiredField,
+            MatchStatus::Ambiguous,
+        ];
+        let mut outcomes = hard_failures
+            .iter()
+            .enumerate()
+            .map(|(index, status)| {
+                let mut outcome = test_outcome(*status);
+                outcome.finding_index = Some(index);
+                outcome
+            })
+            .collect::<Vec<_>>();
+        outcomes.push(test_outcome(MatchStatus::Matched));
+        let today = SimpleDate {
+            year: 2026,
+            month: 7,
+            day: 14,
+        };
+
+        let statuses = ledger_read_statuses(&cfg, &outcomes, today);
+        assert_eq!(
+            statuses.get("allow-test"),
+            Some(&MatchStatus::Expired),
+            "the entry-level projection stays date-first"
+        );
+        for outcome in &outcomes {
+            let projected = ledger_outcome_status(&statuses, outcome);
+            if outcome.status == MatchStatus::Matched {
+                assert_eq!(
+                    projected,
+                    MatchStatus::Expired,
+                    "a plain Matched row keeps the entry expiry annotation"
+                );
+            } else {
+                assert_eq!(
+                    projected,
+                    outcome.status,
+                    "the {} row must not be downgraded to the date-first annotation",
+                    outcome.status.as_str()
+                );
+            }
+        }
+
+        let projected = ledger_project_outcomes(&cfg, &outcomes, today);
+        for (input, projected_row) in outcomes.iter().zip(projected.iter()) {
+            if input.status == MatchStatus::Matched {
+                assert_eq!(
+                    projected_row.status,
+                    MatchStatus::Expired,
+                    "the plain Matched row keeps the entry expiry annotation"
+                );
+            } else {
+                assert_eq!(
+                    projected_row.status,
+                    input.status,
+                    "the {} row must survive the report projection unchanged",
+                    input.status.as_str()
+                );
+            }
+        }
     }
 
     fn test_entry(occurrence_limit: Option<u32>) -> AllowEntry {

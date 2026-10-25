@@ -25,11 +25,13 @@ fn selected_refresh_text_refuses_a_changed_preimage() -> Result<(), Box<dyn std:
     let Err(error) = super::refresh_policy::refresh_bound_policy(
         &policy,
         &digest,
-        "allow-0250",
-        &allow_core::LastSeen {
-            line: 22,
-            column: 5,
-        },
+        &[(
+            "allow-0250",
+            &allow_core::LastSeen {
+                line: 22,
+                column: 5,
+            },
+        )],
     ) else {
         return Err("stale refresh preimage unexpectedly accepted".into());
     };
@@ -47,16 +49,28 @@ fn fixture_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/refresh/advisory-drift")
 }
 
+fn bulk_fixture_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/refresh/bulk-drift")
+}
+
 fn unique_fixture_copy() -> PathBuf {
+    unique_fixture_copy_from(&fixture_root(), "cargo-allow-refresh")
+}
+
+fn unique_bulk_fixture_copy() -> PathBuf {
+    unique_fixture_copy_from(&bulk_fixture_root(), "cargo-allow-refresh-bulk")
+}
+
+fn unique_fixture_copy_from(source: &Path, prefix: &str) -> PathBuf {
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|duration| duration.as_nanos())
         .unwrap_or(0);
     let id = REFRESH_TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("cargo-allow-refresh-{stamp}-{id}"));
+    let dir = std::env::temp_dir().join(format!("{prefix}-{stamp}-{id}"));
     fs::create_dir_all(&dir)
         .unwrap_or_else(|err| std::panic::panic_any(format!("create refresh fixture copy: {err}")));
-    copy_dir(&fixture_root(), &dir);
+    copy_dir(source, &dir);
     dir
 }
 
@@ -270,4 +284,249 @@ fn refresh_fixture_records_drift_receipt_without_extending_lifecycle() {
         }),
         "refresh should clear location drift for the fixture entry"
     );
+}
+
+#[test]
+fn clap_parses_refresh_all_without_allow_id() {
+    let parsed = CargoAllowCli::try_parse_from(argv(vec!["cargo-allow", "refresh", "--all"]))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("CLI should parse --all: {err}")));
+
+    assert!(matches!(
+        parsed.command,
+        Some(CargoAllowCommand::Refresh(RefreshArgs {
+            all: true,
+            allow_id: None,
+            ..
+        }))
+    ));
+}
+
+#[test]
+fn clap_rejects_refresh_all_combined_with_allow_id() {
+    let Err(error) = CargoAllowCli::try_parse_from(argv(vec![
+        "cargo-allow",
+        "refresh",
+        "--all",
+        "--allow-id",
+        "allow-0250",
+    ])) else {
+        std::panic::panic_any("--all must conflict with --allow-id");
+    };
+
+    assert!(
+        error.to_string().contains("--allow-id"),
+        "conflict diagnostic should name the conflicting flag: {error}"
+    );
+}
+
+#[test]
+fn cmd_refresh_without_selector_fails_closed_with_usage() {
+    let root = unique_bulk_fixture_copy();
+
+    let err = cmd_refresh(&RefreshArgs {
+        root: crate::RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(PathBuf::from("policy/allow.toml")),
+        allow_id: None,
+        all: false,
+        dry_run: true,
+        write: false,
+        include_untracked: true,
+        format: HumanJsonFormat::Human,
+        output: None,
+    })
+    .expect_err("refresh without --allow-id or --all should fail closed");
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+    assert_eq!(err.code(), "E0001_USAGE");
+    assert_eq!(
+        err.to_string(),
+        "allow entry id is required; pass --allow-id <id> or use --all for bulk refresh"
+    );
+
+    fs::remove_dir_all(&root)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("remove refresh fixture: {err}")));
+}
+
+#[test]
+fn refresh_all_dry_run_emits_one_parseable_receipt_per_drifted_entry()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = unique_bulk_fixture_copy();
+    let policy_path = root.join("policy/allow.toml");
+    let config_arg = PathBuf::from("policy/allow.toml");
+    let output_path = root.join("refresh-bulk-dry-run.json");
+    let policy_before = fs::read(&policy_path)?;
+    let (_loaded_root, cfg, findings, _facts, _federation) =
+        crate::load_world(Some(&root), Some(&config_arg), true, None, true).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("load bulk refresh fixture world: {err}"))
+        });
+    let outcomes = evaluate(
+        &cfg,
+        &findings,
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+    for id in ["allow-11366", "allow-11368"] {
+        assert!(
+            outcomes.iter().any(|outcome| {
+                outcome.allow_id.as_deref() == Some(id)
+                    && outcome.status == MatchStatus::LocationDrift
+            }),
+            "bulk fixture should report advisory location drift for {id} before refresh"
+        );
+    }
+
+    cmd_refresh(&RefreshArgs {
+        root: crate::RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(config_arg),
+        allow_id: None,
+        all: true,
+        dry_run: true,
+        write: false,
+        include_untracked: true,
+        format: HumanJsonFormat::Json,
+        output: Some(output_path.clone()),
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("bulk refresh dry-run: {err}")));
+
+    let summary = fs::read_to_string(&output_path)?;
+    let parsed: serde_json::Value = serde_json::from_str(&summary)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("bulk output should be JSON: {err}")));
+    let documents = parsed
+        .as_array()
+        .unwrap_or_else(|| std::panic::panic_any("bulk JSON output should be an array"));
+    assert_eq!(documents.len(), 2);
+    fn summary_field<'a>(document: &'a serde_json::Value, field: &str) -> &'a serde_json::Value {
+        document
+            .get("summary")
+            .and_then(|summary| summary.get(field))
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!("receipt should carry summary.{field}"))
+            })
+    }
+    let mut entry_ids: Vec<_> = documents
+        .iter()
+        .map(|document| {
+            summary_field(document, "entry_id")
+                .as_str()
+                .unwrap_or_else(|| std::panic::panic_any("receipt should carry entry_id"))
+        })
+        .collect();
+    entry_ids.sort_unstable();
+    assert_eq!(entry_ids, ["allow-11366", "allow-11368"]);
+    assert!(documents.iter().all(|document| {
+        summary_field(document, "lifecycle_preserved") == &serde_json::Value::Bool(true)
+            && document
+                .get("mode")
+                .and_then(|mode| mode.get("dry_run"))
+                .unwrap_or_else(|| std::panic::panic_any("receipt should carry mode.dry_run"))
+                == &serde_json::Value::Bool(true)
+    }));
+    assert_eq!(
+        fs::read(&policy_path)?,
+        policy_before,
+        "dry run must not touch the policy file"
+    );
+
+    fs::remove_dir_all(&root)?;
+    Ok(())
+}
+
+#[test]
+fn refresh_all_write_refreshes_every_drifted_entry_then_fails_closed_when_fresh()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = unique_bulk_fixture_copy();
+    let policy_path = root.join("policy/allow.toml");
+    let config_arg = PathBuf::from("policy/allow.toml");
+    let (_loaded_root, cfg, findings, _facts, _federation) =
+        crate::load_world(Some(&root), Some(&config_arg), true, None, true).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("load bulk refresh fixture world: {err}"))
+        });
+    let lifecycle_before = |config: &allow_core::AllowConfig, id: &str| {
+        config
+            .allow
+            .iter()
+            .find(|entry| entry.id == id)
+            .map(|entry| entry.lifecycle.clone())
+    };
+
+    cmd_refresh(&RefreshArgs {
+        root: crate::RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(config_arg.clone()),
+        allow_id: None,
+        all: true,
+        dry_run: false,
+        write: true,
+        include_untracked: true,
+        format: HumanJsonFormat::Human,
+        output: None,
+    })
+    .unwrap_or_else(|err| std::panic::panic_any(format!("bulk refresh write: {err}")));
+
+    let after = load_policy(&policy_path)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("reload policy after write: {err}")));
+    for id in ["allow-11366", "allow-11368"] {
+        let entry = after
+            .allow
+            .iter()
+            .find(|entry| entry.id == id)
+            .unwrap_or_else(|| std::panic::panic_any(format!("expected refreshed entry {id}")));
+        assert_eq!(
+            Some(&entry.lifecycle),
+            lifecycle_before(&cfg, id).as_ref(),
+            "bulk refresh must preserve the {id} lifecycle"
+        );
+        assert!(
+            entry
+                .last_seen
+                .as_ref()
+                .is_some_and(|last_seen| last_seen.line > 1),
+            "bulk refresh should move the {id} last_seen to current coordinates"
+        );
+    }
+
+    let post_outcomes = evaluate(
+        &after,
+        &findings,
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+    for id in ["allow-11366", "allow-11368"] {
+        assert!(
+            post_outcomes.iter().any(|outcome| {
+                outcome.allow_id.as_deref() == Some(id) && outcome.status == MatchStatus::Matched
+            }),
+            "bulk refresh should clear location drift for {id}"
+        );
+    }
+
+    let err = cmd_refresh(&RefreshArgs {
+        root: crate::RootArgs {
+            root: Some(root.clone()),
+        },
+        config: Some(config_arg),
+        allow_id: None,
+        all: true,
+        dry_run: true,
+        write: false,
+        include_untracked: true,
+        format: HumanJsonFormat::Human,
+        output: None,
+    })
+    .expect_err("bulk refresh with no drifted entries should fail closed");
+
+    assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+    assert!(
+        err.to_string()
+            .contains("no allow entries have advisory location drift"),
+        "empty bulk run should report the empty drift set: {err}"
+    );
+
+    fs::remove_dir_all(&root)?;
+    Ok(())
 }
