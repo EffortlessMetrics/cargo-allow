@@ -86,9 +86,14 @@ normalization and backslash folding apply during matching.
 
 `InventoryCompleteness` precedence (`src/lib.rs`):
 
-1. `Fallback` — git failed; the result came from the filesystem walk.
-2. `Partial` — any of `deleted_tracked`, `submodule_paths`,
-   `inaccessible_paths`, or `skipped_paths` is non-empty.
+1. `Partial` — any of `deleted_tracked`, `submodule_paths`,
+   `inaccessible_paths`, or `skipped_paths` is non-empty. Recorded omissions
+   outrank fallback provenance (#4646): a truncated filesystem walk is
+   `Partial`, and the fallback provenance stays visible in
+   `InventorySource::FilesystemFallback` and `git_error` instead of the
+   completeness value.
+2. `Fallback` — git failed and the walk recorded no omissions. The result came
+   from the filesystem walk.
 3. `Scoped` — the `ignored` or `generated` option lists are non-empty. The
    default options carry ignore globs, so default-option inventories report
    `Scoped`, never `Complete`.
@@ -101,12 +106,14 @@ scan (#1849).
 ## What this means for receipts
 
 Ordinary worktree receipts record the inventory completeness and diagnostics in
-their report; `Partial` or `Fallback` does not fail that check solely because of
-the completeness value. Git-backed deleted, submodule, and inaccessible paths
-may therefore appear as `Partial` in that worktree report. Staged constructors
-initialize `inaccessible_paths` empty, and staged `check --mode no-new` retains
-its existing staged-only limitation behavior; this change does not make staged
-no-new resolve or classify inaccessible worktree paths. During filesystem
-fallback, skipped paths are disclosed in `skipped_paths`, but completeness
-remains `Fallback` because `git_error` takes precedence. `Scoped` is surfaced as
-scope metadata rather than a completeness failure.
+their report; `Partial` or `Fallback` does not fail that check solely because
+of the completeness value in advisory (audit) evaluation. Enforcing `check`
+modes (no-new, strict, release) fail closed on `Partial` inventory and scanner
+omissions (#4646), so a truncated or unreadable selected input can never
+receive a green enforcing receipt; a complete filesystem fallback with no
+findings still passes. Git-backed deleted, submodule, and inaccessible paths
+make the inventory `Partial`, and filesystem-walk skips do the same under
+fallback (#4646). Staged constructors initialize `inaccessible_paths` empty,
+and staged `check` retains its existing staged-only limitation behavior; this
+does not make staged check resolve or classify inaccessible worktree paths.
+`Scoped` is surfaced as scope metadata rather than a completeness failure.

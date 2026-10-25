@@ -167,14 +167,20 @@ fn inventory_completeness(
     inaccessible_paths: &[PathBuf],
     skipped_paths: &[PathBuf],
 ) -> options::InventoryCompleteness {
-    if git_failed {
-        options::InventoryCompleteness::Fallback
-    } else if !deleted_tracked.is_empty()
+    // #4646: recorded omissions must outrank fallback provenance. A
+    // filesystem walk that hit the depth/entry caps or read errors is
+    // incomplete even though git was unavailable; classifying it as bare
+    // `Fallback` let a truncated scan pass every enforcing mode with zero
+    // findings. Provenance stays independently visible in
+    // `InventorySource::FilesystemFallback` and `git_error`.
+    if !deleted_tracked.is_empty()
         || !submodule_paths.is_empty()
         || !inaccessible_paths.is_empty()
         || !skipped_paths.is_empty()
     {
         options::InventoryCompleteness::Partial
+    } else if git_failed {
+        options::InventoryCompleteness::Fallback
     } else if !options.ignored.is_empty() || !options.generated.is_empty() {
         options::InventoryCompleteness::Scoped
     } else {

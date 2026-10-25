@@ -323,13 +323,12 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
         || !deny_fired_classes.is_empty()
-        || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
-        || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
-        // #4594: partial inventory in no-new mode fails the gate the same
-        // way the staged path does — a scan that silently missed tracked
-        // files must not read as a green pass.
-        || (inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
-            && mode == CheckMode::NoNew)
+        // #4646: incomplete selected input (skipped Rust files, parse
+        // errors, partial or truncated inventory) fails every enforcing
+        // mode, not only no-new. A source file that never reaches matching
+        // has no failing MatchOutcome for strict/release to catch, so the
+        // completeness gate is the only protection. Audit stays advisory.
+        || (!mode.is_advisory() && check_selected_input_incomplete(&inventory_facts))
         || product_move_ledger_failed
         || extraction_shim_registry_failed
         || extraction_shim_sources_failed
@@ -550,6 +549,21 @@ pub(crate) fn source_coupling_relation(
     }
 }
 
+/// #4646: one shared completeness predicate for both check routes (tracked
+/// worktree and exact staged candidate). It reads recorded omissions —
+/// inventory completeness, filesystem-walk skips, and Rust scanner
+/// read/parse outcomes — independently of inventory source, so a complete
+/// filesystem fallback stays a supported route while a truncated or
+/// unreadable selected input can never look like complete enforcement.
+/// Audit results remain informational; the gate applies this only in
+/// enforcing modes.
+fn check_selected_input_incomplete(facts: &InventoryFacts) -> bool {
+    facts.completeness == allow_inventory::InventoryCompleteness::Partial
+        || facts.inventory_skipped_paths > 0
+        || facts.rust_files_skipped > 0
+        || facts.rust_files_with_parse_errors > 0
+}
+
 fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if args.emit.is_some() || args.artifact_dir.is_some() {
         // #4547: the staged path never reads these flags, so they used to be
@@ -645,9 +659,11 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
         || !deny_fired_classes.is_empty()
-        || (staged.inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
-            && mode == CheckMode::NoNew)
-        || (staged.inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew);
+        // #4646: the staged route shares the worktree completeness
+        // predicate, and it now binds in every enforcing mode. Staged reads
+        // of unreadable or oversized sources remain early loader errors;
+        // parse errors and a partial staged snapshot fail the gate.
+        || (!mode.is_advisory() && check_selected_input_incomplete(&staged.inventory_facts));
     if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
         print_report(ReportRenderArgs {
             command: "check",
@@ -971,6 +987,85 @@ fn reject_source_exception_options(
 #[cfg(test)]
 #[path = "check_receipt_tests.rs"]
 mod receipt_tests;
+
+#[cfg(test)]
+mod completeness_gate_tests {
+    use super::check_selected_input_incomplete;
+    use crate::InventoryFacts;
+    use allow_inventory::{InventoryCompleteness, InventorySource};
+
+    fn complete_fallback_facts() -> InventoryFacts {
+        // A complete filesystem fallback is a supported source-only route
+        // (#4646): fallback provenance alone must not fail enforcement.
+        InventoryFacts::scanned(InventorySource::FilesystemFallback, 3)
+            .with_completeness(InventoryCompleteness::Fallback)
+    }
+
+    #[test]
+    fn complete_and_scoped_inventories_with_clean_scans_pass() {
+        for completeness in [
+            InventoryCompleteness::Complete,
+            InventoryCompleteness::Scoped,
+            InventoryCompleteness::Fallback,
+        ] {
+            let facts = InventoryFacts::scanned(InventorySource::GitTracked, 3)
+                .with_completeness(completeness);
+            assert!(
+                !check_selected_input_incomplete(&facts),
+                "completeness {} with zero omissions must read as complete",
+                completeness.as_str()
+            );
+        }
+    }
+
+    #[test]
+    fn partial_completeness_fails_the_predicate() {
+        let facts = InventoryFacts::scanned(InventorySource::GitTracked, 3)
+            .with_completeness(InventoryCompleteness::Partial);
+        assert!(check_selected_input_incomplete(&facts));
+    }
+
+    #[test]
+    fn truncated_fallback_walk_fails_even_without_partial_marker() {
+        // Defense in depth (#4646): if a producer carried the omission
+        // count without the Partial completeness marker, the gate must
+        // still fail closed.
+        let mut facts = complete_fallback_facts();
+        facts.inventory_skipped_paths = 1;
+        assert!(check_selected_input_incomplete(&facts));
+    }
+
+    #[test]
+    fn scanner_skips_and_parse_errors_fail_the_predicate() {
+        let skipped = complete_fallback_facts().with_rust_files_skipped(1);
+        assert!(check_selected_input_incomplete(&skipped));
+        let parse_errors = complete_fallback_facts().with_rust_files_with_parse_errors(1);
+        assert!(check_selected_input_incomplete(&parse_errors));
+    }
+
+    #[test]
+    fn scanned_inventory_preserves_inventory_skip_counts() {
+        // A truncated fallback inventory must keep its omission count in
+        // the facts the gate reads (#4646); provenance stays in `source`.
+        let inventory = allow_inventory::Inventory {
+            files: vec![std::path::PathBuf::from("visible.txt")],
+            source: InventorySource::FilesystemFallback,
+            completeness: InventoryCompleteness::Partial,
+            empty_git_tracked: false,
+            deleted_tracked: Vec::new(),
+            inaccessible_paths: Vec::new(),
+            git_error: Some("not a repository".to_string()),
+            skipped_paths: vec![std::path::PathBuf::from(
+                "deep/.cargo-allow-inventory-depth-limit-64",
+            )],
+            submodule_paths: Vec::new(),
+        };
+        let facts = InventoryFacts::scanned_inventory(&inventory);
+        assert_eq!(facts.inventory_skipped_paths, 1);
+        assert_eq!(facts.source, InventorySource::FilesystemFallback);
+        assert!(check_selected_input_incomplete(&facts));
+    }
+}
 
 #[cfg(test)]
 mod provenance_tests {
