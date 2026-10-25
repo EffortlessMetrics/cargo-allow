@@ -4,12 +4,16 @@ use allow_core::{
 };
 use allow_match::classify_match;
 
+/// One selected location-drift refresh: `(allow entry index, finding index,
+/// drift message)`.
+pub(crate) type DriftRefreshSelection = (usize, usize, String);
+
 pub(crate) fn select_location_drift_refresh(
     cfg: &AllowConfig,
     outcomes: &[MatchOutcome],
     findings: &[Finding],
     allow_id: &str,
-) -> CargoAllowResult<(usize, usize, String)> {
+) -> CargoAllowResult<DriftRefreshSelection> {
     let entry_index = cfg
         .allow
         .iter()
@@ -32,6 +36,57 @@ pub(crate) fn select_location_drift_refresh(
                 format!("allow entry `{allow_id}` did not produce a match outcome"),
             )
         })?;
+    validate_drift_selection(cfg, findings, allow_id, entry_index, outcome)
+}
+
+/// Bulk `--all` selection (#4651): every location-drifted entry, in policy
+/// order, driven through the same per-entry validation the `--allow-id`
+/// path applies. The first outcome per entry wins, exactly like the
+/// single-path `find`. An empty drift set fails closed with a typed usage
+/// error instead of reporting success: the refresh render contract is
+/// per-entry, so a bulk run with nothing to do has no receipt to emit, and
+/// operators should consult `worklist --status location_drift` first.
+pub(crate) fn select_all_location_drift_refresh(
+    cfg: &AllowConfig,
+    outcomes: &[MatchOutcome],
+    findings: &[Finding],
+) -> CargoAllowResult<Vec<DriftRefreshSelection>> {
+    let mut selected = Vec::new();
+    for (entry_index, entry) in cfg.allow.iter().enumerate() {
+        let Some(outcome) = outcomes
+            .iter()
+            .find(|outcome| outcome.allow_id.as_deref() == Some(entry.id.as_str()))
+        else {
+            continue;
+        };
+        if outcome.status != MatchStatus::LocationDrift {
+            continue;
+        }
+        selected.push(validate_drift_selection(
+            cfg,
+            findings,
+            &entry.id,
+            entry_index,
+            outcome,
+        )?);
+    }
+    if selected.is_empty() {
+        return Err(CargoAllowError::with_kind(
+            CargoAllowErrorKind::Usage,
+            "no allow entries have advisory location drift to refresh; \
+             run `cargo-allow worklist --status location_drift --format json` to find refreshable entries",
+        ));
+    }
+    Ok(selected)
+}
+
+fn validate_drift_selection(
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    allow_id: &str,
+    entry_index: usize,
+    outcome: &MatchOutcome,
+) -> CargoAllowResult<DriftRefreshSelection> {
     if outcome.status != MatchStatus::LocationDrift {
         return Err(CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
@@ -224,5 +279,93 @@ mod tests {
             .expect_err("selector mismatch should not refresh");
 
         assert!(err.to_string().contains("no longer matches"));
+    }
+
+    #[test]
+    fn select_all_location_drift_refresh_returns_policy_order_and_skips_non_drift() {
+        let mut cfg = AllowConfig::empty();
+        let mut fresh = drift_entry();
+        fresh.id = "allow-fresh".to_string();
+        fresh.last_seen = Some(LastSeen {
+            line: 22,
+            column: 4,
+        });
+        cfg.allow.push(fresh);
+        cfg.allow.push(drift_entry());
+        let findings = vec![drift_finding()];
+        // Outcome order deliberately differs from policy order: the fresh
+        // entry is reported first, so selecting by policy position proves
+        // the bulk selector walks the policy rather than the outcome list.
+        let outcomes = vec![
+            MatchOutcome {
+                status: MatchStatus::Matched,
+                allow_id: Some("allow-fresh".to_string()),
+                candidate_ids: Vec::new(),
+                finding_index: Some(0),
+                message: "matched".to_string(),
+                score: 1,
+            },
+            MatchOutcome {
+                status: MatchStatus::LocationDrift,
+                allow_id: Some("allow-drift".to_string()),
+                candidate_ids: Vec::new(),
+                finding_index: Some(0),
+                message: "last_seen changed".to_string(),
+                score: 1,
+            },
+        ];
+
+        let selected = select_all_location_drift_refresh(&cfg, &outcomes, &findings)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("bulk selection: {err}")));
+
+        assert_eq!(selected.len(), 1, "the fresh entry must not be selected");
+        assert_eq!(selected[0].0, 1, "selections use policy positions");
+        assert_eq!(selected[0].1, 0);
+        assert_eq!(selected[0].2, "last_seen changed");
+    }
+
+    #[test]
+    fn select_all_location_drift_refresh_fails_closed_when_no_entry_is_drifted() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(drift_entry());
+        let findings = vec![drift_finding()];
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::Matched,
+            allow_id: Some("allow-drift".to_string()),
+            candidate_ids: Vec::new(),
+            finding_index: Some(0),
+            message: "matched".to_string(),
+            score: 1,
+        }];
+
+        let err = select_all_location_drift_refresh(&cfg, &outcomes, &findings)
+            .expect_err("an empty drift set should fail closed");
+
+        assert_eq!(err.kind(), CargoAllowErrorKind::Usage);
+        assert!(
+            err.to_string()
+                .contains("no allow entries have advisory location drift")
+        );
+    }
+
+    #[test]
+    fn select_all_location_drift_refresh_applies_per_entry_invariants() {
+        let mut cfg = AllowConfig::empty();
+        cfg.allow.push(drift_entry());
+        let findings = vec![drift_finding()];
+        let outcomes = vec![MatchOutcome {
+            status: MatchStatus::LocationDrift,
+            allow_id: Some("allow-drift".to_string()),
+            candidate_ids: Vec::new(),
+            finding_index: None,
+            message: "last_seen changed".to_string(),
+            score: 1,
+        }];
+
+        let err = select_all_location_drift_refresh(&cfg, &outcomes, &findings)
+            .expect_err("a drift outcome without a finding index should fail closed");
+
+        assert_eq!(err.kind(), CargoAllowErrorKind::Internal);
+        assert!(err.to_string().contains("missing finding index"));
     }
 }
