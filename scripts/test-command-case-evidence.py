@@ -1337,7 +1337,7 @@ class NativeAdmissionTests(unittest.TestCase):
                 receipt = json.loads(self.read_member(case["receipt"]))
                 self.assertEqual(receipt["lifecycle_posture"], "candidate-mode")
                 self.assertEqual(receipt["lane_posture"], {"non_rust_file": "blocking"})
-                self.assertEqual(receipt["federation"], {"federation_version": "1", "ledger_contributors": [], "precedence_applied": "cli_override"})
+                self.assertEqual(receipt["federation"], {"federation_version": "1", "ledger_contributors": [], "precedence_applied": "cli_override", "registry_validity": "absent"})
                 if value == "omit":
                     del receipt[field]
                 else:
