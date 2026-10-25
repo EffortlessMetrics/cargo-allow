@@ -357,6 +357,10 @@ fn federation_value(federation: FederationReportContext<'_>) -> Value {
         "precedence_applied".to_string(),
         optional_string_value(federation.precedence_applied),
     );
+    value.insert(
+        "registry_validity".to_string(),
+        optional_string_value(federation.registry_validity),
+    );
 
     let contributors = federation
         .ledger_contributors

@@ -167,6 +167,7 @@ Every receipt produced under federation-aware modes must record:
 | `config_provenance` | for profile modes | Existing C2 field; preserved |
 | `divergence_summary` | when any divergence | Counts by kind + sample ids |
 | `precedence_applied` | yes | Which tier satisfied the active config/policy read |
+| `registry_validity` | when implemented | `absent`/`valid`/`invalid`; `invalid` at `discovery_fallback` means the registered ledgers went unenforced for that run (#4655) |
 
 Receipts must not claim parity or canonical merge when `divergence_summary` is
 non-empty unless mode is explicitly audit-only and posture is advisory.

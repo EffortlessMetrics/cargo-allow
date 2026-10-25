@@ -15,6 +15,7 @@ pub(crate) struct FederationReportBundle {
     lanes: Vec<Vec<String>>,
     federation_version: &'static str,
     precedence_applied: &'static str,
+    registry_validity: &'static str,
     divergence_kinds: Vec<String>,
     divergence_messages: Vec<String>,
     divergence_canonical_ids: Vec<String>,
@@ -39,6 +40,7 @@ impl FederationReportBundle {
             lanes: Vec::with_capacity(evaluation.ledger_contributors.len()),
             federation_version: evaluation.federation_version,
             precedence_applied: evaluation.precedence_applied.as_str(),
+            registry_validity: evaluation.registry_validity.as_str(),
             divergence_kinds: Vec::with_capacity(evaluation.divergences.len()),
             divergence_messages: Vec::with_capacity(evaluation.divergences.len()),
             divergence_canonical_ids: Vec::with_capacity(evaluation.divergences.len()),
@@ -111,6 +113,19 @@ impl FederationReportBundle {
         self.blocking_divergence_count() > 0
     }
 
+    /// True when a parsed `.allow/config.toml` registry failed validation and
+    /// the run fell back to the discovered ledger (#4655). That combination is
+    /// a silent fail-open — a stricter registered ledger stops being enforced
+    /// while the gate stays green — so `check` treats it as blocking.
+    ///
+    /// An explicit `--config` override is deliberately excluded: the operator
+    /// named the ledger themselves, so nothing about the selection is silent.
+    /// This matches `doctor`, which only flags the invalid registry at
+    /// `discovery_fallback` precedence.
+    pub(crate) fn registry_invalid_fallback(&self) -> bool {
+        self.precedence_applied == "discovery_fallback" && self.registry_validity == "invalid"
+    }
+
     pub(crate) fn with_context<R>(&self, f: impl FnOnce(FederationReportContext<'_>) -> R) -> R {
         let summaries = self
             .ids
@@ -173,6 +188,7 @@ impl FederationReportBundle {
         let context = FederationReportContext {
             federation_version: Some(self.federation_version),
             precedence_applied: Some(self.precedence_applied),
+            registry_validity: Some(self.registry_validity),
             ledger_contributors: if summaries.is_empty() {
                 None
             } else {
@@ -181,5 +197,89 @@ impl FederationReportBundle {
             divergence_summary,
         };
         f(context)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use allow_policy::federation::{FederationRegistryValidity, PrecedenceTier};
+
+    fn evaluation(
+        precedence: PrecedenceTier,
+        validity: FederationRegistryValidity,
+    ) -> FederationEvaluation {
+        FederationEvaluation {
+            federation_version: allow_policy::federation::FEDERATION_VERSION,
+            precedence_applied: precedence,
+            registry_validity: validity,
+            active_provenance: None,
+            ledger_contributors: Vec::new(),
+            divergences: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn registry_invalid_fallback_flags_discovery_fallback_with_invalid_registry() {
+        // #4655: exactly the combination the issue pins — the registry parsed
+        // but failed validation, so the gate silently reverted to discovery.
+        let bundle = FederationReportBundle::from_evaluation(&evaluation(
+            PrecedenceTier::DiscoveryFallback,
+            FederationRegistryValidity::Invalid,
+        ));
+        assert!(
+            bundle.registry_invalid_fallback(),
+            "invalid-registry discovery fallback must be flagged"
+        );
+    }
+
+    #[test]
+    fn registry_invalid_fallback_ignores_absent_and_valid_registries() {
+        for validity in [
+            FederationRegistryValidity::Absent,
+            FederationRegistryValidity::Valid,
+        ] {
+            let bundle = FederationReportBundle::from_evaluation(&evaluation(
+                PrecedenceTier::DiscoveryFallback,
+                validity,
+            ));
+            assert!(
+                !bundle.registry_invalid_fallback(),
+                "validity {validity:?} at discovery fallback must not be flagged"
+            );
+        }
+    }
+
+    #[test]
+    fn registry_invalid_fallback_ignores_cli_override_despite_invalid_registry() {
+        // An explicit --config names the ledger itself, so nothing about the
+        // selection is silent; doctor draws the same boundary.
+        let bundle = FederationReportBundle::from_evaluation(&evaluation(
+            PrecedenceTier::CliOverride,
+            FederationRegistryValidity::Invalid,
+        ));
+        assert!(
+            !bundle.registry_invalid_fallback(),
+            "a CLI override must not be flagged as a silent invalid-registry fallback"
+        );
+    }
+
+    #[test]
+    fn with_context_threads_registry_validity_into_the_report_context() {
+        let bundle = FederationReportBundle::from_evaluation(&evaluation(
+            PrecedenceTier::DiscoveryFallback,
+            FederationRegistryValidity::Invalid,
+        ));
+        bundle.with_context(|context| {
+            assert_eq!(
+                context.registry_validity,
+                Some(FederationRegistryValidity::Invalid.as_str()),
+                "report context must carry the registry validity"
+            );
+            assert_eq!(
+                context.precedence_applied,
+                Some(PrecedenceTier::DiscoveryFallback.as_str())
+            );
+        });
     }
 }
