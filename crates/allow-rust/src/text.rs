@@ -1,10 +1,86 @@
 pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let outer = format!("#[{name}");
     let inner = format!("#![{name}");
-    [outer.as_str(), inner.as_str(), name]
-        .into_iter()
-        .find_map(|prefix| line.strip_prefix(prefix))
-        .and_then(|rest| rest.trim_start().strip_prefix('('))
+    let raw_outer = format!("#[r#{name}");
+    let raw_inner = format!("#![r#{name}");
+    let raw_bare = format!("r#{name}");
+    [
+        outer.as_str(),
+        inner.as_str(),
+        name,
+        raw_outer.as_str(),
+        raw_inner.as_str(),
+        raw_bare.as_str(),
+    ]
+    .into_iter()
+    .find_map(|prefix| line.strip_prefix(prefix))
+    .and_then(|rest| {
+        if let Some(after) = rest.strip_prefix('(') {
+            return Some(after);
+        }
+        // #4645: whitespace and comments may legally sit between the
+        // attribute name and its invocation parenthesis.
+        let cursor = skip_rust_trivia(rest, 0);
+        rest.get(cursor..)?.strip_prefix('(')
+    })
+}
+
+/// End offset of a Rust comment starting at `start`: `Some(Some(end))` for a
+/// complete comment, `Some(None)` when no comment starts there, `None` for an
+/// unterminated block comment (truncated input).
+pub(crate) fn rust_comment_end(text: &str, start: usize) -> Option<Option<usize>> {
+    let bytes = text.as_bytes();
+    if bytes.get(start..start + 2) == Some(b"//") {
+        return Some(Some(
+            text.get(start + 2..)?
+                .find('\n')
+                .map_or(text.len(), |offset| start + 3 + offset),
+        ));
+    }
+    if bytes.get(start..start + 2) != Some(b"/*") {
+        return Some(None);
+    }
+    let mut depth = 1usize;
+    let mut index = start + 2;
+    while index < bytes.len() {
+        match bytes.get(index..index + 2) {
+            Some(b"/*") => {
+                depth += 1;
+                index += 2;
+            }
+            Some(b"*/") => {
+                depth -= 1;
+                index += 2;
+                if depth == 0 {
+                    return Some(Some(index));
+                }
+            }
+            _ => index += 1,
+        }
+    }
+    None
+}
+
+/// Advance past whitespace and Rust comments (#4645): legal trivia between
+/// source tokens must not hide recognition.
+pub(crate) fn skip_rust_trivia(text: &str, mut cursor: usize) -> usize {
+    loop {
+        cursor = skip_rust_whitespace(text, cursor);
+        match rust_comment_end(text, cursor) {
+            Some(Some(end)) => cursor = end,
+            _ => return cursor,
+        }
+    }
+}
+
+pub(crate) fn skip_rust_whitespace(text: &str, mut cursor: usize) -> usize {
+    while let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) {
+        if !ch.is_whitespace() {
+            break;
+        }
+        cursor += ch.len_utf8();
+    }
+    cursor
 }
 
 pub(crate) fn extract_lints(text: &str) -> Vec<String> {

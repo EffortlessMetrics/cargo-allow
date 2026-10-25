@@ -3,7 +3,9 @@ use tree_sitter::Node;
 
 use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts, UnsafeAttribute};
 use crate::syntax_tree::node_text;
-use crate::text::{SourceLineIndex, detect_attr, source_column};
+use crate::text::{
+    SourceLineIndex, detect_attr, skip_rust_trivia, skip_rust_whitespace, source_column,
+};
 
 pub(super) fn record_node_attributes(
     node: Node<'_>,
@@ -177,27 +179,36 @@ fn cfg_attr_arguments_after_predicate(text: &str) -> &str {
 }
 
 fn attribute_name_offset(text: &str, name: &str) -> Option<usize> {
-    let mut cursor = skip_rust_whitespace(text, 0);
+    let mut cursor = skip_rust_trivia(text, 0);
     if !text.get(cursor..).is_some_and(|rest| rest.starts_with('#')) {
         return None;
     }
     cursor += '#'.len_utf8();
-    cursor = skip_rust_whitespace(text, cursor);
+    cursor = skip_rust_trivia(text, cursor);
     if text.get(cursor..).is_some_and(|rest| rest.starts_with('!')) {
         cursor += '!'.len_utf8();
-        cursor = skip_rust_whitespace(text, cursor);
+        cursor = skip_rust_trivia(text, cursor);
     }
     if !text.get(cursor..).is_some_and(|rest| rest.starts_with('[')) {
         return None;
     }
     cursor += '['.len_utf8();
-    cursor = skip_rust_whitespace(text, cursor);
+    cursor = skip_rust_trivia(text, cursor);
+    // #4645: attribute names may be spelled as raw identifiers
+    // (`#[r#allow(...)]`). Keep the offset at the start of the written name
+    // token so the reported column and attribute text include the `r#`.
+    let name_start = cursor;
+    if text.get(cursor..).is_some_and(|rest| {
+        rest.starts_with("r#") && rest.get(2..).is_some_and(|after| after.starts_with(name))
+    }) {
+        cursor += "r#".len();
+    }
     if text
         .get(cursor..)
         .is_some_and(|rest| rest.starts_with(name))
         && invocation_name_followed_by_parens(text, cursor + name.len())
     {
-        Some(cursor)
+        Some(name_start)
     } else {
         None
     }
@@ -234,18 +245,10 @@ fn find_attribute_invocations_outside_rust_strings(text: &str, name: &str) -> Ve
 }
 
 fn invocation_name_followed_by_parens(text: &str, cursor: usize) -> bool {
-    text.get(skip_rust_whitespace(text, cursor)..)
+    // #4645: comments as well as whitespace may sit between an attribute or
+    // nested attribute-invocation name and its `(`.
+    text.get(skip_rust_trivia(text, cursor)..)
         .is_some_and(|rest| rest.starts_with('('))
-}
-
-fn skip_rust_whitespace(text: &str, mut cursor: usize) -> usize {
-    while let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) {
-        if !ch.is_whitespace() {
-            break;
-        }
-        cursor += ch.len_utf8();
-    }
-    cursor
 }
 
 fn token_starts_at_attribute_boundary(text: &str, cursor: usize) -> bool {

@@ -74,6 +74,60 @@ fn persistent_store_round_trips_findings_across_instances() {
     let _ = fs::remove_dir_all(&root);
 }
 
+/// #4645: raw-spelling findings must agree between uncached, cold-cached, and
+/// warm (served-from-store) scans, so persisted facts can never hide them.
+/// Stale stores from before the scanner recognized raw spellings cannot be
+/// served at all: the scan-cache generation epoch was bumped, and
+/// `scanner_generation_change_invalidates_every_entry` proves a generation
+/// mismatch discards durable entries.
+#[test]
+fn raw_spelling_findings_agree_across_cached_and_uncached_scans() {
+    const RAW_SOURCE: &str =
+        "fn u(value: Option<u8>) -> u8 { value.r#unwrap() }\nfn p() { std::r#panic!(\"x\"); }\n";
+    let root = temp_root("raw-spelling-cache");
+    let source_path = root.join("src/lib.rs");
+    fs::write(&source_path, RAW_SOURCE)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write: {err}")));
+    let dir = ScanCacheStore::default_dir(&root);
+    let generation = scan_cache_generation();
+    let files = vec![PathBuf::from("src/lib.rs")];
+
+    let sorted_families = |mut findings: Vec<allow_core::Finding>| {
+        findings.sort_by(|left, right| left.family.cmp(&right.family));
+        findings
+            .into_iter()
+            .map(|finding| finding.family)
+            .collect::<Vec<_>>()
+    };
+    let uncached = sorted_families(scan_rust_source("src/lib.rs", RAW_SOURCE));
+    assert_eq!(
+        uncached,
+        vec![Some("panic_macro".to_string()), Some("unwrap".to_string())],
+        "uncached scan must recognize both raw spellings"
+    );
+
+    let mut cache = ScanCache::new();
+    let mut store = ScanCacheStore::open(&dir, &generation);
+    let cold = scan_rust_files_cached_with_store(&root, &files, &mut cache, &mut store)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("cold scan: {err}")));
+    assert_eq!(
+        sorted_families(cold.findings.clone()),
+        uncached,
+        "cold cached scan must agree with the uncached scan"
+    );
+    assert!(store.flush(), "first flush should persist");
+
+    // A brand-new process equivalent: fresh cache, freshly opened store.
+    let mut cache2 = ScanCache::new();
+    let mut store2 = ScanCacheStore::open(&dir, &generation);
+    assert!(!store2.is_empty(), "reopened store must load entries");
+    let warm = scan_rust_files_cached_with_store(&root, &files, &mut cache2, &mut store2)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("warm scan: {err}")));
+    assert_eq!(cold.findings, warm.findings);
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn preserved_mtime_cannot_mask_changed_content() {
     let root = temp_root("content-invalidation");
