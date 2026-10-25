@@ -25298,3 +25298,25 @@ receiver_fingerprint = "Some(2)"
 [allow.last_seen]
 line = 20
 column = 25
+
+[[allow]]
+id = "allow-1178"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the five bulk-refresh fixture receipts (#4651, #3792 precedent)."
+evidence = ["issue:4651"]
+created = "2026-10-25"
+review_after = "2027-01-23"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
