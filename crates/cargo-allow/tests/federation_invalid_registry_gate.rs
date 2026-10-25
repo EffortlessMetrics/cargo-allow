@@ -5,15 +5,17 @@
 
 // Each test binary compiles `support` and `json_assertions` separately, so the
 // helpers this one does not call would otherwise warn as dead code under
-// `-D warnings`.
+// `-D warnings`. Each attribute names its own ledger entry so the two
+// identical-shaped attributes stay uniquely receipted (policy:allow-1173 /
+// policy:allow-1174).
 #[expect(
     dead_code,
-    reason = "policy:allow-0494 shared test support module; this binary uses a subset"
+    reason = "policy:allow-1173: shared json_assertions module; this binary uses a subset"
 )]
 mod json_assertions;
 #[expect(
     dead_code,
-    reason = "policy:allow-0494 shared test support module; this binary uses a subset"
+    reason = "policy:allow-1174: shared support module; this binary uses a subset"
 )]
 mod support;
 

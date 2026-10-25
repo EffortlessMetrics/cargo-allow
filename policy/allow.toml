@@ -25187,3 +25187,49 @@ glob = ".allow/review-dispositions/pr-4642.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1173"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/tests/federation_invalid_registry_gate.rs"
+owner = "core/test"
+classification = "reviewed_exception"
+reason = "Shared tests/json_assertions module is compiled separately into each test binary; this one calls a subset of its helpers, so the rest would fail -D warnings as dead code. Scoped to the module declaration in a test file."
+evidence = ["test:invalid_registry_fails_check_and_names_the_condition"]
+created = "2026-10-25"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-1173: shared json_assertions module; this binary uses a subset\" )]"
+target_fingerprint = "policy:allow-1173"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 11
+column = 1
+
+[[allow]]
+id = "allow-1174"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/tests/federation_invalid_registry_gate.rs"
+owner = "core/test"
+classification = "reviewed_exception"
+reason = "Shared tests/support module is compiled separately into each test binary; this one calls a subset of its helpers, so the rest would fail -D warnings as dead code. Scoped to the module declaration in a test file."
+evidence = ["test:staged_check_fails_on_invalid_registry"]
+created = "2026-10-25"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-1174: shared support module; this binary uses a subset\" )]"
+target_fingerprint = "policy:allow-1174"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 16
+column = 1
