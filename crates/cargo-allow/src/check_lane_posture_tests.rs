@@ -317,6 +317,53 @@ fn expired_broad_entry_reraised_new_fails_no_new_gate() {
     ));
 }
 
+#[test]
+fn overdue_entry_cannot_mask_mandatory_requirement_failures_in_no_new() {
+    // #4644 gate-masking repair: a finding-level `EvidenceMissing` (required
+    // SAFETY comment) or `InvalidSelector` (required `policy:<allow-id>`)
+    // row must stay blocking through the date-first entry projection. The
+    // projection used to replace both rows with the advisory `Expired`/
+    // `ReviewDue` annotation, so `check --mode no-new` exited 0 exactly when
+    // a mandatory requirement was unmet and cadence work was overdue.
+    for (id, expires, review_after) in [
+        ("allow-expired", Some("2020-01-01"), None),
+        ("allow-review-due", None, Some("2020-01-01")),
+    ] {
+        for (status, requirement_note) in [
+            (
+                MatchStatus::EvidenceMissing,
+                "allow-unsafe matched unsafe finding but has no nearby SAFETY comment",
+            ),
+            (
+                MatchStatus::InvalidSelector,
+                "allow-unsafe matched lint suppression without required policy:<allow-id> reference",
+            ),
+        ] {
+            let entry = lifecycle_entry(id, expires, review_after);
+            let mut cfg = AllowConfig::empty();
+            cfg.allow.push(entry.clone());
+            let findings = vec![panic_finding()];
+            let outcomes = vec![MatchOutcome {
+                status,
+                allow_id: Some(entry.id.clone()),
+                candidate_ids: vec![entry.id.clone()],
+                finding_index: Some(0),
+                message: requirement_note.to_string(),
+                score: 300,
+            }];
+
+            assert!(
+                check_failed_for_outcomes(&outcomes, &findings, &cfg, CheckMode::NoNew),
+                "{id} with {status:?} must fail no-new"
+            );
+            assert!(
+                check_failed_for_outcomes(&outcomes, &findings, &cfg, CheckMode::Strict),
+                "{id} with {status:?} must fail strict"
+            );
+        }
+    }
+}
+
 fn lifecycle_entry(id: &str, expires: Option<&str>, review_after: Option<&str>) -> AllowEntry {
     AllowEntry {
         id: id.to_string(),
