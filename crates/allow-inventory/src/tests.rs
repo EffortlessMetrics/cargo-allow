@@ -741,6 +741,53 @@ fn recursive_inventory_stops_at_entry_limit() -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+/// #4646 review: the walker records skips before the configured ignore globs
+/// are applied, so a skip inside a policy-ignored subtree omits no selected
+/// input. The skip must be filtered out as scope — not classify the inventory
+/// Partial — while the same skip outside the ignored scope stays fail-closed.
+#[test]
+fn ignored_subtree_skips_are_scope_not_omissions() -> Result<(), Box<dyn std::error::Error>> {
+    use super::filesystem::INVENTORY_MAX_DEPTH;
+
+    let root = temp_root("ignored-subtree-skip");
+    let mut deep = root.join("vendor").join("private");
+    for index in 0..=INVENTORY_MAX_DEPTH {
+        deep = deep.join(format!("d{index}"));
+    }
+    fs::create_dir_all(&deep)?;
+    write_file(deep.join("hidden.rs"), "fn hidden() {}\n");
+    write_file(root.join("visible.txt"), "visible\n");
+
+    // Without the ignore: the capped vendor walk is a recorded omission and
+    // the inventory degrades to Partial.
+    let unscoped = inventory(&root, &InventoryOptions::default())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("unscoped inventory: {err}")));
+    assert_eq!(unscoped.completeness, InventoryCompleteness::Partial);
+    assert_eq!(unscoped.skipped_paths.len(), 1);
+
+    // With the ignore: the same skip is scope, not an omission — the
+    // inventory keeps fallback provenance and loses the Partial marker.
+    let mut scoped_options = InventoryOptions::default();
+    scoped_options.ignored.push("vendor/**".to_string());
+    let scoped = inventory(&root, &scoped_options)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scoped inventory: {err}")));
+    assert_eq!(scoped.source, InventorySource::FilesystemFallback);
+    assert_eq!(
+        scoped.completeness,
+        InventoryCompleteness::Fallback,
+        "an ignored-subtree skip must not classify the inventory Partial"
+    );
+    assert!(
+        scoped.skipped_paths.is_empty(),
+        "ignored-subtree skips must be filtered from skipped_paths, got {:?}",
+        scoped.skipped_paths
+    );
+    assert!(scoped.files.contains(&PathBuf::from("visible.txt")));
+
+    remove_dir(&root);
+    Ok(())
+}
+
 fn temp_root(label: &str) -> PathBuf {
     let unique = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

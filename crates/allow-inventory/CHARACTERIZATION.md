@@ -19,8 +19,12 @@ intent.
 
 When git fails in either mode (missing binary, not a repository, process or
 permission failure), the scan falls back to a raw filesystem walk
-(`recursive_files`) with `completeness = Fallback` and the git error message in
-`git_error` (#1845). The fallback is never silent.
+(`recursive_files`) and records the git error message in `git_error` (#1845).
+The fallback is never silent. The reported source follows the requested mode:
+`FilesystemFallback` in default mode, `FilesystemIncludeUntracked` in
+untracked-inclusive mode. Completeness follows the recorded omissions: a walk
+with no omissions classifies `Fallback`; a walk that recorded skips classifies
+`Partial` (#4646) — omissions outrank fallback provenance.
 
 ## Git-tracked classification
 
@@ -38,7 +42,8 @@ Each git-reported path is probed with `fs::metadata(root.join(path))`
 
 `inaccessible_paths` is present in both the Git-tracked and
 include-untracked inventory shapes; filesystem fallback keeps the field empty
-because its `skipped_paths` disclosure and `Fallback` precedence are separate.
+because its `skipped_paths` disclosure and its omission-first completeness
+precedence are separate.
 
 The final list is sorted, deduplicated, then filtered through the
 `options.ignored` globs before being returned.
@@ -77,7 +82,12 @@ is used there; replacement characters can appear for undecodable sequences.
 ## Ignore filtering
 
 After source selection, every inventory applies `options.ignored` globs to the
-relative paths. Defaults ignore `.git/**` and `target/**`. Matching is
+relative paths — both to the returned file list and to the recorded
+`skipped_paths`. A skip that lands inside a subtree the configuration already
+excludes omits no selected input, so it is filtered out and never classifies
+the inventory `Partial` (#4646 review); skips outside the ignored scope, and
+the synthetic entry-limit marker (which has no attributable directory), are
+kept. Defaults ignore `.git/**` and `target/**`. Matching is
 root-anchored: the default `target/**` pattern excludes only top-level
 `target/...` paths, so a tracked `src/target/mod.rs` survives. Unicode NFC
 normalization and backslash folding apply during matching.
@@ -89,8 +99,9 @@ normalization and backslash folding apply during matching.
 1. `Partial` — any of `deleted_tracked`, `submodule_paths`,
    `inaccessible_paths`, or `skipped_paths` is non-empty. Recorded omissions
    outrank fallback provenance (#4646): a truncated filesystem walk is
-   `Partial`, and the fallback provenance stays visible in
-   `InventorySource::FilesystemFallback` and `git_error` instead of the
+   `Partial`, and the fallback provenance stays visible in the inventory
+   source (`FilesystemFallback` or, in untracked-inclusive mode,
+   `FilesystemIncludeUntracked`) and in `git_error` instead of the
    completeness value.
 2. `Fallback` — git failed and the walk recorded no omissions. The result came
    from the filesystem walk.

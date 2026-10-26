@@ -253,6 +253,12 @@ fn inventory_value(context: ReportContext<'_>) -> Value {
             Value::String(completeness.to_string()),
         );
     }
+    if inventory.inventory_skipped_paths > 0 {
+        value.insert(
+            "inventory_skipped_paths".to_string(),
+            Value::from(inventory.inventory_skipped_paths),
+        );
+    }
     if let Some(source_identity) = inventory.source_identity {
         value.insert(
             "source_identity".to_string(),

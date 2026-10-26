@@ -68,7 +68,7 @@ pub fn inventory(
         empty_git_tracked,
         deleted_tracked,
         git_error,
-        skipped_paths,
+        mut skipped_paths,
         submodule_paths,
         inaccessible_paths,
     ) = if options.include_untracked {
@@ -138,6 +138,14 @@ pub fn inventory(
     files.sort();
     files.dedup();
     files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
+    // #4646 review: the walk records skips before the configured ignore globs
+    // are applied, so a skip that lands inside a policy-ignored subtree omits
+    // no selected input — the configuration already excluded it. Filter skips
+    // with the same rule as files so an unreadable or depth-capped ignored
+    // directory cannot classify the inventory Partial and fail enforcing
+    // modes. Skips outside the ignored scope (and the synthetic entry-limit
+    // marker, which has no attributable directory) are kept fail-closed.
+    skipped_paths.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
     let completeness = inventory_completeness(
         options,
         git_error.is_some(),

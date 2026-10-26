@@ -350,10 +350,96 @@ fn non_git_depth_capped_fallback_fails_every_enforcing_mode() {
                     Some("partial"),
                     "{label}/{mode}: the truncated fallback must be disclosed as partial"
                 );
+                // #4646 review: the omission count itself must reach both the
+                // report JSON and the receipt inventory, so consumers read the
+                // count and not just the `partial` label.
+                assert_eq!(
+                    run.report
+                        .pointer("/inventory/inventory_skipped_paths")
+                        .and_then(serde_json::Value::as_u64),
+                    Some(1),
+                    "{label}/{mode}: report inventory must carry the omission count"
+                );
+                assert_eq!(
+                    run.receipt
+                        .pointer("/inventory/inventory_skipped_paths")
+                        .and_then(serde_json::Value::as_u64),
+                    Some(1),
+                    "{label}/{mode}: receipt inventory must carry the omission count"
+                );
             }
         }
         let _ = fs::remove_dir_all(&root);
     }
+}
+
+/// #4646 review: the walker records skips before the configured ignore globs
+/// are applied, so a truncation inside a policy-ignored subtree omits no
+/// selected input. With `workspace.ignored = ["vendor/**"]`, a depth-capped
+/// `vendor/...` walk is scope, not an omission — every mode passes, and the
+/// artifacts carry no `partial` marker or omission count.
+#[test]
+fn ignored_subtree_truncation_is_scope_not_omission() {
+    let root = unique_root("check-enforcing-ignored-truncation");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[workspace]
+ignored = [".git/**", "target/**", "vendor/**"]
+
+[[allow]]
+id = "allow-policy"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy/allow.toml"
+owner = "core"
+classification = "fixture"
+reason = "self-receipt for the fixture policy"
+evidence = ["doc:policy/allow.toml"]
+created = "2026-05-09"
+review_after = "2027-08-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy/allow.toml"
+target_fingerprint = "toml"
+glob = "policy/allow.toml"
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let mut nested = root.join("vendor").join("private");
+    for _ in 0..65 {
+        nested = nested.join("d");
+    }
+    fs::create_dir_all(&nested)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create nested dirs: {err}")));
+    fs::write(
+        nested.join("lib.rs"),
+        "fn hidden() { panic!(\"ignored subtree\"); }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+
+    for mode in ["audit", "no-new", "strict", "release"] {
+        let run = run_check(&root, mode, false, Some("panic"));
+        assert_verdict_agreement(&run, &format!("ignored-truncation/{mode}"), false);
+        assert_ne!(
+            report_completeness(&run),
+            Some("partial"),
+            "ignored-truncation/{mode}: ignored-subtree scope must not read as partial"
+        );
+        assert_eq!(
+            run.report
+                .pointer("/inventory/inventory_skipped_paths")
+                .and_then(serde_json::Value::as_u64),
+            None,
+            "ignored-truncation/{mode}: no omission count may be emitted for ignored scope"
+        );
+    }
+    let _ = fs::remove_dir_all(&root);
 }
 
 /// #4646: a complete filesystem fallback with no findings is a supported
@@ -368,6 +454,13 @@ fn complete_filesystem_fallback_with_no_findings_passes_every_mode() {
     for mode in ["audit", "no-new", "strict", "release"] {
         let run = run_check(&root, mode, false, Some("panic"));
         assert_verdict_agreement(&run, &format!("fallback-complete/{mode}"), false);
+        assert_eq!(
+            run.report
+                .pointer("/inventory/inventory_skipped_paths")
+                .and_then(serde_json::Value::as_u64),
+            None,
+            "fallback-complete/{mode}: a complete fallback emits no omission count"
+        );
     }
     let _ = fs::remove_dir_all(&root);
 }

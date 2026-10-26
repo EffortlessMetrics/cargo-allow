@@ -121,6 +121,7 @@ impl SourceTreeReportContext {
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_completeness(self.inventory_completeness())
+        .with_inventory_skipped_paths(self.inventory_facts.inventory_skipped_paths)
         .with_source_identity(self.source_identity.as_deref())
     }
 
@@ -137,6 +138,7 @@ impl SourceTreeReportContext {
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_inventory_completeness(self.inventory_completeness())
         .with_inventory_source_identity(self.source_identity.as_deref())
+        .with_inventory_skipped_paths(self.inventory_facts.inventory_skipped_paths)
         .with_rust_scanner_facts(
             self.inventory_facts.rust_files_considered,
             self.inventory_facts.rust_files_skipped,
@@ -413,6 +415,11 @@ mod tests {
         assert_eq!(context.inventory_completeness(), "partial");
         assert_eq!(context.inventory().completeness, Some("partial"));
         assert_eq!(context.report(None).inventory.completeness, Some("partial"));
+        // #4646 review: the omission count itself must reach both the typed
+        // inventory projection and the report/receipt context, so JSON
+        // consumers read the count and not just the `partial` label.
+        assert_eq!(context.inventory().inventory_skipped_paths, 1);
+        assert_eq!(context.report(None).inventory.inventory_skipped_paths, 1);
 
         fs::remove_dir_all(&root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
