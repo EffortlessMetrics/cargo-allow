@@ -292,6 +292,18 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     if blocking_divergence_count > 0 {
         context.blocking_divergence_entries = Some(blocking_divergence_count);
     }
+    // #4655: a parsed-but-invalid `.allow/config.toml` used to drop the
+    // registry silently — the gate ran on the discovered ledger with zero
+    // federation signal, so a stricter registered ledger could stop being
+    // enforced behind a green check. Fail closed instead and name the cause.
+    let federation_registry_failed = federation_bundle.registry_invalid_fallback();
+    context.federation_registry_invalid = federation_registry_failed;
+    if federation_registry_failed {
+        eprintln!(
+            "cargo-allow check: federation configuration is invalid; conventional fallback is not clean ({})",
+            allow_policy::federation::FEDERATION_CONFIG_REL_PATH
+        );
+    }
     context.rust_files_skipped = inventory_facts.rust_files_skipped;
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
@@ -322,6 +334,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
+        || federation_registry_failed
         || !deny_fired_classes.is_empty()
         // #4646: incomplete selected input (skipped Rust files, parse
         // errors, partial or truncated inventory) fails every enforcing
@@ -646,6 +659,17 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if blocking_divergence_count > 0 {
         context.blocking_divergence_entries = Some(blocking_divergence_count);
     }
+    // #4655: same fail-closed rule as the tracked-worktree gate — the staged
+    // lane must not read green while an invalid registry silently dropped the
+    // registered ledgers.
+    let federation_registry_failed = federation_bundle.registry_invalid_fallback();
+    context.federation_registry_invalid = federation_registry_failed;
+    if federation_registry_failed {
+        eprintln!(
+            "cargo-allow check: federation configuration is invalid; conventional fallback is not clean ({})",
+            allow_policy::federation::FEDERATION_CONFIG_REL_PATH
+        );
+    }
     context.rust_files_skipped = staged.inventory_facts.rust_files_skipped;
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
@@ -658,6 +682,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     let failed = check_failed_for_outcomes(&outcomes, &staged.findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
+        || federation_registry_failed
         || !deny_fired_classes.is_empty()
         // #4646: the staged route shares the worktree completeness
         // predicate, and it now binds in every enforcing mode. Staged reads

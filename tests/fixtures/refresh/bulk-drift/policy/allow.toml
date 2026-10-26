@@ -1,0 +1,53 @@
+schema_version = 1
+
+[workspace]
+ignored = []
+generated = []
+
+[[allow]]
+id = "allow-11366"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "src/lib.rs"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps the first lint suppression with stale last_seen for bulk refresh proof."
+evidence = ["test:refresh-bulk-receipt-fixture"]
+created = "2026-05-09"
+review_after = "2027-03-09"
+expires = "2027-06-30"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "clippy::unwrap_used"
+target_fingerprint = "policy:allow-11366"
+container = "fixture_refresh_drift_first"
+line_hint = 1
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11368"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "src/lib.rs"
+owner = "lint"
+classification = "reviewed_lint_exception"
+reason = "Fixture keeps a second lint suppression with stale last_seen for bulk refresh proof."
+evidence = ["test:refresh-bulk-receipt-fixture"]
+created = "2026-05-09"
+review_after = "2027-03-09"
+expires = "2027-06-30"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "clippy::unwrap_used"
+target_fingerprint = "policy:allow-11368"
+container = "fixture_refresh_drift_second"
+line_hint = 1
+
+[allow.last_seen]
+line = 1
+column = 1
