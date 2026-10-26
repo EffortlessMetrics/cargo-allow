@@ -528,6 +528,44 @@ fn receipt_records_blocking_divergence_distinct_from_advisory_review_items() {
     );
 }
 
+#[test]
+fn receipt_records_registry_validity_in_the_federation_section() {
+    // #4655: `precedence_applied: discovery_fallback` alone cannot distinguish
+    // a healthy no-registry run from one whose registry parsed but failed
+    // validation; the receipt must record which.
+    let invalid = ReportContext {
+        federation: Some(FederationReportContext {
+            federation_version: Some("1"),
+            precedence_applied: Some("discovery_fallback"),
+            registry_validity: Some("invalid"),
+            ledger_contributors: None,
+            divergence_summary: None,
+        }),
+        ..ReportContext::default()
+    };
+    let invalid_json = render_receipt_with_context("check", &[], true, invalid);
+    assert!(
+        invalid_json.contains("\"registry_validity\": \"invalid\""),
+        "receipt federation section must record invalid registry validity: {invalid_json}"
+    );
+
+    let absent = ReportContext {
+        federation: Some(FederationReportContext {
+            federation_version: Some("1"),
+            precedence_applied: Some("discovery_fallback"),
+            registry_validity: None,
+            ledger_contributors: None,
+            divergence_summary: None,
+        }),
+        ..ReportContext::default()
+    };
+    let absent_json = render_receipt_with_context("check", &[], false, absent);
+    assert!(
+        absent_json.contains("\"registry_validity\": null"),
+        "an unobserved registry must stay null rather than imply validity: {absent_json}"
+    );
+}
+
 fn outcome(status: MatchStatus, finding_index: Option<usize>) -> MatchOutcome {
     MatchOutcome {
         status,

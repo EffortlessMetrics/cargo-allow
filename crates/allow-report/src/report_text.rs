@@ -155,7 +155,7 @@ pub fn render_human_with_context(
         out.push('\n');
     }
     if failed {
-        let label = match check_failure_reason(&summary, context.denied_classes.unwrap_or(&[])) {
+        let label = match check_failure_reason(&summary, &context) {
             Some(reason) => format!("failed ({reason})"),
             None => "failed".to_string(),
         };
@@ -218,10 +218,12 @@ pub(crate) fn blocks_check_str(status: &str) -> bool {
 
 /// Build a human-readable reason for why a check failed, based on blocking
 /// status counts from the summary plus the `--deny` classes whose positive
-/// counts escalated the run (#4631). Returns None if neither is present (the
-/// failure may come from evidence links, federation divergence, inventory
-/// parse errors, or other out-of-band conditions).
-fn check_failure_reason(summary: &Summary, denied_classes: &[String]) -> Option<String> {
+/// counts escalated the run (#4631) and the invalid-federation-registry
+/// fallback that fails the gate with no blocking outcome to name (#4655).
+/// Returns None if neither is present (the failure may come from evidence
+/// links, federation divergence, inventory parse errors, or other out-of-band
+/// conditions).
+fn check_failure_reason(summary: &Summary, context: &ReportContext<'_>) -> Option<String> {
     let mut parts: Vec<String> = Vec::new();
     for status in BLOCKING_STATUSES {
         let count = summary.count(status);
@@ -229,6 +231,10 @@ fn check_failure_reason(summary: &Summary, denied_classes: &[String]) -> Option<
             parts.push(format!("{count} {}", status.as_str().replace('_', " ")));
         }
     }
+    if context.federation_registry_invalid {
+        parts.push("federation configuration invalid".to_string());
+    }
+    let denied_classes = context.denied_classes.unwrap_or(&[]);
     if !denied_classes.is_empty() {
         // The deny list promotes advisory count classes to blocking failures,
         // so the label must name them: `--mode audit --deny stale` exits 1
@@ -365,7 +371,7 @@ pub fn render_markdown_with_context(
     out.push_str(&format!(
         "**Result:** {}\n\n",
         if failed {
-            match check_failure_reason(&summary, context.denied_classes.unwrap_or(&[])) {
+            match check_failure_reason(&summary, &context) {
                 Some(reason) => format!("failed ({reason})"),
                 None => "failed".to_string(),
             }
@@ -1175,7 +1181,7 @@ mod tests {
     fn check_failure_reason_lists_blocking_status_counts() {
         let outcomes = review_outcomes();
         let summary = Summary::from_outcomes(&outcomes);
-        let reason = check_failure_reason(&summary, &[]);
+        let reason = check_failure_reason(&summary, &ReportContext::default());
 
         assert!(reason.is_some(), "should have a reason");
         let reason = reason.unwrap_or_default();
@@ -1206,7 +1212,46 @@ mod tests {
         ];
         let summary = Summary::from_outcomes(&outcomes);
 
-        assert!(check_failure_reason(&summary, &[]).is_none());
+        assert!(check_failure_reason(&summary, &ReportContext::default()).is_none());
+    }
+
+    #[test]
+    fn check_failure_reason_names_invalid_federation_registry_fallback() {
+        // #4655: an invalid `.allow/config.toml` fails the gate without any
+        // blocking status count, so the reason line must carry the condition
+        // by itself.
+        let outcomes = vec![outcome(MatchStatus::Matched, "matched")];
+        let summary = Summary::from_outcomes(&outcomes);
+        let context = ReportContext {
+            federation_registry_invalid: true,
+            ..ReportContext::default()
+        };
+        let reason = check_failure_reason(&summary, &context);
+
+        let reason = reason.unwrap_or_else(|| {
+            std::panic::panic_any("invalid federation registry should produce a reason")
+        });
+        assert!(
+            reason.contains("federation configuration invalid"),
+            "reason should name the invalid federation configuration: {reason}"
+        );
+
+        let text = render_human_with_context("check", &[], &outcomes, true, context);
+        assert!(
+            text.contains("Result: failed (federation configuration invalid)"),
+            "human label should name the invalid registry fallback:\n{text}"
+        );
+    }
+
+    #[test]
+    fn check_failure_reason_ignores_valid_federation_registry() {
+        let outcomes = vec![outcome(MatchStatus::Matched, "matched")];
+        let summary = Summary::from_outcomes(&outcomes);
+
+        assert!(
+            check_failure_reason(&summary, &ReportContext::default()).is_none(),
+            "a healthy run must not inherit the federation failure reason"
+        );
     }
 
     #[test]
@@ -1220,7 +1265,13 @@ mod tests {
         ];
         let summary = Summary::from_outcomes(&outcomes);
         let denied = vec!["stale".to_string()];
-        let reason = check_failure_reason(&summary, &denied);
+        let reason = check_failure_reason(
+            &summary,
+            &ReportContext {
+                denied_classes: Some(&denied),
+                ..ReportContext::default()
+            },
+        );
 
         let reason = reason.unwrap_or_else(|| {
             std::panic::panic_any("deny escalation should produce a reason".to_string())

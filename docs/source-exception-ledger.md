@@ -125,6 +125,15 @@ parses and validates, its canonical ledger registered for the
 `source-exception` lane takes precedence over source-text policy discovery.
 Doctor reports identify this source vocabulary as `fixed_allow_config` in both
 human and JSON output when the fixed path is present.
+A registry that parses but fails validation (for example duplicate ledger ids)
+keeps the discovery fallback selection, but `check` no longer treats that
+degradation as green: the run fails, the human result names the invalid
+federation configuration, and the receipt records
+`federation.registry_validity: "invalid"` so a merge that breaks the registry
+cannot silently stop the registered ledger from being enforced. An explicit
+`--config` override is exempt because the operator named the ledger
+themselves; parse-level corruption fails typed with `E0002` before any
+selection is made.
 The same path is also a profile fallback, but the profile and federation
 parsers remain separate consumers with separate contracts; cargo-allow does not
 silently merge their fields.

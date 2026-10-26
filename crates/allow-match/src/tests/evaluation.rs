@@ -540,6 +540,100 @@ fn live_broad_entry_covers_finding_when_no_precise_entry_exists() {
 }
 
 #[test]
+fn expired_structural_entry_with_missing_safety_stays_blocking() {
+    // #4644 one-candidate path: a mandatory requirement failure must not be
+    // masked by a lifecycle annotation. The entry used to classify as
+    // `Expired` (advisory in no-new since #4238) before the SAFETY check
+    // ran, so an expired structural entry without the required SAFETY
+    // metadata false-greened `check --mode no-new`. The finding-level row
+    // now stays `EvidenceMissing` (blocking) at the expired date, and the
+    // non-live entry still lands in the stale projection so its maintenance
+    // posture stays visible.
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.lifecycle.review_after = Some("2026-10-10".to_string());
+    entry.lifecycle.expires = Some("2026-10-20".to_string());
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.unsafe_safety_comment_required = true;
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(
+        &cfg,
+        std::slice::from_ref(&finding),
+        CheckMode::NoNew,
+        allow_core::SimpleDate {
+            year: 2026,
+            month: 10,
+            day: 21,
+        },
+    );
+
+    let finding_outcome = outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(0))
+        .unwrap_or_else(|| std::panic::panic_any("expected a finding-level outcome"));
+    assert_eq!(finding_outcome.status, MatchStatus::EvidenceMissing);
+    assert!(finding_outcome.message.contains("no nearby SAFETY comment"));
+    assert!(CheckMode::NoNew.fails(finding_outcome.status));
+    assert!(!outcomes.iter().any(|outcome| {
+        outcome.finding_index == Some(0) && outcome.status == MatchStatus::Expired
+    }));
+    assert!(outcomes.iter().any(|outcome| {
+        outcome.finding_index.is_none()
+            && outcome.status == MatchStatus::Stale
+            && outcome.message.contains("not currently authorizing")
+    }));
+}
+
+#[test]
+fn weak_neighbor_shares_missing_safety_failure_on_unique_strongest_path() {
+    // #4644 unique-strongest path: the strongest candidate fails the
+    // mandatory SAFETY requirement at an expired date, so the weaker live
+    // neighbor cannot absorb coverage — it matches the same finding and
+    // fails the same finding-dependent requirement, leaving no live
+    // fallback. The row stays `EvidenceMissing` (blocking) instead of the
+    // pre-#4644 `Expired` annotation.
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut precise = entry_with_hash("fnv1a64:actual");
+    precise.id = "allow-precise-expired".to_string();
+    precise.lifecycle.review_after = Some("2026-10-10".to_string());
+    precise.lifecycle.expires = Some("2026-10-20".to_string());
+
+    let mut broad = precise.clone();
+    broad.id = "allow-broad-live".to_string();
+    broad.selector.normalized_snippet_hash = None;
+    broad.lifecycle.review_after = None;
+    broad.lifecycle.expires = Some("2999-12-31".to_string());
+
+    let mut cfg = AllowConfig::empty();
+    cfg.requirements.unsafe_safety_comment_required = true;
+    cfg.allow.push(precise);
+    cfg.allow.push(broad);
+
+    let outcomes = evaluate(
+        &cfg,
+        std::slice::from_ref(&finding),
+        CheckMode::NoNew,
+        allow_core::SimpleDate {
+            year: 2026,
+            month: 10,
+            day: 21,
+        },
+    );
+
+    let finding_outcome = outcomes
+        .iter()
+        .find(|outcome| outcome.finding_index == Some(0))
+        .unwrap_or_else(|| std::panic::panic_any("expected a finding-level outcome"));
+    assert_eq!(finding_outcome.status, MatchStatus::EvidenceMissing);
+    assert!(finding_outcome.message.contains("no nearby SAFETY comment"));
+    assert!(CheckMode::NoNew.fails(finding_outcome.status));
+    assert!(!outcomes.iter().any(|outcome| {
+        outcome.finding_index == Some(0) && outcome.status == MatchStatus::Matched
+    }));
+}
+
+#[test]
 fn occurrence_limited_expired_entry_is_not_replaced_by_live_fallback() -> Result<(), String> {
     let finding = finding_with_hash("fnv1a64:actual");
     let mut precise = entry_with_hash("fnv1a64:actual");

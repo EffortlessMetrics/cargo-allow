@@ -356,6 +356,7 @@ issue-first lifecycle in [Manage an exception](how-to/manage-an-exception.md):
 | generate a reviewed baseline candidate | `propose` | omit `--write` to preview; `--write <path>` to persist |
 | receipt one deliberate finding | `why --plan` then `add --from-plan --update` | see the plan-then-apply route below; `--write <new-path>` emits a candidate policy file for inspection and is not the live-ledger apply path |
 | refresh drift for one selected ID | `refresh --allow-id <id>` | `--dry-run` preview; `--write` apply |
+| refresh every drifted entry in one pass | `refresh --all` | `--dry-run` preview; `--write` apply |
 | remove selected stale entries | `prune` | `--dry-run` preview; `--write` apply |
 | repair the source instead of policy | edit code, then rerun `check` | no policy mutation |
 

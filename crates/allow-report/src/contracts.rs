@@ -578,6 +578,12 @@ pub struct ReportContext<'a> {
     /// divergence surfaces in the receipt instead of being hidden behind a
     /// zero advisory count while CI fails (#1945).
     pub blocking_divergence_entries: Option<usize>,
+    /// True when a parsed `.allow/config.toml` federation registry failed
+    /// validation and the run fell back to the discovered ledger (#4655).
+    /// Blocking status counts cannot explain this failure, so the human
+    /// failure-reason line names it from this flag and the receipt carries
+    /// `federation.registry_validity` for consumers.
+    pub federation_registry_invalid: bool,
     /// Git commit SHA when available, for receipt provenance binding (#1850).
     pub git_sha: Option<&'a str>,
     /// SHA-256 hex digest of the policy file content at scan time (#1850).
@@ -667,6 +673,7 @@ impl<'a> ReportContext<'a> {
             federation: None,
             mirror_divergence_entries: None,
             blocking_divergence_entries: None,
+            federation_registry_invalid: false,
             git_sha: None,
             policy_digest: None,
             started_at: None,

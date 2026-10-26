@@ -32,6 +32,36 @@ impl PrecedenceTier {
     }
 }
 
+/// Whether the `.allow/config.toml` registry was found and, when found, passed
+/// validation (#4655).
+///
+/// A registry that parses but carries blocking diagnostics (for example two
+/// `[[ledgers]]` entries sharing an id) leaves the gate on the discovered
+/// ledger while the registered ledgers go unenforced. Recording that state on
+/// the evaluation is what lets `check` surface the degradation instead of
+/// silently reverting to discovery (parse-level corruption still fails typed
+/// with E0002 before an evaluation exists).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FederationRegistryValidity {
+    /// No `.allow/config.toml` exists.
+    Absent,
+    /// The registry parsed and passed validation.
+    Valid,
+    /// The registry parsed but carried blocking validation diagnostics; the
+    /// registered ledgers are not enforced this run.
+    Invalid,
+}
+
+impl FederationRegistryValidity {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Absent => "absent",
+            Self::Valid => "valid",
+            Self::Invalid => "invalid",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LedgerContributor {
     pub id: String,
@@ -47,6 +77,7 @@ pub struct LedgerContributor {
 pub struct FederationEvaluation {
     pub federation_version: &'static str,
     pub precedence_applied: PrecedenceTier,
+    pub registry_validity: FederationRegistryValidity,
     pub active_provenance: Option<LedgerProvenance>,
     pub ledger_contributors: Vec<LedgerContributor>,
     pub divergences: Vec<FederationDivergenceRecord>,
@@ -103,8 +134,23 @@ pub fn evaluate_source_exception_policy(
     root: &Path,
     cli_config: Option<&Path>,
 ) -> CargoAllowResult<(PathBuf, FederationEvaluation)> {
-    let contributors = load_ledger_contributors(root)?;
-    let divergences = load_mirror_divergences(root)?;
+    // One registry observation feeds validity, contributors, and divergences
+    // (#4655). The previous per-fact reloads each filtered an invalid registry
+    // to silently empty, so a parsed-but-invalid `.allow/config.toml` degraded
+    // to the discovered ledger with zero signal on the check surface.
+    let registry = load_validated_federation_config(root)?;
+    let registry_validity = registry_validity_of(&registry);
+    let contributors = registry
+        .as_ref()
+        .filter(|validated| validated.valid)
+        .map(|validated| ledger_contributors_from_config(&validated.config))
+        .unwrap_or_default();
+    let divergences = registry
+        .as_ref()
+        .filter(|validated| validated.valid)
+        .map(|validated| detect_mirror_divergences(root, &validated.config))
+        .transpose()?
+        .unwrap_or_default();
     if let Some(config) = cli_config {
         let path = root.join(config);
         let active_provenance = contributors
@@ -118,6 +164,7 @@ pub fn evaluate_source_exception_policy(
             FederationEvaluation {
                 federation_version: FEDERATION_VERSION,
                 precedence_applied: PrecedenceTier::CliOverride,
+                registry_validity,
                 active_provenance,
                 ledger_contributors: contributors,
                 divergences,
@@ -125,7 +172,7 @@ pub fn evaluate_source_exception_policy(
         ));
     }
 
-    if let Some(validated) = load_validated_federation_config(root)?
+    if let Some(validated) = registry
         && validated.valid
         && let Some(ledger) =
             resolve_canonical_ledger_for_lane(&validated.config, SOURCE_EXCEPTION_LANE)
@@ -136,12 +183,13 @@ pub fn evaluate_source_exception_policy(
             FederationEvaluation {
                 federation_version: FEDERATION_VERSION,
                 precedence_applied: PrecedenceTier::FederationRegistry,
+                registry_validity,
                 active_provenance: Some(ledger_provenance_from_entry(
                     ledger,
                     SOURCE_EXCEPTION_LANE,
                 )),
                 ledger_contributors: ledger_contributors_from_config(&validated.config),
-                divergences: divergences.clone(),
+                divergences,
             },
         ));
     }
@@ -161,6 +209,7 @@ pub fn evaluate_source_exception_policy(
         FederationEvaluation {
             federation_version: FEDERATION_VERSION,
             precedence_applied: PrecedenceTier::DiscoveryFallback,
+            registry_validity,
             active_provenance,
             ledger_contributors: contributors,
             divergences,
@@ -175,9 +224,12 @@ pub fn evaluate_spec_system_ledger(root: &Path) -> Option<FederationEvaluation> 
     }
     let ledger = resolve_canonical_ledger_for_lane(&validated.config, SPEC_SYSTEM_LANE)?;
     let divergences = detect_mirror_divergences(root, &validated.config).unwrap_or_default();
+    // The `!validated.valid` guard above already returned, so a spec-system
+    // evaluation only ever exists for a valid registry.
     Some(FederationEvaluation {
         federation_version: FEDERATION_VERSION,
         precedence_applied: PrecedenceTier::FederationRegistry,
+        registry_validity: FederationRegistryValidity::Valid,
         active_provenance: Some(ledger_provenance_from_entry(ledger, SPEC_SYSTEM_LANE)),
         ledger_contributors: ledger_contributors_from_config(&validated.config),
         divergences,
@@ -199,19 +251,16 @@ pub fn federation_has_blocking_divergence(evaluation: &FederationEvaluation) -> 
         .any(|record| record.kind.is_blocking())
 }
 
-fn load_ledger_contributors(root: &Path) -> CargoAllowResult<Vec<LedgerContributor>> {
-    Ok(load_validated_federation_config(root)?
-        .filter(|validated| validated.valid)
-        .map(|validated| ledger_contributors_from_config(&validated.config))
-        .unwrap_or_default())
-}
-
-fn load_mirror_divergences(root: &Path) -> CargoAllowResult<Vec<FederationDivergenceRecord>> {
-    Ok(load_validated_federation_config(root)?
-        .filter(|validated| validated.valid)
-        .map(|validated| detect_mirror_divergences(root, &validated.config))
-        .transpose()?
-        .unwrap_or_default())
+/// Classify a loaded registry so consumers can tell an absent
+/// `.allow/config.toml` from one that parsed but failed validation (#4655).
+fn registry_validity_of(
+    registry: &Option<ValidatedFederationConfig>,
+) -> FederationRegistryValidity {
+    match registry {
+        None => FederationRegistryValidity::Absent,
+        Some(validated) if validated.valid => FederationRegistryValidity::Valid,
+        Some(_) => FederationRegistryValidity::Invalid,
+    }
 }
 
 fn load_validated_federation_config(
@@ -331,6 +380,10 @@ priority = 20
             evaluation.precedence_applied,
             PrecedenceTier::FederationRegistry
         );
+        assert_eq!(
+            evaluation.registry_validity,
+            FederationRegistryValidity::Valid
+        );
         assert_eq!(evaluation.ledger_contributors.len(), 2);
         assert_eq!(evaluation.ledger_contributors[0].id, "source-policy");
         assert_eq!(evaluation.ledger_contributors[1].id, "doc-artifacts");
@@ -340,6 +393,95 @@ priority = 20
         assert_eq!(provenance.ledger_id, "source-policy");
         assert_eq!(provenance.lane, SOURCE_EXCEPTION_LANE);
         assert_eq!(provenance.role, "canonical");
+        cleanup_fixture(&root);
+    }
+
+    #[test]
+    fn evaluate_source_exception_policy_records_invalid_registry_fallback() {
+        // #4655: a registry that parses but fails validation (duplicate ledger
+        // ids) must still fall back to discovery, but the evaluation has to
+        // record the invalidity so check can surface the degraded gate instead
+        // of silently dropping the registry.
+        let root = fixture_root("federation-eval-invalid-registry");
+        write_federation_config(
+            &root,
+            r#"
+schema_version = "1.0"
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#,
+        );
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        // Discovery-fallback fixtures need a policy file discovery accepts
+        // (`schema_version` "0.1"/"1"); the "1.0" federation fixture schema is
+        // a different surface and would be skipped as foreign dialect.
+        fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+        let (_, evaluation) = evaluate_source_exception_policy(&root, None).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("evaluate invalid registry: {err}"))
+        });
+
+        // Discovery returns a canonicalized path whose Windows shape differs
+        // from `root.join`; the registry state is what this test pins.
+        assert_eq!(
+            evaluation.precedence_applied,
+            PrecedenceTier::DiscoveryFallback
+        );
+        assert_eq!(
+            evaluation.registry_validity,
+            FederationRegistryValidity::Invalid
+        );
+        assert!(
+            evaluation.ledger_contributors.is_empty(),
+            "an invalid registry contributes no ledgers: {:?}",
+            evaluation.ledger_contributors
+        );
+        assert!(
+            evaluation.active_provenance.is_none(),
+            "an invalid registry must not claim provenance: {:?}",
+            evaluation.active_provenance
+        );
+        cleanup_fixture(&root);
+    }
+
+    #[test]
+    fn evaluate_source_exception_policy_records_absent_registry() {
+        let root = fixture_root("federation-eval-absent-registry");
+        fs::create_dir_all(root.join("policy"))
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+        fs::write(root.join("policy/allow.toml"), "schema_version = \"0.1\"\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("policy write: {err}")));
+
+        let (_, evaluation) = evaluate_source_exception_policy(&root, None).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("evaluate absent registry: {err}"))
+        });
+
+        assert_eq!(
+            evaluation.precedence_applied,
+            PrecedenceTier::DiscoveryFallback
+        );
+        assert_eq!(
+            evaluation.registry_validity,
+            FederationRegistryValidity::Absent
+        );
         cleanup_fixture(&root);
     }
 
