@@ -90,7 +90,7 @@ jobs:
           cargo run -p cargo-allow --locked -- ci-pregate evaluate             --result pregate-result.json --head "$PR_HEAD" --format human
       - name: Upload pre-gate diagnostics
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: pregate-result
           path: pregate-result.json
@@ -155,7 +155,7 @@ jobs:
         run: bash scripts/check-workflow-construction.sh
       - name: Retain the aggregate artifact
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: workflow-construction-aggregate
           path: workflow-construction-aggregate.json
@@ -186,7 +186,7 @@ jobs:
         run: bash scripts/check-dependency-graph-delta.sh
       - name: Retain the delta and evidence artifacts
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dependency-graph-delta
           path: |
@@ -295,7 +295,7 @@ jobs:
           mkdir -p target/release-binary-contract
           RECEIPT_PATH=target/release-binary-contract/release-binary-test.receipt.json \
             bash scripts/test-release-binary.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: release-binary-contract-receipt
@@ -342,13 +342,13 @@ jobs:
         run: bash scripts/test-exact-upgrade-rollback-journey.sh
       - name: Export qualified GNU libc 2.35 candidate without rebuilding (#3151)
         run: python3 scripts/linux-gnu-candidate.py package --output "${RUNNER_TEMP}/linux-gnu-candidate"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: linux-gnu-glibc235-candidate
           path: ${{ runner.temp }}/linux-gnu-candidate/
           if-no-files-found: error
           retention-days: 14
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: extraction-cutover-build-receipts
@@ -357,26 +357,26 @@ jobs:
             target/exact-candidate-package-set/exact-candidate-package-set.receipt.json
             target/exact-candidate-package-set/packages/
           if-no-files-found: warn
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: package-candidate-smoke-receipt
           path: target/package-candidate-smoke/package-candidate-smoke.receipt.txt
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-candidate-package-set-receipt
           path: target/exact-candidate-package-set/exact-candidate-package-set.receipt.json
           if-no-files-found: warn
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-candidate-package-candidate-receipt
           path: target/exact-candidate-package-candidate/package-candidate-v2.json
           if-no-files-found: warn
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-candidate-isolated-install-receipt
@@ -384,13 +384,13 @@ jobs:
             target/exact-candidate-isolated-install/isolated-install.receipt.json
             target/exact-candidate-isolated-install/index-checksum-control-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: warn
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-candidate-qualification-receipt
           path: target/exact-candidate-qualification/exact-candidate.receipt.v2.json
           if-no-files-found: warn
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-candidate-install-journey-receipt
@@ -399,7 +399,7 @@ jobs:
             target/exact-candidate-install-journey-${{ github.run_id }}-${{ github.run_attempt }}/source-candidate-smoke.receipt.json
             target/exact-candidate-install-journey-${{ github.run_id }}-${{ github.run_attempt }}/exact-candidate-source-journey.*/source-candidate-smoke.receipt.json
           if-no-files-found: warn
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-upgrade-rollback-journey-receipt
@@ -426,7 +426,7 @@ jobs:
           bash scripts/exact-candidate-package-set.sh
       - name: Intent candidate install smoke (#2599-C)
         run: bash scripts/intent-candidate-smoke.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: intent-candidate-smoke-receipt
@@ -434,7 +434,7 @@ jobs:
           if-no-files-found: warn
       - name: Proof candidate install smoke (#2589-B)
         run: bash scripts/proof-candidate-smoke.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: proof-candidate-smoke-receipt
@@ -457,7 +457,7 @@ jobs:
           CARGO_INTENT_BIN="${intent_bin}" \
           CARGO_PROOF_BIN="${proof_bin}" \
           bash scripts/exact-candidate-interop-smoke.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: exact-candidate-interop-receipt
@@ -496,7 +496,7 @@ jobs:
       - name: Shallow diff failure artifact characterization (#3566)
         if: always()
         run: bash scripts/test-shallow-diff-base-failure.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: shallow-diff-base-smoke
@@ -671,7 +671,7 @@ jobs:
               )
           print(f"validated {len(samples)} operator-latency samples")
           PY
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: operator-latency-receipt
@@ -736,7 +736,7 @@ jobs:
         run: python scripts/test-candidate-harness-lifecycle.py
       - name: Extraction readiness receipt (#2559)
         run: bash scripts/extraction-readiness-receipt.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: extraction-readiness-receipt
@@ -757,7 +757,7 @@ jobs:
           # supply, and ledger linkage gate CI; old-path retirement stays
           # observational until #3543.
           EXTRACTION_CUTOVER_LANE_GATE: "1"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: extraction-cutover-status
@@ -809,13 +809,13 @@ jobs:
         run: cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note
       - name: Spec-system cutover receipt (#2568)
         run: bash scripts/spec-system-cutover-receipt.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: spec-system-cutover-receipt
           path: target/spec-system-cutover/spec-system-cutover.receipt.json
           if-no-files-found: warn
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: cargo-allow-reports
@@ -895,7 +895,7 @@ jobs:
         run: |
           cargo run -p cargo-intent --locked -- --root . governance \
             --receipt target/cargo-intent/governance-receipt.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: governance-receipt
@@ -903,7 +903,7 @@ jobs:
           if-no-files-found: warn
       - name: Three-product dogfood smoke (#2558)
         run: bash scripts/three-product-dogfood-smoke.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: three-product-dogfood-receipt
@@ -958,7 +958,7 @@ jobs:
             printf 'proof=release-set,cross_platform_semantics\n'
             printf 'result=%s\n' '${{ job.status }}'
           } > target/cross-platform/${{ matrix.target }}.proof.txt
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: cross-platform-proof-${{ matrix.target }}
