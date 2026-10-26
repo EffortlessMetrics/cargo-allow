@@ -18,6 +18,15 @@ pub(super) fn scan_legacy_rust_compat(
     let inventory = inventory(root, &opts)?;
     let inventory_facts = InventoryFacts::scanned_inventory(&inventory);
     let rust_scan = allow_rust::scan_rust_files(root, &inventory.files)?;
+    // #4646 review: the enforcing completeness gate reads scanner read/parse
+    // outcomes from the facts, so the compat Rust-scan route must carry the
+    // same counters the ordinary worktree route carries — discarding them let
+    // a non-UTF8 or unparseable tracked file pass strict/release under
+    // --compat while the same input failed without it.
+    let inventory_facts = inventory_facts
+        .with_rust_files_considered(rust_scan.files_considered)
+        .with_rust_files_skipped(rust_scan.files_skipped)
+        .with_rust_files_with_parse_errors(rust_scan.files_with_parse_errors);
     let mut findings = rust_scan.findings;
     findings.retain(|finding| finding.kind == kind);
     Ok((findings, inventory_facts))
@@ -91,6 +100,43 @@ mod tests {
                 .iter()
                 .all(|finding| !finding.path.to_string_lossy().contains("ignored"))
         );
+    }
+
+    /// #4646 review: the compat Rust-scan route must carry the scanner
+    /// read/parse counters into the facts the enforcing completeness gate
+    /// reads — discarding them let a skipped or unparseable file read as a
+    /// complete scan under `--compat`.
+    #[test]
+    fn legacy_rust_compat_scan_carries_scanner_completeness_facts() {
+        let dir = migrate_fixture_dir();
+        let src_dir = dir.join("src");
+        fs::create_dir_all(&src_dir)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+        // Invalid UTF-8: the scanner cannot read the file and must count a skip.
+        fs::write(src_dir.join("broken-utf8.rs"), b"fn broken() {\xff}\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("utf8 fixture: {err}")));
+        // Valid bytes but an unparseable tree: counted as a parse error.
+        fs::write(src_dir.join("parse-error.rs"), "fn broken(\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("parse fixture: {err}")));
+        // A clean file so the scan still produces a considered, scanned file.
+        fs::write(src_dir.join("clean.rs"), "pub fn ok() {}\n")
+            .unwrap_or_else(|err| std::panic::panic_any(format!("clean fixture: {err}")));
+
+        let cfg = AllowConfig::empty();
+        let (findings, inventory_facts) =
+            scan_legacy_rust_compat(&dir, &cfg, false, FindingKind::Panic)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("legacy scan: {err}")));
+
+        assert_eq!(inventory_facts.rust_files_considered, 3);
+        assert_eq!(
+            inventory_facts.rust_files_skipped, 1,
+            "the non-UTF8 file must surface as a scanner skip"
+        );
+        assert_eq!(
+            inventory_facts.rust_files_with_parse_errors, 1,
+            "the parse-error file must surface as a parse error"
+        );
+        assert!(findings.is_empty());
     }
 
     #[test]

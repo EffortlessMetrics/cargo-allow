@@ -216,6 +216,13 @@ pub fn render_inventory_json(context: InventoryContext<'_>, indent: &str) -> Str
             json_escape(completeness)
         ));
     }
+    if context.inventory_skipped_paths > 0 {
+        out.push_str(",\n");
+        out.push_str(&format!(
+            "{indent}  \"inventory_skipped_paths\": {}",
+            context.inventory_skipped_paths
+        ));
+    }
     if let Some(source_identity) = context.source_identity {
         out.push_str(",\n");
         out.push_str(&format!(

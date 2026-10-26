@@ -448,6 +448,12 @@ pub struct InventoryContext<'a> {
     pub files_scanned: Option<usize>,
     pub empty_git_tracked: bool,
     pub completeness: Option<&'a str>,
+    /// Number of paths the inventory walk itself omitted (filesystem
+    /// depth/entry caps and unreadable directories). Rendered only when
+    /// non-zero, next to the `partial` completeness the omissions force
+    /// (#4646): JSON consumers can read the omission count, not just the
+    /// completeness label.
+    pub inventory_skipped_paths: usize,
     /// Exact source identity when the inventory is bound to a staged or
     /// otherwise immutable candidate. Worktree reports intentionally omit it.
     pub source_identity: Option<&'a str>,
@@ -469,6 +475,7 @@ impl<'a> InventoryContext<'a> {
             files_scanned,
             empty_git_tracked: false,
             completeness: None,
+            inventory_skipped_paths: 0,
             source_identity: None,
         }
     }
@@ -512,6 +519,11 @@ impl<'a> InventoryContext<'a> {
 
     pub fn with_completeness(mut self, completeness: &'a str) -> Self {
         self.completeness = Some(completeness);
+        self
+    }
+
+    pub fn with_inventory_skipped_paths(mut self, count: usize) -> Self {
+        self.inventory_skipped_paths = count;
         self
     }
 
@@ -711,6 +723,11 @@ impl<'a> ReportContext<'a> {
         self.rust_files_considered = considered;
         self.rust_files_skipped = skipped;
         self.rust_files_with_parse_errors = parse_errors;
+        self
+    }
+
+    pub fn with_inventory_skipped_paths(mut self, count: usize) -> Self {
+        self.inventory = self.inventory.with_inventory_skipped_paths(count);
         self
     }
 }

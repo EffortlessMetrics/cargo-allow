@@ -88,7 +88,10 @@ pub struct Inventory {
     /// Directories/files skipped during filesystem traversal due to permission
     /// errors or other I/O failures (#1844). A single unreadable sub-directory
     /// no longer aborts the entire walk; it is recorded here and the rest of
-    /// the tree is scanned. Empty for git-tracked inventory.
+    /// the tree is scanned. Empty for git-tracked inventory. Skips that land
+    /// inside a subtree already excluded by the configured `ignored` globs are
+    /// scope, not omissions, and are filtered out before completeness is
+    /// classified (#4646 review).
     pub skipped_paths: Vec<PathBuf>,
     /// Git-tracked paths that are directories on disk (checked-out submodules).
     /// Their contents are not scanned (submodule recursion is out of scope) but
