@@ -110,10 +110,17 @@ fn panic_method_call(
         // (`Vec::unwrap::<u8>(x)` is a generic_function around the path) and
         // ignore comment extras sitting between path tokens. Raw spellings
         // (`Type::r#unwrap(x)`) carry the `r#` prefix in the identifier text.
+        // #4645 review: only a path-qualified callee is method-shaped — a
+        // bare generic free call (`unwrap::<T>(x)`) wraps a plain
+        // `identifier`, and a user-defined free function with that name is
+        // not a panic method; the unqualified free-call form stays unscanned.
         "scoped_identifier" | "generic_function" => {
             let mut qualified = function;
             while qualified.kind() == "generic_function" {
                 qualified = qualified.child_by_field_name("function")?;
+            }
+            if qualified.kind() != "scoped_identifier" {
+                return None;
             }
             let name_node = trailing_identifier_node(qualified)?;
             let raw_name = node_text(source, name_node)?;

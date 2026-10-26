@@ -301,12 +301,14 @@ mod tests;
 /// crate version invalidates every durable entry rather than mixing findings
 /// across scanner semantics.
 pub fn scan_cache_generation() -> String {
-    // epoch v3 (#4645): the scanner now recognizes raw identifiers and
+    // epoch v4 (#4645): the scanner now recognizes raw identifiers and
     // comment/space trivia around supported macro paths, method names, and
-    // attribute names. Durable facts persisted under the previous generation
+    // attribute names, and no longer reports commented-out invocations,
+    // unqualified generic free calls, or trivia-displaced attribute names at
+    // wrong positions. Durable facts persisted under a previous generation
     // predate those findings and must not be served without a re-parse.
     format!(
-        "allow-rust:{};epoch:scanner-contract-v3;syntax:v1;grammar:tree-sitter-rust:v1;read-cap:16MiB",
+        "allow-rust:{};epoch:scanner-contract-v4;syntax:v1;grammar:tree-sitter-rust:v1;read-cap:16MiB",
         env!("CARGO_PKG_VERSION")
     )
 }

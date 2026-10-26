@@ -37,6 +37,15 @@ fn lint_finding(family: &'static str, line: u32, needle: &'static str) -> Expect
     }
 }
 
+fn unsafe_finding(family: &'static str, line: u32, needle: &'static str) -> Expected {
+    Expected {
+        family,
+        kind: FindingKind::Unsafe,
+        line,
+        needle,
+    }
+}
+
 fn spelling_cases() -> Vec<(&'static str, String, Vec<Expected>)> {
     vec![
         // --- panic and assertion macros -----------------------------------
@@ -227,6 +236,18 @@ fn spelling_cases() -> Vec<(&'static str, String, Vec<Expected>)> {
             "#![cfg_attr(feature = \"x\", r#expect(dead_code))]\nfn p() {}\n".to_string(),
             vec![lint_finding("expect_attribute", 1, "expect")],
         ),
+        (
+            // #4645 review: trivia may displace the written attribute name to
+            // a later line; the finding must report the name's own position.
+            "multiline commented allow attribute",
+            "#[/* note */\nallow(dead_code)]\nfn p() {}\n".to_string(),
+            vec![lint_finding("allow_attribute", 2, "allow")],
+        ),
+        (
+            "multiline commented unsafe attribute",
+            "#[/* note */\nunsafe(no_mangle)]\nfn p() {}\n".to_string(),
+            vec![unsafe_finding("unsafe_attr", 2, "unsafe(")],
+        ),
     ]
 }
 
@@ -343,6 +364,27 @@ fn string_comment_and_unknown_name_controls_stay_unscanned() {
         (
             "allow-shaped comment only",
             "// #[allow(dead_code)]\n// r#panic!(\"x\")\nfn p() {}\n",
+        ),
+        (
+            // #4645 review: an unqualified generic free call wraps a plain
+            // `identifier` callee; a user free function with a panic-method
+            // name is not a panic method.
+            "unqualified generic free call",
+            "fn unwrap<T>(v: T) -> T { v }\nfn p() { unwrap::<u8>(1); }\n",
+        ),
+        (
+            "unqualified free call",
+            "fn unwrap(v: u8) -> u8 { v }\nfn p() { unwrap(1); }\n",
+        ),
+        (
+            // #4645 review: comment contents are not source syntax — a
+            // commented-out invocation inside a cfg_attr must stay unscanned.
+            "cfg_attr commented-out invocation",
+            "#[cfg_attr(test, /* allow/* note */(dead_code) */ doc = \"x\")]\nfn p() {}\n",
+        ),
+        (
+            "cfg_attr line-commented invocation",
+            "#[cfg_attr(test, // allow(dead_code)\n doc = \"x\")]\nfn p() {}\n",
         ),
     ];
     for (label, source) in sources {

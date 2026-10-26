@@ -254,6 +254,22 @@ impl SourceLineIndex {
         let line = source.get(line_start..line_end).unwrap_or("");
         byte_column_to_char_column(line, byte_column)
     }
+
+    /// Row (0-based) and byte column of an absolute byte offset (#4645
+    /// review): an attribute name displaced by trivia can sit on a later
+    /// line than the attribute item's opening tokens, and the finding must
+    /// report the name's own position.
+    pub(crate) fn source_position(&self, byte: usize) -> (usize, usize) {
+        // `line_starts[0] == 0 <= byte`, so the partition point is at least 1
+        // and the row index is always in range; `.get` avoids a self-scan
+        // indexing finding.
+        let row = self
+            .line_starts
+            .partition_point(|&line_start| line_start <= byte)
+            - 1;
+        let line_start = self.line_starts.get(row).copied().unwrap_or(0);
+        (row, byte - line_start)
+    }
 }
 
 pub(crate) fn source_column(
@@ -285,5 +301,18 @@ mod tests {
         assert_eq!(index.source_column(source, 1, 5), 6);
         assert_eq!(index.source_column(source, 2, 2), 3);
         assert_eq!(index.source_column(source, 4, 0), 1);
+    }
+
+    #[test]
+    fn source_position_maps_absolute_bytes_to_row_and_byte_column() {
+        // "#[/* note */\nallow(dead_code)]\n": `allow` starts on line 2.
+        let source = "#[/* note */\nallow(dead_code)]\n";
+        let index = SourceLineIndex::new(source);
+
+        assert_eq!(index.source_position(0), (0, 0));
+        assert_eq!(index.source_position(2), (0, 2));
+        assert_eq!(index.source_position(13), (1, 0));
+        assert_eq!(index.source_position(18), (1, 5));
+        assert_eq!(index.source_position(source.len()), (2, 0));
     }
 }
