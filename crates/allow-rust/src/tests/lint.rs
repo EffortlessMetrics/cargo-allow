@@ -847,6 +847,40 @@ fn detect_attr_returns_text_after_outer_and_inner_prefixes() {
     );
 }
 
+/// #4645: raw attribute-name spellings and comments between the name and its
+/// invocation parenthesis must still resolve to the attribute's arguments.
+#[test]
+fn detect_attr_recognizes_raw_names_and_parenthesis_comments() {
+    assert_eq!(
+        detect_attr("#[r#allow(dead_code)]", "allow"),
+        Some("dead_code)]")
+    );
+    assert_eq!(
+        detect_attr("#![r#expect(dead_code)]", "expect"),
+        Some("dead_code)]")
+    );
+    assert_eq!(
+        detect_attr("r#deny(dead_code)]", "deny"),
+        Some("dead_code)]")
+    );
+    assert_eq!(
+        detect_attr("#[allow/* note */(dead_code)]", "allow"),
+        Some("dead_code)]")
+    );
+    assert_eq!(
+        detect_attr("#[allow /* c */ (dead_code)]", "allow"),
+        Some("dead_code)]")
+    );
+    assert_eq!(
+        detect_attr("r#allow/* c */(dead_code)]", "allow"),
+        Some("dead_code)]")
+    );
+    // Non-matching spellings must stay unrecognized.
+    assert_eq!(detect_attr("#[r#allowing(dead_code)]", "allow"), None);
+    assert_eq!(detect_attr("#[allowing(dead_code)]", "allow"), None);
+    assert_eq!(detect_attr("#[deny/* note */(dead_code)]", "allow"), None);
+}
+
 fn last_column(line: &str, needle: &str) -> u32 {
     let index = line
         .rfind(needle)

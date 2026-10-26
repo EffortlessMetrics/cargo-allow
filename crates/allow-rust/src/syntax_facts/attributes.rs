@@ -3,7 +3,10 @@ use tree_sitter::Node;
 
 use crate::syntax_kinds::{LintAttribute, LintAttributeKind, RustSyntaxFacts, UnsafeAttribute};
 use crate::syntax_tree::node_text;
-use crate::text::{SourceLineIndex, detect_attr, source_column};
+use crate::text::{
+    SourceLineIndex, detect_attr, rust_comment_end, skip_rust_trivia, skip_rust_whitespace,
+    source_column,
+};
 
 pub(super) fn record_node_attributes(
     node: Node<'_>,
@@ -19,8 +22,11 @@ pub(super) fn record_node_attributes(
         return;
     };
 
-    let start = node.start_position();
-    let line = start.row as u32 + 1;
+    // #4645 review: trivia (e.g. a comment followed by a newline) may displace
+    // the written attribute name onto a later line than the attribute item's
+    // opening tokens, so every finding takes its line and column from the
+    // name's own absolute byte position instead of the node's start line.
+    let node_start_byte = node.start_byte();
     for (kind, offset) in lint_attribute_kinds(text) {
         let attr_text = if offset == 0 {
             text.to_string()
@@ -29,24 +35,29 @@ pub(super) fn record_node_attributes(
                 .map(ToString::to_string)
                 .unwrap_or_else(|| text.to_string())
         };
+        let (row, byte_column) = line_index.source_position(node_start_byte + offset);
         facts
             .lint_attributes
-            .entry(line)
+            .entry(row as u32 + 1)
             .or_default()
             .push(LintAttribute {
                 kind,
                 text: attr_text,
-                column: source_column(line_index, source, start.row, start.column + offset),
+                column: source_column(line_index, source, row, byte_column),
             });
     }
     let unsafe_attribute_offsets = unsafe_attribute_offsets(text);
     if !unsafe_attribute_offsets.is_empty() {
-        let attributes = facts.unsafe_attributes.entry(line).or_default();
         for offset in unsafe_attribute_offsets {
-            attributes.push(UnsafeAttribute {
-                column: source_column(line_index, source, start.row, start.column + offset),
-                symbol: unsafe_attribute_symbol(text, offset),
-            });
+            let (row, byte_column) = line_index.source_position(node_start_byte + offset);
+            facts
+                .unsafe_attributes
+                .entry(row as u32 + 1)
+                .or_default()
+                .push(UnsafeAttribute {
+                    column: source_column(line_index, source, row, byte_column),
+                    symbol: unsafe_attribute_symbol(text, offset),
+                });
         }
     }
 }
@@ -177,27 +188,36 @@ fn cfg_attr_arguments_after_predicate(text: &str) -> &str {
 }
 
 fn attribute_name_offset(text: &str, name: &str) -> Option<usize> {
-    let mut cursor = skip_rust_whitespace(text, 0);
+    let mut cursor = skip_rust_trivia(text, 0);
     if !text.get(cursor..).is_some_and(|rest| rest.starts_with('#')) {
         return None;
     }
     cursor += '#'.len_utf8();
-    cursor = skip_rust_whitespace(text, cursor);
+    cursor = skip_rust_trivia(text, cursor);
     if text.get(cursor..).is_some_and(|rest| rest.starts_with('!')) {
         cursor += '!'.len_utf8();
-        cursor = skip_rust_whitespace(text, cursor);
+        cursor = skip_rust_trivia(text, cursor);
     }
     if !text.get(cursor..).is_some_and(|rest| rest.starts_with('[')) {
         return None;
     }
     cursor += '['.len_utf8();
-    cursor = skip_rust_whitespace(text, cursor);
+    cursor = skip_rust_trivia(text, cursor);
+    // #4645: attribute names may be spelled as raw identifiers
+    // (`#[r#allow(...)]`). Keep the offset at the start of the written name
+    // token so the reported column and attribute text include the `r#`.
+    let name_start = cursor;
+    if text.get(cursor..).is_some_and(|rest| {
+        rest.starts_with("r#") && rest.get(2..).is_some_and(|after| after.starts_with(name))
+    }) {
+        cursor += "r#".len();
+    }
     if text
         .get(cursor..)
         .is_some_and(|rest| rest.starts_with(name))
         && invocation_name_followed_by_parens(text, cursor + name.len())
     {
-        Some(cursor)
+        Some(name_start)
     } else {
         None
     }
@@ -207,6 +227,18 @@ fn find_attribute_invocations_outside_rust_strings(text: &str, name: &str) -> Ve
     let mut matches = Vec::new();
     let mut cursor = 0;
     while cursor < text.len() {
+        // #4645 review: comment contents are not source syntax — a lint-name
+        // token inside a comment must not produce an attribute finding. Skip
+        // complete line and (nested) block comments before name matching;
+        // an unterminated block comment consumes the remaining text.
+        match rust_comment_end(text, cursor) {
+            Some(Some(end)) => {
+                cursor = end;
+                continue;
+            }
+            Some(None) => {}
+            None => break,
+        }
         if text
             .get(cursor..)
             .is_some_and(|rest| rest.starts_with(name))
@@ -234,18 +266,10 @@ fn find_attribute_invocations_outside_rust_strings(text: &str, name: &str) -> Ve
 }
 
 fn invocation_name_followed_by_parens(text: &str, cursor: usize) -> bool {
-    text.get(skip_rust_whitespace(text, cursor)..)
+    // #4645: comments as well as whitespace may sit between an attribute or
+    // nested attribute-invocation name and its `(`.
+    text.get(skip_rust_trivia(text, cursor)..)
         .is_some_and(|rest| rest.starts_with('('))
-}
-
-fn skip_rust_whitespace(text: &str, mut cursor: usize) -> usize {
-    while let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) {
-        if !ch.is_whitespace() {
-            break;
-        }
-        cursor += ch.len_utf8();
-    }
-    cursor
 }
 
 fn token_starts_at_attribute_boundary(text: &str, cursor: usize) -> bool {

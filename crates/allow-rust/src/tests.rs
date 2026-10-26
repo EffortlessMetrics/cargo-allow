@@ -16,6 +16,7 @@ mod persistent_scan_cache;
 mod proptest_parser;
 mod safety_comment_nodes;
 mod scope;
+mod spelling_variants;
 mod structural_identity;
 mod syntax_coupling;
 mod syntax_tree;
