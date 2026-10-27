@@ -25425,3 +25425,25 @@ glob = "docs/schemas/sensor-capabilities.schema.json"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1184"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4676-sensor-capabilities-schema.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the sensor-capabilities schema receipts (#4627, #3792 precedent)."
+evidence = ["issue:4627"]
+created = "2026-10-27"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4676-sensor-capabilities-schema.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4676-sensor-capabilities-schema.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
