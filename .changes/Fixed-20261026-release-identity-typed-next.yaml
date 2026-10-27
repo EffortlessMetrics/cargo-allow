@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  `cargo-allow release-identity` validation failures no longer tell the
+  operator to run `cargo-allow init` or pass `--config`: that policy-config
+  remediation belongs to policy parsing, not this stateless version/tag
+  validator. The error now carries one typed Next line naming the exact
+  repair — the canonical version grammar for malformed versions, or the
+  derived canonical tag for tag mismatches. The error kind stays InvalidConfig
+  (E0002) (#4652).
