@@ -25386,3 +25386,42 @@ glob = ".allow/revisions/4655-federation-registry-validity.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1182"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/tests/provider_descriptor.rs"
+owner = "core/tests"
+classification = "test_fixture"
+reason = "Sensor-capabilities schema mutation controls intentionally use .expect() on fixture scaffolding so malformed setup fails the test immediately; count pinned at the reviewed 10 (#4627)."
+evidence = ["issue:4627", "test:sensor_capabilities_schema_rejects_mutated_real_output"]
+occurrence_limit = 10
+created = "2026-10-27"
+review_after = "2027-01-25"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/tests/provider_descriptor.rs"
+
+[[allow]]
+id = "allow-1183"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/sensor-capabilities.schema.json"
+owner = "core/policy"
+classification = "sensor_capabilities_contract_schema"
+reason = "Published closed JSON Schema for the cargo-allow.sensor-capabilities.v1 self-description sensor catalog emitted by cargo-allow capabilities --format json (#4627); a self-description contract on the tool-identity precedent, not a governed artifact."
+evidence = ["issue:4627", "doc:docs/schemas/README.md", "test:sensor_capabilities_stdout_conforms_without_repository_or_policy"]
+created = "2026-10-27"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/sensor-capabilities.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/sensor-capabilities.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
