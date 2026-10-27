@@ -3,9 +3,10 @@
 //! Read-only repository guard: reads the retained #2501 final-freeze
 //! receipt, diffs the frozen commit against the requested reference, and
 //! classifies the changed paths into the typed load-bearing denominator.
-//! `--check` fails on `requires_invalidation` or `conflict` so a pull
-//! request carrying load-bearing movement cannot merge while the freeze
-//! receipt remains current without an explicit invalidation.
+//! `frozen-subject-lock check` fails on `requires_invalidation` or
+//! `conflict` so a pull request carrying load-bearing movement cannot
+//! merge while the freeze receipt remains current without an explicit
+//! invalidation.
 //!
 //! Claim boundary: evaluation only — the command never writes, never
 //! mutates live branch rules, and never authorizes or executes release
@@ -25,7 +26,9 @@ use crate::cli::candidate_preparation_command::git_root;
 
 const DEFAULT_RECEIPT: &str = "docs/dogfood/receipts/final-freeze/final-freeze.receipt.json";
 
-/// Read-only frozen-subject lock evaluation (hidden release tooling).
+/// Read-only frozen-subject lock evaluation. The parent stays hidden from
+/// the root command list; the `check` subcommand is discoverable via
+/// `frozen-subject-lock --help`.
 #[derive(Debug, Clone, Parser)]
 #[command(disable_version_flag = true)]
 pub(crate) struct FrozenSubjectLockArgs {
@@ -36,7 +39,6 @@ pub(crate) struct FrozenSubjectLockArgs {
 #[derive(Debug, Clone, Subcommand)]
 pub(crate) enum FrozenSubjectLockSubcommand {
     /// Evaluate the lock against the current head (or a reference).
-    #[command(hide = true)]
     Check(FrozenSubjectLockCheckArgs),
 }
 
@@ -342,6 +344,7 @@ fn git(root: &std::path::Path, args: &[&str]) -> CargoAllowResult<String> {
 #[cfg(test)]
 mod tests {
     use super::str_field;
+    use clap::CommandFactory;
     use serde_json::json;
 
     #[test]
@@ -349,6 +352,39 @@ mod tests {
         let value = json!({ "commit": "abc", "freeze_state": "Complete" });
         assert_eq!(str_field(&value, "commit").ok().as_deref(), Some("abc"));
         assert!(str_field(&value, "tree").is_err());
+    }
+
+    #[test]
+    fn frozen_subject_lock_check_is_discoverable_from_parent_help() -> Result<(), String> {
+        // #4653: the parent stays hidden from the root command list, but
+        // the `check` subcommand must be discoverable via
+        // `frozen-subject-lock --help` — the invocation the CI gate uses.
+        let mut command = crate::cli::CargoAllowCli::command();
+        command.build();
+        let frozen_subject_lock = command
+            .get_subcommands_mut()
+            .find(|subcommand| subcommand.get_name() == "frozen-subject-lock")
+            .ok_or_else(|| "frozen-subject-lock command is not installed".to_string())?;
+        if !frozen_subject_lock.is_hide_set() {
+            return Err(
+                "the frozen-subject-lock parent must remain hidden from the root command list"
+                    .to_string(),
+            );
+        }
+        let check = frozen_subject_lock
+            .find_subcommand("check")
+            .ok_or_else(|| "check is not installed under frozen-subject-lock".to_string())?;
+        if check.is_hide_set() {
+            return Err(
+                "the frozen-subject-lock check subcommand must be discoverable from the parent help"
+                    .to_string(),
+            );
+        }
+        let help = frozen_subject_lock.render_help().to_string();
+        if !help.contains("check") {
+            return Err("frozen-subject-lock --help must mention the check subcommand".to_string());
+        }
+        Ok(())
     }
 }
 //
