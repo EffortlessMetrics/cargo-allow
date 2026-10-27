@@ -232,3 +232,30 @@ mod tests {
         Ok(())
     }
 }
+
+#[test]
+fn fallback_variant_carries_the_conservative_next_step() -> Result<(), String> {
+    // The GithubPrereleaseMismatch variant is unreachable from this CLI (the
+    // github_prerelease flag is computed from the parsed version itself), but
+    // the fallback next step must stay typed and free of the generic
+    // policy-config hint so the wrong remediation can never fire (#4652).
+    let error = invalid_release_identity(allow_report::ReleaseIdentityErrorV1::GithubPrereleaseMismatch {
+        expected: true,
+        actual: false,
+    });
+    if error.kind() != CargoAllowErrorKind::InvalidConfig {
+        return Err(format!("unexpected kind: {:?}", error.kind()));
+    }
+    let next_step = error
+        .next_step()
+        .ok_or_else(|| "fallback error is missing a typed next step".to_string())?;
+    if !next_step.contains("--version/--tag pair") {
+        return Err(format!("unexpected fallback next step: {next_step}"));
+    }
+    if next_step.contains("cargo-allow init") || next_step.contains("--config") {
+        return Err(format!(
+            "fallback next step must not carry the policy-config hint: {next_step}"
+        ));
+    }
+    Ok(())
+}
