@@ -82,6 +82,8 @@ fn release_identity_cli_accepts_valid_stable_and_rc() -> Result<(), Box<dyn Erro
 
 #[test]
 fn release_identity_cli_rejects_hostile_and_unsupported_inputs() -> Result<(), Box<dyn Error>> {
+    const MALFORMED_VERSION_NEXT: &str = "pass a canonical supported version: stable MAJOR.MINOR.PATCH or numbered MAJOR.MINOR.PATCH-rc.N";
+
     let invalid_inputs = [
         "0.2.0-rc",
         "0.2.0-rc.0",
@@ -104,6 +106,16 @@ fn release_identity_cli_rejects_hostile_and_unsupported_inputs() -> Result<(), B
             !output.status.success(),
             "expected version {invalid:?} to fail validation"
         );
+        let stderr = String::from_utf8(output.stderr)?;
+        assert!(
+            stderr.contains("error[E0002_INVALID_CONFIG]"),
+            "expected kind E0002 (invalid_config) for {invalid:?}, got: {stderr}"
+        );
+        assert_single_typed_next(&stderr, &format!("version {invalid:?}"))?;
+        assert!(
+            stderr.contains(MALFORMED_VERSION_NEXT),
+            "expected the canonical version grammar next step for {invalid:?}, got: {stderr}"
+        );
     }
 
     // Tag mismatches
@@ -115,6 +127,12 @@ fn release_identity_cli_rejects_hostile_and_unsupported_inputs() -> Result<(), B
         "v0.2.0-rc.1",
     ])?;
     assert!(!output.status.success(), "expected tag mismatch to fail");
+    let stderr = String::from_utf8(output.stderr)?;
+    assert_single_typed_next(&stderr, "stable tag mismatch")?;
+    assert!(
+        stderr.contains("the canonical tag for this version is `v0.2.0`;"),
+        "expected stable mismatch next step to name `v0.2.0`, got: {stderr}"
+    );
 
     let output = run_cmd(&[
         "release-identity",
@@ -124,7 +142,38 @@ fn release_identity_cli_rejects_hostile_and_unsupported_inputs() -> Result<(), B
         "v0.2.0",
     ])?;
     assert!(!output.status.success(), "expected tag mismatch to fail");
+    let stderr = String::from_utf8(output.stderr)?;
+    assert_single_typed_next(&stderr, "rc tag mismatch")?;
+    assert!(
+        stderr.contains("the canonical tag for this version is `v0.2.0-rc.1`;"),
+        "expected rc mismatch next step to name `v0.2.0-rc.1`, got: {stderr}"
+    );
 
+    Ok(())
+}
+
+/// Every release-identity failure must render exactly one typed `Next:` line
+/// and none of the policy-config remediation (#4652): the validator is
+/// stateless and takes no policy input, so `cargo-allow init`/`--config`
+/// advice would point at the wrong repair.
+fn assert_single_typed_next(stderr: &str, context: &str) -> Result<(), Box<dyn Error>> {
+    assert!(
+        !stderr.contains("cargo-allow init"),
+        "{context}: policy-init remediation leaked into a stateless validator error: {stderr}"
+    );
+    assert!(
+        !stderr.contains("--config"),
+        "{context}: --config remediation leaked into a stateless validator error: {stderr}"
+    );
+    let next_lines: Vec<&str> = stderr
+        .lines()
+        .filter(|line| line.starts_with("Next:"))
+        .collect();
+    assert_eq!(
+        next_lines.len(),
+        1,
+        "{context}: expected exactly one Next line, got: {next_lines:?}"
+    );
     Ok(())
 }
 
