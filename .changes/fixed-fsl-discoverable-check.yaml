@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  `frozen-subject-lock check` is discoverable again: the `check`
+  subcommand no longer carries `hide = true`, so it appears under
+  `frozen-subject-lock --help` exactly as the release-safety CI gate
+  invokes it (#4653). The parent command stays hidden from the root
+  command list, and the module doc now names the real invocation
+  (`frozen-subject-lock check`) instead of the nonexistent `--check`
+  flag.
