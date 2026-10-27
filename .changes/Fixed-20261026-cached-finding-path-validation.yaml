@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Scan-cache decode now re-validates every cached finding's path against
+  the same relative-path law the write path enforces, and requires the
+  finding to belong to the entry it was cached under (#4656): a forged or
+  corrupted finding path — `..`-escaping, absolute, blank, or a foreign
+  relative path — fails the decode, so the durable store is discarded and
+  the scan rebuilds cold instead of replaying relocated findings. The
+  forgeable checksum stays trusted-local performance state; legitimate
+  stores always satisfy the new check because findings carry exactly the
+  scanned relative path, so no schema or generation bump is needed.
