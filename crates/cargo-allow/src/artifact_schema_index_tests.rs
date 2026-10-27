@@ -23,8 +23,11 @@ const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
     "cargo-allow.release-authorization-consumption.v1",
     "cargo-allow.release-experience.v1",
 ];
-const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] =
-    &["tool-identity", "cargo-allow-provider-contract-v1"];
+const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] = &[
+    "tool-identity",
+    "cargo-allow-provider-contract-v1",
+    "sensor-capabilities",
+];
 
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
 fn normalize_lf(text: &str) -> String {

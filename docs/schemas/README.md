@@ -277,6 +277,7 @@ The current V2 shape is defined by
 |---|---|---|
 | Tool identity | `cargo-allow.tool-identity.v1` | `cargo-allow tool identity --format json` |
 | [Provider descriptor](cargo-allow-provider-contract-v1.schema.json) | `proof.cargo-allow-provider-contract.v1` | `cargo-allow capabilities --provider-contract --format json` |
+| [Sensor capabilities](sensor-capabilities.schema.json) | `cargo-allow.sensor-capabilities.v1` | `cargo-allow capabilities --format json` |
 
 The tool-identity contract carries `schema_id`/`schema_version` for
 self-description but is **not** a governed artifact: it omits
@@ -295,6 +296,19 @@ with the Rust JSON Schema validator, rejects mutated output, and checks that
 catalog options fail without overwriting output. The existing sensor catalog
 remains a separate contract. Installed-provider negotiation and analysis remain
 under #2567/#3602; descriptor conformance alone does not prove interoperability.
+
+The sensor capabilities catalog
+([sensor-capabilities.schema.json](sensor-capabilities.schema.json)) is
+published as a self-description schema on the tool-identity precedent
+(#4627), not a governed artifact: the payload is discovery metadata about
+which sensors the binary advertises, not a scan result. It deviates from the
+governed artifact envelope by design. The identity root key is `schema`
+(holding `cargo-allow.sensor-capabilities.v1`), not `schema_id` plus
+`schema_version`; `claim_boundary` is a single boundary sentence string, not
+the governed claim-boundary flag array; and there is no `tool`, `command`, or
+`inventory` root. Consumers must select this contract by its `schema` value
+and must not treat catalog rows as findings, inventory, or any positive
+detection claim.
 
 ## Supporting harness receipts (not governed artifacts)
 
@@ -360,6 +374,7 @@ promote policy, authorize publication, or establish release readiness.
 - [cadence.schema.json](cadence.schema.json)
 - [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status, the required `validation_result` verdict, plus, for non-Complete sets, the recorded `validation_gaps`)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
+- [sensor-capabilities.schema.json](sensor-capabilities.schema.json) self-description contract for the `cargo-allow capabilities --format json` sensor catalog (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) v1, [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2, and [operator-latency.v3.schema.json](operator-latency.v3.schema.json) v3 historical compatibility schemas; [operator-latency.v4.schema.json](operator-latency.v4.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
