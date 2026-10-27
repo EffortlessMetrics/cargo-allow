@@ -10,7 +10,9 @@
 //!
 //! Claim boundary: evaluation only — the command never writes, never
 //! mutates live branch rules, and never authorizes or executes release
-//! operations.
+//! operations. A retained receipt is only evaluated when it is clean vs
+//! HEAD: an edited or untracked receipt is refused before it can steer
+//! the classification.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -74,6 +76,24 @@ fn cmd_check(root: &std::path::Path, args: &FrozenSubjectLockCheckArgs) -> Cargo
         root.join(&args.receipt)
     };
     let receipt: Option<FrozenSubjectReceiptIdentityV1> = if receipt_path.is_file() {
+        // A retained receipt that is not clean vs HEAD is untrusted
+        // input (#4654): an edited or untracked receipt must not steer
+        // the evaluation. Probing the receipt's `tree` against the
+        // frozen commit is bypassable by editing the `commit` and `tree`
+        // fields together, so the binding precondition is worktree
+        // cleanliness; a probe that cannot run fails closed too.
+        let receipt_arg = receipt_path.to_string_lossy().into_owned();
+        let clean = git(root, &["status", "--porcelain", "--", receipt_arg.as_str()])
+            .is_ok_and(|status| status.trim().is_empty());
+        if !clean {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::InstrumentFailure,
+                format!(
+                    "retained freeze receipt {} is not clean vs HEAD; the lock refuses to evaluate an uncommitted receipt",
+                    receipt_path.display()
+                ),
+            ));
+        }
         let bytes = std::fs::read(&receipt_path).map_err(|error| {
             CargoAllowError::with_kind(
                 CargoAllowErrorKind::InstrumentFailure,
@@ -541,6 +561,62 @@ mod check_fixture_tests {
         let outcome = cmd_check(&root, &args(&missing));
         assert!(outcome.is_err(), "a missing receipt must fail the check");
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn check_refuses_an_uncommitted_receipt_edit() -> Result<(), String> {
+        // Regression (#4654): a retained receipt edited in the worktree
+        // without being committed must be refused. Pointing the receipt's
+        // `commit` at HEAD is exactly the two-field bypass an evaluator
+        // would face (commit, then tree); cleanliness vs HEAD closes it
+        // because the edit itself is uncommitted.
+        let (root, receipt) = setup_repo("uncommitted-edit");
+        let head = git(&root, &["rev-parse", "HEAD"]).trim().to_string();
+        std::fs::write(&receipt, receipt_json(&head))
+            .map_err(|error| format!("rewrite receipt: {error}"))?;
+        let outcome = cmd_check(&root, &args(&receipt));
+        let Some(error) = outcome.err() else {
+            return Err("an uncommitted receipt edit must be refused".to_string());
+        };
+        assert_eq!(
+            error.kind(),
+            allow_core::CargoAllowErrorKind::InstrumentFailure,
+            "an uncommitted receipt is an instrument failure, not a usage error"
+        );
+        assert!(
+            error.to_string().contains(&receipt.display().to_string()),
+            "the refusal must name the receipt path: {error}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+        Ok(())
+    }
+
+    #[test]
+    fn check_refuses_an_untracked_receipt() -> Result<(), String> {
+        // Regression (#4654): a receipt file that exists but was never
+        // committed is not a retained receipt; evaluating it would let a
+        // hand-fed file steer the lock. Untracked paths appear in
+        // `git status --porcelain`, so the same cleanliness precondition
+        // catches this without a second probe.
+        let (root, _receipt) = setup_repo("untracked");
+        let untracked = root.join("docs/dogfood/receipts/final-freeze/untracked.receipt.json");
+        std::fs::write(&untracked, receipt_json("frozen"))
+            .map_err(|error| format!("write untracked receipt: {error}"))?;
+        let outcome = cmd_check(&root, &args(&untracked));
+        let Some(error) = outcome.err() else {
+            return Err("an untracked receipt must be refused".to_string());
+        };
+        assert_eq!(
+            error.kind(),
+            allow_core::CargoAllowErrorKind::InstrumentFailure,
+            "an untracked receipt is an instrument failure, not a usage error"
+        );
+        assert!(
+            error.to_string().contains(&untracked.display().to_string()),
+            "the refusal must name the receipt path: {error}"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+        Ok(())
     }
 
     #[test]
