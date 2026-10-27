@@ -76,15 +76,45 @@ fn cmd_check(root: &std::path::Path, args: &FrozenSubjectLockCheckArgs) -> Cargo
         root.join(&args.receipt)
     };
     let receipt: Option<FrozenSubjectReceiptIdentityV1> = if receipt_path.is_file() {
-        // A retained receipt that is not clean vs HEAD is untrusted
-        // input (#4654): an edited or untracked receipt must not steer
-        // the evaluation. Probing the receipt's `tree` against the
-        // frozen commit is bypassable by editing the `commit` and `tree`
-        // fields together, so the binding precondition is worktree
-        // cleanliness; a probe that cannot run fails closed too.
+        // A retained receipt that differs from the committed blob is
+        // untrusted input (#4654, PR review): `git status --porcelain`
+        // alone is not proof of cleanliness — ignored untracked files,
+        // `status.showUntrackedFiles=no`, skip-worktree/assume-unchanged
+        // bits, and symlink substitution can all hide an uncommitted or
+        // substituted receipt from the status probe. The binding
+        // precondition is byte equality with the committed blob: the
+        // on-disk receipt must equal `git show HEAD:<path>` (an untracked
+        // receipt has no committed blob and is refused outright), and any
+        // probe failure fails closed.
         let receipt_arg = receipt_path.to_string_lossy().into_owned();
-        let clean = git(root, &["status", "--porcelain", "--", receipt_arg.as_str()])
-            .is_ok_and(|status| status.trim().is_empty());
+        // `git show HEAD:<path>` needs the path relative to the repository
+        // root (an absolute path is not a valid rev:path spec) in forward-
+        // slash form; a receipt outside the root has no committed blob and
+        // is refused by the probe failure below.
+        let repo_relative = receipt_path
+            .strip_prefix(root)
+            .map(|relative| relative.to_string_lossy().replace('\\', "/"))
+            .unwrap_or_else(|_| receipt_arg.clone());
+        let committed = git(root, &["show", &format!("HEAD:{repo_relative}")])
+            .map(|output| output.into_bytes());
+        let clean = match committed {
+            Ok(committed_bytes) => {
+                // Line-ending normalization on both sides: checkout filters
+                // can put CRLF on disk where the blob holds LF (and vice
+                // versa); the receipt's identity is its content, not its
+                // platform's newlines.
+                let normalize = |bytes: Vec<u8>| {
+                    bytes
+                        .into_iter()
+                        .filter(|byte| *byte != b'\r')
+                        .collect::<Vec<u8>>()
+                };
+                std::fs::read(&receipt_path)
+                    .map(|on_disk| normalize(on_disk) == normalize(committed_bytes))
+                    .unwrap_or(false)
+            }
+            Err(_) => false,
+        };
         if !clean {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::InstrumentFailure,
