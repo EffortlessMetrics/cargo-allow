@@ -239,10 +239,12 @@ fn fallback_variant_carries_the_conservative_next_step() -> Result<(), String> {
     // github_prerelease flag is computed from the parsed version itself), but
     // the fallback next step must stay typed and free of the generic
     // policy-config hint so the wrong remediation can never fire (#4652).
-    let error = invalid_release_identity(allow_report::ReleaseIdentityErrorV1::GithubPrereleaseMismatch {
-        expected: true,
-        actual: false,
-    });
+    let error = invalid_release_identity(
+        allow_report::ReleaseIdentityErrorV1::GithubPrereleaseMismatch {
+            expected: true,
+            actual: false,
+        },
+    );
     if error.kind() != CargoAllowErrorKind::InvalidConfig {
         return Err(format!("unexpected kind: {:?}", error.kind()));
     }
