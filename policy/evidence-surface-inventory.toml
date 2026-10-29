@@ -717,3 +717,20 @@ required_stronger_owner = "#3930 actual selected final-tag production execution;
 may_satisfy_release_gate = false
 last_reconciled_commit = "ed093a27"
 claim_boundary = "The actual driver composition is exercised through intercepted HTTP and local fixture stores, not a live release path. No live credential, provider mutation, release authority, tag mint or publication occurs. Python-only protocol checks do not prove native compilation or consumer acceptance; the native gate fails if its executable is unavailable. Real release execution remains with #3760."
+
+[[surfaces]]
+id = "release-identity-typed-remedies"
+owner_issue = 4652
+semantic_authority = "release-identity validation contract"
+path = "crates/cargo-allow/tests/release_identity.rs"
+subject = "crates/allow-report/src/artifacts/release_identity_v1.rs"
+producer = "Rust integration test"
+consumer = "release tooling and CI authors"
+claimed_acceptance_row = "typed next steps on release-identity validation failures"
+assertion_mechanism = "CLI stderr assertions: error code, exactly one Next line, absence of the generic policy-config hint, and presence of the typed canonical-tag/grammar remedy"
+evidence_class = "TypedModelValidation"
+disposition = "typed-model validation of the stateless validator's remediation rendering; no release-path behavior"
+last_reconciled_commit = "d8279e94b9b6676ebd98bf922c6e4a6a9be8006a"
+required_stronger_owner = "#3760 actual release execution and authorization remain separate"
+may_satisfy_release_gate = false
+claim_boundary = "The test exercises the stateless release-identity validator and its typed remediation rendering only. It does not prove release execution, tag minting, or any release authority; those remain with #3760."

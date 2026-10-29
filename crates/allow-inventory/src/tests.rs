@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
-fn inaccessible_paths_make_inventory_partial_but_git_failure_wins_fallback() {
+fn inaccessible_paths_make_inventory_partial_even_when_git_failed() {
     let options = InventoryOptions {
         ignored: Vec::new(),
         generated: Vec::new(),
@@ -23,6 +23,10 @@ fn inaccessible_paths_make_inventory_partial_but_git_failure_wins_fallback() {
         ),
         InventoryCompleteness::Partial
     );
+    // #4646: omissions outrank fallback provenance. A truncated filesystem
+    // walk reports Partial even though git failed; the fallback source stays
+    // visible in `InventorySource` and `git_error`, never in the
+    // completeness value.
     assert_eq!(
         super::inventory_completeness(
             &options,
@@ -32,6 +36,11 @@ fn inaccessible_paths_make_inventory_partial_but_git_failure_wins_fallback() {
             &[PathBuf::from("blocked.rs")],
             &[PathBuf::from("skipped.rs")],
         ),
+        InventoryCompleteness::Partial
+    );
+    // A fallback walk with no recorded omissions keeps the fallback class.
+    assert_eq!(
+        super::inventory_completeness(&options, true, &[], &[], &[], &[]),
         InventoryCompleteness::Fallback
     );
 }
@@ -660,6 +669,54 @@ fn recursive_inventory_stops_at_depth_limit() -> Result<(), Box<dyn std::error::
     Ok(())
 }
 
+/// #4646: the completeness classification must survive a truncated fallback
+/// walk. A file hidden below the depth cap is recorded as a skipped path and
+/// the whole inventory degrades to Partial even though git is unavailable —
+/// the fallback source alone must not read as complete coverage.
+#[test]
+fn depth_capped_fallback_inventory_reports_partial_with_skip_disclosure()
+-> Result<(), Box<dyn std::error::Error>> {
+    use super::filesystem::INVENTORY_MAX_DEPTH;
+
+    let root = temp_root("depth-capped-fallback");
+    let mut deep = root.clone();
+    for index in 0..=INVENTORY_MAX_DEPTH {
+        deep = deep.join(format!("d{index}"));
+    }
+    fs::create_dir_all(&deep)?;
+    write_file(deep.join("hidden.rs"), "fn hidden() {}\n");
+    write_file(root.join("visible.txt"), "visible\n");
+
+    let snapshot = inventory(&root, &InventoryOptions::default())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("depth-capped inventory: {err}")));
+
+    assert_eq!(snapshot.source, InventorySource::FilesystemFallback);
+    assert_eq!(
+        snapshot.completeness,
+        InventoryCompleteness::Partial,
+        "a depth-truncated fallback walk must not classify as bare Fallback"
+    );
+    assert!(snapshot.git_error.is_some());
+    assert_eq!(snapshot.skipped_paths.len(), 1);
+    assert!(
+        snapshot.skipped_paths.iter().any(|path| {
+            path.to_string_lossy()
+                .contains(".cargo-allow-inventory-depth-limit-")
+        }),
+        "expected the depth-limit marker in skipped={:?}",
+        snapshot.skipped_paths
+    );
+    assert!(snapshot.files.contains(&PathBuf::from("visible.txt")));
+    assert!(
+        !snapshot
+            .files
+            .iter()
+            .any(|path| path.file_name().is_some_and(|name| name == "hidden.rs"))
+    );
+    remove_dir(&root);
+    Ok(())
+}
+
 #[test]
 fn recursive_inventory_stops_at_entry_limit() -> Result<(), Box<dyn std::error::Error>> {
     use super::filesystem::{INVENTORY_MAX_ENTRIES, visit_for_test_with_depth};
@@ -680,6 +737,53 @@ fn recursive_inventory_stops_at_entry_limit() -> Result<(), Box<dyn std::error::
         }),
         "expected entry-limit diagnostic in skipped={skipped:?}"
     );
+    remove_dir(&root);
+    Ok(())
+}
+
+/// #4646 review: the walker records skips before the configured ignore globs
+/// are applied, so a skip inside a policy-ignored subtree omits no selected
+/// input. The skip must be filtered out as scope — not classify the inventory
+/// Partial — while the same skip outside the ignored scope stays fail-closed.
+#[test]
+fn ignored_subtree_skips_are_scope_not_omissions() -> Result<(), Box<dyn std::error::Error>> {
+    use super::filesystem::INVENTORY_MAX_DEPTH;
+
+    let root = temp_root("ignored-subtree-skip");
+    let mut deep = root.join("vendor").join("private");
+    for index in 0..=INVENTORY_MAX_DEPTH {
+        deep = deep.join(format!("d{index}"));
+    }
+    fs::create_dir_all(&deep)?;
+    write_file(deep.join("hidden.rs"), "fn hidden() {}\n");
+    write_file(root.join("visible.txt"), "visible\n");
+
+    // Without the ignore: the capped vendor walk is a recorded omission and
+    // the inventory degrades to Partial.
+    let unscoped = inventory(&root, &InventoryOptions::default())
+        .unwrap_or_else(|err| std::panic::panic_any(format!("unscoped inventory: {err}")));
+    assert_eq!(unscoped.completeness, InventoryCompleteness::Partial);
+    assert_eq!(unscoped.skipped_paths.len(), 1);
+
+    // With the ignore: the same skip is scope, not an omission — the
+    // inventory keeps fallback provenance and loses the Partial marker.
+    let mut scoped_options = InventoryOptions::default();
+    scoped_options.ignored.push("vendor/**".to_string());
+    let scoped = inventory(&root, &scoped_options)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("scoped inventory: {err}")));
+    assert_eq!(scoped.source, InventorySource::FilesystemFallback);
+    assert_eq!(
+        scoped.completeness,
+        InventoryCompleteness::Fallback,
+        "an ignored-subtree skip must not classify the inventory Partial"
+    );
+    assert!(
+        scoped.skipped_paths.is_empty(),
+        "ignored-subtree skips must be filtered from skipped_paths, got {:?}",
+        scoped.skipped_paths
+    );
+    assert!(scoped.files.contains(&PathBuf::from("visible.txt")));
+
     remove_dir(&root);
     Ok(())
 }

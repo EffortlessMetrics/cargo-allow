@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.dev/schemas/cargo-allow/sensor-capabilities.v1.schema.json",
+  "title": "cargo-allow sensor capabilities v1",
+  "description": "Self-description contract emitted by `cargo-allow capabilities --format json`. This is NOT a governed artifact: it is discovery metadata about which sensors this binary advertises, their analysis classes, and their stated claim boundaries. It carries no scan result, no inventory, and no finding. The identity root key is `schema` (not `schema_id`/`schema_version`); consumers key on the `schema` value.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "generation",
+    "claim_boundary",
+    "capabilities",
+    "configured_file_families"
+  ],
+  "properties": {
+    "schema": {
+      "const": "cargo-allow.sensor-capabilities.v1",
+      "description": "Contract identity. Consumers select this contract by this exact value."
+    },
+    "generation": {
+      "type": "integer",
+      "const": 1,
+      "description": "Sensor catalog generation pinned by this binary."
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Catalog-level source-tree observation boundary sentence; a plain string, not the governed claim_boundary flag array."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/sensorCapability" },
+      "description": "Sensor catalog rows. The unfiltered catalog lists every advertised sensor; --class/--kind/--family filters project subsets, including the empty set."
+    },
+    "configured_file_families": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/configuredFileFamilyCapability" },
+      "description": "Repository-defined file-family rules projected from the selected policy. Empty unless --root or --config selects a readable policy with [[workspace.file_family]] rules."
+    }
+  },
+  "$defs": {
+    "sensorCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sensor_id",
+        "generation",
+        "owner",
+        "kind",
+        "family",
+        "input",
+        "selection",
+        "analysis_class",
+        "precision",
+        "completeness",
+        "platform",
+        "profile",
+        "limitations",
+        "claims_supported",
+        "claims_excluded",
+        "fixtures",
+        "docs",
+        "support_tier"
+      ],
+      "properties": {
+        "sensor_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable sensor identifier (e.g. `rust.panic.unwrap`)."
+        },
+        "generation": {
+          "type": "integer",
+          "const": 1,
+          "description": "Generation this sensor implementation is pinned to."
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Scanner crate or component that owns the sensor."
+        },
+        "kind": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Finding kind for rows backed by a finding family; null for not_included rows and the opt-in static sensor."
+        },
+        "family": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Finding family for rows backed by a finding family; null for not_included rows and the opt-in static sensor."
+        },
+        "input": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the sensor observes."
+        },
+        "selection": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How inputs are selected for this sensor."
+        },
+        "analysis_class": {
+          "enum": [
+            "supported_syntax",
+            "supported_presence",
+            "compatibility_adapter",
+            "static_sensor",
+            "policy_derived",
+            "not_included"
+          ],
+          "description": "Stable machine label for the analysis class; the same vocabulary as the `--class` filter."
+        },
+        "precision": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Strongest identity the sensor's findings carry."
+        },
+        "completeness": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What population the sensor's claims cover."
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Execution posture of the sensor (source text, inventory, adapter; no target build)."
+        },
+        "profile": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Scan profile or invocation mode that exercises the sensor."
+        },
+        "limitations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Named limitations of this sensor."
+        },
+        "claims_supported": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Claims this sensor does support."
+        },
+        "claims_excluded": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Claims this sensor explicitly does not make."
+        },
+        "fixtures": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Source-tree paths of the tests that pin this sensor."
+        },
+        "docs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Documentation paths describing this sensor's boundary."
+        },
+        "support_tier": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Support tier sentence/label (observed values: supported, excluded, experimental-opt-in)."
+        }
+      }
+    },
+    "configuredFileFamilyCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_id",
+        "family",
+        "glob",
+        "analysis_class",
+        "support_tier",
+        "claim_boundary"
+      ],
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository-defined rule id from the selected policy."
+        },
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Repository-defined family name from the selected policy."
+        },
+        "glob": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path glob classifier from the selected policy."
+        },
+        "analysis_class": {
+          "const": "supported_presence",
+          "description": "Configured rows are always presence classifiers."
+        },
+        "support_tier": {
+          "const": "configured",
+          "description": "Configured rows always carry the configured tier."
+        },
+        "claim_boundary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Per-row path-presence claim boundary sentence; not a content-safety or compilation claim."
+        }
+      }
+    }
+  }
+}

@@ -1079,6 +1079,7 @@ fn inventory_facts(
         rust_files_skipped: scanner.map_or(0, |scanner| scanner.files_skipped),
         rust_files_considered: scanner.map_or(0, |scanner| scanner.files_considered),
         rust_files_with_parse_errors: scanner.map_or(0, |scanner| scanner.files_with_parse_errors),
+        inventory_skipped_paths: 0,
         policy_digest: None,
     }
 }
