@@ -53,6 +53,8 @@ fn intent_provider_failure_is_explicitly_non_clean_and_actionable() {
             detail: "provider not found".to_string(),
         });
     assert!(unavailable.contains("status: unavailable"));
+    assert!(unavailable.contains("detected binary/version: none detected"));
+    assert!(!unavailable.contains("binary detected"));
     assert!(unavailable.contains("required version range: 0.1.x"));
     assert!(unavailable.contains("required protocol: repo.analysis-receipt.v1"));
     assert!(unavailable.contains("canonical command:"));
@@ -66,6 +68,67 @@ fn intent_provider_failure_is_explicitly_non_clean_and_actionable() {
         });
     assert!(incompatible.contains("status: incompatible"));
     assert!(incompatible.contains("binary detected, version not probed"));
+}
+
+#[test]
+fn intent_provider_config_parse_failure_renders_incompatible_with_reason() -> Result<(), String> {
+    for (label, config_text) in [
+        ("empty", ""),
+        ("corrupt", "schema_id = \nthis is [ not valid toml\n"),
+    ] {
+        let root = doctor_fixture_dir();
+        let config_path = root.join(crate::intent_provider::DEFAULT_INTENT_DELEGATION_CONFIG);
+        let config_dir = config_path
+            .parent()
+            .ok_or_else(|| format!("config path has no parent: {config_path:?}"))?;
+        fs::create_dir_all(config_dir)
+            .map_err(|error| format!("create compatibility dir: {error}"))?;
+        fs::write(&config_path, config_text)
+            .map_err(|error| format!("write {label} config: {error}"))?;
+
+        let failure = match crate::intent_provider::load_intent_delegation_settings(&root, None) {
+            Ok(_) => {
+                remove_doctor_fixture_dir(root);
+                return Err(format!(
+                    "{label} delegation config should fail to load as MalformedConfig"
+                ));
+            }
+            Err(failure) => failure,
+        };
+        let rendered = render_intent_provider_failure(&failure);
+        remove_doctor_fixture_dir(root);
+
+        assert!(
+            matches!(
+                failure.class,
+                crate::intent_provider::IntentProviderFailureClass::MalformedConfig
+            ),
+            "{label} config should classify as MalformedConfig"
+        );
+        assert!(
+            rendered.contains("status: incompatible"),
+            "{label} config should render incompatible: {rendered}"
+        );
+        assert!(
+            !rendered.contains("binary detected"),
+            "{label} config failure must not claim a binary was detected: {rendered}"
+        );
+        assert!(
+            rendered.contains("delegation config parse failure"),
+            "{label} config failure should say no binary was probed: {rendered}"
+        );
+        assert!(
+            rendered.contains("config failure: parse ")
+                && rendered.contains(&config_path.display().to_string()),
+            "{label} config failure should name the config path and parse reason: {rendered}"
+        );
+        assert!(
+            rendered.contains("intent evaluation: not performed")
+                && rendered.contains("clean claim: not available"),
+            "{label} config failure must not claim a clean posture: {rendered}"
+        );
+    }
+    Ok(())
 }
 
 #[test]
