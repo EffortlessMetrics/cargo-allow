@@ -139,7 +139,7 @@ jobs:
           EOF
       - name: Run ub-review
         if: env.UB_REVIEW_AVAILABLE == 'yes'
-        uses: EffortlessMetrics/ub-review@2fae0dc21c2e178cb8175101dacd666b7b8ccdeb
+        uses: EffortlessMetrics/ub-review@f2cd5a3c95621e676c5d3b542cd6b316cc316deb
         with:
           profile: gh-runner
           posting: review
@@ -151,7 +151,7 @@ jobs:
           out: target/ub-review
       - name: Upload review artifacts
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ub-review-artifacts
           path: target/ub-review
