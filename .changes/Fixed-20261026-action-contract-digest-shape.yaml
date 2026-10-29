@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  The action contract test no longer pins the exact commit digests of the
+  composite action's `uses:` steps, which made every Dependabot digest bump
+  of `actions/upload-artifact` deterministically red (#4666, #4669): the
+  contract now pins the actions by name and adds a shape check requiring
+  every `uses:` ref to be an immutable 40-hex commit digest with a version
+  comment, so a digest bump needs no Rust edit while an action swap,
+  mutable tag, branch ref, short digest, or missing version comment still
+  fails the closed read-only surface contract. Exact digests remain
+  recorded in `action.yml` itself, with git history as the digest ledger.

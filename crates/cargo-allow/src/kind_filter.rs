@@ -104,6 +104,54 @@ pub(crate) fn parse_kind_filter_arg(kind: &str) -> Result<String, String> {
         .map_err(|_| format!("unknown kind `{kind}`; supported kinds: {SUPPORTED_KIND_FILTERS}"))
 }
 
+/// Whether a parsed kind filter selects one of the compat-only surfaces:
+/// `executable`, `workflow`, `dependency-surface`, `process`, or `network`
+/// (any alias). Each maps to a `policy_exception` family whose findings are
+/// produced only by the legacy allowlist sensors behind `--compat`.
+pub(crate) fn is_compat_only_kind_filter(parsed: KindFilter) -> bool {
+    parsed.kind == FindingKind::PolicyException && !matches!(parsed.family, FamilyFilter::Any)
+}
+
+/// Fail closed when a compat-only kind filter reaches a lane that cannot wire
+/// the kind's sensor in (#4632), mirroring the #1948 flag-with-no-effect
+/// rejection: filtering `workflow` (or executable/process/network/
+/// dependency-surface) into a non-compat check/audit accepts a kind whose
+/// sensor lives behind `--compat`, so the gate scans nothing for it and stays
+/// permanently green. `check`/`audit` pass `compat_available: args.compat`;
+/// `diff` and `why` have no compat lane at all and always pass `false`.
+///
+/// Kinds that fail to parse return `Ok` so the caller's own kind parsing
+/// keeps producing the canonical unknown-kind error. The compat lane itself
+/// is untouched: a missing legacy policy still surfaces as the compat
+/// loader's E0009 policy-demand error.
+pub(crate) fn reject_compat_only_kind_filter(
+    command: &str,
+    compat_available: bool,
+    kind: Option<&str>,
+) -> CargoAllowResult<()> {
+    let Some(kind) = kind else {
+        return Ok(());
+    };
+    let Ok(parsed) = parse_kind_filter(kind) else {
+        return Ok(());
+    };
+    if !is_compat_only_kind_filter(parsed) {
+        return Ok(());
+    }
+    // The compat lane wires the sensor in, so it keeps its #2433-era
+    // behavior: the missing legacy policy surfaces as the E0009 policy-demand
+    // error from the compat loader.
+    if compat_available {
+        return Ok(());
+    }
+    Err(allow_core::CargoAllowError::with_kind(
+        allow_core::CargoAllowErrorKind::Usage,
+        format!(
+            "--kind {kind} has no findings outside the --compat lane for {command}: this kind's findings come from the legacy allowlist sensors behind --compat, so a non-compat run would scan nothing and report a permanently green gate; this kind is reachable only from `check --compat --kind {kind}` or `audit --compat --kind {kind}`"
+        ),
+    ))
+}
+
 const SUPPORTED_KIND_FILTERS: &str = "panic, unsafe, lint-exception, non-rust, generated, policy-exception, no-panic-allowlist, executable, workflow, dependency-surface, process, network";
 
 pub(crate) fn is_panic_compat_kind(kind: &str) -> bool {
@@ -195,6 +243,11 @@ pub(crate) fn is_network_compat_kind(kind: &str) -> bool {
 pub(crate) struct KindGroup {
     pub(crate) canonical: &'static str,
     pub(crate) aliases: &'static [&'static str],
+    /// True when the kind's findings are produced only by the legacy
+    /// allowlist sensors behind `--compat` (#4632). A non-compat
+    /// check/audit/diff/why run filtered to such a kind scans nothing for it
+    /// and would report a permanently green gate, so those lanes reject it.
+    pub(crate) compat_only: bool,
 }
 
 /// The complete kind-filter vocabulary, grouped by canonical name. This is the
@@ -215,6 +268,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "panic-allowlist",
             "panic_allowlist",
         ],
+        compat_only: false,
     },
     KindGroup {
         canonical: "unsafe",
@@ -225,6 +279,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "unsafe-policy",
             "unsafe_policy",
         ],
+        compat_only: false,
     },
     KindGroup {
         canonical: "lint-exception",
@@ -240,6 +295,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "lint-suppression",
             "lint_suppression",
         ],
+        compat_only: false,
     },
     KindGroup {
         canonical: "non-rust",
@@ -250,14 +306,17 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "non_rust_file",
             "file",
         ],
+        compat_only: false,
     },
     KindGroup {
         canonical: "generated",
         aliases: &["generated", "generated-code", "generated_code"],
+        compat_only: false,
     },
     KindGroup {
         canonical: "policy-exception",
         aliases: &["policy-exception", "policy_exception", "policy"],
+        compat_only: false,
     },
     KindGroup {
         canonical: "executable",
@@ -268,6 +327,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "executable-bit",
             "exec",
         ],
+        compat_only: true,
     },
     KindGroup {
         canonical: "workflow",
@@ -278,6 +338,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "github_workflow",
             "workflow-action",
         ],
+        compat_only: true,
     },
     KindGroup {
         canonical: "dependency-surface",
@@ -290,6 +351,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "dep-surface",
             "dep",
         ],
+        compat_only: true,
     },
     KindGroup {
         canonical: "process",
@@ -301,6 +363,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "process_spawn",
             "proc",
         ],
+        compat_only: true,
     },
     KindGroup {
         canonical: "network",
@@ -311,6 +374,7 @@ pub(crate) const KIND_GROUPS: &[KindGroup] = &[
             "network-destination",
             "network_destination",
         ],
+        compat_only: true,
     },
 ];
 

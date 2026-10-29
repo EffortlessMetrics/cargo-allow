@@ -79,35 +79,40 @@ fn validate_deny_statuses_accepts_present_optional_advisory_class() {
 }
 
 #[test]
-fn deny_escalation_failed_when_occurrence_headroom_count_is_positive() {
+fn deny_escalation_fires_when_occurrence_headroom_count_is_positive() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
     let context = ReportContext {
         occurrence_headroom_entries: Some(2),
         ..ReportContext::default()
     };
-    assert!(deny_escalation_failed(
-        &["occurrence_headroom".to_string()],
-        &summary,
-        context
-    ));
+    assert!(
+        !deny_escalation_fired_classes(&["occurrence_headroom".to_string()], &summary, context)
+            .is_empty()
+    );
 }
 
 #[test]
-fn deny_escalation_failed_when_denied_advisory_count_is_positive() {
+fn deny_escalation_fires_when_denied_advisory_count_is_positive() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::ReviewDue)]);
-    assert!(deny_escalation_failed(
-        &["review_due".to_string()],
-        &summary,
-        ReportContext::default()
-    ));
+    assert_eq!(
+        deny_escalation_fired_classes(
+            &["review_due".to_string()],
+            &summary,
+            ReportContext::default()
+        ),
+        vec!["review_due".to_string()]
+    );
 }
 
 #[test]
 fn deny_escalation_passes_when_denied_advisory_count_is_zero() {
     let summary = Summary::from_outcomes(&[outcome(MatchStatus::Matched)]);
-    assert!(!deny_escalation_failed(
-        &["review_due".to_string()],
-        &summary,
-        ReportContext::default()
-    ));
+    assert!(
+        deny_escalation_fired_classes(
+            &["review_due".to_string()],
+            &summary,
+            ReportContext::default()
+        )
+        .is_empty()
+    );
 }

@@ -79,6 +79,10 @@ pub(crate) struct ReportRenderArgs<'a> {
     /// mode that produced a pass. Previously this reached the receipt only,
     /// which left every report claiming `advisory` regardless of mode (#2832).
     pub(crate) enforcement: Option<&'a str>,
+    /// The `--deny` classes whose positive counts escalated this run to a
+    /// failure, so the human/markdown `Result: failed (...)` label names the
+    /// actual trigger (#4631). `None` on every non-deny path.
+    pub(crate) denied_classes: Option<&'a [String]>,
     /// The paired `--artifact-dir` target when artifact emission is active,
     /// so the operation's own write posture reflects the files the run
     /// writes instead of a hardcoded read-only claim (#4566).
@@ -117,6 +121,7 @@ impl SourceTreeReportContext {
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_completeness(self.inventory_completeness())
+        .with_inventory_skipped_paths(self.inventory_facts.inventory_skipped_paths)
         .with_source_identity(self.source_identity.as_deref())
     }
 
@@ -133,6 +138,7 @@ impl SourceTreeReportContext {
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_inventory_completeness(self.inventory_completeness())
         .with_inventory_source_identity(self.source_identity.as_deref())
+        .with_inventory_skipped_paths(self.inventory_facts.inventory_skipped_paths)
         .with_rust_scanner_facts(
             self.inventory_facts.rust_files_considered,
             self.inventory_facts.rust_files_skipped,
@@ -151,7 +157,12 @@ impl SourceTreeReportContext {
     pub(crate) fn inventory_completeness(&self) -> &str {
         if self.inventory_facts.rust_files_skipped > 0
             || self.inventory_facts.rust_files_with_parse_errors > 0
+            || self.inventory_facts.inventory_skipped_paths > 0
         {
+            // #4646: any recorded omission — scanner skips, parse errors,
+            // or truncated inventory walks — must surface as `partial` in
+            // the report JSON and receipt inventory, never be erased by
+            // fallback provenance.
             "partial"
         } else {
             self.inventory_facts.completeness.as_str()
@@ -205,6 +216,7 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.denied_classes = args.denied_classes;
     context.style = style_for(args.format, args.output);
     let text = match args.format {
         OutputFormat::Human => allow_report::render_human_with_context(
@@ -389,6 +401,30 @@ mod tests {
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
     }
 
+    /// #4646: inventory-walk omissions must reach the report JSON and
+    /// receipt projection as `partial` completeness even when the inventory
+    /// source is a filesystem fallback.
+    #[test]
+    fn source_context_promotes_inventory_walk_omissions_to_partial_inventory() {
+        let root = temp_root("inventory-skip-partial");
+        let facts = InventoryFacts::scanned(InventorySource::FilesystemFallback, 3)
+            .with_completeness(allow_inventory::InventoryCompleteness::Fallback)
+            .with_inventory_skipped_paths(1);
+        let context = SourceTreeReportContext::new(&root, facts);
+
+        assert_eq!(context.inventory_completeness(), "partial");
+        assert_eq!(context.inventory().completeness, Some("partial"));
+        assert_eq!(context.report(None).inventory.completeness, Some("partial"));
+        // #4646 review: the omission count itself must reach both the typed
+        // inventory projection and the report/receipt context, so JSON
+        // consumers read the count and not just the `partial` label.
+        assert_eq!(context.inventory().inventory_skipped_paths, 1);
+        assert_eq!(context.report(None).inventory.inventory_skipped_paths, 1);
+
+        fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+    }
+
     #[test]
     fn print_report_dispatches_all_formats_and_writes_outputs() {
         let root = temp_root("print-report");
@@ -427,6 +463,7 @@ mod tests {
                 root: &root,
                 inventory_facts: InventoryFacts::scanned(InventorySource::GitTracked, 7),
                 inventory_source_identity: None,
+                denied_classes: None,
                 artifact_emission: None,
                 enforcement: None,
             })

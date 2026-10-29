@@ -18,6 +18,7 @@ if ! command -v "${py}" >/dev/null 2>&1; then
 fi
 
 bash -n scripts/perf-budget-smoke.sh
+"${py}" -B scripts/test-qualify-worklist-pages.py
 "${py}" - <<'PY'
 import json
 import os
@@ -107,7 +108,8 @@ for marker in (
     "agent_loop_check",
     "cargo-allow.add-finding-plan.v1",
     "add-plan-application",
-    "new_unreceipted_finding",
+    "measure_worklist_pages",
+    "qualify-worklist-pages.py",
     "hooks_wrapped_check",
     "hooks_bare_check",
     "--mode explicit-tool-under-test",
@@ -409,6 +411,7 @@ latency or real command output. No second runtime validator or third-party depen
 is introduced.
 """
 import hashlib
+import importlib.util
 import json
 import math
 import subprocess
@@ -419,6 +422,12 @@ import unittest
 from pathlib import Path
 
 ROOT = Path.cwd()
+fixture_spec = importlib.util.spec_from_file_location(
+    "worklist_fixture", ROOT / "scripts/test-qualify-worklist-pages.py"
+)
+worklist_fixture = importlib.util.module_from_spec(fixture_spec)
+fixture_spec.loader.exec_module(worklist_fixture)
+WORKLIST_NAMES = ("worklist", "agent_loop_worklist")
 SCHEMA_PATH = "docs/schemas/operator-latency.v4.schema.json"
 RECEIPT_PATH = "target/perf-budget/operator-latency.receipt.json"
 
@@ -482,6 +491,8 @@ def receipt_fixture():
                 "path": f"{name}.semantic.json", "sha256": hashlib.sha256(b"s" * semantic_size).hexdigest(),
             },
         })
+        if name in WORKLIST_NAMES:
+            samples[-1] = worklist_fixture.operator_fixture(name)[0]
         if name == "full_check_json":
             samples[-1]["artifact"]["path"] = "artifacts/full-check.json"
             samples[-1]["semantic_artifact"]["path"] = "artifacts/full-check.receipt.json"
@@ -495,7 +506,7 @@ def receipt_fixture():
         "tool": "cargo-allow", "command": "operator-latency", "result": "pass",
         "binary": {"path": "target/release/cargo-allow", "sha256": "0" * 64, "profile": "release"},
         "host": {"os": "Linux", "release": "fixture", "machine": "x86_64", "rustc": "fixture"},
-        "repository": {"commit": "fixture", "tracked_files": 0, "policy_entries": 0},
+        "repository": {"commit": "a" * 40, "tracked_files": 0, "policy_entries": 0},
         "sample_policy": {
             "cold_process_samples": 2, "warm_process_samples": 4,
             "targeted_samples": 6, "agent_loop_samples": 6,
@@ -550,6 +561,10 @@ def set_duration(receipt, path, value):
     for key in path[:-1]:
         node = node[key]
     node[path[-1]] = value
+    if path[0] == "samples" and node["name"] in WORKLIST_NAMES and type(value) is int and 0 <= value <= 60000:
+        # Positive duration boundaries must agree with retained command timing.
+        # Arbitrary invalid values retain the original files and fail generic admission.
+        node.update(worklist_fixture.operator_fixture(node["name"], value)[0])
     # Keep unrelated durations admissible and arithmetic valid so they cannot mask this field.
     composite = receipt["agent_loop"]["composite"]
     if path[:3] == ("agent_loop", "composite", "steps") and isinstance(value, (int, float)):
@@ -589,6 +604,9 @@ class ReceiptAdmissionControls(unittest.TestCase):
             schema_path = root / SCHEMA_PATH
             schema_path.parent.mkdir(parents=True)
             schema_path.write_text(self.schema_text, encoding="utf-8")
+            helper_path = root / "scripts/qualify-worklist-pages.py"
+            helper_path.parent.mkdir(parents=True)
+            helper_path.write_bytes((ROOT / "scripts/qualify-worklist-pages.py").read_bytes())
             if write_receipt:
                 receipt_path = root / RECEIPT_PATH
                 receipt_path.parent.mkdir(parents=True)
@@ -597,6 +615,16 @@ class ReceiptAdmissionControls(unittest.TestCase):
                 # fixture's deterministic byte counts; mutated counts must
                 # not be able to pass by moving the files instead.
                 for index, sample in enumerate(receipt["samples"]):
+                    if sample["name"] in WORKLIST_NAMES:
+                        elapsed = sample["elapsed_ms"]
+                        valid_elapsed = type(elapsed) is int and 0 <= elapsed <= 60000
+                        _, files = worklist_fixture.operator_fixture(sample["name"], elapsed if valid_elapsed else 1)
+                        # Fixed fixture paths/bytes do not follow mutated hashes or counts.
+                        for path, data in files.items():
+                            retained = receipt_path.parent / path
+                            retained.parent.mkdir(parents=True, exist_ok=True)
+                            retained.write_bytes(data)
+                        continue
                     artifact_size, semantic_size = retained_sizes(index)
                     for key, size, prefix in (
                         ("artifact", artifact_size, b"a"),
@@ -704,6 +732,24 @@ class ReceiptAdmissionControls(unittest.TestCase):
                             "missing": "FileNotFoundError",
                         }[mutation]
                         self.assertIn(diagnostic, result.stderr)
+
+    def test_worklist_transitive_members_are_required(self):
+        # These are outside the ordinary sample's direct artifact pointers.
+        for member in ("full.json", "page-000025.json"):
+            for mutation in ("same_size", "missing"):
+                with self.subTest(member=member, mutation=mutation):
+                    def mutate(root):
+                        retained = root / "artifacts/worklist-pages" / member
+                        if mutation == "missing":
+                            retained.unlink()
+                        else:
+                            data = retained.read_bytes()
+                            retained.write_bytes(b"x" + data[1:])
+                    result = self.invoke(receipt_fixture(), mutate_retained=mutate)
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertNotIn("validated 22 operator-latency samples", result.stdout)
+                    diagnostic = "FileNotFoundError" if mutation == "missing" else "retained member bytes/hash drift"
+                    self.assertIn(diagnostic, result.stderr)
 
     def test_byte_count_admission_refusals(self):
         sample_index = 3

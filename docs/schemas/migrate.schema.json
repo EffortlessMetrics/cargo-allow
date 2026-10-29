@@ -58,7 +58,8 @@
         "kind": {
           "enum": [
             "from",
-            "repo_policy"
+            "repo_policy",
+            "bespoke"
           ]
         },
         "path": {

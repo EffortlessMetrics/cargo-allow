@@ -7,16 +7,27 @@ use super::worklist_types::WorkItemLedger;
 use allow_core::{AllowConfig, AllowEntry, Finding, MatchOutcome, MatchStatus, normalize_path};
 use allow_diff::selector_precision_score;
 
+#[cfg(test)]
 pub(super) fn work_items_from_outcomes(
     cfg: &AllowConfig,
     findings: &[Finding],
     outcomes: &[MatchOutcome],
 ) -> Vec<WorkItem> {
-    let projected_statuses = allow_report::ledger_read_statuses(
+    work_items_from_outcomes_at(
         cfg,
+        findings,
         outcomes,
         allow_core::SimpleDate::today_utc_approx(),
-    );
+    )
+}
+
+pub(super) fn work_items_from_outcomes_at(
+    cfg: &AllowConfig,
+    findings: &[Finding],
+    outcomes: &[MatchOutcome],
+    today: allow_core::SimpleDate,
+) -> Vec<WorkItem> {
+    let projected_statuses = allow_report::ledger_read_statuses(cfg, outcomes, today);
 
     outcomes
         .iter()

@@ -7,8 +7,8 @@
     "canonical_thirteen_crate_candidate",
     "isolated_exact_candidate_install",
     "source_checkout_denied_during_install",
-    "source_checkout_hidden_during_journey",
-    "digest_bound_package_and_journey_receipts",
+    "observed_source_fallback_paths_hidden_for_ordinary_scan",
+    "digest_bound_package_source_and_binary_evidence",
     "first_hour_finding_repair_and_policy_rollback",
     "temporary_consumer_and_journey_state_cleanup",
     "not_published_or_registry_release"
@@ -20,6 +20,8 @@
     "crate_count": 13
   },
   "provenance": {
+    "installed_binary_sha256": "9a2b7ce54e17aaba0e2ee0a504f44b2d7321c15ad844b214c0a75ac7b88c5fbb",
+    "candidate_topology_sha256": "2570925bcc873474025a3e4d668765c91ff8b1cf526de1ffa5da4d79c4884d2b",
     "package_set_schema_id": "cargo-allow.exact-candidate-package-set.v1",
     "journey_schema_id": "cargo-allow.source-candidate-smoke-receipt.v1",
     "package_set_receipt_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
@@ -45,19 +47,19 @@
     "method": "cargo_install_path_extracted_with_local_registry",
     "version_output": "cargo-allow 0.2.0",
     "source_checkout_denied": true,
-    "source_hidden_journey_passed": true,
-    "no_undeclared_source_reads": true,
+    "observed_source_fallback_paths_hidden": true,
     "path_redacted": true
   },
   "journey": {
     "finding_step": "audit_with_finding",
     "repair_or_rollback_step": "policy_rollback_after_prune",
     "artifact_schema_ids": [
+      "cargo-allow.add.v1",
       "cargo-allow.doctor.v1",
-      "cargo-allow.report.v1",
       "cargo-allow.list.v1",
+      "cargo-allow.prune.v1",
       "cargo-allow.refresh.v1",
-      "cargo-allow.prune.v1"
+      "cargo-allow.report.v1"
     ],
     "steps_expected": [
       "version",
@@ -70,7 +72,11 @@
       "diff_against_exact_base",
       "prune_stale_preview_write",
       "final_check_no_new",
-      "policy_rollback_after_prune"
+      "policy_rollback_after_prune",
+      "second_finding_why_plan_add",
+      "targeted_recheck_after_add",
+      "list_wide_projection",
+      "clean_repo_init_audit_check"
     ],
     "steps_executed": [
       { "id": "version", "exit_code": 0, "artifact_schema_id": null },
@@ -83,12 +89,16 @@
       { "id": "diff_against_exact_base", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
       { "id": "prune_stale_preview_write", "exit_code": 0, "artifact_schema_id": "cargo-allow.prune.v1" },
       { "id": "final_check_no_new", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
-      { "id": "policy_rollback_after_prune", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" }
+      { "id": "policy_rollback_after_prune", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" },
+      { "id": "second_finding_why_plan_add", "exit_code": 0, "artifact_schema_id": "cargo-allow.add.v1" },
+      { "id": "targeted_recheck_after_add", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" },
+      { "id": "list_wide_projection", "exit_code": 0, "artifact_schema_id": "cargo-allow.list.v1" },
+      { "id": "clean_repo_init_audit_check", "exit_code": 0, "artifact_schema_id": "cargo-allow.report.v1" }
     ]
   },
   "negative_controls": [
     { "id": "source_checkout_denied_during_exact_install", "result_class": "CheckoutIsolated", "passed": true },
-    { "id": "source_checkout_read_after_install_rejected", "result_class": "CheckoutIsolated", "passed": true },
+    { "id": "observed_source_fallback_paths_hidden", "result_class": "CheckoutIsolated", "passed": true },
     { "id": "missing_candidate_sibling_rejected", "result_class": "PackageMissing", "passed": true },
     { "id": "wrong_candidate_sibling_version_rejected", "result_class": "InternalVersionConflict", "passed": true }
   ],
@@ -99,6 +109,7 @@
     "durable_exact_candidate_install_preserved": true
   },
   "limitations": [
+    "observed_source_fallback_paths_only_not_universal_read_tracing",
     "package_fetch_warm_may_use_crates_io_before_offline_install",
     "hosted_package_smoke_is_the_primary_linux_evidence",
     "no_publication_tagging_or_registry_release"

@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  Three control-surface honesty fixes. `--quiet` now suppresses the
+  claim-boundary line in the human renderers of `explain`, `why`,
+  `worklist`, `doctor`, and `prune`, matching the promise every
+  subcommand's help makes (#4630). `check --deny` promotion names the
+  denied classes in the failure label (e.g. `Result: failed (2 new,
+  stale, denied)`) instead of attributing the failure to whichever
+  blocking-count class printed first (#4631). And a compat-only
+  `--kind` filter (`workflow`, `executable`, `process`, `network`,
+  `dependency-surface`) in a non-compat lane is rejected with a typed
+  usage error instead of producing a permanently green gate that
+  scanned nothing for that kind; the vocabulary listing marks the five
+  kinds (#4632).

@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Two emitter/schema enum drifts closed with live-render samples so the
+  sample-based contract suite can no longer miss them: the doctor
+  spec-system readiness kind `federation_ledgers` (emitted
+  unconditionally since #1756) joined the published spec-system schema's
+  readiness enum with a real-render doctor sample locking the full
+  readiness sequence (#4625), and the migrate summary's `input.kind`
+  `bespoke` (every bespoke-dialect migration) joined the migrate schema's
+  enum with a real-render bespoke sample produced through the actual
+  importer and summary renderer (#4626).

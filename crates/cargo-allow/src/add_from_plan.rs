@@ -461,6 +461,12 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         expires: args.expires.clone(),
     });
     let added_allow_id = entry.id.clone();
+    // #4628: same advisory as cmd_add — warn (never refuse) when the applied
+    // entry pins selector fields that identity redaction clears before
+    // matching.
+    if let Some(warning) = crate::redaction_disclosure::redaction_dead_entry_add_warning(&entry) {
+        eprintln!("{warning}");
+    }
     cfg.allow.push(entry.clone());
 
     // Validate the complete policy, then atomically replace the discovered

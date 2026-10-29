@@ -405,13 +405,18 @@ Structured argv is authoritative in `cargo-allow.why.v1` `next.proof_plans`.\n\n
     }
     out.push('\n');
 
-    out.push_str("## Claim boundary\n\n");
-    out.push_str(
-        "`why` reports source-tree / source-syntax matching posture only. \
+    // `--quiet` drops the claim boundary the same way the check report does
+    // (#4630): the finding, posture, and next-step sections stay. The JSON
+    // artifact carries its own claim_boundary field and is untouched.
+    if !allow_report::is_quiet() {
+        out.push_str("## Claim boundary\n\n");
+        out.push_str(
+            "`why` reports source-tree / source-syntax matching posture only. \
 It does not prove that an exception is safe, that tests are adequate, or that \
 macro-expanded / type-aware behavior would match. Proof commands are guidance only \
 and are not executed by cargo-allow.\n",
-    );
+        );
+    }
     out
 }
 

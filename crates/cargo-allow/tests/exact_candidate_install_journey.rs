@@ -65,6 +65,8 @@ fn example_exact_candidate_install_journey_is_receipt_bound() -> Result<(), Stri
         "/provenance/package_set_receipt_sha256",
         "/provenance/journey_receipt_sha256",
         "/provenance/candidate_fixture_sha256",
+        "/provenance/candidate_topology_sha256",
+        "/provenance/installed_binary_sha256",
     ] {
         let digest = receipt
             .pointer(path)
@@ -75,11 +77,11 @@ fn example_exact_candidate_install_journey_is_receipt_bound() -> Result<(), Stri
         }
     }
     if receipt
-        .pointer("/install/no_undeclared_source_reads")
+        .pointer("/install/observed_source_fallback_paths_hidden")
         .and_then(serde_json::Value::as_bool)
         != Some(true)
     {
-        return Err("receipt must prove no undeclared source reads".to_owned());
+        return Err("receipt must prove the observed fallback paths were hidden".to_owned());
     }
 
     let negatives = receipt
@@ -91,10 +93,7 @@ fn example_exact_candidate_install_journey_is_receipt_bound() -> Result<(), Stri
             "source_checkout_denied_during_exact_install",
             "CheckoutIsolated",
         ),
-        (
-            "source_checkout_read_after_install_rejected",
-            "CheckoutIsolated",
-        ),
+        ("observed_source_fallback_paths_hidden", "CheckoutIsolated"),
         ("missing_candidate_sibling_rejected", "PackageMissing"),
         (
             "wrong_candidate_sibling_version_rejected",

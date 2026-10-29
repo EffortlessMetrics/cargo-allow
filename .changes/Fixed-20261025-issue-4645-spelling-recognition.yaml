@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Scanner: raw identifiers and trivia-separated spellings of supported
+  exception syntax are now recognized directly from source syntax, so a
+  complete parse no longer under-reports findings for `r#`-prefixed or
+  space/comment-separated macro paths, `unwrap`/`expect` method calls,
+  path-qualified calls with turbofish, and allow/expect/deny/forbid/warn
+  attributes. Review hardening: unqualified generic free calls
+  (`unwrap::<T>(..)`) and lint-name text inside comments stay unscanned,
+  and an attribute name displaced onto a later line by trivia reports the
+  name's own line and column.

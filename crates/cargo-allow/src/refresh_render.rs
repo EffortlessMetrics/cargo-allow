@@ -40,3 +40,25 @@ pub(super) fn render_refresh_json(input: RefreshRenderInput<'_>) -> String {
     );
     render_refresh_artifact_json(report)
 }
+
+/// Join the per-entry refresh JSON artifacts of a bulk `--all` run into one
+/// parseable JSON array (#4651). Each element is the documented
+/// `cargo-allow.refresh.v1` document, re-indented one level; no artifact
+/// fields change, so single-entry and per-element output stay identical.
+pub(super) fn render_bulk_refresh_json(documents: &[String]) -> String {
+    let mut out = String::from("[\n");
+    for (index, document) in documents.iter().enumerate() {
+        let last_document = index + 1 == documents.len();
+        let mut lines = document.lines().peekable();
+        while let Some(line) = lines.next() {
+            out.push_str("  ");
+            out.push_str(line.trim_end());
+            if lines.peek().is_none() && !last_document {
+                out.push(',');
+            }
+            out.push('\n');
+        }
+    }
+    out.push_str("]\n");
+    out
+}

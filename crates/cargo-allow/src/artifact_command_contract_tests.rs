@@ -162,6 +162,71 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
         "migrate sample should route unsafe weak evidence"
     );
 
+    let migrate_bespoke_json = migrate::sample_migrate_bespoke_json_for_contract_test();
+    let migrate_bespoke = parse_json_artifact(
+        "migrate-bespoke",
+        &migrate_bespoke_json,
+        allow_report::MIGRATE_SCHEMA_ID,
+        "migrate",
+    );
+    assert_eq!(
+        migrate_bespoke
+            .pointer("/input/kind")
+            .and_then(Value::as_str),
+        Some("bespoke"),
+        "migrate bespoke input kind"
+    );
+    assert_eq!(
+        migrate_bespoke
+            .pointer("/input/path")
+            .and_then(Value::as_str),
+        Some("ledgers/bespoke-ledger-semantic-v1.toml"),
+        "migrate bespoke input path"
+    );
+    assert_eq!(
+        migrate_bespoke
+            .pointer("/summary/weak_evidence_references")
+            .and_then(Value::as_u64),
+        Some(2),
+        "migrate bespoke weak evidence references (synthesized bespoke links are unknown-prefix)"
+    );
+    let bespoke_repair_queue = migrate_bespoke
+        .pointer("/evidence_repair_queues/0")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "migrate bespoke sample should route the weak bespoke links to a repair queue",
+            )
+        });
+    assert_eq!(
+        bespoke_repair_queue
+            .get("item_kind")
+            .and_then(Value::as_str),
+        Some("weak_evidence_reference"),
+        "migrate bespoke repair queue item kind"
+    );
+    let bespoke_source = migrate_bespoke
+        .pointer("/closeout/legacy_retirement/sources/0")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "migrate bespoke sample should retire the bespoke-ledger legacy source",
+            )
+        });
+    assert_eq!(
+        bespoke_source.get("file_name").and_then(Value::as_str),
+        Some("bespoke-ledger-semantic-v1.toml"),
+        "migrate bespoke legacy source file name"
+    );
+    assert_eq!(
+        bespoke_source.get("compat_kind").and_then(Value::as_str),
+        Some("bespoke-ledger"),
+        "migrate bespoke legacy source compat kind"
+    );
+    assert_eq!(
+        bespoke_source.get("status").and_then(Value::as_str),
+        Some("blocked"),
+        "migrate bespoke legacy source retirement status stays blocked while weak bespoke links are open"
+    );
+
     let doctor_json = doctor::sample_doctor_json_for_contract_test();
     let doctor = parse_json_artifact(
         "doctor",
@@ -195,5 +260,110 @@ fn command_json_artifact_renderers_emit_parseable_v1_contracts() {
             .and_then(Value::as_str),
         Some("linked_proposal"),
         "spec-system graph link field"
+    );
+
+    let spec_system_doctor_json = spec_system::sample_spec_system_doctor_json_for_contract_test();
+    let spec_system_doctor = parse_json_artifact(
+        "spec-system-doctor",
+        &spec_system_doctor_json,
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        spec_system_doctor
+            .pointer("/readiness/ready")
+            .and_then(Value::as_bool),
+        Some(true),
+        "spec-system doctor readiness ready"
+    );
+    let federation_check = spec_system_doctor
+        .pointer("/readiness/checks/9")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "spec-system doctor readiness should render the federation_ledgers check last",
+            )
+        });
+    assert_eq!(
+        federation_check.get("kind").and_then(Value::as_str),
+        Some("federation_ledgers"),
+        "spec-system doctor readiness federation check kind"
+    );
+    assert_eq!(
+        federation_check.get("path").and_then(Value::as_str),
+        Some(".allow/config.toml"),
+        "spec-system doctor readiness federation check path"
+    );
+    assert_eq!(
+        federation_check.get("found").and_then(Value::as_bool),
+        Some(false),
+        "spec-system doctor readiness federation check found"
+    );
+    assert!(
+        federation_check.get("valid").is_some_and(Value::is_null),
+        "spec-system doctor readiness federation check valid should stay null when the registry is not configured"
+    );
+    assert_eq!(
+        federation_check.get("status").and_then(Value::as_str),
+        Some("ready"),
+        "spec-system doctor readiness federation check status"
+    );
+}
+
+#[test]
+fn spec_system_doctor_allow_profiles_sample_renders_the_allow_imports_check() {
+    // #4636: the allow-profiles provenance inserts the allow_imports check
+    // between templates and federation_ledgers; the sample locks the real
+    // render shape against the published readiness kind enum.
+    let spec_system_doctor_allow_profiles = parse_json_artifact(
+        "spec_system_doctor_allow_profiles",
+        &spec_system::sample_spec_system_doctor_allow_profiles_json_for_contract_test(),
+        allow_report::SPEC_SYSTEM_SCHEMA_ID,
+        "doctor",
+    );
+    assert_eq!(
+        spec_system_doctor_allow_profiles
+            .pointer("/config_provenance")
+            .and_then(Value::as_str),
+        Some("allow_profiles"),
+        "spec-system doctor allow-profiles provenance"
+    );
+    let allow_imports_check = spec_system_doctor_allow_profiles
+        .pointer("/readiness/checks/9")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "spec-system doctor allow-profiles readiness should render the allow_imports check after templates",
+            )
+        });
+    assert_eq!(
+        allow_imports_check.get("kind").and_then(Value::as_str),
+        Some("allow_imports"),
+        "spec-system doctor allow-profiles allow_imports check kind"
+    );
+    assert_eq!(
+        allow_imports_check.get("path").and_then(Value::as_str),
+        Some(".allow/imports"),
+        "spec-system doctor allow-profiles allow_imports check path"
+    );
+    assert_eq!(
+        allow_imports_check.get("found").and_then(Value::as_bool),
+        Some(true),
+        "spec-system doctor allow-profiles allow_imports check found"
+    );
+    assert_eq!(
+        allow_imports_check.get("valid").and_then(Value::as_bool),
+        Some(true),
+        "spec-system doctor allow-profiles allow_imports check valid"
+    );
+    let federation_check = spec_system_doctor_allow_profiles
+        .pointer("/readiness/checks/10")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "spec-system doctor allow-profiles readiness should still end with federation_ledgers",
+            )
+        });
+    assert_eq!(
+        federation_check.get("kind").and_then(Value::as_str),
+        Some("federation_ledgers"),
+        "spec-system doctor allow-profiles readiness federation check kind"
     );
 }

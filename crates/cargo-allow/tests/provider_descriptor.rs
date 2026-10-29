@@ -1,4 +1,6 @@
-//! Process-level conformance for the discovery-only provider descriptor (#2567).
+//! Process-level conformance for the discovery-only provider descriptor
+//! (#2567) and the published sensor-capabilities self-description schema
+//! (#4627).
 
 use serde_json::{Value, json};
 use std::fs;
@@ -54,6 +56,41 @@ fn validator() -> Result<jsonschema::Validator, Box<dyn std::error::Error>> {
         .join("../../docs/schemas/cargo-allow-provider-contract-v1.schema.json");
     let schema: Value = serde_json::from_slice(&fs::read(path)?)?;
     Ok(jsonschema::validator_for(&schema)?)
+}
+
+fn sensor_capabilities_validator() -> Result<jsonschema::Validator, Box<dyn std::error::Error>> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/schemas/sensor-capabilities.schema.json");
+    let schema: Value = serde_json::from_slice(&fs::read(path)?)?;
+    Ok(jsonschema::validator_for(&schema)?)
+}
+
+fn catalog(root: &Path) -> Result<Value, Box<dyn std::error::Error>> {
+    let output = command(root).args(["--format", "json"]).output()?;
+    if !output.status.success() {
+        return Err(format!(
+            "sensor catalog failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .into());
+    }
+    Ok(serde_json::from_slice(&output.stdout)?)
+}
+
+/// Apply `mutate` to a copy of `instance` and require the schema to reject
+/// the result.
+fn expect_schema_rejection(
+    validator: &jsonschema::Validator,
+    instance: &Value,
+    label: &str,
+    mutate: impl FnOnce(&mut Value),
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut mutated = instance.clone();
+    mutate(&mut mutated);
+    if validator.is_valid(&mutated) {
+        return Err(format!("schema accepted {label}").into());
+    }
+    Ok(())
 }
 
 #[test]
@@ -326,5 +363,217 @@ fn provider_descriptor_does_not_replace_the_default_sensor_catalog() -> TestResu
     {
         return Err("default sensor catalog and provider descriptor were conflated".into());
     }
+    Ok(())
+}
+
+#[test]
+fn sensor_capabilities_stdout_conforms_without_repository_or_policy() -> TestResult {
+    // #4627: plain `capabilities --format json` must conform to the published
+    // self-description schema in a bare directory, with no repository and no
+    // policy — the catalog is discovery metadata, not a scan result.
+    let fixture = Fixture::new("sensor-capabilities-stdout")?;
+    let instance = catalog(&fixture.0)?;
+    let validator = sensor_capabilities_validator()?;
+    if !validator.is_valid(&instance) {
+        let errors: Vec<_> = validator
+            .iter_errors(&instance)
+            .map(|error| error.to_string())
+            .collect();
+        return Err(format!("sensor capabilities catalog does not conform: {errors:?}").into());
+    }
+    if instance.get("schema").and_then(Value::as_str) != Some("cargo-allow.sensor-capabilities.v1")
+        || instance.get("generation").and_then(Value::as_u64) != Some(1)
+    {
+        return Err("catalog identity changed under the published schema".into());
+    }
+    if instance
+        .get("capabilities")
+        .and_then(Value::as_array)
+        .is_none_or(|rows| rows.is_empty())
+        || instance
+            .get("configured_file_families")
+            .and_then(Value::as_array)
+            .is_none_or(|rows| !rows.is_empty())
+    {
+        return Err("unfiltered catalog shape changed under the published schema".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn sensor_capabilities_schema_rejects_mutated_real_output() -> TestResult {
+    let fixture = Fixture::new("sensor-capabilities-controls")?;
+    let instance = catalog(&fixture.0)?;
+    let validator = sensor_capabilities_validator()?;
+    if !validator.is_valid(&instance) {
+        return Err("negative controls require a valid producer baseline".into());
+    }
+    let fields = instance.as_object().ok_or("catalog must be an object")?;
+    for field in fields.keys() {
+        let label = format!("missing root field {field}");
+        expect_schema_rejection(&validator, &instance, &label, |mutated| {
+            mutated
+                .as_object_mut()
+                .expect("catalog must remain an object")
+                .remove(field);
+        })?;
+        let label = format!("null root field {field}");
+        expect_schema_rejection(&validator, &instance, &label, |mutated| {
+            mutated
+                .as_object_mut()
+                .expect("catalog must remain an object")
+                .insert(field.to_string(), Value::Null);
+        })?;
+    }
+    for (field, invalid) in [
+        ("schema", json!("cargo-allow.tool-identity.v1")),
+        ("schema", json!("cargo-allow.sensor-capabilities.v2")),
+        ("generation", json!(2)),
+        ("generation", json!("1")),
+        ("unexpected_field", json!(true)),
+        ("schema_id", json!("cargo-allow.sensor-capabilities.v1")),
+        ("inventory", json!([])),
+    ] {
+        let label = format!("invalid root {field}: {invalid}");
+        expect_schema_rejection(&validator, &instance, &label, |mutated| {
+            mutated
+                .as_object_mut()
+                .expect("catalog must remain an object")
+                .insert(field.to_string(), invalid.clone());
+        })?;
+    }
+
+    // Row-level controls: every one of the 18 pinned fields is required and
+    // closed, and the typed vocabulary is enforced.
+    let rows = instance
+        .get("capabilities")
+        .and_then(Value::as_array)
+        .ok_or("capabilities must be an array")?;
+    let row = rows.first().ok_or("unfiltered catalog must have rows")?;
+    let row_fields = row.as_object().ok_or("capability row must be an object")?;
+    if row_fields.len() != 18 {
+        return Err(format!(
+            "published schema pins 18 capability fields, row has {}",
+            row_fields.len()
+        )
+        .into());
+    }
+    for field in row_fields.keys() {
+        // kind/family are intentionally nullable on any row: not_included and
+        // static-sensor rows carry null while finding rows carry strings. The
+        // emission-side class invariant lives in the binary's catalog
+        // validation, not in the published shape schema.
+        if field == "kind" || field == "family" {
+            continue;
+        }
+        let label = format!("missing capability field {field}");
+        expect_schema_rejection(&validator, &instance, &label, |mutated| {
+            mutated
+                .get_mut("capabilities")
+                .and_then(Value::as_array_mut)
+                .and_then(|rows| rows.first_mut())
+                .and_then(|row| row.as_object_mut())
+                .expect("first capability row must remain an object")
+                .remove(field);
+        })?;
+        let label = format!("null capability field {field}");
+        expect_schema_rejection(&validator, &instance, &label, |mutated| {
+            mutated
+                .get_mut("capabilities")
+                .and_then(Value::as_array_mut)
+                .and_then(|rows| rows.first_mut())
+                .and_then(|row| row.as_object_mut())
+                .expect("first capability row must remain an object")
+                .insert(field.to_string(), Value::Null);
+        })?;
+    }
+    // Positive control for the intentional permissiveness above: a source row
+    // with null kind/family still conforms (the shape does not encode the
+    // per-class invariant).
+    {
+        let mut permissive = instance.clone();
+        permissive
+            .get_mut("capabilities")
+            .and_then(Value::as_array_mut)
+            .and_then(|rows| rows.first_mut())
+            .and_then(|row| row.as_object_mut())
+            .expect("first capability row must remain an object")
+            .insert("kind".to_string(), Value::Null);
+        permissive
+            .get_mut("capabilities")
+            .and_then(Value::as_array_mut)
+            .and_then(|rows| rows.first_mut())
+            .and_then(|row| row.as_object_mut())
+            .expect("first capability row must remain an object")
+            .insert("family".to_string(), Value::Null);
+        if !validator.is_valid(&permissive) {
+            return Err(
+                "schema must keep accepting null kind/family for class-agnostic rows".into(),
+            );
+        }
+    }
+    for (field, invalid) in [
+        ("generation", json!(2)),
+        ("kind", json!(1)),
+        ("family", json!(["unwrap"])),
+        ("analysis_class", json!("runtime_reachability")),
+        ("support_tier", json!("")),
+        ("sensor_id", json!("")),
+        ("limitations", json!([])),
+        ("docs", json!([""])),
+        (
+            "claims_supported",
+            json!(["recognized syntax construct exists in source text", ""]),
+        ),
+        ("unexpected_field", json!(true)),
+    ] {
+        let label = format!("invalid capability field {field}: {invalid}");
+        expect_schema_rejection(&validator, &instance, &label, |mutated| {
+            mutated
+                .get_mut("capabilities")
+                .and_then(Value::as_array_mut)
+                .and_then(|rows| rows.first_mut())
+                .and_then(|row| row.as_object_mut())
+                .expect("first capability row must remain an object")
+                .insert(field.to_string(), invalid.clone());
+        })?;
+    }
+
+    // Configured family rows are closed too.
+    let label = "invalid configured_file_families row";
+    expect_schema_rejection(&validator, &instance, label, |mutated| {
+        mutated
+            .as_object_mut()
+            .expect("catalog must remain an object")
+            .insert(
+                "configured_file_families".to_string(),
+                json!([{
+                    "rule_id": "r",
+                    "family": "f",
+                    "glob": "g/**",
+                    "analysis_class": "supported_syntax",
+                    "support_tier": "configured",
+                    "claim_boundary": "boundary",
+                }]),
+            );
+    })?;
+    let label = "unknown-field configured_file_families row";
+    expect_schema_rejection(&validator, &instance, label, |mutated| {
+        mutated
+            .as_object_mut()
+            .expect("catalog must remain an object")
+            .insert(
+                "configured_file_families".to_string(),
+                json!([{
+                    "rule_id": "r",
+                    "family": "f",
+                    "glob": "g/**",
+                    "analysis_class": "supported_presence",
+                    "support_tier": "configured",
+                    "claim_boundary": "boundary",
+                    "inventory": [],
+                }]),
+            );
+    })?;
     Ok(())
 }
