@@ -336,13 +336,12 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         || federation_bundle.has_blocking_divergence()
         || federation_registry_failed
         || !deny_fired_classes.is_empty()
-        || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
-        || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
-        // #4594: partial inventory in no-new mode fails the gate the same
-        // way the staged path does — a scan that silently missed tracked
-        // files must not read as a green pass.
-        || (inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
-            && mode == CheckMode::NoNew)
+        // #4646: incomplete selected input (skipped Rust files, parse
+        // errors, partial or truncated inventory) fails every enforcing
+        // mode, not only no-new. A source file that never reaches matching
+        // has no failing MatchOutcome for strict/release to catch, so the
+        // completeness gate is the only protection. Audit stays advisory.
+        || (!mode.is_advisory() && check_selected_input_incomplete(&inventory_facts))
         || product_move_ledger_failed
         || extraction_shim_registry_failed
         || extraction_shim_sources_failed
@@ -563,6 +562,21 @@ pub(crate) fn source_coupling_relation(
     }
 }
 
+/// #4646: one shared completeness predicate for both check routes (tracked
+/// worktree and exact staged candidate). It reads recorded omissions —
+/// inventory completeness, filesystem-walk skips, and Rust scanner
+/// read/parse outcomes — independently of inventory source, so a complete
+/// filesystem fallback stays a supported route while a truncated or
+/// unreadable selected input can never look like complete enforcement.
+/// Audit results remain informational; the gate applies this only in
+/// enforcing modes.
+fn check_selected_input_incomplete(facts: &InventoryFacts) -> bool {
+    facts.completeness == allow_inventory::InventoryCompleteness::Partial
+        || facts.inventory_skipped_paths > 0
+        || facts.rust_files_skipped > 0
+        || facts.rust_files_with_parse_errors > 0
+}
+
 fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if args.emit.is_some() || args.artifact_dir.is_some() {
         // #4547: the staged path never reads these flags, so they used to be
@@ -670,9 +684,11 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         || federation_bundle.has_blocking_divergence()
         || federation_registry_failed
         || !deny_fired_classes.is_empty()
-        || (staged.inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
-            && mode == CheckMode::NoNew)
-        || (staged.inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew);
+        // #4646: the staged route shares the worktree completeness
+        // predicate, and it now binds in every enforcing mode. Staged reads
+        // of unreadable or oversized sources remain early loader errors;
+        // parse errors and a partial staged snapshot fail the gate.
+        || (!mode.is_advisory() && check_selected_input_incomplete(&staged.inventory_facts));
     if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
         print_report(ReportRenderArgs {
             command: "check",
@@ -996,6 +1012,10 @@ fn reject_source_exception_options(
 #[cfg(test)]
 #[path = "check_receipt_tests.rs"]
 mod receipt_tests;
+
+#[cfg(test)]
+#[path = "check_completeness_gate_tests.rs"]
+mod completeness_gate_tests;
 
 #[cfg(test)]
 mod provenance_tests {

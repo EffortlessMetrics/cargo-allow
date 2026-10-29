@@ -89,10 +89,28 @@ fn build_release_identity_projection(
 }
 
 fn invalid_release_identity(error: allow_report::ReleaseIdentityErrorV1) -> CargoAllowError {
+    // This validator is stateless: it sees only --version/--tag and no policy
+    // input, so the per-kind InvalidConfig hint (init/--config) would send the
+    // operator to the wrong repair. Attach the remedy for the exact failure
+    // instead (#4652); the kind stays InvalidConfig (E0002 unchanged).
+    let next_step: String = match &error {
+        allow_report::ReleaseIdentityErrorV1::MalformedVersion { .. } => {
+            "pass a canonical supported version: stable MAJOR.MINOR.PATCH or numbered MAJOR.MINOR.PATCH-rc.N (for example 0.2.0 or 0.2.0-rc.1), then retry.".to_string()
+        }
+        allow_report::ReleaseIdentityErrorV1::TagMismatch { expected, .. } => format!(
+            "the canonical tag for this version is `{expected}`; pass that tag with --tag (or --observed-tag) or correct --version, then retry."
+        ),
+        // The remaining variants are unreachable from this command (they
+        // cover candidate-package and independent-package checks elsewhere);
+        // keep one conservative action should that ever change.
+        _ => "pass a --version/--tag pair that forms one supported release identity, then retry."
+            .to_string(),
+    };
     CargoAllowError::with_kind(
         CargoAllowErrorKind::InvalidConfig,
         format!("release identity validation failed: {error}"),
     )
+    .with_next_step(next_step)
 }
 
 #[cfg(test)]
@@ -160,6 +178,15 @@ mod tests {
         {
             return Err(format!("unexpected mismatch error: {error}"));
         }
+        let next_step = error
+            .next_step()
+            .ok_or_else(|| "mismatch error is missing a typed next step".to_string())?;
+        if !next_step.contains("`v0.2.0-rc.1`")
+            || !next_step.contains("the canonical tag for this version is")
+            || next_step.contains("cargo-allow init")
+        {
+            return Err(format!("unexpected mismatch next step: {next_step}"));
+        }
         Ok(())
     }
 
@@ -174,6 +201,15 @@ mod tests {
                 .contains("only supported prerelease form is rc.N")
         {
             return Err(format!("unexpected prerelease error: {error}"));
+        }
+        let next_step = error
+            .next_step()
+            .ok_or_else(|| "prerelease error is missing a typed next step".to_string())?;
+        if !next_step.contains("MAJOR.MINOR.PATCH-rc.N")
+            || !next_step.contains("pass a canonical supported version")
+            || next_step.contains("cargo-allow init")
+        {
+            return Err(format!("unexpected prerelease next step: {next_step}"));
         }
         Ok(())
     }
@@ -195,4 +231,33 @@ mod tests {
         }
         Ok(())
     }
+}
+
+#[test]
+fn fallback_variant_carries_the_conservative_next_step() -> Result<(), String> {
+    // The GithubPrereleaseMismatch variant is unreachable from this CLI (the
+    // github_prerelease flag is computed from the parsed version itself), but
+    // the fallback next step must stay typed and free of the generic
+    // policy-config hint so the wrong remediation can never fire (#4652).
+    let error = invalid_release_identity(
+        allow_report::ReleaseIdentityErrorV1::GithubPrereleaseMismatch {
+            expected: true,
+            actual: false,
+        },
+    );
+    if error.kind() != CargoAllowErrorKind::InvalidConfig {
+        return Err(format!("unexpected kind: {:?}", error.kind()));
+    }
+    let next_step = error
+        .next_step()
+        .ok_or_else(|| "fallback error is missing a typed next step".to_string())?;
+    if !next_step.contains("--version/--tag pair") {
+        return Err(format!("unexpected fallback next step: {next_step}"));
+    }
+    if next_step.contains("cargo-allow init") || next_step.contains("--config") {
+        return Err(format!(
+            "fallback next step must not carry the policy-config hint: {next_step}"
+        ));
+    }
+    Ok(())
 }

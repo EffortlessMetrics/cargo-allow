@@ -13,6 +13,10 @@
 //!   entry is validated against the current file digest before use, so an
 //!   accidentally corrupted or truncated store only causes a cold re-scan.
 //! - Any read/decode failure discards the store (fail-open cold start).
+//! - Every decoded finding must obey the same relative-path law as its
+//!   entry key and repeat the entry's scanned relative path (#4656), so a
+//!   forged or corrupted finding path discards the store instead of
+//!   replaying relocated findings.
 //! - A generation string binds entries to one scanner build; scanner changes
 //!   invalidate the whole store rather than silently mixing semantics.
 //! - Entries are additionally keyed by the identity-redaction mode
@@ -650,8 +654,12 @@ fn remove_stale_artifacts(dir: &Path) {
     }
 }
 
+/// Relative-path law for entry keys and decoded findings (#4656): the
+/// string form must be non-blank, the path must be relative, and it must
+/// not traverse through `.` or `..` components.
 fn valid_relative_path(path: &Path) -> bool {
     !path.as_os_str().is_empty()
+        && path.to_str().is_some_and(|text| !text.trim().is_empty())
         && !path.is_absolute()
         && path.components().all(|component| {
             !matches!(
@@ -878,14 +886,10 @@ fn decode_store(
     for _ in 0..entry_count {
         let rel = reader.str_with_limit(MAX_RELATIVE_PATH_BYTES)?;
         let rel_path = PathBuf::from(&rel);
-        let invalid_path = rel.trim().is_empty()
-            || rel_path.is_absolute()
-            || rel_path.components().any(|component| {
-                matches!(
-                    component,
-                    std::path::Component::ParentDir | std::path::Component::CurDir
-                )
-            });
+        // Same law `put` enforces at write time. An invalid entry key skips
+        // the entry rather than failing the store; only the decoded finding
+        // paths below are fatal (#4656).
+        let invalid_path = !valid_relative_path(&rel_path);
         let redacted = match reader.u8()? {
             0 => false,
             1 => true,
@@ -903,7 +907,7 @@ fn decode_store(
         }
         let mut findings = Vec::with_capacity(finding_count.min(4096));
         for _ in 0..finding_count {
-            findings.push(decode_finding(&mut reader)?);
+            findings.push(decode_finding(&mut reader, &rel_path)?);
         }
         if !invalid_path {
             entries.insert(
@@ -922,7 +926,7 @@ fn decode_store(
     Ok(entries)
 }
 
-fn decode_finding(reader: &mut Reader<'_>) -> Result<Finding, ()> {
+fn decode_finding(reader: &mut Reader<'_>, entry_rel: &Path) -> Result<Finding, ()> {
     let kind_tag = reader.u8()?;
     let kind = finding_kind_from_tag(kind_tag).ok_or(())?;
     let family = reader.opt_str()?;
@@ -964,7 +968,7 @@ fn decode_finding(reader: &mut Reader<'_>) -> Result<Finding, ()> {
     identity.normalized_snippet_hash = normalized_snippet_hash;
     identity.line_hint = line_hint;
     identity.column_hint = column_hint;
-    Ok(Finding {
+    let finding = Finding {
         kind,
         family,
         path,
@@ -972,7 +976,17 @@ fn decode_finding(reader: &mut Reader<'_>) -> Result<Finding, ()> {
         identity,
         message,
         ledger: None,
-    })
+    };
+    // #4656: a decoded finding must obey the same relative-path law as the
+    // entry key and belong to the entry it was cached under, so a patched
+    // path (`..` escape, absolute, or a foreign file) fails the decode and
+    // discards the store instead of replaying relocated findings. Legitimate
+    // stores always satisfy this — the scanner stores each finding under
+    // exactly its scanned relative path.
+    if !valid_relative_path(&finding.path) || finding.path != entry_rel {
+        return Err(());
+    }
+    Ok(finding)
 }
 
 fn finding_kind_tag(kind: allow_core::FindingKind) -> u8 {
@@ -1039,6 +1053,103 @@ mod tests {
         );
         let encoded = encode_store("generation", &entries).unwrap_or_default();
         assert!(decode_store(&encoded, "generation").is_err());
+    }
+
+    /// #4656 fixture: encode one real entry (`src/lib.rs` carrying a finding
+    /// whose path is exactly that relative path), patch the finding-path
+    /// byte occurrence — the second occurrence of the relative path; the
+    /// entry key is the first — to an equal-length `forged_path`, recompute
+    /// the trailing checksum, and return the re-signed bytes. The premise
+    /// assertion proves the unpatched store decodes cleanly, so any decode
+    /// failure on the result is attributable to the forged path alone.
+    fn forged_finding_path_store(forged_path: &[u8]) -> Result<Vec<u8>, String> {
+        let rel: &[u8] = b"src/lib.rs";
+        assert_eq!(
+            forged_path.len(),
+            rel.len(),
+            "fixture premise: forged path must replace the bytes in place"
+        );
+        let mut entries: HashMap<EntryKey, StoredEntry> = HashMap::new();
+        entries.insert(
+            (PathBuf::from("src/lib.rs"), false),
+            StoredEntry {
+                content_digest: "digest".to_string(),
+                has_parse_error: false,
+                findings: vec![identity_finding(None)],
+            },
+        );
+        let encoded =
+            encode_store("generation", &entries).map_err(|()| "encode failed".to_string())?;
+        assert!(
+            decode_store(&encoded, "generation").is_ok(),
+            "fixture premise: the unpatched store must decode cleanly"
+        );
+        let mut occurrences = encoded
+            .windows(rel.len())
+            .enumerate()
+            .filter(|(_, window)| *window == rel)
+            .map(|(index, _)| index);
+        let entry_key = occurrences
+            .next()
+            .ok_or_else(|| "fixture premise: entry-key path missing".to_string())?;
+        let start = occurrences
+            .next()
+            .ok_or_else(|| "fixture premise: finding path missing".to_string())?;
+        assert_ne!(
+            start, entry_key,
+            "fixture premise: the finding path is the second occurrence"
+        );
+        let mut payload = encoded;
+        payload
+            .get_mut(start..start + forged_path.len())
+            .ok_or_else(|| "fixture premise: finding-path window out of range".to_string())?
+            .copy_from_slice(forged_path);
+        let checksum = allow_core::sha256_v1_bytes(&payload);
+        payload.extend_from_slice(checksum.as_bytes());
+        Ok(payload)
+    }
+
+    #[test]
+    fn forged_escaping_finding_path_discards_the_store() -> Result<(), String> {
+        // #4656: a store whose cached finding path was patched to a
+        // `..`-escaping relative path must fail the decode — and therefore
+        // be discarded on open — even with a recomputed checksum.
+        let forged = forged_finding_path_store(b"../boom.rs")?;
+        assert!(
+            decode_store(&forged, "generation").is_err(),
+            "an escaping cached finding path must discard the store"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn forged_absolute_finding_path_discards_the_store() -> Result<(), String> {
+        // #4656: the same forgery with a platform-absolute path (the bytes
+        // are equal length and the checksum is re-signed, so only the
+        // path-shape law can reject the store).
+        #[cfg(windows)]
+        let forged_path: &[u8] = b"C:\\abcd.rs";
+        #[cfg(not(windows))]
+        let forged_path: &[u8] = b"/abs/xy.rs";
+        let forged = forged_finding_path_store(forged_path)?;
+        assert!(
+            decode_store(&forged, "generation").is_err(),
+            "an absolute cached finding path must discard the store"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn forged_foreign_finding_path_discards_the_store() -> Result<(), String> {
+        // #4656: a finding path that is a well-formed relative path but does
+        // not repeat the entry's scanned relative path is also a forgery —
+        // cached findings must belong to the entry they were stored under.
+        let forged = forged_finding_path_store(b"other/x.rs")?;
+        assert!(
+            decode_store(&forged, "generation").is_err(),
+            "a cached finding path foreign to its entry must discard the store"
+        );
+        Ok(())
     }
 
     #[test]
