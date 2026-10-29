@@ -52,17 +52,19 @@ Reviewer identity alone is not independence. The same agent can take a fresh
 pass using changed evidence and controls; another identity can repeat the same
 stale assumptions. State the actual independence and correlated-failure limit.
 
-If a reviewer pushes a repair, the prior review is stale and the new head
-requires affected review. If the base or merge base changes, recompute the
+If the reviewer pushes a repair, the prior review is stale and the new head
+requires fresh affected review. If the base or merge base changes, recompute the
 effective diff and rerun every affected review dimension before preserving the
 verdict. A new material finding can withdraw readiness without any source
 change. A new SHA does not erase unaffected evidence.
 
 In this solo-maintainer repository, Draft is a machine-visible safety control
-for unresolved blocking review findings. Convert a PR to Draft when such a
-finding is established; restore Ready only after fresh affected review confirms
-that the blocker is resolved. **Ready is review/UI state, not a qualification
-request or merge authorization.** Do not toggle it merely to start CI.
+for unresolved blocking review findings. When a review identifies a
+merge-blocking defect, the PR must be converted to draft in the same pass
+(`gh pr ready --undo`); only a fresh re-review on the repaired head confirming
+zero blocking findings may restore it to ready (`gh pr ready`). **Ready is
+review/UI state, not a qualification request or merge authorization.** Do not
+toggle it merely to start CI.
 
 For a user-authorized swarm or PR lane, scoped commits, branch pushes, PR
 creation, PR updates, repair, review, qualification observation, protected
@@ -155,7 +157,8 @@ Before merge, verify that:
   missing evidence are not called green;
 - the change still fits current product and release boundaries.
 
-Prefer a head-pinned protected squash merge when the platform supports it.
+Green CI alone is not merge readiness. Prefer a head-pinned protected squash
+merge when the platform supports it.
 Expected-head checking does not atomically freeze the base; inspect material
 integration relationships instead of claiming an impossible guarantee.
 
