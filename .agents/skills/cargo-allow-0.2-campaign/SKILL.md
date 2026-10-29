@@ -16,7 +16,7 @@ Activate this skill when the task is to:
 - hand off a finished author head to `review-current-head`;
 - reconcile a merged child issue on `main` and route to the next unblocked lane.
 
-Do not activate as the primary substantive PR review skill. Use `review-current-head` after the author head is final; a review pass or delegated reviewer does not transfer the lead's ownership of delivery.
+Do not activate as the primary substantive PR review skill. Hand substantive PR review to `review-current-head` after the author head is final; a review pass or delegated reviewer does not transfer the lead's ownership of delivery.
 
 ## Required Live Inputs
 
