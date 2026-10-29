@@ -81,7 +81,7 @@ fn add_json_renderer_records_entry_and_selected_finding() -> Result<(), String> 
     let json = render_add_json(AddReport::new(
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(52)),
         &entry,
-        &finding,
+        Some(&finding),
         Some("policy/allow.proposed.toml"),
         true,
         sample_mutation_receipt(),
@@ -211,7 +211,7 @@ fn add_json_renderer_records_entry_and_selected_finding() -> Result<(), String> 
     let text = render_add_human(AddReport::new(
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(52)),
         &entry,
-        &finding,
+        Some(&finding),
         Some("policy/allow.proposed.toml"),
         false,
         sample_mutation_receipt(),
@@ -238,7 +238,7 @@ fn add_json_renderer_records_entry_and_selected_finding() -> Result<(), String> 
                 Some(52),
             ),
             &entry,
-            &finding,
+            Some(&finding),
             Some("policy/allow.proposed.toml"),
             false,
             sample_mutation_receipt(),
@@ -257,7 +257,7 @@ fn add_json_renderer_records_entry_and_selected_finding() -> Result<(), String> 
     let sparse_json = render_add_json(AddReport::new(
         InventoryContext::source_syntax("git_tracked", Some("H:/Code/Rust/cargo-allow"), Some(52)),
         &sparse_entry,
-        &finding,
+        Some(&finding),
         None,
         false,
         sample_mutation_receipt(),

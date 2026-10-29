@@ -175,8 +175,13 @@ pub fn render_worklist_human_styled(
         ));
     }
     out.push('\n');
-    out.push_str(CLAIM_BOUNDARY_TEXT);
-    out.push('\n');
+    // `--quiet` drops the claim boundary the same way the check report does
+    // (#4630): items, counts, and per-item actions are the worklist's
+    // essential output and stay either way.
+    if !crate::contracts::is_quiet() {
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+        out.push('\n');
+    }
     out
 }
 

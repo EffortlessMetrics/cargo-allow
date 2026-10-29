@@ -1,10 +1,86 @@
 pub(crate) fn detect_attr<'a>(line: &'a str, name: &str) -> Option<&'a str> {
     let outer = format!("#[{name}");
     let inner = format!("#![{name}");
-    [outer.as_str(), inner.as_str(), name]
-        .into_iter()
-        .find_map(|prefix| line.strip_prefix(prefix))
-        .and_then(|rest| rest.trim_start().strip_prefix('('))
+    let raw_outer = format!("#[r#{name}");
+    let raw_inner = format!("#![r#{name}");
+    let raw_bare = format!("r#{name}");
+    [
+        outer.as_str(),
+        inner.as_str(),
+        name,
+        raw_outer.as_str(),
+        raw_inner.as_str(),
+        raw_bare.as_str(),
+    ]
+    .into_iter()
+    .find_map(|prefix| line.strip_prefix(prefix))
+    .and_then(|rest| {
+        if let Some(after) = rest.strip_prefix('(') {
+            return Some(after);
+        }
+        // #4645: whitespace and comments may legally sit between the
+        // attribute name and its invocation parenthesis.
+        let cursor = skip_rust_trivia(rest, 0);
+        rest.get(cursor..)?.strip_prefix('(')
+    })
+}
+
+/// End offset of a Rust comment starting at `start`: `Some(Some(end))` for a
+/// complete comment, `Some(None)` when no comment starts there, `None` for an
+/// unterminated block comment (truncated input).
+pub(crate) fn rust_comment_end(text: &str, start: usize) -> Option<Option<usize>> {
+    let bytes = text.as_bytes();
+    if bytes.get(start..start + 2) == Some(b"//") {
+        return Some(Some(
+            text.get(start + 2..)?
+                .find('\n')
+                .map_or(text.len(), |offset| start + 3 + offset),
+        ));
+    }
+    if bytes.get(start..start + 2) != Some(b"/*") {
+        return Some(None);
+    }
+    let mut depth = 1usize;
+    let mut index = start + 2;
+    while index < bytes.len() {
+        match bytes.get(index..index + 2) {
+            Some(b"/*") => {
+                depth += 1;
+                index += 2;
+            }
+            Some(b"*/") => {
+                depth -= 1;
+                index += 2;
+                if depth == 0 {
+                    return Some(Some(index));
+                }
+            }
+            _ => index += 1,
+        }
+    }
+    None
+}
+
+/// Advance past whitespace and Rust comments (#4645): legal trivia between
+/// source tokens must not hide recognition.
+pub(crate) fn skip_rust_trivia(text: &str, mut cursor: usize) -> usize {
+    loop {
+        cursor = skip_rust_whitespace(text, cursor);
+        match rust_comment_end(text, cursor) {
+            Some(Some(end)) => cursor = end,
+            _ => return cursor,
+        }
+    }
+}
+
+pub(crate) fn skip_rust_whitespace(text: &str, mut cursor: usize) -> usize {
+    while let Some(ch) = text.get(cursor..).and_then(|rest| rest.chars().next()) {
+        if !ch.is_whitespace() {
+            break;
+        }
+        cursor += ch.len_utf8();
+    }
+    cursor
 }
 
 pub(crate) fn extract_lints(text: &str) -> Vec<String> {
@@ -178,6 +254,22 @@ impl SourceLineIndex {
         let line = source.get(line_start..line_end).unwrap_or("");
         byte_column_to_char_column(line, byte_column)
     }
+
+    /// Row (0-based) and byte column of an absolute byte offset (#4645
+    /// review): an attribute name displaced by trivia can sit on a later
+    /// line than the attribute item's opening tokens, and the finding must
+    /// report the name's own position.
+    pub(crate) fn source_position(&self, byte: usize) -> (usize, usize) {
+        // `line_starts[0] == 0 <= byte`, so the partition point is at least 1
+        // and the row index is always in range; `.get` avoids a self-scan
+        // indexing finding.
+        let row = self
+            .line_starts
+            .partition_point(|&line_start| line_start <= byte)
+            - 1;
+        let line_start = self.line_starts.get(row).copied().unwrap_or(0);
+        (row, byte - line_start)
+    }
 }
 
 pub(crate) fn source_column(
@@ -209,5 +301,18 @@ mod tests {
         assert_eq!(index.source_column(source, 1, 5), 6);
         assert_eq!(index.source_column(source, 2, 2), 3);
         assert_eq!(index.source_column(source, 4, 0), 1);
+    }
+
+    #[test]
+    fn source_position_maps_absolute_bytes_to_row_and_byte_column() {
+        // "#[/* note */\nallow(dead_code)]\n": `allow` starts on line 2.
+        let source = "#[/* note */\nallow(dead_code)]\n";
+        let index = SourceLineIndex::new(source);
+
+        assert_eq!(index.source_position(0), (0, 0));
+        assert_eq!(index.source_position(2), (0, 2));
+        assert_eq!(index.source_position(13), (1, 0));
+        assert_eq!(index.source_position(18), (1, 5));
+        assert_eq!(index.source_position(source.len()), (2, 0));
     }
 }

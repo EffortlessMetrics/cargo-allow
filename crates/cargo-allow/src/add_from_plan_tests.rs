@@ -150,6 +150,14 @@ fn matching_plan_and_bindings() -> (LoadedPlan, PlanFindingBindings) {
         schema_version: 1,
         schema_id: allow_report::ADD_FINDING_PLAN_SCHEMA_ID.to_string(),
         tool: "cargo-allow".to_string(),
+        tool_version: json!("0.1.11"),
+        claim_boundary: json!(["source_syntax_only"]),
+        scanner_limitations: json!(["rustc_not_invoked"]),
+        inventory: json!({"scope": "source_tree", "scanner": "source_syntax", "source": "git_tracked"}),
+        evaluation: json!({
+            "result_class": "exact_scoped", "scanner_completeness": "complete",
+            "scope": "scoped", "locality": "proven", "reasons": [],
+        }),
         command: "why".to_string(),
         repository: LoadedRepository {
             identity: DIGEST_A.to_string(),
@@ -174,6 +182,9 @@ fn matching_plan_and_bindings() -> (LoadedPlan, PlanFindingBindings) {
         outcome: LoadedOutcome {
             status: "new".to_string(),
         },
+        candidates: json!([]),
+        required_fields: json!(["owner", "reason"]),
+        proof_plans: json!([]),
     };
     let bindings = PlanFindingBindings {
         repository_identity: DIGEST_A.to_string(),
@@ -273,11 +284,10 @@ fn unsupported_generations_are_rejected() {
     }
 }
 
-#[test]
-fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() {
-    // A full v1 plan (with fields the transaction ignores, such as proof_plans
-    // and candidates) parses cleanly.
-    let full_plan = json!({
+/// A complete schema-valid v1 plan: every field in the published schema's
+/// `required` list, no extras. `evaluation` is schema-optional, so it is absent.
+fn full_schema_valid_plan() -> Value {
+    json!({
         "schema_version": 1,
         "schema_id": allow_report::ADD_FINDING_PLAN_SCHEMA_ID,
         "tool": "cargo-allow",
@@ -291,14 +301,56 @@ fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() {
         "policy": {"path": "policy/allow.toml", "digest": DIGEST_B},
         "finding": {
             "kind": "panic", "family": "unwrap", "path": "src/lib.rs", "line": 1, "column": 20,
-            "identity": {"language": "rust"}, "digest": DIGEST_A,
-            "source_file_digest": DIGEST_B, "selector": {"callee": "unwrap"},
+            "identity": {
+                "language": "rust", "crate_name": "parser", "module": "parse",
+                "container": "parse_span", "ast_kind": "method_call", "symbol": "unwrap",
+                "callee": "unwrap", "macro_name": null, "lint": null,
+                "receiver_fingerprint": null, "target_fingerprint": "policy:allow-0001",
+                "normalized_snippet_hash": "fnv1a64:1234", "line_hint": 1, "column_hint": 20,
+            },
+            "digest": DIGEST_A, "source_file_digest": DIGEST_B,
+            "selector": {
+                "ast_kind": "method_call", "container": "parse_span", "callee": "unwrap",
+                "macro_name": null, "lint": null, "symbol": "unwrap",
+                "receiver_fingerprint": null, "target_fingerprint": "toml",
+                "normalized_snippet_hash": "fnv1a64:1234", "line_hint": 1, "glob": null,
+            },
         },
         "outcome": {"status": "new", "allow_id": null, "message": "unreceipted panic.unwrap"},
         "candidates": [],
         "required_fields": ["owner"],
         "proof_plans": [],
-    });
+    })
+}
+
+/// The display/metadata fields the schema requires but the applier never reads.
+/// #4605 enforces their presence so the acceptance contract matches the
+/// published schema.
+const REQUIRED_BUT_UNREAD_PLAN_FIELDS: [&str; 7] = [
+    "tool_version",
+    "claim_boundary",
+    "scanner_limitations",
+    "inventory",
+    "candidates",
+    "required_fields",
+    "proof_plans",
+];
+
+#[test]
+fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() -> Result<(), String> {
+    // A full v1 plan (including every schema-required display field) parses
+    // cleanly — and is itself schema-valid, so the positive control proves a
+    // schema-valid required-only plan reaches the applier (PR #4622 review).
+    let full_plan = full_schema_valid_plan();
+    let schema = serde_json::from_str::<serde_json::Value>(include_str!(
+        "../../../docs/schemas/add-finding-plan.schema.json"
+    ))
+    .map_err(|error| format!("add-finding-plan schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("add-finding-plan schema compilation: {error}"))?;
+    validator
+        .validate(&full_plan)
+        .map_err(|error| format!("the positive-control plan must be schema-valid: {error}"))?;
     assert!(parse_plan_strict(full_plan.to_string().as_bytes()).is_ok());
 
     // Not JSON at all.
@@ -319,6 +371,81 @@ fn strict_parse_accepts_a_full_plan_and_rejects_malformed_input() {
         policy.insert("digest".to_string(), json!(42));
     }
     assert!(parse_plan_strict(wrong_type.to_string().as_bytes()).is_err());
+    Ok(())
+}
+
+#[test]
+fn unknown_top_level_field_is_rejected_as_usage_naming_the_field() {
+    // #4605: within the frozen v1 schema the schema's
+    // `additionalProperties: false` makes any unknown field schema-invalid, so
+    // the applier must refuse it instead of applying the document. The
+    // rejection is a typed Usage error that names the offending field.
+    let mut extra_field_plan = full_schema_valid_plan();
+    extra_field_plan
+        .as_object_mut()
+        .unwrap_or_else(|| std::panic::panic_any("plan object"))
+        .insert("agent_notes".to_string(), json!({}));
+    let Err(error) = parse_plan_strict(extra_field_plan.to_string().as_bytes()) else {
+        std::panic::panic_any("an unknown top-level field must be rejected")
+    };
+
+    assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Usage);
+    let message = error.to_string();
+    assert!(
+        message.contains("agent_notes"),
+        "rejection should name the offending field: {message}"
+    );
+    assert!(
+        message.contains("(policy unchanged)"),
+        "rejection should keep the fail-closed framing: {message}"
+    );
+
+    // The schema-valid controls still parse: the plain required-only plan, and
+    // a plan carrying the schema-optional `evaluation` object the producer
+    // emits.
+    assert!(parse_plan_strict(full_schema_valid_plan().to_string().as_bytes()).is_ok());
+    let mut with_evaluation = full_schema_valid_plan();
+    with_evaluation
+        .as_object_mut()
+        .unwrap_or_else(|| std::panic::panic_any("plan object"))
+        .insert(
+            "evaluation".to_string(),
+            json!({
+                "result_class": "exact_scoped", "scanner_completeness": "complete",
+                "scope": "scoped", "locality": "proven", "reasons": [],
+            }),
+        );
+    assert!(parse_plan_strict(with_evaluation.to_string().as_bytes()).is_ok());
+}
+
+#[test]
+fn every_required_but_unread_field_is_enforced_by_the_parser() {
+    // #4605: the schema's required list binds the applier even for fields the
+    // transaction never consults. A plan stripped of any one of them is
+    // schema-invalid and must fail the parse as a missing required field.
+    for field in REQUIRED_BUT_UNREAD_PLAN_FIELDS {
+        let mut stripped = full_schema_valid_plan();
+        stripped
+            .as_object_mut()
+            .unwrap_or_else(|| std::panic::panic_any("plan object"))
+            .remove(field);
+        let Err(error) = parse_plan_strict(stripped.to_string().as_bytes()) else {
+            std::panic::panic_any(format!(
+                "stripping schema-required `{field}` must be rejected"
+            ))
+        };
+
+        assert_eq!(
+            error.kind(),
+            allow_core::CargoAllowErrorKind::Usage,
+            "stripping `{field}` should produce a Usage error"
+        );
+        let message = error.to_string();
+        assert!(
+            message.contains("missing field") && message.contains(field),
+            "stripping `{field}` should fail as a missing required field: {message}"
+        );
+    }
 }
 
 #[test]

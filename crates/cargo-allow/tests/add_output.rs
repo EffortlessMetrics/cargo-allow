@@ -402,6 +402,12 @@ expires_or_review_after_required = true
         stderr.contains("--callee"),
         "the error must direct at --callee: {stderr}"
     );
+    // #4588: the suggested callees come from the findings under the glob,
+    // not a hardcoded example.
+    assert!(
+        stderr.contains("callees present under this glob: unwrap"),
+        "the error must list the actual callees: {stderr}"
+    );
     assert!(
         !stderr.contains("no current panic findings match glob"),
         "the glob-blaming error must be gone: {stderr}"
@@ -571,10 +577,12 @@ expires_or_review_after_required = true
 }
 
 #[test]
-fn add_dry_run_broad_json_summary_reports_dry_run_action() {
-    // #4549: the broad (glob) JSON summary carried action "write" and the
-    // requested candidate path even under --dry-run; the posture must match
-    // what the operation actually did.
+fn add_dry_run_broad_json_summary_keeps_the_stdout_posture() {
+    // #4549 → #4604: the broad (glob) JSON summary once carried action
+    // "write" and the requested candidate path even under --dry-run; the
+    // governed shape has no action field at all — the mutation receipt's
+    // own result is the posture truth, and a dry run keeps the stdout
+    // posture (#4549) while null selected_finding marks the route (#4604).
     let root = temp_root("add-dry-run-broad-posture");
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
@@ -642,16 +650,21 @@ expires_or_review_after_required = true
     let summary: serde_json::Value = serde_json::from_str(&summary_text)
         .unwrap_or_else(|err| std::panic::panic_any(format!("sidecar must be JSON: {err}")));
     assert_eq!(
-        summary.get("action").and_then(serde_json::Value::as_str),
-        Some("dry-run"),
-        "the broad action must not claim a write under --dry-run: {summary_text}"
+        summary.pointer("/selected_finding").map(|v| v.is_null()),
+        Some(true),
+        "the broad route must mark itself with a null selected_finding: {summary_text}"
+    );
+    assert_eq!(
+        summary.get("action"),
+        None,
+        "the redundant action field must be gone from the governed shape: {summary_text}"
     );
     assert_eq!(
         summary
-            .get("policy_output")
-            .and_then(serde_json::Value::as_str),
-        Some("stdout"),
-        "the broad policy_output must report stdout under --dry-run: {summary_text}"
+            .pointer("/options/policy_output")
+            .map(|v| v.is_null()),
+        Some(true),
+        "the governed options must report no policy output under --dry-run: {summary_text}"
     );
     assert_eq!(
         summary
@@ -946,9 +959,19 @@ expires_or_review_after_required = true
         Some(2),
         "a family-excluded glob must be a usage error: {stderr}"
     );
+    // #4587: the glob DOES hold matching-kind findings excluded only by
+    // --family, so the message must name the filters, not blame the glob.
     assert!(
-        stderr.contains("no current panic findings match glob"),
-        "a family-excluded glob is genuinely empty for this request: {stderr}"
+        stderr.contains("findings match glob `src/lib.rs`"),
+        "the message must reference the glob: {stderr}"
+    );
+    assert!(
+        stderr.contains("--family"),
+        "the message must name the excluding filter: {stderr}"
+    );
+    assert!(
+        !stderr.contains("cannot baseline an empty scope"),
+        "the glob is not empty; the empty-scope message must not fire: {stderr}"
     );
     assert!(
         !stderr.contains("structural selector identity"),
@@ -956,4 +979,257 @@ expires_or_review_after_required = true
     );
 
     remove_temp_root(root);
+}
+
+fn add_inference_fixture(label: &str) -> PathBuf {
+    // One unwrap finding at src/lib.rs:1 and the minimal live policy.
+    let root = temp_root(label);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn value(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    root
+}
+
+/// #4606/#3194: `add --path --line` without `--kind` must reach cmd_add and
+/// infer the kind from the scanned finding — before #4606 clap rejected the
+/// invocation with "required arguments were not provided: --kind" before the
+/// inference branch could run.
+#[test]
+fn add_path_line_without_kind_infers_the_kind_from_the_finding() -> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-kind-inference");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--path",
+            "src/lib.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "kind inference fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "path+line without --kind must reach kind inference and succeed: {stderr}"
+    );
+    assert!(
+        stdout.contains("[[allow]]") && stdout.contains("kind = \"panic\""),
+        "the candidate must carry the inferred panic kind: {stdout}"
+    );
+    assert!(
+        !stderr.contains("required arguments were not provided"),
+        "clap must not reject the inference invocation: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4606: the relaxed clap gate must not let an invalid combination through —
+/// `add --glob` without `--kind` still fails, now with the typed broad-scope
+/// usage error from cmd_add (a broad scope cannot infer a kind).
+#[test]
+fn add_glob_without_kind_fails_with_the_typed_broad_scope_error() -> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-glob-without-kind");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--glob",
+            "src/lib.rs",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "glob without kind fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "glob without --kind must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("--kind is required with --glob"),
+        "the typed broad-scope error must fire: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4606: with no kind, no target selector, and no plan, `add` still fails
+/// fast at parse time with clap's missing-argument error — unchanged.
+#[test]
+fn add_without_kind_or_target_still_requires_kind_at_parse_time() -> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-still-requires-kind");
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args(["add", "--owner", "core/fixture", "--reason", "bare fixture"])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "bare add must be rejected at parse time: {stderr}"
+    );
+    assert!(
+        stderr.contains("required arguments were not provided"),
+        "clap must still require --kind without a target selector: {stderr}"
+    );
+    assert!(
+        stderr.contains("--kind"),
+        "the rejection must name --kind: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4610: the no-current-finding add error must render the typed next step on
+/// stderr and must not append the contradictory generic "review the command
+/// syntax" line after the message already names the real remedy.
+#[test]
+fn add_no_finding_error_renders_typed_next_step_not_generic_syntax_line()
+-> Result<(), std::io::Error> {
+    let root = add_inference_fixture("add-no-finding-next-step");
+    // A source file with no findings at all: the add request is syntactically
+    // valid, so the generic syntax remedy would be contradictory.
+    fs::write(root.join("src/empty.rs"), "pub fn plain() -> u8 { 0 }\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write empty source: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/empty.rs",
+            "--line",
+            "1",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "no-finding fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "adding where no finding exists must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("no current panic finding found near"),
+        "the no-finding message must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next: pass the exact --line"),
+        "the typed next step must render: {stderr}"
+    );
+    assert!(
+        !stderr.contains("review the command syntax"),
+        "the generic syntax line must not follow the typed remedy: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
+}
+
+/// #4610: the ambiguous-add error must render the typed next step pointing at
+/// the read-only exact-line listing, not the generic syntax line.
+#[test]
+fn add_ambiguous_error_renders_typed_next_step_not_generic_syntax_line()
+-> Result<(), std::io::Error> {
+    let root = temp_root("add-ambiguous-next-step");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create src dir: {err}")));
+    // Unwraps on lines 1 and 3: --line 2 is an exact tie.
+    fs::write(
+        root.join("src/amb.rs"),
+        "pub fn a(v: Option<u8>) -> u8 { v.unwrap() }\npub fn pad() -> u8 { 0 }\npub fn b(v: Option<u8>) -> u8 { v.unwrap() }\n",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write ambiguous source: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+
+[requirements]
+owner_required = true
+reason_required = true
+classification_required = true
+evidence_required = false
+expires_or_review_after_required = true
+"#,
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "add",
+            "--kind",
+            "panic",
+            "--path",
+            "src/amb.rs",
+            "--line",
+            "2",
+            "--owner",
+            "core/fixture",
+            "--reason",
+            "ambiguous fixture",
+            "--dry-run",
+        ])
+        .output()?;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "an ambiguous add request must be a usage error: {stderr}"
+    );
+    assert!(
+        stderr.contains("ambiguous add request"),
+        "the ambiguous message must render: {stderr}"
+    );
+    assert!(
+        stderr.contains("Next: run `cargo-allow check --kind panic --format json`"),
+        "the typed next step must render: {stderr}"
+    );
+    assert!(
+        !stderr.contains("review the command syntax"),
+        "the generic syntax line must not follow the typed remedy: {stderr}"
+    );
+
+    remove_temp_root(root);
+    Ok(())
 }

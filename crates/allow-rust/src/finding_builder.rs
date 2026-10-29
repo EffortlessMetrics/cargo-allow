@@ -14,11 +14,13 @@ pub(crate) struct FindingSite<'a> {
 
 /// Single source of truth for the identity-redaction setting (#1920).
 ///
-/// The finding builder and the persistent scan-cache key must observe the
-/// same mode: findings cached under one mode are invalid for the other, so
-/// `scan_cache` keys durable entries by this value.
+/// The setting itself lives in allow-core (`identity_redaction_requested`)
+/// so the finding builder, the persistent scan-cache key, and the #4628
+/// redaction disclosure all observe the same mode: findings cached under one
+/// mode are invalid for the other, so `scan_cache` keys durable entries by
+/// this value.
 pub(crate) fn identity_redaction_enabled() -> bool {
-    std::env::var("CARGO_ALLOW_REDACT_IDENTITY").as_deref() == Ok("1")
+    allow_core::identity_redaction_requested()
 }
 
 pub(crate) fn push_finding<F>(

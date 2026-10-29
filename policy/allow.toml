@@ -24643,3 +24643,807 @@ glob = ".allow/revisions/4583-evaluation-artifact-set-schema.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11357"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::tool_version"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11357: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11357"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 84
+column = 5
+
+[[allow]]
+id = "allow-11358"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::claim_boundary"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11358: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11358"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 91
+column = 5
+
+[[allow]]
+id = "allow-11359"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::scanner_limitations"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11359: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11359"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 98
+column = 5
+
+[[allow]]
+id = "allow-11360"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::inventory"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11360: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11360"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 105
+column = 5
+
+[[allow]]
+id = "allow-11361"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::evaluation"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11361: schema-optional evaluation object tolerated for producer compatibility (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11361"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 114
+column = 5
+
+[[allow]]
+id = "allow-11362"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::candidates"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11362: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11362"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 127
+column = 5
+
+[[allow]]
+id = "allow-11363"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::required_fields"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11363: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11363"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 134
+column = 5
+
+[[allow]]
+id = "allow-11364"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/src/add_from_plan.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Presence-only plan envelope enforcement (#4605): the field is parsed for published-schema presence and never consumed by the applier."
+evidence = ["issue:4605"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "LoadedPlan::proof_plans"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-11364: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field\" )]"
+target_fingerprint = "policy:allow-11364"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 141
+column = 5
+
+[[allow]]
+id = "allow-1157"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4605-from-plan-envelope.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the eight #4605 plan-envelope suppression receipts (#3792 precedent)."
+evidence = ["issue:4605", "doc:docs/how-to/manage-an-exception.md"]
+created = "2026-10-17"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4605-from-plan-envelope.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4605-from-plan-envelope.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-2925-consumed-checksum-driver"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/exact-candidate-index-checksum.py"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file admission for the consumed-dependency checksum control: verifies candidate/archive/index agreement, isolated positive and negative metadata commands, selected checksum refusal and retained failure evidence; no publication authority."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2886#issuecomment-6311577396"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-index-checksum.py"
+target_fingerprint = "py"
+glob = "scripts/exact-candidate-index-checksum.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-2925-consumed-checksum-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-exact-candidate-index-checksum.py"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file admission for in-memory controls of resolved dependency selection, checksum binding, root/version/duplicate/drift refusal and exact Cargo error identity; no fixture filesystem or compiler required."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2886#issuecomment-6311577396"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-index-checksum.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-index-checksum.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-2925-consumed-checksum-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/index-checksum-control-v1.schema.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file admission for retained checksum-control diagnostics: commit/input/mutation/command/exit/digest identities and explicit failed or passed state; schema conformity alone does not prove execution."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2886#issuecomment-6311577396"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/index-checksum-control-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/index-checksum-control-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-2925-consumed-checksum-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2925-consumed-checksum-control.toml"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file admission for the scoped ledger transition note for this repair, retaining official policy fingerprints without broadening any prior allowance."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2886#issuecomment-6311577396"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2925-consumed-checksum-control.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2925-consumed-checksum-control.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-2925-consumed-checksum-review"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4647.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file retention of independent exact-head checksum-control review and currentness; a blocked or stale record is not merge approval."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597377443"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4647.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4647.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-driver"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/qualify-worklist-pages.py"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file operator qualification helper: retain every unfiltered full-population row and verify bounded actual CLI pages, source/date identity and routing costs."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/qualify-worklist-pages.py"
+target_fingerprint = "py"
+glob = "scripts/qualify-worklist-pages.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.worklist-page-coverage.v1.schema.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file supporting coverage schema; requires full population and every bounded page with immutable cap and explicit command, source and latency identities."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.worklist-page-coverage.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.worklist-page-coverage.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-qualify-worklist-pages.py"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file in-memory falsifiers for complete worklist page coverage, payload bounds, recursive hash validation, source/date stability and late-probe routing costs."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-qualify-worklist-pages.py"
+target_fingerprint = "py"
+glob = "scripts/test-qualify-worklist-pages.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4643-worklist-page-qualification.toml"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file transition note for the bounded worklist coverage admissions; all prior ledger entries and dates remain unchanged."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4643-worklist-page-qualification.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4643-worklist-page-qualification.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4643-worklist-page-review"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4648.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file independent review disposition binds the complete source pair, findings, repair route and separate hosted CI obligations; historical blocked evidence is not a clean-review claim."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4648#pullrequestreview-5597548670"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4648.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4648.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4649-prerequisite-review"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4649.json"
+owner = "EffortlessMetrics"
+classification = "reviewed_exception"
+reason = "Exact-file combined prerequisite review disposition; binds full source pair and independent review separately from all required hosted checks, with partial or stale states never authorizing merge."
+evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4649"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4649.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4649.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3357-exact-journey-driver"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/exact-candidate-install-journey.py"
+owner = "core/release"
+classification = "release_packaging_harness"
+reason = "Runs the exact installed candidate journey and publishes digest-bound success only after owned cleanup; no package publication."
+evidence = ["issue:3357", "test:scripts/test-exact-candidate-install-journey.py"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-install-journey.py"
+target_fingerprint = "py"
+glob = "scripts/exact-candidate-install-journey.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3357-exact-journey-tests"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-exact-candidate-install-journey.py"
+owner = "core/release"
+classification = "release_packaging_test"
+reason = "Offline adversarial receipt validation and cleanup-order controls for the exact installed candidate journey; never invokes Cargo."
+evidence = ["issue:3357", "test:scripts/test-exact-candidate-install-journey.py"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-install-journey.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-install-journey.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4642-change-note"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4642-exact-journey-hardening.toml"
+owner = "core/release"
+classification = "policy_change_note"
+reason = "Retains the exact official fingerprints and reviewed rationale for the scoped PR4642 harness, test and review-evidence admissions."
+evidence = ["issue:3357", "doc:AGENTS.md"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4642-exact-journey-hardening.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4642-exact-journey-hardening.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4642-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4642.json"
+owner = "core/review"
+classification = "review_disposition"
+reason = "Retains the exact-head independent review disposition for PR4642; pending state does not assert review cleanliness or authorize a merge."
+evidence = ["doc:AGENTS.md", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-10-21"
+review_after = "2027-01-21"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4642.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4642.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11365"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "tests/fixtures/refresh/bulk-drift/policy/allow.toml"
+owner = "core/policy"
+classification = "refresh_receipt_fixture"
+reason = "Bulk refresh receipt characterization fixture policy for --all drift refresh proof (#4651)."
+evidence = ["test:refresh"]
+created = "2026-10-25"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+target_fingerprint = "toml"
+glob = "tests/fixtures/refresh/bulk-drift/policy/allow.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11366"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "tests/fixtures/refresh/bulk-drift/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "refresh_receipt_fixture"
+reason = "Bulk refresh fixture keeps the first policy-linked expect attribute with stale last_seen for --all refresh proof (#4651)."
+evidence = ["test:refresh"]
+created = "2026-10-25"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "fixture_refresh_drift_first"
+lint = "clippy::unwrap_used"
+symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-11366: bulk refresh receipt fixture\")]"
+target_fingerprint = "policy:allow-11366"
+
+[allow.last_seen]
+line = 7
+column = 5
+
+[[allow]]
+id = "allow-11367"
+kind = "panic"
+family = "unwrap"
+path = "tests/fixtures/refresh/bulk-drift/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "refresh_receipt_fixture"
+reason = "Bulk refresh fixture intentionally unwraps so the first --all dry-run receipt can update last_seen without lifecycle drift (#4651)."
+evidence = ["test:refresh"]
+created = "2026-10-25"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_refresh_drift_first"
+callee = "unwrap"
+receiver_fingerprint = "Some(1)"
+
+[allow.last_seen]
+line = 8
+column = 25
+
+[[allow]]
+id = "allow-11368"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "tests/fixtures/refresh/bulk-drift/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "refresh_receipt_fixture"
+reason = "Bulk refresh fixture keeps the second policy-linked expect attribute with stale last_seen for --all refresh proof (#4651)."
+evidence = ["test:refresh"]
+created = "2026-10-25"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "attribute"
+container = "fixture_refresh_drift_second"
+lint = "clippy::unwrap_used"
+symbol = "#[expect(clippy::unwrap_used, reason = \"policy:allow-11368: bulk refresh receipt fixture\")]"
+target_fingerprint = "policy:allow-11368"
+
+[allow.last_seen]
+line = 19
+column = 5
+
+[[allow]]
+id = "allow-11369"
+kind = "panic"
+family = "unwrap"
+path = "tests/fixtures/refresh/bulk-drift/src/lib.rs"
+owner = "core/rust-scanner"
+classification = "refresh_receipt_fixture"
+reason = "Bulk refresh fixture intentionally unwraps so the second --all dry-run receipt can update last_seen without lifecycle drift (#4651)."
+evidence = ["test:refresh"]
+created = "2026-10-25"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "fixture_refresh_drift_second"
+callee = "unwrap"
+receiver_fingerprint = "Some(2)"
+
+[allow.last_seen]
+line = 20
+column = 25
+
+[[allow]]
+id = "allow-1178"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the five bulk-refresh fixture receipts (#4651, #3792 precedent)."
+evidence = ["issue:4651"]
+created = "2026-10-25"
+review_after = "2027-01-23"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1173"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/tests/federation_invalid_registry_gate.rs"
+owner = "core/test"
+classification = "reviewed_exception"
+reason = "Shared tests/json_assertions module is compiled separately into each test binary; this one calls a subset of its helpers, so the rest would fail -D warnings as dead code. Scoped to the module declaration in a test file."
+evidence = ["test:invalid_registry_fails_check_and_names_the_condition"]
+created = "2026-10-25"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-1173: shared json_assertions module; this binary uses a subset\" )]"
+target_fingerprint = "policy:allow-1173"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 11
+column = 1
+[[allow]]
+id = "allow-1174"
+kind = "lint_exception"
+family = "expect_attribute"
+path = "crates/cargo-allow/tests/federation_invalid_registry_gate.rs"
+owner = "core/test"
+classification = "reviewed_exception"
+reason = "Shared tests/support module is compiled separately into each test binary; this one calls a subset of its helpers, so the rest would fail -D warnings as dead code. Scoped to the module declaration in a test file."
+evidence = ["test:staged_check_fails_on_invalid_registry"]
+created = "2026-10-25"
+review_after = "2027-01-15"
+
+[allow.selector]
+ast_kind = "attribute"
+lint = "dead_code"
+symbol = "#[expect( dead_code, reason = \"policy:allow-1174: shared support module; this binary uses a subset\" )]"
+target_fingerprint = "policy:allow-1174"
+normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
+
+[allow.last_seen]
+line = 16
+column = 1
+[[allow]]
+id = "allow-1175"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4655-federation-registry-validity.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the federation registry-validity disclosure receipts (#4655, #3792 precedent)."
+evidence = ["issue:4655"]
+created = "2026-10-25"
+review_after = "2027-01-23"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4655-federation-registry-validity.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4655-federation-registry-validity.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1182"
+kind = "panic"
+family = "expect"
+glob = "crates/cargo-allow/tests/provider_descriptor.rs"
+owner = "core/tests"
+classification = "test_fixture"
+reason = "Sensor-capabilities schema mutation controls intentionally use .expect() on fixture scaffolding so malformed setup fails the test immediately; count pinned at the reviewed 10 (#4627)."
+evidence = ["issue:4627", "test:sensor_capabilities_schema_rejects_mutated_real_output"]
+occurrence_limit = 10
+created = "2026-10-27"
+review_after = "2027-01-25"
+
+[allow.selector]
+callee = "expect"
+glob = "crates/cargo-allow/tests/provider_descriptor.rs"
+
+[[allow]]
+id = "allow-1183"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/sensor-capabilities.schema.json"
+owner = "core/policy"
+classification = "sensor_capabilities_contract_schema"
+reason = "Published closed JSON Schema for the cargo-allow.sensor-capabilities.v1 self-description sensor catalog emitted by cargo-allow capabilities --format json (#4627); a self-description contract on the tool-identity precedent, not a governed artifact."
+evidence = ["issue:4627", "doc:docs/schemas/README.md", "test:sensor_capabilities_stdout_conforms_without_repository_or_policy"]
+created = "2026-10-27"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/sensor-capabilities.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/sensor-capabilities.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1184"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4676-sensor-capabilities-schema.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering receipt for the authored revision note recording the sensor-capabilities schema receipts (#4627, #3792 precedent)."
+evidence = ["issue:4627"]
+created = "2026-10-27"
+review_after = "2027-01-25"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4676-sensor-capabilities-schema.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4676-sensor-capabilities-schema.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

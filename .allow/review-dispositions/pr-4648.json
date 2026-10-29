@@ -1,0 +1,40 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4648,
+  "base_ref": "main",
+  "base_sha": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "head_ref": "fix/worklist-page-qualification",
+  "head_sha": "2c5a2d90d1d88e65d3ac160d0ddf3b723e11cc75",
+  "merge_base": "40f6e20831ee4958ce96ff8a37366e15acae1f95",
+  "reviewed_diff_digest": "sha256:v1:7674bf5c874da4937c815dae83e1ad3ee8d9ef30841bcaa6838fe56b28feed50",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Codex /root/worklist_review independently reviewed this exact pair without authoring or changing it. /root authored the source and retained record. Shared model family, prior context, workspace and GitHub account transport are disclosed; no independent human approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4648#pullrequestreview-5597719621"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4648#pullrequestreview-5597719621",
+    "Fresh independent affected review binds2c5 to live main/base/merge-base40f6 and complete full-diff digest; all15 changed files and connected consumers reviewed. Two historical f04 source blockers are repaired.",
+    "Root/depth-one ordinary coverage records an unavailable parent honestly as null; agent-loop coverage still requires its real parent equal the operator receipt commit. Before/after source/parent/date/binary stability remains mandatory. Schema and pure positive/negative cases agree.",
+    "Production CI generic duration/type/byte-count/digest admission remains ahead of dependent coverage checks. Shared synthetic fixtures retain the actual helper and coherent full/page/companion artifacts; positive duration boundaries bind command timings, and fixed retained bytes do not follow forged counts/hashes. Actual consumer tests also mutate/remove transitive full/last-page members. No disk fixture was executed locally.",
+    "Nine pure in-memory groups pass. Exact2c5 no-new/new0 and full-SHA required-change-note guards pass. All801989 original policy bytes and1157 entries are preserved; five exact-file official admissions have matching transition notes. No threshold increase, date extension, finding omission, broadened selector or fabricated admission.",
+    "Existing parent thread PRRT_kwDOSnyN3s6ustZ7 is superseded by inspected source; Gemini empty-loop additional test and variable naming suggestions are nonblocking. Empty populations are already covered by Python and Rust paging boundary tests. CodeRabbit quota response is not review proof.",
+    "Full population oracle, complete objects/global IDs/order/counts, actual25-row pages, recursive hashes/bytes, cap524288 and routing/per-command latency obligations remain. Full/traversal/qualification costs remain separately visible; before/after checks do not claim atomic exclusion of concurrent mutation.",
+    "Current hosted operator contract/build/smoke and other checks are pending. Historical checksum source43a8 package qualification passed, but current-head verification and combined prerequisite qualification remain required. Frozen receipt PR4642 remains feea1e7.",
+    "All denied original-checkout, fixture writes/cleanup, MSYS and protection-config actions remain stopped. No local Cargo, permission/protection change, publication or cleanup release. This metadata child requires fresh independent review and native currentness."
+  ],
+  "required_ci": {
+    "owner": "Completion worker must independently review this sole-disposition child, verify native ancestor-bound bootstrap and every applicable current-head check, combine reviewed prerequisites without weakening either gate, then conduct fresh exact-pair protected merge and resulting-main guard. Pending/failed/stale/skipped evidence is not waived; all custody holds remain.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/39577674342"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4648",
+  "reviewed_at_utc": "2026-10-21T09:35:56Z"
+}

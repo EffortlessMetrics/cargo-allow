@@ -16,6 +16,53 @@ fn human_vocabulary_lists_all_kind_groups() {
     assert!(text.contains("network"));
 }
 
+/// #4632: the five compat-only kinds must be marked in the vocabulary so an
+/// operator discovers the non-compat rejection before invoking the command.
+#[test]
+fn human_vocabulary_marks_compat_only_kinds() {
+    let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);
+
+    let marked: Vec<&str> = KIND_GROUPS
+        .iter()
+        .filter(|group| group.compat_only)
+        .map(|group| group.canonical)
+        .collect();
+    assert_eq!(
+        marked,
+        vec![
+            "executable",
+            "workflow",
+            "dependency-surface",
+            "process",
+            "network"
+        ]
+    );
+    for canonical in &marked {
+        let row = text
+            .lines()
+            .find(|line| line.trim_start().starts_with(canonical) && line.contains(" (aliases: "))
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!("kind row for `{canonical}` missing: {text}"))
+            });
+        assert!(
+            row.contains("(--compat only for check/audit)"),
+            "compat-only kind `{canonical}` must be marked: {row}"
+        );
+    }
+    for canonical in ["panic", "unsafe", "lint-exception", "non-rust", "generated"] {
+        let row = text
+            .lines()
+            .find(|line| line.trim_start().starts_with(canonical) && line.contains(" (aliases: "))
+            .unwrap_or_else(|| {
+                std::panic::panic_any(format!("kind row for `{canonical}` missing: {text}"))
+            });
+        assert!(
+            !row.contains("--compat only"),
+            "non-compat kind `{canonical}` must not be marked: {row}"
+        );
+    }
+}
+
 #[test]
 fn human_vocabulary_lists_kind_aliases() {
     let text = render_vocabulary_human_styled(allow_report::Style::PLAIN);

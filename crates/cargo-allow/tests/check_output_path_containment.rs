@@ -175,3 +175,49 @@ fn receipt_escaping_root_via_parent_traversal_is_rejected() {
 
     remove_temp_root(root);
 }
+
+/// A bad `--emit` token is a typed usage error (#4505) that exits 2 without
+/// ever creating the artifact directory: the late parse (deliberately after
+/// the report/sidecar writes, see the #4393 sidecar contract) still precedes
+/// every artifact write.
+#[test]
+fn check_bad_emit_value_writes_no_artifact_directory() {
+    let root = temp_root("check-bad-emit-no-artifacts");
+    write_minimal_policy(&root);
+    fs::write(
+        root.join("tracked.txt"),
+        "tracked
+",
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write tracked file: {err}")));
+    let output = cargo_allow_command()
+        .current_dir(&root)
+        .args([
+            "check",
+            "--mode",
+            "no-new",
+            "--artifact-dir",
+            "artifacts",
+            "--emit",
+            "bogus-format",
+            "--output",
+            "report.md",
+        ])
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run check: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(
+        output.status.code(),
+        Some(2),
+        "usage mistakes exit 2 like the #4505 contract: {stderr}"
+    );
+    assert!(
+        stderr.contains("error[E0001_USAGE]: unsupported --emit format"),
+        "the typed usage error must render: {stderr}"
+    );
+    assert!(
+        !root.join("artifacts").exists(),
+        "the artifact directory must not be created by a usage-refused run"
+    );
+    remove_temp_root(root);
+}

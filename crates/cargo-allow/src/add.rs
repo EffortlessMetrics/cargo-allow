@@ -1,6 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
-    MatchOutcome, SimpleDate, json_escape, normalize_path,
+    MatchOutcome, SimpleDate, normalize_path,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -21,12 +21,12 @@ pub(crate) use add_args::AddArgs;
 pub(crate) use add_entry::select_add_finding;
 use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, next_allow_id,
+    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
 };
 pub(crate) use add_policy::transpose_for_existing_target;
 #[cfg(test)]
 use add_render::render_add_summary;
-use add_render::{add_mutation_receipt, render_add_summary_json, render_add_summary_styled};
+use add_render::{render_add_summary_json, render_add_summary_styled};
 pub(super) use add_types::AddContext;
 
 use crate::command_support::select_mutation_policy;
@@ -81,10 +81,12 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
     if let Some(plan_path) = args.from_plan.as_deref() {
         return add_from_plan::cmd_add_from_plan(args, plan_path);
     }
-    // --kind can be inferred from --path/--line if not explicitly given (#3194).
-    // The inference happens after load_world scans the source tree; here we
-    // just defer the kind resolution. If --path/--line are absent and --kind
-    // is not given, the original error fires.
+    // --kind can be inferred from --path/--line if not explicitly given
+    // (#3194); since #4606 clap lets that invocation through
+    // (`required_unless_present_any` includes `--path`), so the inference
+    // below is reachable from the CLI. --glob without --kind also reaches
+    // this function and fails with the typed broad-scope error below;
+    // --from-plan never reaches this point.
     let declared_kind = args.kind.clone();
     let cwd = current_dir()?;
     let mutation_root = resolve_source_tree_root(args.root.root.as_deref(), &cwd)?;
@@ -202,8 +204,11 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             .map(|path| allow_core::strip_win32_verbatim_prefix(&path.display().to_string()))
     };
 
-    // Resolve the kind filter: declared via --kind, or required for --glob.
-    // For --path/--line, inference from the scanned finding is handled below (#3194).
+    // Resolve the kind filter: declared via --kind, or required for --glob —
+    // this typed guard is the real gate for a CLI `add --glob` without
+    // --kind since the clap requirement was relaxed in #4606 (it also covers
+    // direct AddArgs construction). For --path/--line, inference from the
+    // scanned finding is handled below (#3194).
     let parsed_kind = match &declared_kind {
         Some(k) => parse_kind_filter(k)?,
         None if args.glob.is_some() => {
@@ -261,28 +266,77 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             // filter the broad selector will: a family-excluded glob is
             // genuinely empty for this request, and sending the operator
             // to --callee cannot make it match (#4576 review).
-            let kind_findings_under_glob = findings
+            let kind_findings_under_glob: Vec<_> = findings
                 .iter()
                 .filter(|finding| {
                     finding.kind == parsed_kind.kind
-                        && args
-                            .family
-                            .as_deref()
-                            .is_none_or(|family| finding.family.as_deref() == Some(family))
                         && allow_core::glob_matches(&glob, &finding.path)
                 })
+                .collect();
+            let family_matched_count = kind_findings_under_glob
+                .iter()
+                .filter(|finding| {
+                    args.family
+                        .as_deref()
+                        .is_none_or(|family| finding.family.as_deref() == Some(family))
+                })
                 .count();
-            if kind_findings_under_glob > 0
+            if family_matched_count > 0
                 && parsed_kind.kind.requires_source_selector_identity()
                 && args.callee.is_none()
             {
+                // #4586/#4588: the remedy must come from the findings the
+                // operator actually has — a hardcoded example dead-ends on
+                // any other callee and on callee-less classes (unsafe,
+                // indexing, lint), where no --callee can ever succeed.
+                let callees: std::collections::BTreeSet<&str> = kind_findings_under_glob
+                    .iter()
+                    .filter(|finding| {
+                        args.family
+                            .as_deref()
+                            .is_none_or(|family| finding.family.as_deref() == Some(family))
+                    })
+                    .filter_map(|finding| finding.identity.callee.as_deref())
+                    .collect();
+                let remedy = if callees.is_empty() {
+                    format!(
+                        "{kind} findings under this glob carry no callee, so a --glob baseline \
+                         cannot express their structural identity; receipt each occurrence with \
+                         --path/--line instead"
+                    )
+                } else {
+                    format!(
+                        "pass --callee <name> (callees present under this glob: {})",
+                        callees.into_iter().collect::<Vec<_>>().join(", ")
+                    )
+                };
                 return Err(CargoAllowError::with_kind(
                     CargoAllowErrorKind::Usage,
                     format!(
                         "{} findings require a structural selector identity for a --glob baseline; \
-                         pass --callee <name> (for example --callee unwrap) so the broad selector can match \
-                         — --family alone cannot satisfy the structural gate",
+                         {remedy} — --family alone cannot satisfy the structural gate",
                         kind
+                    ),
+                ));
+            }
+            // #4587: when the glob does hold {kind} findings excluded only
+            // by --family/--callee, the empty-scope text would blame a glob
+            // that is not the blocker.
+            if !kind_findings_under_glob.is_empty() {
+                let filter_names = if args.family.is_some() && args.callee.is_some() {
+                    "--family/--callee"
+                } else if args.family.is_some() {
+                    "--family"
+                } else {
+                    "--callee"
+                };
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Usage,
+                    format!(
+                        "{} findings match glob `{}`, but your {filter_names} filter(s) excluded all of them; \
+                         a --glob baseline receipts every finding the selector matches — \
+                         widen or drop the filter(s)",
+                        kind, glob
                     ),
                 ));
             }
@@ -294,6 +348,14 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                 ),
             ));
         }
+        // #4603: before writing, refuse a re-run against a scope the ledger
+        // already baselines with an identical broad selector — a second
+        // equal-strength selector would tie with it and flip every in-scope
+        // finding to `Ambiguous`, silently converting a satisfied ledger into
+        // a blocking one. Coverage by differently-shaped (anchored) entries
+        // and partially-matched scopes without an identical baseline keep the
+        // current write behavior.
+        ensure_broad_scope_addable(&cfg, &broad)?;
         broad.occurrence_limit = Some(count);
         let summary = match args.summary_format {
             HumanJsonFormat::Human => {
@@ -309,13 +371,18 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                     style,
                 )
             }
-            HumanJsonFormat::Json => render_add_summary_broad_json(
+            HumanJsonFormat::Json => render_add_summary_json(
                 &broad,
+                // #4604: a broad scope baseline selects no individual
+                // finding — the governed summary marks the route with a
+                // null selected_finding instead of a second, drift-prone
+                // hand-rolled shape.
+                None,
                 policy_output.as_deref(),
                 args.force,
                 args.dry_run,
                 args.update,
-                &context,
+                context,
             ),
         };
         (broad, summary)
@@ -409,7 +476,7 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
             }
             HumanJsonFormat::Json => render_add_summary_json(
                 &entry,
-                finding,
+                Some(finding),
                 policy_output.as_deref(),
                 args.force,
                 args.dry_run,
@@ -420,6 +487,13 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
         (entry, summary)
     };
 
+    // #4628: warn (never refuse) when the entry about to be written pins
+    // selector fields that identity redaction clears before matching — such an
+    // entry only matches unredacted scans, and the operator may be receipting
+    // for an unredacted pipeline.
+    if let Some(warning) = crate::redaction_disclosure::redaction_dead_entry_add_warning(&entry) {
+        eprintln!("{warning}");
+    }
     cfg.allow.push(entry.clone());
     validate_policy(&cfg)?;
     let evidence_source_tree_files =
@@ -685,35 +759,6 @@ fn render_add_summary_broad_human(
     )
 }
 
-fn render_add_summary_broad_json(
-    entry: &AllowEntry,
-    policy_output: Option<&str>,
-    force: bool,
-    dry_run: bool,
-    live_update: bool,
-    context: &AddContext<'_>,
-) -> String {
-    let action = if dry_run {
-        "dry-run"
-    } else if force {
-        "overwrite"
-    } else {
-        "write"
-    };
-    let mutation_receipt =
-        add_mutation_receipt(entry, context, policy_output, dry_run, live_update);
-    format!(
-        "{{\"id\":\"{}\",\"kind\":\"{}\",\"scope\":\"{}\",\"occurrence_limit\":{},\"policy_output\":\"{}\",\"action\":\"{}\",\"mutation_receipt\":{}}}",
-        json_escape(&entry.id),
-        json_escape(&entry.kind.to_string()),
-        json_escape(&entry.path_or_glob()),
-        entry.occurrence_limit.unwrap_or(0),
-        json_escape(policy_output.unwrap_or("stdout")),
-        json_escape(action),
-        allow_report::render_mutation_receipt_json(&mutation_receipt, ""),
-    )
-}
-
 fn selected_add_outcome(
     outcomes: &[MatchOutcome],
     finding_index: usize,
@@ -802,7 +847,7 @@ pub(crate) fn sample_add_json_for_contract_test() -> String {
     });
     render_add_summary_json(
         &add_entry,
-        &add_finding,
+        Some(&add_finding),
         Some("policy/allow.proposed.toml"),
         false,
         false,

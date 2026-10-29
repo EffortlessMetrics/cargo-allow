@@ -670,8 +670,40 @@ fn optional_bool_json(value: Option<bool>) -> &'static str {
 
 #[cfg(test)]
 pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
-    let report = SpecSystemReport {
-        command: "check".to_string(),
+    let report = doctor_report_fixture("check");
+    spec_system_render::render_spec_system_json(&report)
+}
+
+#[cfg(test)]
+pub(crate) fn sample_spec_system_doctor_json_for_contract_test() -> String {
+    // Live-render mirror of `doctor --profile spec-system` on a legacy-v1
+    // tree whose federation registry is not configured (#4625): readiness
+    // carries the full check sequence in emitter order and always ends with
+    // the federation_ledgers check, so the published readiness_check kind
+    // enum cannot silently drift away from the emitter again.
+    let mut report = doctor_report_fixture("doctor");
+    report.readiness = Some(doctor_readiness_fixture());
+    spec_system_render::render_spec_system_json(&report)
+}
+
+#[cfg(test)]
+pub(crate) fn sample_spec_system_doctor_allow_profiles_json_for_contract_test() -> String {
+    // Live-render mirror of `doctor --profile spec-system` on a tree whose
+    // profile config carries allow-profiles provenance (#4636): the emitter
+    // inserts the allow_imports check between templates and
+    // federation_ledgers for this provenance, so the published
+    // readiness_check kind enum carries it and the sample locks the real
+    // render shape.
+    let mut report = doctor_report_fixture("doctor");
+    report.config_provenance = ProfileConfigProvenance::AllowProfiles.as_str().to_string();
+    report.readiness = Some(doctor_readiness_fixture_allow_profiles());
+    spec_system_render::render_spec_system_json(&report)
+}
+
+#[cfg(test)]
+fn doctor_report_fixture(command: &'static str) -> SpecSystemReport {
+    SpecSystemReport {
+        command: command.to_string(),
         root: PathBuf::from("H:/Code/Rust/cargo-allow"),
         config_source: "policy/spec-system.toml".to_string(),
         config_provenance: ProfileConfigProvenance::LegacyPolicy.as_str().to_string(),
@@ -726,8 +758,117 @@ pub(crate) fn sample_spec_system_json_for_contract_test() -> String {
         readiness: None,
         federation: None,
         import_graph: None,
+    }
+}
+
+#[cfg(test)]
+fn doctor_readiness_fixture() -> SpecSystemReadiness {
+    // Mirrors `collect_spec_system_readiness` for a legacy-v1 profile with
+    // legacy_policy provenance: no allow_imports check (profiles/config
+    // provenance only) and the not-configured federation registry outcome.
+    let ready_check = |kind: &'static str, path: &str, message: String| SpecSystemReadinessCheck {
+        kind,
+        path: Some(path.to_string()),
+        found: true,
+        valid: Some(true),
+        status: "ready",
+        message,
     };
-    spec_system_render::render_spec_system_json(&report)
+    SpecSystemReadiness {
+        ready: true,
+        mode: "advisory",
+        checks: vec![
+            ready_check(
+                "profile_config",
+                "policy/spec-system.toml",
+                "spec-system profile config parsed (provenance: legacy_policy)".to_string(),
+            ),
+            ready_check(
+                "artifact_root",
+                "docs/proposals",
+                "artifact root docs/proposals exists".to_string(),
+            ),
+            ready_check(
+                "artifact_root",
+                "docs/specs",
+                "artifact root docs/specs exists".to_string(),
+            ),
+            ready_check(
+                "artifact_root",
+                "docs/adrs",
+                "artifact root docs/adrs exists".to_string(),
+            ),
+            ready_check(
+                "artifact_root",
+                "docs/plans",
+                "artifact root docs/plans exists".to_string(),
+            ),
+            ready_check(
+                "artifact_ledger",
+                ".allow/artifacts/doc-artifacts.toml",
+                "doc artifact ledger .allow/artifacts/doc-artifacts.toml parsed".to_string(),
+            ),
+            ready_check(
+                "support_tiers",
+                "docs/status/SUPPORT_TIERS.md",
+                "support-tier file docs/status/SUPPORT_TIERS.md parsed".to_string(),
+            ),
+            ready_check(
+                "active_goal",
+                "docs/plans/active.toml",
+                "active goal manifest docs/plans/active.toml parsed".to_string(),
+            ),
+            ready_check(
+                "templates",
+                "docs/templates",
+                "all spec-system templates exist".to_string(),
+            ),
+            SpecSystemReadinessCheck {
+                kind: "federation_ledgers",
+                path: Some(allow_policy::federation::FEDERATION_CONFIG_REL_PATH.to_string()),
+                found: false,
+                valid: None,
+                status: "ready",
+                message: "federation ledger registry `.allow/config.toml` is not configured"
+                    .to_string(),
+            },
+        ],
+    }
+}
+
+#[cfg(test)]
+fn doctor_readiness_fixture_allow_profiles() -> SpecSystemReadiness {
+    // Mirrors `collect_spec_system_readiness` for allow-profiles provenance
+    // (#4636): the emitter inserts the allow_imports check between templates
+    // and federation_ledgers for this provenance, so the sample locks its
+    // real render shape against the published enum.
+    let mut readiness = doctor_readiness_fixture();
+    let insert_at = readiness
+        .checks
+        .iter()
+        .position(|check| check.kind == "templates")
+        .map(|index| index + 1)
+        .unwrap_or(readiness.checks.len());
+    readiness.checks.insert(
+        insert_at,
+        SpecSystemReadinessCheck {
+            kind: "allow_imports",
+            path: Some(DEFAULT_OWNED_IMPORTS_ROOT.to_string()),
+            found: true,
+            valid: Some(true),
+            status: "ready",
+            message: "owned import root .allow/imports exists".to_string(),
+        },
+    );
+    if let Some(profile_config) = readiness
+        .checks
+        .iter_mut()
+        .find(|check| check.kind == "profile_config")
+    {
+        profile_config.message =
+            "spec-system profile config parsed (provenance: allow_profiles)".to_string();
+    }
+    readiness
 }
 
 #[cfg(test)]

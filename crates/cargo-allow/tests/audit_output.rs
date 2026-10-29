@@ -810,6 +810,8 @@ policy = \"cargo-allow\"
             "policy",
             "--emit",
             "markdown",
+            "--output",
+            "report.md",
         ])
         .output()
         .unwrap_or_else(|err| std::panic::panic_any(format!("run audit: {err}")));
@@ -825,6 +827,10 @@ policy = \"cargo-allow\"
     assert!(
         !root.join("policy/audit-markdown.md").is_file(),
         "no artifact may be written into the policy directory"
+    );
+    assert!(
+        !root.join("report.md").is_file(),
+        "no success-shaped report may survive the refusal"
     );
     remove_temp_root(root);
 }

@@ -236,6 +236,7 @@ struct ReceiptFederation {
     federation_version: String,
     ledger_contributors: Vec<OutsideFirstFamilyFixture>,
     precedence_applied: String,
+    registry_validity: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -937,6 +938,9 @@ fn validate_receipt(
     native_context.federation = Some(allow_report::FederationReportContext {
         federation_version: Some(allow_policy::federation::FEDERATION_VERSION),
         precedence_applied: Some(allow_policy::federation::PrecedenceTier::CliOverride.as_str()),
+        registry_validity: Some(
+            allow_policy::federation::FederationRegistryValidity::Absent.as_str(),
+        ),
         ledger_contributors: None,
         divergence_summary: None,
     });
@@ -1075,6 +1079,7 @@ fn inventory_facts(
         rust_files_skipped: scanner.map_or(0, |scanner| scanner.files_skipped),
         rust_files_considered: scanner.map_or(0, |scanner| scanner.files_considered),
         rust_files_with_parse_errors: scanner.map_or(0, |scanner| scanner.files_with_parse_errors),
+        inventory_skipped_paths: 0,
         policy_digest: None,
     }
 }

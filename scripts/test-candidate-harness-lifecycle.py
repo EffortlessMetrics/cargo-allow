@@ -53,11 +53,16 @@ def check_source_snapshot_cleanup(root: Path, environment: dict[str, str]) -> No
     """Exercise the actual outer EXIT trap without installing or running Cargo."""
     bash = shutil.which("bash")
     assert bash
+    expected_manifest = LIFECYCLE.run_git(
+        ["-C", str(ROOT), "show", "HEAD:Cargo.toml"], check=True, capture_output=True,
+    ).stdout
     cases = (
         ("caller-root", 0, "", True),
         ("allocated-root", 0, "", False),
         ("child-failure", 42, "", False),
+        ("caller-child-failure", 42, "", True),
         ("cleanup-failure", 0, "injected cleanup refusal", False),
+        ("caller-cleanup-failure", 0, "injected cleanup refusal", True),
         ("both-failures", 42, "injected cleanup refusal", False),
         ("unsupported-cleanup", 0, "platform does not provide symlink-safe recursive deletion", False),
     )
@@ -119,22 +124,34 @@ def check_source_snapshot_cleanup(root: Path, environment: dict[str, str]) -> No
         if "command not found" in result.stderr:
             raise SystemExit(f"{name}: cleanup command was unavailable: {result.stderr}")
         attempted = removals.read_text(encoding="utf-8").splitlines() if removals.exists() else []
-        expected_removals = ["source-candidate-snapshot"]
-        if not caller_root and not refusal:
+        # A failed internal child may have refused ownership-checked cleanup.
+        # Neither its snapshot nor an owned ancestor may erase that evidence.
+        expected_removals = [] if child_status else ["source-candidate-snapshot"]
+        if not child_status and not caller_root and not refusal:
             expected_removals.append("source-candidate-test-root")
         if attempted != expected_removals:
             raise SystemExit(f"{name}: unexpected removal order/parent bypass: {attempted!r}")
         remaining = [path for path in temporary.iterdir() if path != sentinel]
-        if refusal:
-            if refusal not in result.stderr or len(remaining) != 1:
-                raise SystemExit(f"{name}: refused cleanup lost its diagnostic or retained root")
-            owned_root = remaining[0]
-            snapshots = list(owned_root.glob("source-candidate-snapshot.*"))
-            if not owned_root.name.startswith("source-candidate-test-root.") or len(snapshots) != 1:
-                raise SystemExit(f"{name}: refused snapshot or parent was removed")
-            for retained in (owned_root, snapshots[0]):
+        if child_status or refusal:
+            diagnostic = "child failed; retaining owned paths" if child_status else refusal
+            if diagnostic not in result.stderr or len(remaining) != 1:
+                raise SystemExit(f"{name}: failed child/cleanup lost its diagnostic or retained state")
+            if caller_root:
+                snapshots = remaining
+                retained_owned = snapshots
+            else:
+                owned_root = remaining[0]
+                if not owned_root.name.startswith("source-candidate-test-root."):
+                    raise SystemExit(f"{name}: owned parent was removed")
+                snapshots = list(owned_root.glob("source-candidate-snapshot.*"))
+                retained_owned = [owned_root, *snapshots]
+            if len(snapshots) != 1 or not snapshots[0].name.startswith("source-candidate-snapshot."):
+                raise SystemExit(f"{name}: failed child/cleanup lost its snapshot")
+            for retained in retained_owned:
                 if not (retained / LIFECYCLE.MARKER).is_file():
                     raise SystemExit(f"{name}: refused directory lost its ownership marker")
+            if (snapshots[0] / "Cargo.toml").read_bytes() != expected_manifest:
+                raise SystemExit(f"{name}: retained snapshot lost its source bytes")
         elif remaining:
             raise SystemExit(f"{name}: successful cleanup left owned directories: {remaining!r}")
         if not child_status and "disposable snapshot ok" not in result.stdout:

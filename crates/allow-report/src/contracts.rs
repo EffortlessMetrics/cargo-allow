@@ -415,7 +415,7 @@ pub fn scanner_limitations_for_schema_id(schema_id: &str) -> &'static [&'static 
     }
 }
 
-pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for matching).";
+pub const CLAIM_BOUNDARY_TEXT: &str = "Claim boundary: scanned source-tree/source syntax only; cargo-allow did not invoke Cargo metadata, Cargo commands, rustc, Clippy, build scripts, proc macros, external evidence tools, or repository code. Macro expansion, macro token-tree contents, type information, MIR, build output, control flow, and data flow were not analyzed. Identity fields (symbol, callee, container, module, macro_name, lint, and raw-text receiver_fingerprint/target_fingerprint values) carry source-derived text and are emitted in CI artifacts; set CARGO_ALLOW_REDACT_IDENTITY=1 to redact them (structural hashes are preserved for snippet-hash-anchored (exact-occurrence) matching; source-text identity fields are cleared before matching, so structural-tier entries that pin them require an unredacted scan).";
 
 /// The passing result label, shared by every renderer.
 ///
@@ -448,6 +448,12 @@ pub struct InventoryContext<'a> {
     pub files_scanned: Option<usize>,
     pub empty_git_tracked: bool,
     pub completeness: Option<&'a str>,
+    /// Number of paths the inventory walk itself omitted (filesystem
+    /// depth/entry caps and unreadable directories). Rendered only when
+    /// non-zero, next to the `partial` completeness the omissions force
+    /// (#4646): JSON consumers can read the omission count, not just the
+    /// completeness label.
+    pub inventory_skipped_paths: usize,
     /// Exact source identity when the inventory is bound to a staged or
     /// otherwise immutable candidate. Worktree reports intentionally omit it.
     pub source_identity: Option<&'a str>,
@@ -469,6 +475,7 @@ impl<'a> InventoryContext<'a> {
             files_scanned,
             empty_git_tracked: false,
             completeness: None,
+            inventory_skipped_paths: 0,
             source_identity: None,
         }
     }
@@ -512,6 +519,11 @@ impl<'a> InventoryContext<'a> {
 
     pub fn with_completeness(mut self, completeness: &'a str) -> Self {
         self.completeness = Some(completeness);
+        self
+    }
+
+    pub fn with_inventory_skipped_paths(mut self, count: usize) -> Self {
+        self.inventory_skipped_paths = count;
         self
     }
 
@@ -578,6 +590,12 @@ pub struct ReportContext<'a> {
     /// divergence surfaces in the receipt instead of being hidden behind a
     /// zero advisory count while CI fails (#1945).
     pub blocking_divergence_entries: Option<usize>,
+    /// True when a parsed `.allow/config.toml` federation registry failed
+    /// validation and the run fell back to the discovered ledger (#4655).
+    /// Blocking status counts cannot explain this failure, so the human
+    /// failure-reason line names it from this flag and the receipt carries
+    /// `federation.registry_validity` for consumers.
+    pub federation_registry_invalid: bool,
     /// Git commit SHA when available, for receipt provenance binding (#1850).
     pub git_sha: Option<&'a str>,
     /// SHA-256 hex digest of the policy file content at scan time (#1850).
@@ -600,6 +618,11 @@ pub struct ReportContext<'a> {
     /// `RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING`. Absent in error
     /// receipts emitted before a policy was successfully loaded.
     pub lifecycle_posture: Option<&'a str>,
+    /// The `--deny` advisory classes whose positive counts escalated this run
+    /// to a failure (#4631). The failure-reason label names these so
+    /// `Result: failed (...)` reports the actual trigger instead of only the
+    /// blocking status counts. Absent on every non-deny path.
+    pub denied_classes: Option<&'a [String]>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -662,6 +685,7 @@ impl<'a> ReportContext<'a> {
             federation: None,
             mirror_divergence_entries: None,
             blocking_divergence_entries: None,
+            federation_registry_invalid: false,
             git_sha: None,
             policy_digest: None,
             started_at: None,
@@ -671,6 +695,7 @@ impl<'a> ReportContext<'a> {
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
             lifecycle_posture: None,
+            denied_classes: None,
         }
     }
 
@@ -698,6 +723,11 @@ impl<'a> ReportContext<'a> {
         self.rust_files_considered = considered;
         self.rust_files_skipped = skipped;
         self.rust_files_with_parse_errors = parse_errors;
+        self
+    }
+
+    pub fn with_inventory_skipped_paths(mut self, count: usize) -> Self {
+        self.inventory = self.inventory.with_inventory_skipped_paths(count);
         self
     }
 }

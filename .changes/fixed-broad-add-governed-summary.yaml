@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  The broad (`--glob`) `add --summary-format json` route now emits the
+  same governed `cargo-allow.add.v1` schema as the single-entry route,
+  replacing the undocumented hand-rolled envelope that failed the
+  published schema and claimed a redundant `action` of `"write"` even
+  when its own mutation receipt reported `stdout` (#4604). The route is
+  marked inside the governed shape — `selected_finding` (top level and
+  in `summary`) is null, `allow_entry.glob` carries the glob, and
+  `allow_entry.occurrence_limit` (new optional schema field) carries the
+  ratchet floor — while the mutation receipt's `result` remains the
+  single source of write posture; there is no `action` field to drift.

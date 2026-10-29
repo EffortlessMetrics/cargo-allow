@@ -347,10 +347,16 @@ pub use exact_candidate_receipt_v2::{
 
 pub use github_pr_check_v1::{
     BaseScanCompletenessV1, CargoAllowGitHubPrAnnotationV1, CargoAllowGitHubPrCheckReceiptV1,
-    CargoAllowGitHubPrCheckV1, GITHUB_PR_CHECK_V1_SCHEMA_ID, GITHUB_PR_CHECK_V1_SCHEMA_VERSION,
-    GitHubPrAnnotationClassV1, GitHubPrCheckResultV1, GitHubPrCheckSubjectV1,
-    GitHubPrDiffReportViewV1, GitHubPrDiffViewV1, GitHubPrFindingChangeRowViewV1,
-    GitHubPrInventoryViewV1, project_github_pr_check, validate_github_pr_check_v1,
+    CargoAllowGitHubPrCheckV1, GITHUB_PR_CHECK_PROVIDER_OUTCOME_NOT_ATTEMPTED,
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_PROVIDER_UNAVAILABLE,
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLICATION_FAILED,
+    GITHUB_PR_CHECK_PROVIDER_OUTCOME_PUBLISHED, GITHUB_PR_CHECK_PROVIDER_OUTCOMES_V1,
+    GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_ID, GITHUB_PR_CHECK_RECEIPT_V1_SCHEMA_VERSION,
+    GITHUB_PR_CHECK_V1_SCHEMA_ID, GITHUB_PR_CHECK_V1_SCHEMA_VERSION, GitHubPrAnnotationClassV1,
+    GitHubPrCheckResultV1, GitHubPrCheckSubjectV1, GitHubPrDiffReportViewV1, GitHubPrDiffViewV1,
+    GitHubPrFindingChangeRowViewV1, GitHubPrInventoryViewV1, build_github_pr_check_receipt,
+    project_github_pr_check, receipt_matches_current, validate_github_pr_check_receipt_v1,
+    validate_github_pr_check_v1,
 };
 
 pub use github_release_checkpoint_v1::{

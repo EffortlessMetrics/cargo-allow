@@ -129,12 +129,28 @@ fn add_schema_locks_selected_finding_and_review_contract() {
         "add allow_entry evidence_count should be an integer"
     );
 
+    // #4604: the broad (--glob) route emits the governed shape with a null
+    // selected_finding, so the property stays required but admits null next
+    // to the finding rows.
+    let selected_finding_property =
+        required_schema_pointer("add", &schema, "/properties/selected_finding/anyOf/0/$ref");
+    assert_eq!(
+        selected_finding_property.as_str().map(str::to_string),
+        Some("#/$defs/finding".to_string()),
+        "add selected_finding should use finding rows"
+    );
     assert_eq!(
         schema
-            .pointer("/properties/selected_finding/$ref")
+            .pointer("/properties/selected_finding/anyOf/1/type")
             .and_then(Value::as_str),
-        Some("#/$defs/finding"),
-        "add selected_finding should use finding rows"
+        Some("null"),
+        "add selected_finding should admit the broad-route null"
+    );
+    assert!(
+        required_schema_pointer("add", &schema, "/properties/selected_finding")
+            .get("anyOf")
+            .is_some(),
+        "add selected_finding should keep its anyOf route marker"
     );
     let selected_finding = required_schema_pointer("add", &schema, "/$defs/finding");
     assert_eq!(

@@ -32,10 +32,17 @@ pub(crate) fn select_add_finding<'a>(
             CargoAllowErrorKind::Usage,
             format!(
                 "no current {} finding found near {}:{}; \
-                 run `cargo-allow check --kind {} --format json` to list current findings, \
-                 or use `--include-untracked` if the source file is not git-tracked",
+                     run `cargo-allow check --kind {} --format json` to list current findings, \
+                     or use `--include-untracked` if the source file is not git-tracked",
                 kind.kind, normalized_path, line, kind.kind
             ),
+        )
+        // #4610: the message already carries the listing remedy; the typed
+        // next step complements it with what to do next instead of the
+        // contradictory generic "review the command syntax" line.
+        .with_next_step(
+            "pass the exact --line of one of the listed findings, \
+                 or pass a different --kind when the occurrence belongs to another finding class.",
         ));
     };
     let tied = candidates
@@ -47,10 +54,17 @@ pub(crate) fn select_add_finding<'a>(
             CargoAllowErrorKind::Usage,
             format!(
                 "ambiguous add request: {tied} findings are equally near {}:{}; \
-                 specify an exact --line that matches only one finding",
+                     specify an exact --line that matches only one finding",
                 normalized_path, line
             ),
-        ));
+        )
+        // #4610: complement the in-message remedy with the read-only way
+        // to find the exact line numbers, not the generic syntax line.
+        .with_next_step(format!(
+            "run `cargo-allow check --kind {} --format json` to see the exact line numbers \
+                 near {}:{}, then pass one of them.",
+            kind.kind, normalized_path, line
+        )));
     }
     Ok((index, finding))
 }
@@ -165,6 +179,59 @@ pub(super) fn count_in_scope_findings(findings: &[Finding], entry: &AllowEntry) 
         .iter()
         .filter(|finding| score_match(entry, finding).is_some())
         .count() as u32
+}
+
+/// #4603: a broad `add --glob` re-run against a scope the live ledger already
+/// baselines with an identical broad selector must not append a duplicate
+/// entry. Two entries with the same kind, family, glob, and callee match every
+/// in-scope finding at the same [`allow_match::MatchStrength`] tier, so the
+/// evaluation ties them and flips the scope to `Ambiguous`, silently
+/// converting a satisfied ledger into an ambiguous/blocking one. The refusal
+/// carries the same typed Usage posture the `--path`/`--line` branch applies
+/// via [`ensure_addable_outcome`], and names the entry that already covers
+/// the scope.
+///
+/// #4603 judgment — what stays writable:
+///
+/// * Coverage by a *differently-shaped* entry (an anchored self-receipt or a
+///   `--path`/`--line` receipt) does not refuse: an anchored selector
+///   outscores a broad one (`ExactOccurrence` > `Structural`/`ScopedFamily`),
+///   so the winner stays unique and no tie is created. This is the documented
+///   adoption flow where `init` self-receipts the ledger and a later broad
+///   `--glob` baseline extends coverage over the rest of the scope.
+/// * A partially-matched scope with no identical baseline keeps the current
+///   write behavior, pinning the full in-scope count as `occurrence_limit`
+///   ([`count_in_scope_findings`]): the #2056 ratchet floor is defined over
+///   the scope, not over the unmatched remainder. Only an identical broad
+///   shape would immediately duplicate, and that is exactly the refused case.
+pub(super) fn ensure_broad_scope_addable(
+    cfg: &AllowConfig,
+    entry: &AllowEntry,
+) -> CargoAllowResult<()> {
+    // Same selector shape means the same match set at the same tier, so an
+    // existing shape-identical entry already receipts every finding this add
+    // would baseline — re-running the same broad add is the defect scenario.
+    let duplicate = cfg.allow.iter().find(|existing| {
+        existing.kind == entry.kind
+            && existing.family == entry.family
+            && existing.glob.as_deref() == entry.glob.as_deref()
+            && existing.selector.callee == entry.selector.callee
+    });
+    let Some(existing) = duplicate else {
+        return Ok(());
+    };
+    Err(CargoAllowError::with_kind(
+        CargoAllowErrorKind::Usage,
+        format!(
+            "broad scope `{scope}` is already baselined by existing entry `{id}` with the same \
+             broad selector (kind {kind}, family, glob, callee); appending another identical \
+             baseline would match the same findings with equal score and flip them to \
+             `ambiguous`; use list or explain before editing policy",
+            scope = entry.path_or_glob(),
+            id = existing.id,
+            kind = entry.kind,
+        ),
+    ))
 }
 
 pub(super) fn next_allow_id(cfg: &AllowConfig) -> String {

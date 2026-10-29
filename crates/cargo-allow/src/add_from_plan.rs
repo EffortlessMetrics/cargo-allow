@@ -1,6 +1,16 @@
 //! `cargo-allow add --from-plan <path>`: apply a versioned add-finding plan
 //! (produced by `why --plan`) to the live ledger as a fail-closed transaction.
 //!
+//! The plan envelope's field set and required-field presence are enforced
+//! exactly as published in `docs/schemas/add-finding-plan.schema.json`
+//! (#4605): unknown fields are rejected (within a frozen schema_version they
+//! are schema-invalid), and every schema-required field must be present.
+//! Nested content of the display/metadata fields is parsed for presence and
+//! JSON type only — the applier never consumes it, and the published types
+//! for that content stay the producer's obligation (validated by the
+//! producer-side contract test). Forward-compatible producers bump
+//! `schema_version`, which the generation gate rejects.
+//!
 //! The plan carries **coordinates and identity bindings only** — never operator
 //! judgment. This command re-scans the live source tree, recomputes every
 //! binding, and refuses to touch policy unless the exact finding recorded in the
@@ -48,24 +58,99 @@ use effortless_repo_edit::{
     apply_single_target_with_target_and_expected_digest,
 };
 
-/// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope. `deny_unknown_fields`
-/// The parse models exactly the fields the transaction reads; other v1 fields
-/// (proof plans, candidates, human-readable inventory, claim boundary) are
-/// intentionally ignored here — the load-bearing strictness is the explicit
-/// generation check in [`validate_plan_generation`] plus recomputing and
-/// comparing every binding, not tolerating a display field we never consult.
-/// Missing or mistyped required fields still fail the parse.
+/// Strictly-parsed `cargo-allow.add-finding-plan.v1` envelope (#4605).
+///
+/// The accepted envelope matches the published
+/// `docs/schemas/add-finding-plan.schema.json` contract at the envelope
+/// level: field set and required-field presence. Within a frozen
+/// `schema_version` document, the schema's `additionalProperties: false` makes
+/// any unknown field schema-invalid by definition, so `deny_unknown_fields`
+/// rejects it here too; a forward-compatible producer must bump
+/// `schema_version`, which the version gate in [`validate_plan_generation`]
+/// rejects. Every field in the schema's `required` list is a required struct
+/// field here, so the applier's acceptance contract matches the guarantee a
+/// schema-validating producer already promises. The nested content of the
+/// display/metadata fields is parsed for presence and JSON type only — the
+/// published types for that content stay the producer's obligation, pinned by
+/// the producer-side schema-validation test. `evaluation` is declared in
+/// the schema's `properties` but not `required`, so it is accepted when
+/// present and tolerated when absent — but an undeclared field is still
+/// unknown and rejected.
+///
+/// The load-bearing strictness is unchanged: the explicit generation check in
+/// [`validate_plan_generation`] plus recomputing and comparing every binding.
+/// The added display/metadata fields are parsed for presence and type only;
+/// approval metadata is still never deserialized out of the plan.
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct LoadedPlan {
     schema_version: u32,
     schema_id: String,
     tool: String,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11357: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    tool_version: Value,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11358: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    claim_boundary: Value,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11359: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    scanner_limitations: Value,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11360: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    inventory: Value,
+    /// Declared in the schema's `properties` but absent from its `required`
+    /// list, so a schema-valid plan may omit it; presence is tolerated and the
+    /// content is not consumed by the applier.
+    #[serde(default)]
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11361: schema-optional evaluation object tolerated for producer compatibility (#4605); the applier never consumes this field"
+    )]
+    evaluation: Value,
     command: String,
     repository: LoadedRepository,
     inventory_basis_identity: String,
     policy: LoadedPolicy,
     finding: LoadedFinding,
     outcome: LoadedOutcome,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11362: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    candidates: Value,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11363: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    required_fields: Value,
+    /// Presence required by the published schema; content is not consumed by
+    /// the applier.
+    #[expect(
+        dead_code,
+        reason = "policy:allow-11364: presence required by the published add-finding-plan schema (#4605); the applier never consumes this field"
+    )]
+    proof_plans: Value,
 }
 
 #[derive(Deserialize)]
@@ -376,6 +461,12 @@ pub(super) fn cmd_add_from_plan(args: &AddArgs, plan_path: &Path) -> CargoAllowR
         expires: args.expires.clone(),
     });
     let added_allow_id = entry.id.clone();
+    // #4628: same advisory as cmd_add — warn (never refuse) when the applied
+    // entry pins selector fields that identity redaction clears before
+    // matching.
+    if let Some(warning) = crate::redaction_disclosure::redaction_dead_entry_add_warning(&entry) {
+        eprintln!("{warning}");
+    }
     cfg.allow.push(entry.clone());
 
     // Validate the complete policy, then atomically replace the discovered

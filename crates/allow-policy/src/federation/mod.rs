@@ -20,8 +20,8 @@ pub use divergence::{
     FederationDivergenceKind, FederationDivergenceRecord, detect_mirror_divergences,
 };
 pub use evaluate::{
-    FEDERATION_VERSION, FederationEvaluation, LedgerContributor, PrecedenceTier,
-    SOURCE_EXCEPTION_LANE, SPEC_SYSTEM_LANE, canonical_ledgers_in_precedence_order,
+    FEDERATION_VERSION, FederationEvaluation, FederationRegistryValidity, LedgerContributor,
+    PrecedenceTier, SOURCE_EXCEPTION_LANE, SPEC_SYSTEM_LANE, canonical_ledgers_in_precedence_order,
     evaluate_source_exception_policy, evaluate_spec_system_ledger,
     federation_has_blocking_divergence, ledger_contributors_from_config,
     ledger_provenance_from_entry, mirror_divergence_advisory_count,

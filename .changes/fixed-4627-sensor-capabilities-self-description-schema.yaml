@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  The `cargo-allow capabilities --format json` sensor catalog is now published
+  as a self-description JSON Schema with a catalog row
+  (`docs/schemas/sensor-capabilities.schema.json`, identity
+  `cargo-allow.sensor-capabilities.v1`) instead of being an undocumented
+  emission. The payload shape is unchanged; the schema is closed, and the
+  documented route is self-description on the tool-identity precedent — not a
+  governed artifact — so consumers key on the root `schema` value (#4627).

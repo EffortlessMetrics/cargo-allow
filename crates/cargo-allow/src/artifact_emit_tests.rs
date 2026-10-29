@@ -21,6 +21,7 @@ fn config<'a>(identity: &'a str, source: &'a str) -> EmitConfig<'a> {
         blocking: false,
         resolved_config_identity: identity,
         source_subject: source,
+        mode: Some("no-new"),
     }
 }
 
@@ -192,6 +193,16 @@ fn artifact_dir_separation_covers_spelling_and_none_cases() {
     assert!(ensure_artifact_dir_separate(&root.join("policy"), Some(&policy),).is_err());
     assert!(ensure_artifact_dir_separate(&root.join("policy/../policy"), Some(&policy),).is_err());
 
+    // A missing directory followed by `..` resolves through the fold: the
+    // OS creates the missing segment then pops it, so the guard must treat
+    // `newdir/..` as the parent (#4583 review).
+    assert!(ensure_artifact_dir_separate(&root.join("newdir/../policy"), Some(&policy),).is_err());
+
+    // A missing directory followed by `..` resolves through the fold: the
+    // OS creates the missing segment then pops it, so the guard must treat
+    // `newdir/..` as the parent (#4583 review).
+    assert!(ensure_artifact_dir_separate(&root.join("newdir/../policy"), Some(&policy),).is_err());
+
     // A separate directory is accepted.
     assert!(
         ensure_artifact_dir_separate(std::path::Path::new("artifacts"), Some(&policy),).is_ok()
@@ -242,4 +253,79 @@ fn artifact_dir_separation_resolves_symlinks_in_existing_prefixes() {
     assert!(ensure_artifact_dir_separate(&root.join("link/policy"), Some(&policy),).is_err());
 
     let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn best_effort_canonical_degrades_gracefully_on_unresolvable_inputs() {
+    // #4585 codecov: the defensive arms (pop past the filesystem root, and
+    // an empty/unresolvable walk input) must return without panicking so
+    // the guard degrades to a no-match instead of failing the command.
+    let empty = best_effort_canonical(std::path::Path::new(""));
+    assert!(empty.as_os_str().is_empty() || empty.as_os_str() == ".");
+
+    // Leading `..` segments past the filesystem root cannot resolve; the
+    // walk returns the lexically folded input rather than panicking.
+    let escaped = best_effort_canonical(std::path::Path::new("/../../etc"));
+    assert!(escaped.ends_with("etc"));
+
+    // An empty walk input degrades to the empty path.
+    assert_eq!(
+        best_effort_canonical(std::path::Path::new("")),
+        std::path::Path::new("")
+    );
+}
+
+#[test]
+fn summary_ref_requires_a_component_boundary_under_the_root() -> Result<(), String> {
+    // PR #4614 review: a sibling directory sharing the root's name prefix
+    // ("/work/proj-other" vs root "/work/proj") is not under the root — the
+    // ref must fall back to the caller's path, not a truncated fragment.
+    let base = std::env::temp_dir().join(format!(
+        "cargo-allow-summary-boundary-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos()
+    ));
+    let root = base.join("proj");
+    let sibling = base.join("proj-other");
+    std::fs::create_dir_all(root.join("target")).map_err(|error| error.to_string())?;
+    std::fs::create_dir_all(&sibling).map_err(|error| error.to_string())?;
+    let sidecar = sibling.join("summary.json");
+    std::fs::write(&sidecar, b"{}\n").map_err(|error| error.to_string())?;
+
+    let mut inventory_root = root
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    while inventory_root.ends_with('/') {
+        inventory_root.pop();
+    }
+    let report = allow_report::ReportContext::source_syntax(
+        "source_syntax",
+        Some(inventory_root.as_str()),
+        None,
+        None,
+    );
+    let ctx = ArtifactEmitContext {
+        command: "check",
+        findings: &[],
+        outcomes: &[],
+        failed: false,
+        report_context: &report,
+        receipt_context: None,
+    };
+    let reference = summary_ref_text(&sidecar, &ctx);
+    let _ = std::fs::remove_dir_all(&base);
+    let as_given = sidecar
+        .to_string_lossy()
+        .replace(std::path::MAIN_SEPARATOR, "/");
+    if reference != as_given {
+        // A sibling prefix must never root-relativize: the buggy strip
+        // returned the fragment "-other/summary.json" here.
+        return Err(format!(
+            "sibling sidecar must be cited as given ({as_given}), got: {reference}"
+        ));
+    }
+    Ok(())
 }

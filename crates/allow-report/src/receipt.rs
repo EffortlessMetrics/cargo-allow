@@ -253,6 +253,12 @@ fn inventory_value(context: ReportContext<'_>) -> Value {
             Value::String(completeness.to_string()),
         );
     }
+    if inventory.inventory_skipped_paths > 0 {
+        value.insert(
+            "inventory_skipped_paths".to_string(),
+            Value::from(inventory.inventory_skipped_paths),
+        );
+    }
     if let Some(source_identity) = inventory.source_identity {
         value.insert(
             "source_identity".to_string(),
@@ -356,6 +362,10 @@ fn federation_value(federation: FederationReportContext<'_>) -> Value {
     value.insert(
         "precedence_applied".to_string(),
         optional_string_value(federation.precedence_applied),
+    );
+    value.insert(
+        "registry_validity".to_string(),
+        optional_string_value(federation.registry_validity),
     );
 
     let contributors = federation

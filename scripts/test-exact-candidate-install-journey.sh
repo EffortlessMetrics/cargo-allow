@@ -5,6 +5,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT}"
 
+python3 "${ROOT}/scripts/test-exact-candidate-install-journey.py" -v
+
 validator="${ROOT}/scripts/validate-exact-candidate-install-journey.py"
 schema="${ROOT}/docs/dogfood/fixtures/release/exact-candidate-install-journey.v1.schema.json"
 fixture="${ROOT}/docs/dogfood/fixtures/release/candidate-crate-set.toml"

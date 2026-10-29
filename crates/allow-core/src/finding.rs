@@ -164,10 +164,24 @@ impl StructuralIdentity {
 
     /// Redact the source-text-bearing identity fields (`symbol`, `callee`,
     /// `container`, `module`, `macro_name`, `lint`) by clearing them, while
-    /// preserving the structural anchors (`normalized_snippet_hash`,
+    /// preserving the structural anchors (`normalized_snippet_hash`, slot-form
     /// fingerprints, `ast_kind`, `line_hint`, `column_hint`) that matching
     /// relies on. Opt-in for CI artifacts where source-text-derived fields are
     /// an info-leak surface (#1920).
+    ///
+    /// Fingerprints (#4629): a `param:N` slot fingerprint names a parameter
+    /// position in the enclosing signature, not source text, so it is preserved
+    /// and receipts anchored on it stay stable across redacted and unredacted
+    /// scans. Any other receiver/target fingerprint value is normalized raw
+    /// node text (up to 80/40 chars) and is cleared like the other
+    /// source-text fields. Hashing the raw text instead was rejected: the
+    /// ledger-side selector would still carry the raw text, so the hash could
+    /// only match if every policy-load site re-hashed entry selectors under
+    /// one mode — a scattered, mode-aware transform whose missed call sites
+    /// would silently dead-end entries, exactly the defect class this repair
+    /// closes (#4628). Cleared raw-text fingerprints are disclosed by the
+    /// redaction guard instead: entries pinning them require an unredacted
+    /// scan.
     pub fn redact_source_text_fields(&mut self) {
         self.symbol = None;
         self.callee = None;
@@ -175,6 +189,8 @@ impl StructuralIdentity {
         self.module = None;
         self.macro_name = None;
         self.lint = None;
+        redact_fingerprint_field(&mut self.receiver_fingerprint);
+        redact_fingerprint_field(&mut self.target_fingerprint);
     }
 
     pub fn stable_key(&self) -> String {
@@ -224,6 +240,41 @@ fn truncate_identity_field(value: &mut String) {
         end -= 1;
     }
     value.truncate(end);
+}
+
+/// Whether identity redaction was requested for this process
+/// (`CARGO_ALLOW_REDACT_IDENTITY=1`, #1920).
+///
+/// Single source of truth shared by the finding builder, the persistent
+/// scan-cache key, and the redaction disclosure guard (#4628): findings and
+/// ledger entries are only comparable within one mode, so every consumer must
+/// observe the same setting.
+pub fn identity_redaction_requested() -> bool {
+    std::env::var("CARGO_ALLOW_REDACT_IDENTITY").as_deref() == Ok("1")
+}
+
+/// Whether a fingerprint value is a structural slot form (`param:N`) rather
+/// than source text (#4629).
+///
+/// Parameter-receiver fingerprints record a position in the enclosing
+/// function's signature, so they carry no source text and are stable across
+/// redacted and unredacted scans. Every other fingerprint value is normalized
+/// raw node text and is an info-leak surface under redaction.
+pub fn is_slot_form_fingerprint(value: &str) -> bool {
+    match value.strip_prefix("param:") {
+        Some(index) => !index.is_empty() && index.bytes().all(|byte| byte.is_ascii_digit()),
+        None => false,
+    }
+}
+
+/// Clear one fingerprint field unless it is the structural slot form that
+/// survives redaction (#4629).
+fn redact_fingerprint_field(field: &mut Option<String>) {
+    if let Some(value) = field
+        && !is_slot_form_fingerprint(value)
+    {
+        *field = None;
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

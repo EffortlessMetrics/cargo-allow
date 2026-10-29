@@ -48,7 +48,7 @@ fn migrate_schema_locks_policy_migration_summary_contract() {
         "migrate",
         &schema,
         "/properties/input/properties/kind/enum",
-        &["from", "repo_policy"],
+        &["from", "repo_policy", "bespoke"],
     );
     assert_eq!(
         schema

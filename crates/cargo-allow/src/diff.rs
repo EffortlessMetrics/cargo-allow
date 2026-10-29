@@ -32,7 +32,7 @@ use crate::{
     EvidenceReportSummary, EvidenceValidationMode, InventoryFacts, OutputFormat,
     SourceTreeReportContext, assert_path_within_root, current_dir, emit_text,
     git_relative_config_path, load_read_only_world_with_selected_policy, parse_kind_filter,
-    policy_baseline_debt_entries, report_config, write_file,
+    policy_baseline_debt_entries, reject_compat_only_kind_filter, report_config, write_file,
 };
 
 struct CurrentWorld {
@@ -44,6 +44,9 @@ struct CurrentWorld {
 }
 
 pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
+    // #4632: `diff` has no compat lane, so a compat-only kind filter could
+    // only describe a diff that scanned nothing for that kind.
+    reject_compat_only_kind_filter("diff", false, args.kind.as_deref())?;
     // Auto-detect merge-base when --base is omitted (#2788).
     let base = match &args.base {
         Some(base) => base.clone(),
@@ -83,6 +86,16 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             .as_ref()
             .and_then(|world| world.selected_policy_path.as_deref()),
     )?;
+    // #4592: refuse an artifact directory that would contain the selected
+    // policy BEFORE any report/receipt output is written, so a refusal
+    // never leaves success-shaped evidence on disk.
+    if let (Some(artifact_dir), Some(_)) = (&args.artifact_dir, &args.emit) {
+        artifact_emit::ensure_artifact_dir_separate(artifact_dir, Some(&root.join(&policy_path)))
+            .map_err(|error| {
+            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+        })?;
+    }
+
     let base_cfg = allow_diff::policy_config_at_revision(&root, &base, &policy_path)?
         .unwrap_or_else(AllowConfig::empty);
     let head_cfg_for_diff = if let Some(head) = &args.head {
@@ -463,12 +476,16 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        artifact_emit::ensure_artifact_dir_separate(artifact_dir, Some(&root.join(&policy_path)))
-            .map_err(|error| {
-            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-        })?;
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
+        // (#4592: the collision guard runs before the report/receipt writes,
+        // so a refusal writes no new outputs beside the live policy.)
+        // The parse is deliberately late: the router's usage-failure contract
+        // requires the evaluation flow's route outputs (the report, the
+        // receipt, the sidecar) to exist before the failure lands. The
+        // sidecar itself is safe either way — the CLI error path writes an
+        // error-classified summary for any failure (#4393) — but the parse
+        // must not preempt the flow that produces the rest.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
@@ -495,6 +512,9 @@ pub(crate) fn cmd_diff(args: &DiffArgs) -> CargoAllowResult<()> {
                     .policy_digest_text()
                     .unwrap_or_default(),
                 source_subject: &format!("diff:{}", args.base.as_deref().unwrap_or("HEAD")),
+                // Diff has no mode; the base revision is recorded in
+                // source_subject, not here (#4597).
+                mode: None,
             },
             &emit_ctx,
         )

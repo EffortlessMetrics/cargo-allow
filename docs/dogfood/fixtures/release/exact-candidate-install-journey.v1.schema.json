@@ -72,9 +72,13 @@
         "package_set_receipt_sha256",
         "journey_receipt_sha256",
         "candidate_fixture_sha256",
+        "candidate_topology_sha256",
+        "installed_binary_sha256",
         "crate_order"
       ],
       "properties": {
+        "candidate_topology_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "installed_binary_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "package_set_schema_id": {
           "const": "cargo-allow.exact-candidate-package-set.v1"
         },
@@ -107,8 +111,7 @@
         "method",
         "version_output",
         "source_checkout_denied",
-        "source_hidden_journey_passed",
-        "no_undeclared_source_reads",
+        "observed_source_fallback_paths_hidden",
         "path_redacted"
       ],
       "properties": {
@@ -117,8 +120,7 @@
         },
         "version_output": { "type": "string", "minLength": 1 },
         "source_checkout_denied": { "const": true },
-        "source_hidden_journey_passed": { "const": true },
-        "no_undeclared_source_reads": { "const": true },
+        "observed_source_fallback_paths_hidden": { "const": true },
         "path_redacted": { "const": true }
       }
     },
@@ -139,17 +141,34 @@
         },
         "artifact_schema_ids": {
           "type": "array",
-          "minItems": 5,
+          "minItems": 6,
           "items": { "type": "string", "minLength": 1 }
         },
         "steps_expected": {
           "type": "array",
-          "minItems": 11,
+          "const": [
+            "version",
+            "doctor_no_policy",
+            "audit_with_finding",
+            "bootstrap_propose_write",
+            "check_no_new_pass",
+            "list_explain_worklist",
+            "refresh_location_drift_preview_write",
+            "diff_against_exact_base",
+            "prune_stale_preview_write",
+            "final_check_no_new",
+            "policy_rollback_after_prune",
+            "second_finding_why_plan_add",
+            "targeted_recheck_after_add",
+            "list_wide_projection",
+            "clean_repo_init_audit_check"
+          ],
+          "minItems": 15,
           "items": { "type": "string", "minLength": 1 }
         },
         "steps_executed": {
           "type": "array",
-          "minItems": 11,
+          "minItems": 15,
           "items": {
             "type": "object",
             "additionalProperties": false,

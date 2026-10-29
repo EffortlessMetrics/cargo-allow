@@ -37,7 +37,8 @@ pub use error::{
 };
 pub use finding::{
     Finding, FindingKind, MAX_IDENTITY_FIELD_LEN, STRUCTURAL_IDENTITY_SCHEMA_ID, Span,
-    StructuralIdentity, finding_identity_key,
+    StructuralIdentity, finding_identity_key, identity_redaction_requested,
+    is_slot_form_fingerprint,
 };
 pub use fingerprint::{
     allow_entry_content_fingerprint, normalize_snippet, sha256_v1_bytes, stable_hash_hex,

@@ -4,7 +4,12 @@ use crate::artifact_contract_support::{assert_inventory_contract, parse_json_art
 use serde_json::Value;
 
 #[test]
-fn render_broad_add_summary_json_escapes_string_fields() {
+fn render_broad_add_summary_json_matches_the_governed_schema() -> Result<(), String> {
+    // #4604: the broad (glob) route emits the same governed
+    // `cargo-allow.add.v1` shape as the path/line route — no second,
+    // drift-prone hand-rolled shape. The route is marked by a null
+    // `selected_finding`, and the mutation receipt's own `result` is the
+    // single source of posture truth (no redundant `action` field).
     let mut entry = allow_entry_broad(AddBroadRequest {
         id: "allow-\\\"quoted".to_string(),
         kind: FindingKind::Panic,
@@ -20,13 +25,14 @@ fn render_broad_add_summary_json_escapes_string_fields() {
     });
     entry.occurrence_limit = Some(2);
 
-    let json = render_add_summary_broad_json(
+    let json = render_add_summary_json(
         &entry,
+        None,
         Some("policy/\\\"quoted\\\\output.toml"),
         true,
         false,
         false,
-        &AddContext {
+        AddContext {
             inventory: allow_report::InventoryContext::source_syntax(
                 "git_tracked",
                 Some("H:/Code/Rust/cargo-allow"),
@@ -36,28 +42,64 @@ fn render_broad_add_summary_json_escapes_string_fields() {
             config_source: Some("policy/allow.toml".to_string()),
         },
     );
-    let value: Value = serde_json::from_str(&json).unwrap_or_else(|err| {
-        std::panic::panic_any(format!(
-            "broad add summary should parse as JSON: {err}\n{json}"
-        ))
-    });
+    // The governed schema must accept the broad route's summary outright.
+    let value = parse_json_artifact("add", &json, allow_report::ADD_SCHEMA_ID, "add");
 
     assert_eq!(
-        value.get("id").and_then(Value::as_str),
-        Some(entry.id.as_str())
+        value.pointer("/selected_finding").map(|v| v.is_null()),
+        Some(true),
+        "the broad route marks itself with a null selected_finding: {json}"
     );
     assert_eq!(
-        value.get("scope").and_then(Value::as_str),
-        Some(entry.path_or_glob().as_str())
+        value.pointer("/summary/selected_finding"),
+        Some(&Value::Null),
+        "the summary carries the same null route marker: {json}"
     );
     assert_eq!(
-        value.get("policy_output").and_then(Value::as_str),
-        Some("policy/\\\"quoted\\\\output.toml")
+        value.pointer("/allow_entry/glob").and_then(Value::as_str),
+        entry.glob.as_deref(),
+        "the glob scope lives in the governed allow_entry: {json}"
     );
     assert_eq!(
-        value.get("action").and_then(Value::as_str),
-        Some("overwrite")
+        value
+            .pointer("/allow_entry/occurrence_limit")
+            .and_then(Value::as_u64),
+        entry.occurrence_limit.map(u64::from),
+        "the broad ratchet floor rides the governed allow_entry: {json}"
     );
+    assert_eq!(
+        value.pointer("/options/force").and_then(Value::as_bool),
+        Some(true),
+        "options carry the force posture: {json}"
+    );
+    assert_eq!(
+        value
+            .pointer("/mutation_receipt/result")
+            .and_then(Value::as_str),
+        Some("written"),
+        "the receipt's own result is the posture truth: {json}"
+    );
+    assert_eq!(
+        value.get("action"),
+        None,
+        "the redundant drift-prone action field is gone: {json}"
+    );
+    validate_add_schema(&json, &value)?;
+    Ok(())
+}
+
+/// Full governed-schema validation for an add summary: `parse_json_artifact`
+/// pins identity fields, and this rejects extra/invalid fields against the
+/// checked-in `docs/schemas/add.schema.json` itself (PR #4619 review).
+fn validate_add_schema(json: &str, value: &Value) -> Result<(), String> {
+    let schema =
+        serde_json::from_str::<Value>(include_str!("../../../docs/schemas/add.schema.json"))
+            .map_err(|error| format!("add schema JSON: {error}"))?;
+    let validator = jsonschema::validator_for(&schema)
+        .map_err(|error| format!("add schema compilation: {error}"))?;
+    validator.validate(value).map_err(|error| {
+        format!("add summary does not validate against the governed schema: {error}\n{json}")
+    })
 }
 
 #[test]
@@ -105,7 +147,7 @@ fn render_broad_add_summary_human_styles_fixed_baseline_marker() {
 }
 
 #[test]
-fn render_add_summary_json_records_entry_and_selected_finding() {
+fn render_add_summary_json_records_entry_and_selected_finding() -> Result<(), String> {
     let mut finding = test_finding_at_line(
         FindingKind::Panic,
         Some("unwrap"),
@@ -130,7 +172,7 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
 
     let json = render_add_summary_json(
         &entry,
-        &finding,
+        Some(&finding),
         Some("policy/allow.proposed.toml"),
         true,
         false,
@@ -197,6 +239,8 @@ fn render_add_summary_json_records_entry_and_selected_finding() {
         Some("parser"),
         "add selected finding source package"
     );
+    validate_add_schema(&json, &value)?;
+    Ok(())
 }
 
 #[test]

@@ -170,6 +170,95 @@ fn advisory_only_check_fails_when_denied_occurrence_headroom_is_positive() {
     remove_temp_root(root);
 }
 
+/// #4631: a `--deny` escalation must name the denied class in the human
+/// `Result: failed (...)` label. The label previously counted only the
+/// blocking statuses, so `--mode audit --deny stale` exited 1 while blaming
+/// counts that never gated the run.
+#[test]
+fn audit_deny_failure_label_names_the_denied_class() {
+    let root = temp_root("deny-label-names-class");
+    write_stale_deny_label_fixture(&root);
+    // One unreceipted tracked file so the run also carries a blocking `new`
+    // count: the label must name the denied class, not (only) that count.
+    fs::write(root.join("docs/unreceipted.md"), "# unreceipted\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write unreceipted doc: {err}")));
+
+    let result = cargo_allow_command()
+        .arg("check")
+        .arg("--root")
+        .arg(&root)
+        .arg("--mode")
+        .arg("audit")
+        .arg("--deny")
+        .arg("stale")
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run cargo-allow check: {err}")));
+
+    assert_status("check", &result, false);
+    let stdout = String::from_utf8_lossy(&result.stdout).into_owned();
+    assert!(
+        stdout.contains("Result: failed (") && stdout.contains("stale, denied"),
+        "the failure label should name the denied class:\n{stdout}"
+    );
+
+    remove_temp_root(root);
+}
+
+/// A receipted doc plus one entry whose target no longer exists, so the
+/// unused-entry projection reports exactly one `stale`.
+fn write_stale_deny_label_fixture(root: &std::path::Path) {
+    let review_after = SimpleDate::today_utc_approx().add_days(30);
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create docs dir: {err}")));
+    fs::write(root.join("docs/policy.md"), "# Policy\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("write doc fixture: {err}")));
+    fs::write(
+        root.join("policy/allow.toml"),
+        format!(
+            r#"policy = "cargo-allow"
+
+[[allow]]
+id = "allow-doc"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/policy.md"
+owner = "core"
+classification = "fixture"
+reason = "fixture policy documentation"
+evidence = ["test:deny_escalation_output"]
+created = "2026-06-01"
+review_after = "{review_after}"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/policy.md"
+target_fingerprint = "md"
+glob = "docs/policy.md"
+
+[[allow]]
+id = "allow-removed"
+kind = "non_rust_file"
+family = "documentation"
+path = "legacy/removed.md"
+owner = "core"
+classification = "fixture"
+reason = "fixture entry for a file that no longer exists"
+created = "2026-06-01"
+review_after = "{review_after}"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "legacy/removed.md"
+target_fingerprint = "md"
+glob = "legacy/removed.md"
+"#
+        ),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("write policy: {err}")));
+}
+
 fn write_counted_headroom_fixture(root: &std::path::Path) {
     let today = SimpleDate::today_utc_approx();
     let created = today;

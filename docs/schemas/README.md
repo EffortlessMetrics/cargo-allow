@@ -88,28 +88,26 @@ partial; #3876 owns single-resolution command consumption.
 | Stale prune preview/result | `cargo-allow.prune.v1` | `cargo-allow prune --stale --format json` |
 | Advisory drift refresh receipt | `cargo-allow.refresh.v1` | `cargo-allow refresh --allow-id <id> --format json` |
 | Baseline proposal summary | `cargo-allow.propose.v1` | `cargo-allow propose --summary-format json --summary-output <path>` |
-| Single-entry add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json --summary-output <path>` |
-| Broad-scope add summary (compact envelope, no schema contract) | — | `cargo-allow add --glob <glob> --summary-format json --summary-output <path>` |
+| Add summary | `cargo-allow.add.v1` | `cargo-allow add --summary-format json --summary-output <path>`; a broad `--glob` run marks the route with a null `selected_finding` and carries its ratchet floor as `allow_entry.occurrence_limit` |
 | Legacy migration summary | `cargo-allow.migrate.v1` | `cargo-allow migrate --summary-format json --summary-output <path>` |
 | Spec-system graph report | `cargo-allow.spec-system.v1` | `cargo-allow check --profile spec-system --format json`, `cargo-allow audit --profile spec-system --format json`, `cargo-allow worklist --profile spec-system --format json`, `cargo-allow doctor --profile spec-system --format json`, `cargo-allow explain <artifact-id> --profile spec-system --format json` |
 | Agent worklist | `cargo-allow.worklist.v1` | `cargo-allow worklist --format json` |
 | Lifecycle cadence | `cargo-allow.cadence.v1` | `cargo-allow cadence --format json` |
 | Common command summary | `cargo-allow.core-command-summary.v1` | `cargo-allow --command-summary-output <path> adopt`, `... doctor`, `... audit`, `... check`, `... diff --base <rev>`, `... init`, `... propose`, `... add ...`, `... refresh --allow-id <id>`, `... prune`, `... migrate --from <path>`, `... explain <id>`, `... why`, `... worklist` |
 
-### Broad-scope add summary envelope (#4570)
+### Broad-scope add summary (#4604)
 
-`add --glob` emits a compact JSON envelope instead of the single-entry
-`cargo-allow.add.v1` schema. It has no schema file and carries exactly these
-top-level fields: `id`, `kind`, `scope` (the `--glob`), `occurrence_limit`
-(the ratchet floor pinned to the current in-scope count), `policy_output`
-(the written target, or `"stdout"` when nothing was persisted — always
-`"stdout"` under `--dry-run`), `action` — one of `write` (default
-`--write`), `overwrite` (`--force` without `--dry-run`), or `dry-run`
-(`--dry-run` takes precedence over `--force`) — and `mutation_receipt`
-(the shared mutation-receipt envelope, whose `result` is `stdout` under
-`--dry-run`). Treat the envelope as positional documentation, not a
-governed schema: fields may be added, and consumers must branch on
-`action` and `mutation_receipt.result`, not on absent keys.
+`add --glob --summary-format json` emits the same governed
+`cargo-allow.add.v1` schema as the single-entry route; there is no second
+envelope. The route is marked inside the governed shape: `selected_finding`
+(top level and in `summary`) is `null`, `allow_entry.glob` carries the
+`--glob`, and `allow_entry.occurrence_limit` carries the ratchet floor
+pinned to the current in-scope count (#2056). There is no `action` field:
+the mutation receipt's own `result` is the single source of write posture
+(`"stdout"` when nothing was persisted, always under `--dry-run`), and the
+candidate/dry-run distinctions ride `options` (`policy_output`, `force`)
+plus the receipt's `next_commands`. Consumers must not branch on absent
+keys; branch on the receipt's `result` and the null `selected_finding`.
 
 ## Common command summary
 
@@ -279,6 +277,7 @@ The current V2 shape is defined by
 |---|---|---|
 | Tool identity | `cargo-allow.tool-identity.v1` | `cargo-allow tool identity --format json` |
 | [Provider descriptor](cargo-allow-provider-contract-v1.schema.json) | `proof.cargo-allow-provider-contract.v1` | `cargo-allow capabilities --provider-contract --format json` |
+| [Sensor capabilities](sensor-capabilities.schema.json) | `cargo-allow.sensor-capabilities.v1` | `cargo-allow capabilities --format json` |
 
 The tool-identity contract carries `schema_id`/`schema_version` for
 self-description but is **not** a governed artifact: it omits
@@ -297,6 +296,19 @@ with the Rust JSON Schema validator, rejects mutated output, and checks that
 catalog options fail without overwriting output. The existing sensor catalog
 remains a separate contract. Installed-provider negotiation and analysis remain
 under #2567/#3602; descriptor conformance alone does not prove interoperability.
+
+The sensor capabilities catalog
+([sensor-capabilities.schema.json](sensor-capabilities.schema.json)) is
+published as a self-description schema on the tool-identity precedent
+(#4627), not a governed artifact: the payload is discovery metadata about
+which sensors the binary advertises, not a scan result. It deviates from the
+governed artifact envelope by design. The identity root key is `schema`
+(holding `cargo-allow.sensor-capabilities.v1`), not `schema_id` plus
+`schema_version`; `claim_boundary` is a single boundary sentence string, not
+the governed claim-boundary flag array; and there is no `tool`, `command`, or
+`inventory` root. Consumers must select this contract by its `schema` value
+and must not treat catalog rows as findings, inventory, or any positive
+detection claim.
 
 ## Supporting harness receipts (not governed artifacts)
 
@@ -357,9 +369,12 @@ promote policy, authorize publication, or establish release readiness.
 - [migrate.schema.json](migrate.schema.json)
 - [spec-system.schema.json](spec-system.schema.json)
 - [worklist.schema.json](worklist.schema.json)
+- [index-checksum-control-v1.schema.json](index-checksum-control-v1.schema.json) supporting isolated-registry checksum-control diagnostics (not a governed source-tree artifact or publication authorization)
+- [cargo-allow.worklist-page-coverage.v1.schema.json](cargo-allow.worklist-page-coverage.v1.schema.json) supporting operator qualification companion binding all bounded pages to the complete unfiltered population (not a governed source-tree artifact)
 - [cadence.schema.json](cadence.schema.json)
-- [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status plus, for non-Complete sets, the recorded `validation_gaps`)
+- [evaluation-artifact-set.schema.json](evaluation-artifact-set.schema.json) the multi-artifact manifest that `check`/`diff`/`audit` write into `--artifact-dir` (per-file render status, the required `validation_result` verdict, plus, for non-Complete sets, the recorded `validation_gaps`)
 - [tool-identity.schema.json](tool-identity.schema.json) self-description contract (not a governed artifact)
+- [sensor-capabilities.schema.json](sensor-capabilities.schema.json) self-description contract for the `cargo-allow capabilities --format json` sensor catalog (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) v1, [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2, and [operator-latency.v3.schema.json](operator-latency.v3.schema.json) v3 historical compatibility schemas; [operator-latency.v4.schema.json](operator-latency.v4.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
@@ -701,7 +716,7 @@ artifact's scan surface, not limitations.
 | `data_flow_not_analyzed` | Yes | data-flow analysis was not performed. |
 | `external_evidence_tools_not_invoked` | Yes | External evidence tools can be referenced by policy but were not executed by the scan. |
 | `repository_code_not_executed` | Yes | Repository code was not executed by cargo-allow. |
-| `source_text_in_identity_fields` | No | Identity fields (symbol, callee, container, module, macro_name, lint) carry source-derived text and are emitted in CI artifacts; set `CARGO_ALLOW_REDACT_IDENTITY=1` to redact them. |
+| `source_text_in_identity_fields` | No | Identity fields (symbol, callee, container, module, macro_name, lint, and raw-text receiver_fingerprint/target_fingerprint values) carry source-derived text and are emitted in CI artifacts; set `CARGO_ALLOW_REDACT_IDENTITY=1` to redact them (structural hashes are preserved for snippet-hash-anchored (exact-occurrence) matching; source-text identity fields are cleared before matching, so structural-tier entries that pin them require an unredacted scan). |
 
 ## Contract Change Rules
 

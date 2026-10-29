@@ -1,0 +1,40 @@
+# #4651: the bulk-refresh fixture receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11365"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3a32e495f86585e6ea404f9d14ec85a7aa56d6c660000ed9a10a7c15ca1f2965"
+reason = "Authored revision note for the two-entry bulk-drift fixture receipts backing the refresh --all tests (#4651): the fixture pins location-drift selection and the per-entry receipt join over one atomic policy write."
+
+[[records]]
+allow_ids = ["allow-11366"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3f1bb2087be9351109dbbb40b2d40c4a8b7b7afe7329a361dcc7e40fa2d46345"
+reason = "Authored revision note for the two-entry bulk-drift fixture receipts backing the refresh --all tests (#4651): the fixture pins location-drift selection and the per-entry receipt join over one atomic policy write."
+
+[[records]]
+allow_ids = ["allow-11367"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5ad02b9f1e5f891dc91bcb2d0f65f37f3a8eb07c55163e0be8f2b5c070197967"
+reason = "Authored revision note for the two-entry bulk-drift fixture receipts backing the refresh --all tests (#4651): the fixture pins location-drift selection and the per-entry receipt join over one atomic policy write."
+
+[[records]]
+allow_ids = ["allow-11368"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1be2927515cb44aef9b3b387c8019e08654f8893708a650083520cfdf479e829"
+reason = "Authored revision note for the two-entry bulk-drift fixture receipts backing the refresh --all tests (#4651): the fixture pins location-drift selection and the per-entry receipt join over one atomic policy write."
+
+[[records]]
+allow_ids = ["allow-11369"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6454910fb765b858786ca09c9532536657b02ed99f94018dede73111de53d850"
+reason = "Authored revision note for the two-entry bulk-drift fixture receipts backing the refresh --all tests (#4651): the fixture pins location-drift selection and the per-entry receipt join over one atomic policy write."
+
+[[records]]
+allow_ids = ["allow-1178"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5b6ac9c12c9468ea0b450ad291656c45e01ab846c9242b62c069ed872c540902"
+reason = "Self-covering record for this note file itself (#3792 precedent): the authored revision note is a tracked source file carrying the same reviewed-exception posture as the fixture receipts it records (#4651)."

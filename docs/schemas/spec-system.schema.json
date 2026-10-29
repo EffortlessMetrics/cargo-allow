@@ -359,7 +359,9 @@
             "artifact_ledger",
             "support_tiers",
             "active_goal",
-            "templates"
+            "templates",
+            "federation_ledgers",
+            "allow_imports"
           ]
         },
         "path": {

@@ -52,6 +52,13 @@ impl SummaryOutputConfig {
 
 static SUMMARY_OUTPUT: OnceLock<SummaryOutputConfig> = OnceLock::new();
 
+/// The caller-requested `--command-summary-output` path for this
+/// invocation, when the flag configured one (#4393). The artifact-set
+/// manifest cites it as `core_command_summary_ref` (#4597).
+pub(crate) fn requested_summary_path() -> Option<&'static std::path::Path> {
+    SUMMARY_OUTPUT.get().map(|config| config.path.as_path())
+}
+
 /// A command's error-summary handoff for one CLI invocation.
 ///
 /// An evaluated domain error may retain the command's own summary only after
@@ -670,14 +677,16 @@ fn sort_json_keys(value: &mut Value) {
 pub(crate) fn summary_completeness(facts: &crate::InventoryFacts) -> CompletenessV1 {
     if facts.rust_files_skipped > 0
         || facts.rust_files_with_parse_errors > 0
+        || facts.inventory_skipped_paths > 0
         || facts.deleted_tracked.unwrap_or(0) > 0
         || facts.empty_git_tracked
     {
         return CompletenessV1::Partial;
     }
-    // `allow_inventory::inventory` assigns Partial before Scoped when deleted,
-    // submodule, or skipped paths exist. The explicit Rust scanner checks above
-    // cover later read/parse omissions.
+    // `allow_inventory::inventory` assigns Partial before Fallback and
+    // Scoped whenever deleted, submodule, or skipped paths exist (#4646).
+    // The explicit Rust scanner checks above cover later read/parse
+    // omissions.
     match facts.completeness {
         InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
@@ -723,6 +732,12 @@ pub(crate) fn partial_coverage_reason(facts: &crate::InventoryFacts) -> String {
             facts.rust_files_with_parse_errors
         ));
     }
+    if facts.inventory_skipped_paths > 0 {
+        reasons.push(format!(
+            "{} source path(s) were skipped by the inventory walk",
+            facts.inventory_skipped_paths
+        ));
+    }
     if matches!(
         facts.completeness,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial
@@ -748,6 +763,7 @@ fn render_detail(args: &ReportRenderArgs<'_>) -> String {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.denied_classes = args.denied_classes;
     context.style = if args.format == OutputFormat::Human && args.output.is_none() {
         crate::reporting::output_style()
     } else {

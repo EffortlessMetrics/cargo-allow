@@ -9,8 +9,8 @@ pub(crate) use audit_args::ReportArgs;
 use crate::{
     EvidenceReportSummary, EvidenceValidationMode, ProfileArg, ReportRenderArgs,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
-    load_read_only_world, policy_baseline_debt_entries, print_report, report_config,
-    reporting::SourceTreeReportContext, spec_system,
+    load_read_only_world, policy_baseline_debt_entries, print_report,
+    reject_compat_only_kind_filter, report_config, reporting::SourceTreeReportContext, spec_system,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
@@ -36,6 +36,10 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
             mode: None,
         });
     }
+
+    // #4632: fail closed before any scan when the kind filter names a
+    // compat-only surface the non-compat lane never wires in.
+    reject_compat_only_kind_filter("audit", args.compat, args.kind.as_deref())?;
 
     crate::emit_scan_status("audit", args.format, args.output.as_deref(), None);
 
@@ -69,9 +73,39 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         root,
         cfg,
         findings,
-        inventory_facts,
+        mut inventory_facts,
         federation: _federation,
     } = world;
+    // #4576 review: under --compat the run loads a legacy policy file, not
+    // the canonically discovered one; protect the file actually selected
+    // for this invocation.
+    let protected_policy = if args.compat {
+        crate::compat::compat_selected_policy_path(
+            args.config.as_deref(),
+            &root,
+            args.kind.as_deref(),
+        )
+    } else {
+        crate::policy_config::config_path(&root, args.config.as_deref())
+    };
+    // #4565-class: the compat world's inventory facts carry no policy
+    // digest; bind the exact legacy policy bytes this run evaluated before
+    // any output is written (#4590/#4593).
+    if let Some(legacy_policy) = protected_policy.as_deref() {
+        let digest = std::fs::read_to_string(legacy_policy)
+            .ok()
+            .map(|text| allow_core::sha256_v1_bytes(text.as_bytes()));
+        inventory_facts = inventory_facts.with_optional_policy_digest(digest);
+    }
+    // #4592: refuse an artifact directory that would contain the selected
+    // policy BEFORE any report/receipt output is written, so a refusal
+    // never leaves success-shaped evidence on disk.
+    if let (Some(artifact_dir), Some(_)) = (&args.artifact_dir, &args.emit) {
+        artifact_emit::ensure_artifact_dir_separate(artifact_dir, protected_policy.as_deref())
+            .map_err(|error| {
+                CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+            })?;
+    }
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
     let as_of = allow_core::SimpleDate::today_utc_approx();
     let outcomes = evaluate(&report_cfg, &findings, CheckMode::Audit, as_of);
@@ -98,38 +132,19 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         inventory_source_identity: None,
         // `audit` never fails a run; its pass is advisory by definition.
         enforcement: Some(allow_report::RECEIPT_ENFORCEMENT_ADVISORY),
+        denied_classes: None,
         artifact_emission: args.artifact_dir.as_deref(),
     })?;
 
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        // #4576 review: under --compat the run loads a legacy policy file,
-        // not the canonically discovered one; protect the file actually
-        // selected for this invocation.
-        let protected_policy = if args.compat {
-            crate::compat::compat_selected_policy_path(
-                args.config.as_deref(),
-                &root,
-                args.kind.as_deref(),
-            )
-        } else {
-            crate::policy_config::config_path(&root, args.config.as_deref())
-        };
-        artifact_emit::ensure_artifact_dir_separate(artifact_dir, protected_policy.as_deref())
-            .map_err(|error| {
-                CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-            })?;
-        // #4565-class: the compat world's inventory facts carry no policy
-        // digest, so every --emit format failed the artifact-set identity
-        // gate with `resolved_config_identity is missing`; bind the exact
-        // legacy policy bytes this run evaluated.
-        let compat_policy_digest = protected_policy.as_deref().and_then(|path| {
-            std::fs::read_to_string(path)
-                .ok()
-                .map(|text| allow_core::sha256_v1_bytes(text.as_bytes()))
-        });
-        let inventory_facts = inventory_facts.with_optional_policy_digest(compat_policy_digest);
         // The identical mistake on `check` exits 2 with a typed Usage error
         // (#4505): route bad --emit values through the same typed path.
+        // The parse is deliberately late: the router's usage-failure contract
+        // requires the evaluation flow's route outputs (the report, the
+        // sidecar) to exist before the failure lands. The sidecar itself is
+        // safe either way — the CLI error path writes an error-classified
+        // summary for any failure (#4393) — but the parse must not preempt
+        // the flow that produces the rest.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
@@ -156,6 +171,9 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
                 blocking: false,
                 resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
                 source_subject: &source_subj,
+                // Audit has no mode; the kind filter is recorded in
+                // source_subject, not here (#4597).
+                mode: None,
             },
             &emit_ctx,
         )

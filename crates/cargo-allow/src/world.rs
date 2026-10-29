@@ -7,7 +7,8 @@ use allow_inventory::{
     resolve_source_tree_root,
 };
 use allow_policy::federation::{
-    FederationEvaluation, PrecedenceTier, evaluate_source_exception_policy,
+    FederationEvaluation, FederationRegistryValidity, PrecedenceTier,
+    evaluate_source_exception_policy,
 };
 use std::cell::RefCell;
 use std::collections::BTreeSet;
@@ -1022,6 +1023,10 @@ fn empty_federation_evaluation(precedence: PrecedenceTier) -> FederationEvaluati
     FederationEvaluation {
         federation_version: allow_policy::federation::FEDERATION_VERSION,
         precedence_applied: precedence,
+        // Placeholder evaluation for paths that never observed a registry
+        // (compat lane, no-policy fallback); "absent" states that fact rather
+        // than inventing validity evidence (#4655).
+        registry_validity: FederationRegistryValidity::Absent,
         active_provenance: None,
         ledger_contributors: Vec::new(),
         divergences: Vec::new(),

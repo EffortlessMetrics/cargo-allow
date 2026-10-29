@@ -134,7 +134,11 @@ pub fn render_doctor_human_styled(facts: DoctorReport<'_>, style: Style) -> Stri
     }
     append_file_family_doctor_human(facts, &mut out);
     append_federation_doctor_human(facts, &mut out, style);
-    out.push_str(CLAIM_BOUNDARY_TEXT);
+    // `--quiet` drops the claim boundary the same way the check report does
+    // (#4630): every config, scanner, and federation diagnostic stays.
+    if !crate::contracts::is_quiet() {
+        out.push_str(CLAIM_BOUNDARY_TEXT);
+    }
     out
 }
 

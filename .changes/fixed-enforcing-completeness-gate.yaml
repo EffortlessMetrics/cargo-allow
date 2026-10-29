@@ -1,0 +1,14 @@
+kind: Fixed
+body: >-
+  Enforcing check modes (no-new, strict, release) now fail closed on
+  incomplete selected input in every supported route (#4646): a truncated
+  filesystem walk, an unreadable directory, a skipped or unparseable Rust
+  source, or a worktree-deleted tracked file fails strict and release the
+  same way no-new already did, instead of a source file that never reached
+  matching receiving a green enforcing receipt. Skips inside subtrees the
+  policy already ignores stay scope, not omissions, and a complete
+  filesystem fallback still passes. Report JSON and receipts disclose the
+  inventory omission count (`inventory.inventory_skipped_paths`) alongside
+  the `partial` completeness the omissions force, and the `--compat`
+  Rust-scan route carries the same scanner read/parse completeness facts as
+  the ordinary worktree route.

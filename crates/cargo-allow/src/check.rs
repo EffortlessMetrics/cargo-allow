@@ -21,7 +21,7 @@ mod check_lane_posture;
 use check_lane_posture::check_failed_for_outcomes;
 #[path = "check_deny.rs"]
 mod check_deny;
-use check_deny::{deny_escalation_failed, validate_deny_statuses};
+use check_deny::{deny_escalation_fired_classes, validate_deny_statuses};
 #[path = "check_product_move_guard.rs"]
 mod check_product_move_guard;
 use check_product_move_guard::product_move_ledger_fails_check;
@@ -44,7 +44,7 @@ use crate::{
     SourceTreeReportContext, assert_path_within_root, config_path, current_dir,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
     load_read_only_world_and_cache, load_staged_world, policy_baseline_debt_entries, print_report,
-    report_config, spec_precommit, spec_system, write_file,
+    reject_compat_only_kind_filter, report_config, spec_precommit, spec_system, write_file,
 };
 use allow_inventory::{InventorySource, resolve_source_tree_root};
 
@@ -98,6 +98,9 @@ pub(crate) fn cmd_check_with_persistent_cache(
                 "--staged source-exception evaluation does not support --compat",
             ));
         }
+        // #4632: staged evaluation has no compat lane either, so a
+        // compat-only kind would filter the gate to nothing here as well.
+        reject_compat_only_kind_filter("check", false, args.kind.as_deref())?;
         if args.include_untracked {
             return Err(CargoAllowError::with_kind(
                 allow_core::CargoAllowErrorKind::Usage,
@@ -151,6 +154,9 @@ pub(crate) fn cmd_check_with_persistent_cache(
         });
     }
 
+    // #4632: fail closed before any scan when the kind filter names a
+    // compat-only surface the non-compat lane never wires in.
+    reject_compat_only_kind_filter("check", args.compat, args.kind.as_deref())?;
     match cmd_check_source_tree(args, persistent_cache) {
         Ok(()) => Ok(()),
         Err(err) => {
@@ -225,11 +231,38 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         root,
         cfg,
         findings,
-        inventory_facts,
+        mut inventory_facts,
         federation,
     } = world;
+    // #4590/#4593: the compat world's inventory facts never carry a policy
+    // digest, so the receipt dropped policy-byte provenance and every emit
+    // failed the artifact-set identity gate. Bind the digest of the legacy
+    // policy file the compat world actually loaded (audit.rs does the same).
+    let compat_selected_policy = if args.compat {
+        crate::compat::compat_selected_policy_path(
+            args.config.as_deref(),
+            &root,
+            args.kind.as_deref(),
+        )
+    } else {
+        None
+    };
+    if let Some(legacy_policy) = &compat_selected_policy {
+        let digest = std::fs::read_to_string(legacy_policy)
+            .ok()
+            .map(|text| allow_core::sha256_v1_bytes(text.as_bytes()));
+        inventory_facts = inventory_facts.with_optional_policy_digest(digest);
+    }
     let federation_bundle = FederationReportBundle::from_evaluation(&federation);
     let report_cfg = report_config(&cfg, args.kind.as_deref())?;
+    // #4628: entries meet the redacted scan here — the earliest point in the
+    // enforcing gate that can name the entries that can never match. Raised
+    // on the kind-filtered configuration (PR #4633 review): an entry outside
+    // the filtered kind is never evaluated, so it must not fail the run.
+    // Raised for the compat world too: legacy allowlists pin the same cleared
+    // selector fields (callee, lint). See `redaction_disclosure` for why this
+    // is a hard error and why it is not raised at world load.
+    crate::redaction_disclosure::reject_redaction_dead_entries(&report_cfg)?;
     let mode = CheckMode::parse(
         args.mode
             .as_deref()
@@ -259,6 +292,18 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
     if blocking_divergence_count > 0 {
         context.blocking_divergence_entries = Some(blocking_divergence_count);
     }
+    // #4655: a parsed-but-invalid `.allow/config.toml` used to drop the
+    // registry silently — the gate ran on the discovered ledger with zero
+    // federation signal, so a stricter registered ledger could stop being
+    // enforced behind a green check. Fail closed instead and name the cause.
+    let federation_registry_failed = federation_bundle.registry_invalid_fallback();
+    context.federation_registry_invalid = federation_registry_failed;
+    if federation_registry_failed {
+        eprintln!(
+            "cargo-allow check: federation configuration is invalid; conventional fallback is not clean ({})",
+            allow_policy::federation::FEDERATION_CONFIG_REL_PATH
+        );
+    }
     context.rust_files_skipped = inventory_facts.rust_files_skipped;
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
@@ -281,12 +326,22 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         );
     }
     let source_coupling_failed = !source_coupling_diagnostics.is_empty();
+    let deny_fired_classes = if args.deny.is_empty() {
+        Vec::new()
+    } else {
+        deny_escalation_fired_classes(&args.deny, &summary, context)
+    };
     let failed = check_failed_for_outcomes(&outcomes, &findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
-        || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
-        || (inventory_facts.rust_files_skipped > 0 && mode == CheckMode::NoNew)
-        || (inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew)
+        || federation_registry_failed
+        || !deny_fired_classes.is_empty()
+        // #4646: incomplete selected input (skipped Rust files, parse
+        // errors, partial or truncated inventory) fails every enforcing
+        // mode, not only no-new. A source file that never reaches matching
+        // has no failing MatchOutcome for strict/release to catch, so the
+        // completeness gate is the only protection. Audit stays advisory.
+        || (!mode.is_advisory() && check_selected_input_incomplete(&inventory_facts))
         || product_move_ledger_failed
         || extraction_shim_registry_failed
         || extraction_shim_sources_failed
@@ -308,6 +363,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
         } else {
             RECEIPT_ENFORCEMENT_ENFORCING
         }),
+        denied_classes: Some(&deny_fired_classes),
         artifact_emission: args.artifact_dir.as_deref(),
     };
     if should_emit_report_stdout(
@@ -379,15 +435,25 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
     }
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
-        artifact_emit::ensure_artifact_dir_separate(
-            artifact_dir,
-            crate::policy_config::config_path(&root, args.config.as_deref()).as_deref(),
-        )
-        .map_err(|error| {
-            CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
-        })?;
+        // #4591: under --compat the run loads a legacy policy file, not the
+        // canonically discovered one; protect the file actually selected.
+        let protected_policy = compat_selected_policy
+            .clone()
+            .or_else(|| crate::policy_config::config_path(&root, args.config.as_deref()));
+        artifact_emit::ensure_artifact_dir_separate(artifact_dir, protected_policy.as_deref())
+            .map_err(|error| {
+                CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
+            })?;
         // Return late output errors so the wrapper can replace an evaluated
         // receipt, remove the stale report and let the CLI replace its summary.
+        // The --emit parse is deliberately late for the same reason: the
+        // router's usage-failure contract requires the evaluation flow's route
+        // outputs (the json-route stdout detail, the replaced receipt, the
+        // sidecar) to exist before the failure lands
+        // (check_emit_usage_failure_replaces_evaluated_outputs). The sidecar
+        // specifically is safe either way — the CLI error path writes an
+        // error-classified summary for any failure (#4393) — but the parse
+        // must not preempt the flow that produces the rest.
         let formats = artifact_emit::parse_emit_formats(emit_raw).map_err(|error| {
             CargoAllowError::with_kind(allow_core::CargoAllowErrorKind::Usage, error)
         })?;
@@ -421,6 +487,7 @@ fn cmd_check_source_tree(args: &CheckArgs, persistent_cache: bool) -> CargoAllow
                 blocking: failed,
                 resolved_config_identity: &inventory_facts.policy_digest_text().unwrap_or_default(),
                 source_subject: &source_subj,
+                mode: Some(mode.as_str()),
             },
             &emit_ctx,
         )
@@ -495,6 +562,21 @@ pub(crate) fn source_coupling_relation(
     }
 }
 
+/// #4646: one shared completeness predicate for both check routes (tracked
+/// worktree and exact staged candidate). It reads recorded omissions —
+/// inventory completeness, filesystem-walk skips, and Rust scanner
+/// read/parse outcomes — independently of inventory source, so a complete
+/// filesystem fallback stays a supported route while a truncated or
+/// unreadable selected input can never look like complete enforcement.
+/// Audit results remain informational; the gate applies this only in
+/// enforcing modes.
+fn check_selected_input_incomplete(facts: &InventoryFacts) -> bool {
+    facts.completeness == allow_inventory::InventoryCompleteness::Partial
+        || facts.inventory_skipped_paths > 0
+        || facts.rust_files_skipped > 0
+        || facts.rust_files_with_parse_errors > 0
+}
+
 fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if args.emit.is_some() || args.artifact_dir.is_some() {
         // #4547: the staged path never reads these flags, so they used to be
@@ -534,6 +616,11 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
         ));
     }
     let report_cfg = report_config(&staged.cfg, args.kind.as_deref())?;
+    // #4628: the staged scan applies the same identity redaction (same
+    // scanner), so the staged lane must fail closed on structural entries
+    // exactly like the tracked-worktree gate — on the kind-filtered
+    // configuration, for the same #4633-review reason.
+    crate::redaction_disclosure::reject_redaction_dead_entries(&report_cfg)?;
     let mode = CheckMode::parse(
         args.mode
             .as_deref()
@@ -572,17 +659,36 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
     if blocking_divergence_count > 0 {
         context.blocking_divergence_entries = Some(blocking_divergence_count);
     }
+    // #4655: same fail-closed rule as the tracked-worktree gate — the staged
+    // lane must not read green while an invalid registry silently dropped the
+    // registered ledgers.
+    let federation_registry_failed = federation_bundle.registry_invalid_fallback();
+    context.federation_registry_invalid = federation_registry_failed;
+    if federation_registry_failed {
+        eprintln!(
+            "cargo-allow check: federation configuration is invalid; conventional fallback is not clean ({})",
+            allow_policy::federation::FEDERATION_CONFIG_REL_PATH
+        );
+    }
     context.rust_files_skipped = staged.inventory_facts.rust_files_skipped;
     if !args.deny.is_empty() {
         validate_deny_statuses(&args.deny, &summary, context)?;
     }
+    let deny_fired_classes = if args.deny.is_empty() {
+        Vec::new()
+    } else {
+        deny_escalation_fired_classes(&args.deny, &summary, context)
+    };
     let failed = check_failed_for_outcomes(&outcomes, &staged.findings, &report_cfg, mode)
         || evidence.has_broken_evidence_links()
         || federation_bundle.has_blocking_divergence()
-        || (!args.deny.is_empty() && deny_escalation_failed(&args.deny, &summary, context))
-        || (staged.inventory_facts.completeness == allow_inventory::InventoryCompleteness::Partial
-            && mode == CheckMode::NoNew)
-        || (staged.inventory_facts.rust_files_with_parse_errors > 0 && mode == CheckMode::NoNew);
+        || federation_registry_failed
+        || !deny_fired_classes.is_empty()
+        // #4646: the staged route shares the worktree completeness
+        // predicate, and it now binds in every enforcing mode. Staged reads
+        // of unreadable or oversized sources remain early loader errors;
+        // parse errors and a partial staged snapshot fail the gate.
+        || (!mode.is_advisory() && check_selected_input_incomplete(&staged.inventory_facts));
     if should_emit_report_stdout(args.output.as_deref(), args.receipt.as_deref(), args.format) {
         print_report(ReportRenderArgs {
             command: "check",
@@ -601,6 +707,7 @@ fn cmd_check_staged_source_tree(args: &CheckArgs) -> CargoAllowResult<()> {
             } else {
                 RECEIPT_ENFORCEMENT_ENFORCING
             }),
+            denied_classes: Some(&deny_fired_classes),
             // Staged evaluation rejects artifact flags outright (#4547).
             artifact_emission: None,
         })?;
@@ -905,6 +1012,10 @@ fn reject_source_exception_options(
 #[cfg(test)]
 #[path = "check_receipt_tests.rs"]
 mod receipt_tests;
+
+#[cfg(test)]
+#[path = "check_completeness_gate_tests.rs"]
+mod completeness_gate_tests;
 
 #[cfg(test)]
 mod provenance_tests {

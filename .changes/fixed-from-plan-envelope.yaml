@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  `add --from-plan` now enforces the published plan envelope exactly as
+  `docs/schemas/add-finding-plan.schema.json` declares it (#4605):
+  unknown top-level fields are rejected with a typed usage error naming
+  the field, and every schema-required field must be present — a stripped
+  or schema-invalid plan no longer applies. Forward-compatible producers
+  bump `schema_version`, which the generation gate rejects. The
+  load-bearing strictness is unchanged: bindings are still recomputed and
+  compared, and approval metadata is still never taken from the plan.

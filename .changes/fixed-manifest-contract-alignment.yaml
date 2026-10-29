@@ -1,0 +1,15 @@
+kind: Fixed
+body: >-
+  Two manifest-contract follow-ups. The evaluation-artifact-set manifest
+  now serializes its computed set-level validation verdict
+  (`complete`/`semantic_non_green`/`partial_artifacts`/`render_failure`/
+  `output_conflict`/`instrument_failure`) as a required `validation_result`
+  field, so a schema-only gate can distinguish a refused run from a green
+  one without recomputing validation, and the governed schema rejects what
+  the tool rejects (#4595). The schema-documented `mode`,
+  `core_command_summary_ref`, and `detailed_result_ref` fields are now
+  populated in production: check manifests name their mode, every manifest
+  cites its invocation's `--command-summary-output` sidecar (root-relative
+  when it lives under the source root) when one was configured, and every
+  manifest links the JSON detail artifact the same emission wrote when json
+  was requested and written (#4597).
