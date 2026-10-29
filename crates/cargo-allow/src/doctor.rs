@@ -573,7 +573,7 @@ fn render_intent_provider_failure(
     let detected = match failure.class {
         IntentProviderFailureClass::MalformedConfig => {
             return format!(
-                "\nIntent provider\n  status: {status}\n  detected binary/version: not probed (delegation config parse failure)\n  config failure: {}\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n  intent evaluation: not performed\n  clean claim: not available\n  reason: {failure}\n",
+                "\nIntent provider\n  status: {status}\n  detected binary/version: not probed (delegation config failure)\n  config failure: {}\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n  intent evaluation: not performed\n  clean claim: not available\n  reason: {failure}\n",
                 failure.detail
             );
         }
