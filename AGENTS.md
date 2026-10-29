@@ -20,8 +20,9 @@ they narrow the scope.
 ## Selected-candidate CI and continuous ownership
 
 Develop and review cheaply with warm focused proof. Compare alternatives before
-PR publication while opening a Draft still triggers hosted CI. After the explicit
-request cutover, useful alternative Drafts can stay cheap. Expensive pre-merge
+PR publication while opening a Draft still triggers hosted CI. Alternative Drafts
+may stay cheap only after a documented request-based CI migration is installed,
+qualified, and tied to a recorded cutover event. Expensive pre-merge
 qualification is for the candidate selected to land, not each alternative. Selection is per objective, never a
 repository-wide one-PR queue. Do not duplicate an existing implementation merely
 to consume agent capacity.
