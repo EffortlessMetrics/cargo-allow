@@ -121,6 +121,7 @@ impl SourceTreeReportContext {
         )
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_completeness(self.inventory_completeness())
+        .with_inventory_skipped_paths(self.inventory_facts.inventory_skipped_paths)
         .with_source_identity(self.source_identity.as_deref())
     }
 
@@ -137,6 +138,7 @@ impl SourceTreeReportContext {
         .with_empty_git_tracked(self.inventory_facts.empty_git_tracked)
         .with_inventory_completeness(self.inventory_completeness())
         .with_inventory_source_identity(self.source_identity.as_deref())
+        .with_inventory_skipped_paths(self.inventory_facts.inventory_skipped_paths)
         .with_rust_scanner_facts(
             self.inventory_facts.rust_files_considered,
             self.inventory_facts.rust_files_skipped,
@@ -155,7 +157,12 @@ impl SourceTreeReportContext {
     pub(crate) fn inventory_completeness(&self) -> &str {
         if self.inventory_facts.rust_files_skipped > 0
             || self.inventory_facts.rust_files_with_parse_errors > 0
+            || self.inventory_facts.inventory_skipped_paths > 0
         {
+            // #4646: any recorded omission — scanner skips, parse errors,
+            // or truncated inventory walks — must surface as `partial` in
+            // the report JSON and receipt inventory, never be erased by
+            // fallback provenance.
             "partial"
         } else {
             self.inventory_facts.completeness.as_str()
@@ -389,6 +396,30 @@ mod tests {
         assert_eq!(context.inventory_completeness(), "partial");
         assert_eq!(context.inventory().completeness, Some("partial"));
         assert_eq!(context.report(None).inventory.completeness, Some("partial"));
+
+        fs::remove_dir_all(&root)
+            .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));
+    }
+
+    /// #4646: inventory-walk omissions must reach the report JSON and
+    /// receipt projection as `partial` completeness even when the inventory
+    /// source is a filesystem fallback.
+    #[test]
+    fn source_context_promotes_inventory_walk_omissions_to_partial_inventory() {
+        let root = temp_root("inventory-skip-partial");
+        let facts = InventoryFacts::scanned(InventorySource::FilesystemFallback, 3)
+            .with_completeness(allow_inventory::InventoryCompleteness::Fallback)
+            .with_inventory_skipped_paths(1);
+        let context = SourceTreeReportContext::new(&root, facts);
+
+        assert_eq!(context.inventory_completeness(), "partial");
+        assert_eq!(context.inventory().completeness, Some("partial"));
+        assert_eq!(context.report(None).inventory.completeness, Some("partial"));
+        // #4646 review: the omission count itself must reach both the typed
+        // inventory projection and the report/receipt context, so JSON
+        // consumers read the count and not just the `partial` label.
+        assert_eq!(context.inventory().inventory_skipped_paths, 1);
+        assert_eq!(context.report(None).inventory.inventory_skipped_paths, 1);
 
         fs::remove_dir_all(&root)
             .unwrap_or_else(|err| std::panic::panic_any(format!("remove fixture: {err}")));

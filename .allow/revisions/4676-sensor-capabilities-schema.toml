@@ -1,0 +1,22 @@
+# #4627: the sensor-capabilities self-description schema receipts.
+# Reversible source scope: no merge, CI-bypass, release or provider authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1182"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:22ef229d6e04a39c79e0f71d41db8f260b31f4baffb1586e826317c982100d68"
+reason = "Authored revision note for the count-pinned expect-fixture baseline (allow-1182, occurrence_limit 10) backing the sensor-capabilities self-description schema tests (#4627); the schema mutation controls use .expect() on fixture scaffolding so malformed setup fails immediately."
+
+[[records]]
+allow_ids = ["allow-1183"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:00f1123e280cd04a8adb28ebe4e1faf3fb688ba4dafda2dbc7af8488f751f77b"
+reason = "Authored revision note for the path receipt on the published sensor-capabilities self-description schema JSON (#4627) — a self-description contract on the tool-identity precedent, not a governed artifact."
+
+[[records]]
+allow_ids = ["allow-1184"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4aac2440d6b84e82eefa3f247d14ae1308ec05604df9626f239f1a819b2f34bf"
+reason = "Self-covering record for this note file itself (#3792 precedent): the authored revision note is a tracked source file carrying the same reviewed-exception posture as the schema receipts it records (#4627)."

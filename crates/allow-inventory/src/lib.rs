@@ -68,7 +68,7 @@ pub fn inventory(
         empty_git_tracked,
         deleted_tracked,
         git_error,
-        skipped_paths,
+        mut skipped_paths,
         submodule_paths,
         inaccessible_paths,
     ) = if options.include_untracked {
@@ -138,6 +138,14 @@ pub fn inventory(
     files.sort();
     files.dedup();
     files.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
+    // #4646 review: the walk records skips before the configured ignore globs
+    // are applied, so a skip that lands inside a policy-ignored subtree omits
+    // no selected input — the configuration already excluded it. Filter skips
+    // with the same rule as files so an unreadable or depth-capped ignored
+    // directory cannot classify the inventory Partial and fail enforcing
+    // modes. Skips outside the ignored scope (and the synthetic entry-limit
+    // marker, which has no attributable directory) are kept fail-closed.
+    skipped_paths.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
     let completeness = inventory_completeness(
         options,
         git_error.is_some(),
@@ -167,14 +175,20 @@ fn inventory_completeness(
     inaccessible_paths: &[PathBuf],
     skipped_paths: &[PathBuf],
 ) -> options::InventoryCompleteness {
-    if git_failed {
-        options::InventoryCompleteness::Fallback
-    } else if !deleted_tracked.is_empty()
+    // #4646: recorded omissions must outrank fallback provenance. A
+    // filesystem walk that hit the depth/entry caps or read errors is
+    // incomplete even though git was unavailable; classifying it as bare
+    // `Fallback` let a truncated scan pass every enforcing mode with zero
+    // findings. Provenance stays independently visible in
+    // `InventorySource::FilesystemFallback` and `git_error`.
+    if !deleted_tracked.is_empty()
         || !submodule_paths.is_empty()
         || !inaccessible_paths.is_empty()
         || !skipped_paths.is_empty()
     {
         options::InventoryCompleteness::Partial
+    } else if git_failed {
+        options::InventoryCompleteness::Fallback
     } else if !options.ignored.is_empty() || !options.generated.is_empty() {
         options::InventoryCompleteness::Scoped
     } else {

@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  `frozen-subject-lock check` refuses to evaluate a retained freeze
+  receipt that is not clean vs HEAD (#4654). An edited or untracked
+  receipt file must not steer the evaluation: a probe of the receipt's
+  `tree` field alone is bypassable by editing `commit` and `tree`
+  together, so the lock now requires the receipt file to be committed
+  and unmodified (git status --porcelain empty) before reading it, and
+  fails closed if the cleanliness probe itself cannot run. Committed
+  receipt tampering stays covered by the evaluator's committed-moved-
+  FrozenLockRecords conflict check.

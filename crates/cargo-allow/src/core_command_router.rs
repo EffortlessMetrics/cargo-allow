@@ -677,14 +677,16 @@ fn sort_json_keys(value: &mut Value) {
 pub(crate) fn summary_completeness(facts: &crate::InventoryFacts) -> CompletenessV1 {
     if facts.rust_files_skipped > 0
         || facts.rust_files_with_parse_errors > 0
+        || facts.inventory_skipped_paths > 0
         || facts.deleted_tracked.unwrap_or(0) > 0
         || facts.empty_git_tracked
     {
         return CompletenessV1::Partial;
     }
-    // `allow_inventory::inventory` assigns Partial before Scoped when deleted,
-    // submodule, or skipped paths exist. The explicit Rust scanner checks above
-    // cover later read/parse omissions.
+    // `allow_inventory::inventory` assigns Partial before Fallback and
+    // Scoped whenever deleted, submodule, or skipped paths exist (#4646).
+    // The explicit Rust scanner checks above cover later read/parse
+    // omissions.
     match facts.completeness {
         InventoryCompleteness::Complete | InventoryCompleteness::Scoped => CompletenessV1::Complete,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial => CompletenessV1::Partial,
@@ -728,6 +730,12 @@ pub(crate) fn partial_coverage_reason(facts: &crate::InventoryFacts) -> String {
         reasons.push(format!(
             "{} Rust file(s) contained parse errors",
             facts.rust_files_with_parse_errors
+        ));
+    }
+    if facts.inventory_skipped_paths > 0 {
+        reasons.push(format!(
+            "{} source path(s) were skipped by the inventory walk",
+            facts.inventory_skipped_paths
         ));
     }
     if matches!(

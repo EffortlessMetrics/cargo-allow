@@ -30,6 +30,12 @@ pub fn render_add_plan_application_json(receipt: &AddPlanApplicationV1<'_>) -> S
     if let Some(completeness) = inventory.completeness {
         inventory_json.insert("completeness".to_string(), json!(completeness));
     }
+    if inventory.inventory_skipped_paths > 0 {
+        inventory_json.insert(
+            "inventory_skipped_paths".to_string(),
+            json!(inventory.inventory_skipped_paths),
+        );
+    }
 
     let value = json!({
         "schema_version": ADD_PLAN_APPLICATION_ARTIFACT.schema_version,
