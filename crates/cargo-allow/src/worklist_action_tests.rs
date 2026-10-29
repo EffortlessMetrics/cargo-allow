@@ -19,7 +19,7 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
         ),
         (
             "expired_allow",
-            "remove the expired allow if the exception is gone",
+            "renew the entry's `expires` date in policy/allow.toml (or remove the entry manually) — expired entries are not machine-prunable",
         ),
         (
             "stale_allow",

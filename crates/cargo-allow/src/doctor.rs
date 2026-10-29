@@ -567,10 +567,18 @@ fn render_intent_provider_failure(
     } else {
         "incompatible"
     };
-    let detected = if failure.class == IntentProviderFailureClass::Absent {
-        "none detected"
-    } else {
-        "binary detected, version not probed"
+    // #4680: a delegation-config parse failure happens before any binary
+    // probe, so "binary detected" would be false. Name the config path and
+    // parse reason carried by the failure detail instead.
+    let detected = match failure.class {
+        IntentProviderFailureClass::MalformedConfig => {
+            return format!(
+                "\nIntent provider\n  status: {status}\n  detected binary/version: not probed (delegation config parse failure)\n  config failure: {}\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n  intent evaluation: not performed\n  clean claim: not available\n  reason: {failure}\n",
+                failure.detail
+            );
+        }
+        IntentProviderFailureClass::Absent => "none detected".to_string(),
+        _ => "binary detected, version not probed".to_string(),
     };
     format!(
         "\nIntent provider\n  status: {status}\n  detected binary/version: {detected}\n  required version range: {INTENT_PROVIDER_REQUIRED_VERSION_RANGE}\n  required protocol: {INTENT_PROVIDER_REQUIRED_PROTOCOL}\n  canonical command: {INTENT_PROVIDER_CANONICAL_COMMAND}\n  support reference: {INTENT_PROVIDER_SUPPORT_REFERENCE}\n  intent evaluation: not performed\n  clean claim: not available\n  reason: {failure}\n"

@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  The doctor intent-provider section reported delegation-config parse
+  failures as "binary detected, version not probed" and dropped the parse
+  reason: `render_intent_provider_failure` only distinguished `Absent` from
+  every other failure class, so `MalformedConfig` (unreadable file, invalid
+  TOML, wrong `schema_id`) fell into the incompatible-binary branch even
+  though discovery never probed a binary. The section now renders
+  MalformedConfig as "not probed (delegation config parse failure)" with a
+  `config failure:` line naming the config path and parse reason; absent
+  providers still report "unavailable / none detected" (#4680).

@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  The worklist and explain next-step guidance for `expired_allow` items told
+  operators to "remove the expired allow if the exception is gone", but prune
+  selects only `Stale` entries: the unused-entry projection classifies any
+  unused entry with a past `expires` date as `Expired`, never `Stale`, so the
+  advertised machine route could never select the entry. The advice now names
+  the real route — renew the entry's `expires` date in `policy/allow.toml`
+  (or remove the entry manually); expired entries are not machine-prunable
+  (#4679).
