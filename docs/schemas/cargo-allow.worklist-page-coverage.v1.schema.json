@@ -1,0 +1,226 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://effortlessmetrics.com/schemas/cargo-allow.worklist-page-coverage.v1.schema.json",
+  "title": "cargo-allow worklist page coverage companion",
+  "description": "Supporting operator qualification evidence. The full population is a scale oracle, not a bounded payload pass. Consumers must recursively rehash members, compare all item objects/order and paging metadata, and validate source/date and latency bindings; schema validity alone proves none of these.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "result",
+    "limit",
+    "byte_cap",
+    "ceiling_ms",
+    "source_before",
+    "source_after",
+    "invocation",
+    "full",
+    "pages",
+    "total",
+    "counts",
+    "sample_page",
+    "sample_elapsed_ms",
+    "routing_probe",
+    "routing_pages",
+    "traversal_elapsed_ms",
+    "qualification_elapsed_ms"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.worklist-page-coverage.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "result": {
+      "const": "passed"
+    },
+    "limit": {
+      "const": 25
+    },
+    "byte_cap": {
+      "const": 524288
+    },
+    "ceiling_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_before": {
+      "$ref": "#/$defs/source"
+    },
+    "source_after": {
+      "$ref": "#/$defs/source"
+    },
+    "invocation": {
+      "$ref": "#/$defs/invocation"
+    },
+    "full": {
+      "$ref": "#/$defs/member"
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/member"
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "item_kind"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/counts"
+        },
+        "item_kind": {
+          "$ref": "#/$defs/counts"
+        }
+      }
+    },
+    "sample_page": {
+      "type": "string",
+      "pattern": "^page-[0-9]{6,}\\.json$"
+    },
+    "sample_elapsed_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "routing_probe": {
+      "enum": [
+        null,
+        "crates/cargo-allow/src/agent_loop_probe.rs"
+      ]
+    },
+    "routing_pages": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "traversal_elapsed_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "qualification_elapsed_ms": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "head",
+        "parent",
+        "tracked_sha256",
+        "policy_sha256",
+        "binary_sha256",
+        "utc_day"
+      ],
+      "properties": {
+        "head": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "parent": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "tracked_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "policy_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "binary_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "utc_day": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      }
+    },
+    "invocation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "binary",
+        "root",
+        "cwd"
+      ],
+      "properties": {
+        "binary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cwd": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes",
+        "argv",
+        "exit_code",
+        "elapsed_ms"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^(full|page-[0-9]{6,})\\.json$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "argv": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 8
+        },
+        "exit_code": {
+          "const": 0
+        },
+        "elapsed_ms": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

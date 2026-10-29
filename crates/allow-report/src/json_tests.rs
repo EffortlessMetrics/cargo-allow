@@ -84,6 +84,40 @@ fn json_report_exposes_inventory_completeness() {
     assert!(staged_json.contains("\"source_identity\": \"staged-v1-test\""));
 }
 
+/// #4646: JSON consumers must be able to read the inventory omission count,
+/// not just the `partial` completeness label the omissions force. The field
+/// is emitted only when non-zero so clean-scan artifacts stay byte-stable.
+#[test]
+fn json_report_exposes_inventory_skipped_paths_only_when_non_zero() {
+    let partial_context = ReportContext::source_syntax(
+        "filesystem_fallback",
+        Some("fixtures/source-snapshot"),
+        Some(7),
+        None,
+    )
+    .with_inventory_completeness("partial")
+    .with_inventory_skipped_paths(3);
+    let partial_json = render_json_with_context("audit", &[], &[], false, partial_context);
+    assert!(partial_json.contains("\"inventory_skipped_paths\": 3"));
+    assert!(
+        partial_json.contains("\"completeness\": \"partial\""),
+        "the omission count accompanies the partial label"
+    );
+
+    let complete_context = ReportContext::source_syntax(
+        "filesystem_fallback",
+        Some("fixtures/source-snapshot"),
+        Some(7),
+        None,
+    )
+    .with_inventory_completeness("fallback");
+    let complete_json = render_json_with_context("audit", &[], &[], false, complete_context);
+    assert!(
+        !complete_json.contains("inventory_skipped_paths"),
+        "a zero omission inventory must not emit the field"
+    );
+}
+
 #[test]
 fn json_report_exposes_rust_scanner_completeness_facts() {
     let context = ReportContext::source_syntax(

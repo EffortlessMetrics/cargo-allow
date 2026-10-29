@@ -23,8 +23,11 @@ const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
     "cargo-allow.release-authorization-consumption.v1",
     "cargo-allow.release-experience.v1",
 ];
-const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] =
-    &["tool-identity", "cargo-allow-provider-contract-v1"];
+const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] = &[
+    "tool-identity",
+    "cargo-allow-provider-contract-v1",
+    "sensor-capabilities",
+];
 
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.
 fn normalize_lf(text: &str) -> String {
@@ -168,6 +171,8 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "release-manifest-v2"
                 && name != "package-candidate-v2"
                 && name != "isolated-install-receipt-v2"
+                && name != "index-checksum-control-v1"
+                && name != "cargo-allow.worklist-page-coverage.v1"
                 && name != "exact-candidate-receipt-v2"
                 && name != "github-pr-check-v1"
                 && name != "rc-publication-incident-v1"

@@ -1,6 +1,80 @@
 use super::test_support::{test_entry, test_finding, test_outcome};
 use super::*;
 
+#[test]
+fn due_date_population_stays_complete_across_bounded_pages()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut cfg = AllowConfig::empty();
+    let mut entry = test_entry("allow-date-boundary", FindingKind::NonRustFile);
+    entry.lifecycle.review_after = Some("2026-10-19".to_string());
+    cfg.allow.push(entry);
+    let findings: Vec<_> = (1..=80)
+        .map(|line| {
+            let mut finding = test_finding(
+                FindingKind::NonRustFile,
+                None,
+                "tracked.file",
+                "tracked_file",
+            );
+            finding.span = Some(allow_core::Span { line, column: 1 });
+            finding
+        })
+        .collect();
+    // review_after is inclusive: the same policy/findings become due on the
+    // named date. No host-clock or policy-date mutation is involved.
+    for (day, expected_due) in [(18, 0), (19, 80), (20, 80)] {
+        let today = allow_core::SimpleDate {
+            year: 2026,
+            month: 10,
+            day,
+        };
+        let outcomes = evaluate(&cfg, &findings, CheckMode::NoNew, today);
+        assert_eq!(
+            outcomes
+                .iter()
+                .filter(|row| row.status == MatchStatus::ReviewDue)
+                .count(),
+            expected_due
+        );
+        let mut items = work_items_from_outcomes_at(&cfg, &findings, &outcomes, today);
+        sort_work_items(&mut items);
+        renumber_work_items(&mut items);
+        assert_eq!(items.len(), expected_due);
+        let full: serde_json::Value = serde_json::from_str(&render_worklist_json_with_context(
+            &items,
+            WorklistContext::default(),
+        ))?;
+        let mut reconstructed = Vec::new();
+        for offset in (0..items.len()).step_by(25) {
+            let paging = WorklistPaging {
+                limit: Some(25),
+                offset: u32::try_from(offset)?,
+                total: items.len(),
+                unfiltered_total: items.len(),
+            };
+            let page = page_work_items(items.clone(), paging);
+            let rendered: serde_json::Value =
+                serde_json::from_str(&render_worklist_json_with_context(
+                    &page,
+                    paged_context(WorklistFilters::default(), paging),
+                ))?;
+            if let Some(rows) = rendered
+                .get("work_items")
+                .and_then(serde_json::Value::as_array)
+            {
+                reconstructed.extend(rows.iter().cloned());
+            } else {
+                return Err("page omitted work_items array".into());
+            }
+        }
+        assert_eq!(
+            full.get("work_items"),
+            Some(&serde_json::Value::Array(reconstructed))
+        );
+    }
+    Ok(())
+}
+
 /// Build a ranked queue of four `new_unreceipted_finding` items in distinct
 /// paths, exactly as `cmd_worklist` ranks it: filter, sort, renumber.
 fn ranked_queue() -> Vec<WorkItem> {

@@ -664,6 +664,43 @@ measure_posture() {
   POSTURE_OK=1 measure "$@"
 }
 
+# Retain the full population and every actual bounded CLI page. The measured
+# read is page one, or all pages through the observed agent-loop probe. Full
+# traversal/qualification costs remain explicit in the coverage companion.
+measure_worklist_pages() {
+  local phase="$1" name="$2" scan_root="$3" probe="${4:-}"
+  local retained="${artifact_dir}/${name}-pages"
+  local in_dir="${retained}"
+  if [[ "${phase}" == "agent_loop" ]]; then
+    in_dir="${scan_root}/.measurement/${name}-pages"
+  fi
+  [[ ! -e "${retained}" ]] || fail "refusing to replace ${name} page evidence"
+  local args=(--binary "$(py_path "${binary}")" --root "$(py_path "${scan_root}")"
+    --output-dir "$(py_path "${in_dir}")" --ceiling-ms "${hard_ceiling_ms}")
+  if [[ -n "${probe}" ]]; then args+=(--routing-probe "${probe}"); fi
+  local rc=0
+  "${py}" "$(py_path "${ROOT}/scripts/qualify-worklist-pages.py")" "${args[@]}" \
+    >"${run_dir}/${name}-pages.tsv" || rc=$?
+  # Retain partial diagnostics on failure too; never publish a passed sample
+  # without the production consumer's complete coverage validation.
+  if [[ "${in_dir}" != "${retained}" && -d "${in_dir}" ]]; then
+    cp -R "${in_dir}" "${retained}"
+  fi
+  (( rc == 0 )) || fail "${name} page qualification failed (exit ${rc})"
+  local selected elapsed
+  IFS=$'\t' read -r selected elapsed <"${run_dir}/${name}-pages.tsv"
+  local artifact_rel="artifacts/${name}-pages/${selected}"
+  local semantic_rel="artifacts/${name}-pages/coverage.json"
+  local artifact="${output_dir}/${artifact_rel}" semantic="${output_dir}/${semantic_rel}"
+  assert_payload_ceilings "${name}" "${artifact}" "${semantic}"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "${phase}" "${name}" "${elapsed}" "${artifact_rel}" "$(sha256_file "${artifact}")" \
+    "${semantic_rel}" "$(sha256_file "${semantic}")" "passed" \
+    "$(encode_argv qualify-worklist-pages --limit 25 --routing-probe "${probe:-none}")" \
+    "$(artifact_payload_bytes "${artifact}")" "$(artifact_payload_bytes "${semantic}")" >>"${metrics}"
+  log "${name}: ${elapsed}ms bounded routing; full population/traversal retained"
+}
+
 # One agent-loop composite step (#4366): same measurement contract as
 # measure(), executed inside the writable full-scale fixture clone so the
 # routed work item, plan artifact, applied entry, and green gate all bind to
@@ -915,10 +952,7 @@ measure "targeted" "why_fast_path" \
   --format json --output "${artifact_dir}/why-fast-path.json"
 
 log "measuring worklist"
-measure "targeted" "worklist" \
-  "artifacts/worklist.json" "artifacts/worklist.json" \
-  '"schema_id": "cargo-allow.worklist.v1"' \
-  worklist --format json --output "${artifact_dir}/worklist.json"
+measure_worklist_pages "targeted" "worklist" "${ROOT}"
 
 if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
   log "measuring diff against HEAD~1"
@@ -982,12 +1016,8 @@ env -u GIT_DIR -u GIT_WORK_TREE git -C "${agent_loop_root}" \
 
 log "measuring agent-loop composite (worklist -> why --plan -> add --from-plan --update -> check)"
 composite_start="$(now_ms)"
-measure_agent_step "agent_loop_worklist" \
-  "artifacts/agent-loop-worklist.json" "artifacts/agent-loop-worklist.json" \
-  'new_unreceipted_finding' \
-  worklist --format json --output .measurement/agent-loop-worklist.json
-grep -Fq 'agent_loop_probe.rs' "${artifact_dir}/agent-loop-worklist.json" || \
-  fail "agent_loop_worklist did not route the probe finding"
+measure_worklist_pages "agent_loop" "agent_loop_worklist" "${agent_loop_root}" \
+  "crates/cargo-allow/src/agent_loop_probe.rs"
 measure_agent_step "agent_loop_why_plan" \
   "artifacts/agent-loop-why.json" "artifacts/agent-loop-plan.json" \
   'cargo-allow.add-finding-plan.v1' \

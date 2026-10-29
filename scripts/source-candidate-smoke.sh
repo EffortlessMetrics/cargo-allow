@@ -62,6 +62,13 @@ PY
     local operation_status=$?
     local cleanup_status=0
     trap - EXIT
+    # The internal trap may have refused removal of a consumer or scratch
+    # directory. Never erase that evidence through an independently owned
+    # ancestor, including the source snapshot, after any internal failure.
+    if [[ "${operation_status}" -ne 0 ]]; then
+      printf 'source-candidate-smoke: child failed; retaining owned paths under %s\n' "${temp_root}" >&2
+      exit "${operation_status}"
+    fi
     if [[ -n "${snapshot_root}" ]]; then
       if python3 "${lifecycle}" remove --root "${temp_root}" --path "${snapshot_root}" \
         --purpose source-candidate-snapshot --token "${snapshot_token}"; then
@@ -73,9 +80,20 @@ PY
     # A refused child removal must not be bypassed by recursively deleting
     # its parent. Keep the marker-owned paths for diagnosis in that case.
     if [[ "${cleanup_status}" -eq 0 && -n "${test_root_token}" ]]; then
-      if python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
-        --purpose source-candidate-test-root --token "${test_root_token}"; then
-        test_root_token=""
+      if python3 - "${temp_root}" <<'PY'
+import sys
+from pathlib import Path
+
+if {path.name for path in Path(sys.argv[1]).iterdir()} != {".candidate-harness-owner.json"}:
+    raise SystemExit("source-candidate-smoke: inner child state remains; refusing parent cleanup")
+PY
+      then
+        if python3 "${lifecycle}" remove --root "${TMPDIR:-/tmp}" --path "${temp_root}" \
+          --purpose source-candidate-test-root --token "${test_root_token}"; then
+          test_root_token=""
+        else
+          cleanup_status=$?
+        fi
       else
         cleanup_status=$?
       fi
@@ -157,6 +175,9 @@ read -r consumer_dir consumer_token < <(
   printf '%s' "${consumer_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
 schema_id="cargo-allow.source-candidate-smoke-receipt.v1"
+clean_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
+clean_dir=""
+clean_token=""
 
 src_path="${ROOT}/crates/cargo-allow/src"
 src_stash="${work_dir}/stashed-cargo-allow-src"
@@ -166,31 +187,40 @@ templates_stash="${work_dir}/stashed-docs-templates"
 restore_source_tree() {
   if [[ -d "${src_stash}" ]]; then
     [[ ! -e "${src_path}" ]] || fail "refusing to overwrite existing source tree during restore"
-    python3 "${lifecycle}" restore --stash "${src_stash}" --destination "${src_path}"
+    python3 "${lifecycle}" restore --stash "${src_stash}" --destination "${src_path}" || return $?
   fi
   if [[ -d "${templates_stash}" ]]; then
     [[ ! -e "${templates_path}" ]] || fail "refusing to overwrite existing templates during restore"
-    python3 "${lifecycle}" restore --stash "${templates_stash}" --destination "${templates_path}"
-  fi
-}
-
-# The lifecycle remove refuses symlink-unsafe platforms (Windows without
-# symlink privilege). Fall back to a direct removal of the journey-owned
-# temporary directory; other removal failures still propagate.
-lifecycle_remove_tolerant() {
-  local out
-  if ! out="$(python3 "${lifecycle}" remove --root "$1" --path "$2" --purpose "$3" --token "$4" 2>&1)"; then
-    case "${out}" in
-      *symlink-safe*) rm -rf "${2}" ;;
-      *) printf '%s\n' "${out}" >&2; return 1 ;;
-    esac
+    python3 "${lifecycle}" restore --stash "${templates_stash}" --destination "${templates_path}" || return $?
   fi
 }
 
 cleanup() {
-  restore_source_tree
-  lifecycle_remove_tolerant "${consumer_parent}" "${consumer_dir}" source-candidate-consumer "${consumer_token}"
-  lifecycle_remove_tolerant "${source_parent}" "${work_dir}" source-candidate-smoke "${work_token}"
+  local operation_status=$?
+  local cleanup_status=0
+  trap - EXIT
+  if restore_source_tree; then
+    if [[ -n "${clean_dir}" ]]; then
+      python3 "${lifecycle}" remove --root "${clean_parent}" --path "${clean_dir}" \
+        --purpose source-candidate-clean-consumer --token "${clean_token}" || cleanup_status=$?
+    fi
+    if [[ "${cleanup_status}" -eq 0 ]]; then
+      if python3 "${lifecycle}" remove --root "${consumer_parent}" --path "${consumer_dir}" \
+        --purpose source-candidate-consumer --token "${consumer_token}"; then
+        python3 "${lifecycle}" remove --root "${source_parent}" --path "${work_dir}" \
+          --purpose source-candidate-smoke --token "${work_token}" || cleanup_status=$?
+      else
+        cleanup_status=$?
+      fi
+    fi
+  else
+    cleanup_status=$?
+  fi
+  if [[ "${cleanup_status}" -ne 0 ]]; then
+    printf 'source-candidate-smoke: cleanup refused; retaining owned paths for diagnosis\n' >&2
+    if [[ "${operation_status}" -eq 0 ]]; then operation_status="${cleanup_status}"; fi
+  fi
+  exit "${operation_status}"
 }
 trap cleanup EXIT
 
@@ -243,6 +273,7 @@ else
     || fail "expected installed binary at ${install_root}/bin/cargo-allow(.exe)"
 fi
 
+binary_sha256="$(python3 -c 'import hashlib,sys; from pathlib import Path; print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())' "${cargo_bin}" | tr -d '\r')"
 log "cargo-allow --version"
 version_output="$("${cargo_bin}" --version | tr -d '\r')"
 printf '%s\n' "${version_output}"
@@ -579,7 +610,9 @@ print(json.dumps({"path": target["path"], "line": target["line"]}))
 second_path="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["path"])')"
 second_line="$(printf '%s' "${second_finding}" | python3 -c 'import json,sys;print(json.load(sys.stdin)["line"])')"
 "${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" >/dev/null
-why_plan="${WORK_DIR}/second-finding-plan.json"
+# Transient plan/log files belong to the owned scratch directory removed by
+# cleanup(), not the caller's durable receipt directory.
+why_plan="${work_dir}/second-finding-plan.json"
 "${cargo_bin}" why --kind panic --path "${second_path}" --line "${second_line}" --root "${consumer_dir}" --plan "${why_plan}" >/dev/null
 [[ -f "${why_plan}" ]] || fail "why --plan did not write ${why_plan}"
 
@@ -609,8 +642,8 @@ if "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second fi
     fail "stale why plan was accepted by add --from-plan"
 fi
 printf 'pub fn second(value: Option<u8>) -> u8 { value.unwrap() }\n' >> "${consumer_dir}/src/lib.rs"
-if ! "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" > "${WORK_DIR}/second-add.log" 2>&1; then
-  cat "${WORK_DIR}/second-add.log" >&2
+if ! "${cargo_bin}" add --from-plan "${why_plan}" --owner core --reason "second finding receipted through the why plan chain" --evidence "test:second_finding_why_plan_add" --update --root "${consumer_dir}" > "${work_dir}/second-add.log" 2>&1; then
+  cat "${work_dir}/second-add.log" >&2
   fail "the restored second finding was not accepted by add --from-plan"
 fi
 step_second_finding_exit=0
@@ -646,8 +679,11 @@ log "step list --wide projection"
 step_list_wide_exit=0
 
 log "step clean repository: init → audit → check --mode no-new"
-clean_dir="${consumer_dir}-clean"
-mkdir -p "${clean_dir}/src"
+clean_json="$(python3 "${lifecycle}" allocate --root "${clean_parent}" --purpose source-candidate-clean-consumer)"
+read -r clean_dir clean_token < <(
+  printf '%s' "${clean_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
+)
+mkdir "${clean_dir}/src"
 printf 'pub fn ok() -> u8 { 7 }\n' > "${clean_dir}/src/lib.rs"
 "${cargo_bin}" init --root "${clean_dir}" >/dev/null
 clean_policy="${clean_dir}/policy/allow.toml"
@@ -1218,6 +1254,7 @@ INSTALL_METHOD="${install_method}" \
 OS_NAME="${os_name}" \
 ARCH_NAME="${arch_name}" \
 VERSION_OUTPUT="${version_output}" \
+BINARY_PATH="${cargo_bin}" BINARY_SHA256="${binary_sha256}" \
 STEP_VERSION_EXIT="${step_version_exit}" \
 STEP_DOCTOR_EXIT="${step_doctor_exit}" \
 STEP_AUDIT_EXIT="${step_audit_exit}" \
@@ -1235,8 +1272,13 @@ STEP_LIST_WIDE_EXIT="${step_list_wide_exit}" \
 STEP_CLEAN_REPO_EXIT="${step_clean_repo_exit}" \
 NEGATIVES_JSON="${negatives_json}" \
 python3 <<'PY'
+import hashlib
 import json
 import os
+from pathlib import Path
+
+if hashlib.sha256(Path(os.environ["BINARY_PATH"]).read_bytes()).hexdigest() != os.environ["BINARY_SHA256"]:
+    raise SystemExit("installed binary changed during the source journey")
 
 def code(name: str) -> int:
     return int(os.environ[name])
@@ -1253,6 +1295,10 @@ steps_expected = [
     "prune_stale_preview_write",
     "final_check_no_new",
     "policy_rollback_after_prune",
+    "second_finding_why_plan_add",
+    "targeted_recheck_after_add",
+    "list_wide_projection",
+    "clean_repo_init_audit_check",
 ]
 steps_executed = [
     {
@@ -1368,6 +1414,7 @@ receipt = {
         "network_posture": "not_required_for_core_journey",
     },
     "installed_binary": {
+        "binary_sha256": os.environ["BINARY_SHA256"],
         "version_output": os.environ["VERSION_OUTPUT"],
         "path_redacted": True,
     },

@@ -75,6 +75,7 @@ fn spec_system_schema_locks_profile_commands_and_readiness() {
             "active_goal",
             "templates",
             "federation_ledgers",
+            "allow_imports",
         ],
     );
     assert_enum_equals(

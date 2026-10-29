@@ -1,0 +1,33 @@
+schema_version = 1
+
+# Exact-path admissions for full-population and bounded-page qualification.
+
+[[records]]
+allow_ids = ["allow-4643-worklist-page-driver"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:da76e88e76d01998b6e481892526154fbad2868ce8e194889cd7811c4d625914"
+reason = "Retain and compare every full-population item and bounded CLI page with unchanged byte caps, identity and latency obligations."
+
+[[records]]
+allow_ids = ["allow-4643-worklist-page-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e3c6135c1ade0cbe88982944d2d38d82e573de140911b0f9512f5e572f0c5f0a"
+reason = "Retain the exact scoped admission transitions; existing policy entries, dates and findings remain unchanged."
+
+[[records]]
+allow_ids = ["allow-4643-worklist-page-schema"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9efcd635770a3ea7af9b8f88f737aa5048dd66327194bbd2ea3b3baf97c3b468"
+reason = "Supporting evidence contract preserves complete population and page identities; schema validation alone is not runtime proof."
+
+[[records]]
+allow_ids = ["allow-4643-worklist-page-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ef319b1cd12cb687c44e3c67e3875fef42892e6aba1d0fe0f89511d51710392b"
+reason = "In-memory falsifiers reject coverage omissions, substituted bytes, changed source/date, invalid bounds and incomplete routing."
+
+[[records]]
+allow_ids = ["allow-4643-worklist-page-review"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b700557f6ffff1a717994f99f74efc09c75c7096f5b1a0be85cd735c857f843b"
+reason = "Retain the exact-pair independent review disposition and historical blockers; source fixes require fresh review and hosted qualification before readiness."

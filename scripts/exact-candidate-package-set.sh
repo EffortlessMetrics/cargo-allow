@@ -566,6 +566,7 @@ if [[ -x "${cargo_bin}.exe" ]]; then
 fi
 [[ -x "${cargo_bin}" || -f "${cargo_bin}" ]] || fail "missing installed binary"
 
+binary_sha256="$(python3 -c 'import hashlib,sys; from pathlib import Path; print(hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest())' "${cargo_bin}" | tr -d '\r')"
 version_output="$("${cargo_bin}" --version | tr -d '\r')"
 printf '%s\n' "${version_output}"
 printf '%s\n' "${version_output}" | grep -F "cargo-allow ${version}" >/dev/null \
@@ -1120,15 +1121,19 @@ RUSTC_VERSION="${rustc_version}" \
 CARGO_VERSION="${cargo_version}" \
 SCRIPT_ROOT="${SCRIPT_ROOT}" \
 VERSION_OUTPUT="${version_output}" \
+BINARY_PATH="${cargo_bin}" BINARY_SHA256="${binary_sha256}" \
 INSTALL_CODE="${install_code}" \
 NEGATIVES_JSON="${negatives_json}" \
 CRATE_ORDER="$(printf '%s\n' "${crates[@]}")" \
 python3 <<'PY'
+import hashlib
 import json
 import os
 import sys
 from pathlib import Path
 
+if hashlib.sha256(Path(os.environ["BINARY_PATH"]).read_bytes()).hexdigest() != os.environ["BINARY_SHA256"]:
+    raise SystemExit("installed binary changed during the package proof")
 sys.path.insert(0, str(Path(os.environ["SCRIPT_ROOT"]) / "scripts"))
 from exact_candidate_package_identity import crate_version_from_filename
 
@@ -1186,6 +1191,7 @@ receipt = {
         "source_checkout_denied": True,
     },
     "install": {
+        "binary_sha256": os.environ["BINARY_SHA256"],
         "method": "cargo_install_path_extracted_with_local_registry",
         "version_output": os.environ["VERSION_OUTPUT"],
         "exit_code": int(os.environ["INSTALL_CODE"]),

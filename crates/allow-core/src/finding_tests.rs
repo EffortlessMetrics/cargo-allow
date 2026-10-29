@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use super::{
     Finding, FindingKind, MAX_IDENTITY_FIELD_LEN, Span, StructuralIdentity, finding_identity_key,
+    is_slot_form_fingerprint,
 };
 
 #[test]
@@ -112,6 +113,8 @@ fn truncate_in_place_leaves_short_fields_unchanged() {
 fn redact_source_text_fields_clears_text_but_preserves_anchors() {
     // #1920: redaction clears the source-text-bearing fields (info-leak
     // surface) while preserving the structural anchors matching relies on.
+    // #4629: raw-text receiver/target fingerprints are source text too, so
+    // they are cleared alongside the named fields.
     let mut identity = StructuralIdentity::new("rust", "method_call");
     identity.symbol = Some("secret_token".to_string());
     identity.callee = Some("leaky_call".to_string());
@@ -120,8 +123,8 @@ fn redact_source_text_fields_clears_text_but_preserves_anchors() {
     identity.macro_name = Some("my_macro".to_string());
     identity.lint = Some("clippy::foo".to_string());
     identity.normalized_snippet_hash = Some("fnv1a64:abc".to_string());
-    identity.receiver_fingerprint = Some("rx".to_string());
-    identity.target_fingerprint = Some("tx".to_string());
+    identity.receiver_fingerprint = Some("customer_ssn".to_string());
+    identity.target_fingerprint = Some("\"customer_ssn\"".to_string());
     identity.line_hint = Some(42);
     identity.column_hint = Some(7);
 
@@ -141,8 +144,52 @@ fn redact_source_text_fields_clears_text_but_preserves_anchors() {
         identity.normalized_snippet_hash.as_deref(),
         Some("fnv1a64:abc")
     );
-    assert_eq!(identity.receiver_fingerprint.as_deref(), Some("rx"));
-    assert_eq!(identity.target_fingerprint.as_deref(), Some("tx"));
     assert_eq!(identity.line_hint, Some(42));
     assert_eq!(identity.column_hint, Some(7));
+    // Raw-text fingerprints are source text and must not survive redaction
+    // (#4629).
+    assert_eq!(identity.receiver_fingerprint, None);
+    assert_eq!(identity.target_fingerprint, None);
+}
+
+#[test]
+fn redact_source_text_fields_preserves_param_slot_fingerprints() {
+    // #4629: a `param:N` fingerprint names a parameter position in the
+    // enclosing signature, not source text, so it survives redaction and
+    // receipts anchored on it stay stable across redacted and unredacted
+    // scans.
+    let mut identity = StructuralIdentity::new("rust", "method_call");
+    identity.receiver_fingerprint = Some("param:0".to_string());
+    identity.target_fingerprint = Some("param:12".to_string());
+    identity.symbol = Some("secret_token".to_string());
+
+    identity.redact_source_text_fields();
+
+    assert_eq!(identity.receiver_fingerprint.as_deref(), Some("param:0"));
+    assert_eq!(identity.target_fingerprint.as_deref(), Some("param:12"));
+    assert_eq!(identity.symbol, None);
+}
+
+#[test]
+fn is_slot_form_fingerprint_accepts_only_param_slot_values() {
+    // #4629: the slot-form predicate must accept exactly the shapes the
+    // scanner produces (`param:` + digits), so a raw-text value cannot masquerade
+    // as a preserved slot and a malformed slot cannot dodge redaction.
+    let accepts = [
+        ("param:0", true),
+        ("param:12", true),
+        ("customer_ssn", false),
+        ("param:", false),
+        ("param:x", false),
+        ("param:1x", false),
+        ("", false),
+        ("param", false),
+    ];
+    for (value, expected) in accepts {
+        assert_eq!(
+            is_slot_form_fingerprint(value),
+            expected,
+            "slot-form predicate mismatch for {value:?}"
+        );
+    }
 }

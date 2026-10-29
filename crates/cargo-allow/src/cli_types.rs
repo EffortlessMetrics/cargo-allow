@@ -88,6 +88,11 @@ pub(crate) struct InventoryFacts {
     /// errors. When non-zero, `check --mode no-new` fails closed so partial
     /// parses cannot masquerade as complete scans (#2658).
     pub(crate) rust_files_with_parse_errors: usize,
+    /// Number of paths the inventory walk itself omitted (filesystem
+    /// depth/entry caps and unreadable directories). Carried separately from
+    /// `completeness` so fallback provenance can never erase omission
+    /// evidence from the enforcing gate (#4646).
+    pub(crate) inventory_skipped_paths: usize,
     pub(crate) policy_digest: Option<[u8; 32]>,
 }
 
@@ -106,6 +111,7 @@ impl InventoryFacts {
             rust_files_skipped: 0,
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
+            inventory_skipped_paths: 0,
             policy_digest: None,
         }
     }
@@ -120,6 +126,7 @@ impl InventoryFacts {
             rust_files_skipped: 0,
             rust_files_considered: 0,
             rust_files_with_parse_errors: 0,
+            inventory_skipped_paths: 0,
             policy_digest: None,
         }
     }
@@ -128,6 +135,7 @@ impl InventoryFacts {
         Self::scanned(inventory.source, inventory.files.len())
             .with_empty_git_tracked(inventory.empty_git_tracked)
             .with_completeness(inventory.completeness)
+            .with_inventory_skipped_paths(inventory.skipped_paths.len())
     }
 
     pub(crate) fn with_empty_git_tracked(mut self, empty_git_tracked: bool) -> Self {
@@ -157,6 +165,11 @@ impl InventoryFacts {
 
     pub(crate) fn with_rust_files_with_parse_errors(mut self, count: usize) -> Self {
         self.rust_files_with_parse_errors = count;
+        self
+    }
+
+    pub(crate) fn with_inventory_skipped_paths(mut self, count: usize) -> Self {
+        self.inventory_skipped_paths = count;
         self
     }
 

@@ -1,0 +1,15 @@
+kind: Fixed
+body: >-
+  `CARGO_ALLOW_REDACT_IDENTITY=1` now behaves as documented instead of
+  silently changing matching: redaction clears the source-text identity
+  fields before matching, so an enforcing scan over a ledger whose
+  structural entries pin those fields fails closed with a typed error
+  naming each dead entry and routing to the unredacted rescan or
+  snippet-anchored re-receipt paths (#4628), the claim boundary now says
+  structural hashes are preserved for snippet-hash-anchored
+  (exact-occurrence) matching only, `add` warns when a generated entry
+  cannot match under redaction, and the `receiver_fingerprint`/
+  `target_fingerprint` fields — which carried raw source text up to 80
+  chars and survived redaction — are cleared under redaction while
+  `param:N` slot forms are preserved and added to the documented
+  identity-field list (#4629).

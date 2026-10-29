@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Mandatory entry requirements (evidence, SAFETY comment, bare-allow
+  refusal, `policy:<allow-id>` attribution) now classify as blocking
+  requirement failures before, on, and after an entry's review and
+  expiry dates (#4644): a requirement failure is no longer masked by the
+  lifecycle annotation, and the finding-level no-new statuses (new,
+  ambiguous, invalid selector, missing required field, missing evidence)
+  are preserved across the date-aware entry projection so the gate,
+  worklist, explain, diff, and audit surfaces all report the true
+  blocking reason at every date posture.

@@ -39,6 +39,11 @@ pub struct FederationDivergenceSummary<'a> {
 pub struct FederationReportContext<'a> {
     pub federation_version: Option<&'a str>,
     pub precedence_applied: Option<&'a str>,
+    /// Whether the `.allow/config.toml` registry was found and passed
+    /// validation (`absent` / `valid` / `invalid`, #4655). `invalid` with
+    /// `precedence_applied: discovery_fallback` means the registered ledgers
+    /// went unenforced for this run.
+    pub registry_validity: Option<&'a str>,
     pub ledger_contributors: Option<&'a [LedgerContributorSummary<'a>]>,
     pub divergence_summary: Option<FederationDivergenceSummary<'a>>,
 }

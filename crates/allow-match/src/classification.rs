@@ -32,34 +32,18 @@ pub(crate) fn classify_matched(
         MatchStrength::ExactOccurrence | MatchStrength::Structural => true,
         MatchStrength::ScopedFamily => entry.occurrence_limit.is_some(),
     };
-    if entry_is_expired(entry, today)
-        && let Some(expires) = &entry.lifecycle.expires
-    {
-        if !authorized_survival {
-            return (
-                MatchStatus::New,
-                format!(
-                    "{} matched but expired on {expires}; broad-matcher authority ends at expiry — new finding",
-                    entry.id
-                ),
-            );
-        }
-        return (
-            MatchStatus::Expired,
-            format!("{} matched but expired on {expires}", entry.id),
-        );
-    }
-    if entry_review_is_due(entry, today)
-        && let Some(review_after) = &entry.lifecycle.review_after
-    {
-        return (
-            MatchStatus::ReviewDue,
-            format!(
-                "{} matched but review is due after {review_after}",
-                entry.id
-            ),
-        );
-    }
+    // Mandatory requirement health precedes lifecycle annotations (#4644):
+    // these checks used to run only after the `Expired`/`ReviewDue` returns
+    // below, so a due review or a passed expiry masked a missing mandatory
+    // SAFETY comment, a missing or mismatched `policy:<allow-id>` reference,
+    // or missing mandatory entry evidence. Both annotated statuses are
+    // advisory in no-new (#4238), so `check --mode no-new` false-greened
+    // exactly when cadence work was most overdue — the opposite direction of
+    // the original calendar incident. Requirement failures stay blocking
+    // before, on, and after both dates; an otherwise-valid match still
+    // receives its lifecycle annotation below, and the read-model projection
+    // keeps finding-level hard failures authoritative
+    // (`allow_report::ledger_outcome_status`).
     if cfg.requirements.unsafe_evidence_required
         && entry.kind == FindingKind::Unsafe
         && entry.evidence.is_empty()
@@ -119,6 +103,34 @@ pub(crate) fn classify_matched(
                 ),
             );
         }
+    }
+    if entry_is_expired(entry, today)
+        && let Some(expires) = &entry.lifecycle.expires
+    {
+        if !authorized_survival {
+            return (
+                MatchStatus::New,
+                format!(
+                    "{} matched but expired on {expires}; broad-matcher authority ends at expiry — new finding",
+                    entry.id
+                ),
+            );
+        }
+        return (
+            MatchStatus::Expired,
+            format!("{} matched but expired on {expires}", entry.id),
+        );
+    }
+    if entry_review_is_due(entry, today)
+        && let Some(review_after) = &entry.lifecycle.review_after
+    {
+        return (
+            MatchStatus::ReviewDue,
+            format!(
+                "{} matched but review is due after {review_after}",
+                entry.id
+            ),
+        );
     }
     if entry.classification == "baseline_debt"
         && matches!(mode, CheckMode::Strict | CheckMode::Release)
@@ -362,6 +374,157 @@ mod tests {
         );
         assert_eq!(status, MatchStatus::Matched);
         assert!(message.contains("matched with structural score 100"));
+    }
+
+    #[test]
+    fn classify_matched_preserves_mandatory_requirements_across_lifecycle_dates() {
+        // #4644 regression matrix: mandatory requirement health must not
+        // depend on calendar position. Identical inputs are evaluated at the
+        // issue's probe dates — 2026-10-09 (before review_after), 2026-10-10
+        // (review due, inclusive), 2026-10-20 (expiry day, not yet passed),
+        // and 2026-10-21 (expires passed) — for entries carrying
+        // review_after = 2026-10-10 and expires = 2026-10-20. A requirement
+        // failure must block at every date; an otherwise-valid match must
+        // keep receiving its lifecycle annotation (Matched → ReviewDue →
+        // Expired) so cadence work stays visible.
+        let review_after = "2026-10-10";
+        let expires = "2026-10-20";
+        let dates = [
+            (
+                SimpleDate {
+                    year: 2026,
+                    month: 10,
+                    day: 9,
+                },
+                "before both dates",
+            ),
+            (
+                SimpleDate {
+                    year: 2026,
+                    month: 10,
+                    day: 10,
+                },
+                "review due",
+            ),
+            (
+                SimpleDate {
+                    year: 2026,
+                    month: 10,
+                    day: 20,
+                },
+                "expiry day",
+            ),
+            (
+                SimpleDate {
+                    year: 2026,
+                    month: 10,
+                    day: 21,
+                },
+                "expired",
+            ),
+        ];
+
+        let mut safety_cfg = AllowConfig::empty();
+        safety_cfg.requirements.unsafe_safety_comment_required = true;
+        let mut unsafe_entry = entry(FindingKind::Unsafe);
+        unsafe_entry.lifecycle.review_after = Some(review_after.to_string());
+        unsafe_entry.lifecycle.expires = Some(expires.to_string());
+        assert_eq!(unsafe_entry.evidence, vec!["test:fixture".to_string()]);
+        let mut unsafe_finding = test_finding(FindingKind::Unsafe);
+        unsafe_finding.identity.target_fingerprint = Some("safety-comment:present".to_string());
+        let unsafe_finding_missing_safety = test_finding(FindingKind::Unsafe);
+
+        let mut lint_cfg = AllowConfig::empty();
+        lint_cfg.requirements.lint_policy_id_required = true;
+        let mut lint_entry = entry(FindingKind::LintException);
+        lint_entry.lifecycle.review_after = Some(review_after.to_string());
+        lint_entry.lifecycle.expires = Some(expires.to_string());
+        let mut lint_finding_self = test_finding(FindingKind::LintException);
+        lint_finding_self.family = Some("expect_attribute".to_string());
+        lint_finding_self.identity.target_fingerprint = Some("policy:allow-1".to_string());
+        let mut lint_finding_missing_policy = test_finding(FindingKind::LintException);
+        lint_finding_missing_policy.family = Some("expect_attribute".to_string());
+        let mut lint_finding_other_policy = test_finding(FindingKind::LintException);
+        lint_finding_other_policy.family = Some("expect_attribute".to_string());
+        lint_finding_other_policy.identity.target_fingerprint =
+            Some("policy:allow-other".to_string());
+
+        for (as_of, phase) in dates {
+            // Required SAFETY metadata missing stays blocking at every date.
+            let (status, message) = classify_matched(
+                &unsafe_entry,
+                &unsafe_finding_missing_safety,
+                MatchStrength::Structural,
+                as_of,
+                &safety_cfg,
+                CheckMode::NoNew,
+            );
+            assert_eq!(status, MatchStatus::EvidenceMissing, "{phase}: {message}");
+            assert!(
+                message.contains("no nearby SAFETY comment"),
+                "{phase}: {message}"
+            );
+            assert!(CheckMode::NoNew.fails(status), "{phase}");
+
+            // Required lint policy ID absent stays blocking at every date.
+            let (status, message) = classify_matched(
+                &lint_entry,
+                &lint_finding_missing_policy,
+                MatchStrength::Structural,
+                as_of,
+                &lint_cfg,
+                CheckMode::NoNew,
+            );
+            assert_eq!(status, MatchStatus::InvalidSelector, "{phase}: {message}");
+            assert!(
+                message.contains("without required policy:<allow-id> reference"),
+                "{phase}: {message}"
+            );
+            assert!(CheckMode::NoNew.fails(status), "{phase}");
+
+            // A policy ID naming another entry stays blocking at every date.
+            let (status, message) = classify_matched(
+                &lint_entry,
+                &lint_finding_other_policy,
+                MatchStrength::Structural,
+                as_of,
+                &lint_cfg,
+                CheckMode::NoNew,
+            );
+            assert_eq!(status, MatchStatus::InvalidSelector, "{phase}: {message}");
+            assert!(message.contains("policy:allow-other"), "{phase}: {message}");
+            assert!(CheckMode::NoNew.fails(status), "{phase}");
+
+            // Otherwise-valid matches keep their lifecycle annotation so the
+            // cadence surface stays visible: annotated before both dates,
+            // review due on/after review_after, expired after expires.
+            let (status, message) = classify_matched(
+                &unsafe_entry,
+                &unsafe_finding,
+                MatchStrength::Structural,
+                as_of,
+                &safety_cfg,
+                CheckMode::NoNew,
+            );
+            let expected = match as_of.day {
+                9 => MatchStatus::Matched,
+                21 => MatchStatus::Expired,
+                _ => MatchStatus::ReviewDue,
+            };
+            assert_eq!(status, expected, "{phase}: {message}");
+            assert!(!CheckMode::NoNew.fails(status), "{phase}: {message}");
+
+            let (status, message) = classify_matched(
+                &lint_entry,
+                &lint_finding_self,
+                MatchStrength::Structural,
+                as_of,
+                &lint_cfg,
+                CheckMode::NoNew,
+            );
+            assert_eq!(status, expected, "{phase}: {message}");
+            assert!(!CheckMode::NoNew.fails(status), "{phase}: {message}");
+        }
     }
 
     #[test]

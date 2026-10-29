@@ -242,6 +242,39 @@ fn receipt_exposes_exact_source_identity_when_present() {
     assert!(json.contains("\"source_identity\": \"staged-v1-test\""));
 }
 
+/// #4646: the receipt must disclose the inventory omission count, not just
+/// the `partial` completeness the omissions force. Emitted only when
+/// non-zero so clean-scan receipts stay byte-stable.
+#[test]
+fn receipt_exposes_inventory_skipped_paths_only_when_non_zero() {
+    let partial_context = ReportContext::source_syntax("filesystem_fallback", None, Some(2), None)
+        .with_inventory_completeness("partial")
+        .with_inventory_skipped_paths(4);
+    let partial_json = render_receipt_with_context("check", &[], false, partial_context);
+    let partial: serde_json::Value = serde_json::from_str(&partial_json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("receipt JSON: {err}")));
+    assert_eq!(
+        partial.pointer("/inventory/inventory_skipped_paths"),
+        Some(&serde_json::json!(4)),
+        "the receipt must carry the omission count"
+    );
+    assert_eq!(
+        partial.pointer("/inventory/completeness"),
+        Some(&serde_json::json!("partial"))
+    );
+
+    let complete_context = ReportContext::source_syntax("filesystem_fallback", None, Some(2), None)
+        .with_inventory_completeness("fallback");
+    let complete_json = render_receipt_with_context("check", &[], false, complete_context);
+    let complete: serde_json::Value = serde_json::from_str(&complete_json)
+        .unwrap_or_else(|err| std::panic::panic_any(format!("receipt JSON: {err}")));
+    assert_eq!(
+        complete.pointer("/inventory/inventory_skipped_paths"),
+        None,
+        "a zero omission inventory must not emit the field"
+    );
+}
+
 #[test]
 fn receipt_counts_broken_evidence_links_context() {
     let mut context = ReportContext::source_syntax("git_tracked", None, None, None);
@@ -525,6 +558,44 @@ fn receipt_records_blocking_divergence_distinct_from_advisory_review_items() {
     assert!(
         !advisory_json.contains("\"blocking_divergence\""),
         "an advisory-only divergence emits no blocking count: {advisory_json}"
+    );
+}
+
+#[test]
+fn receipt_records_registry_validity_in_the_federation_section() {
+    // #4655: `precedence_applied: discovery_fallback` alone cannot distinguish
+    // a healthy no-registry run from one whose registry parsed but failed
+    // validation; the receipt must record which.
+    let invalid = ReportContext {
+        federation: Some(FederationReportContext {
+            federation_version: Some("1"),
+            precedence_applied: Some("discovery_fallback"),
+            registry_validity: Some("invalid"),
+            ledger_contributors: None,
+            divergence_summary: None,
+        }),
+        ..ReportContext::default()
+    };
+    let invalid_json = render_receipt_with_context("check", &[], true, invalid);
+    assert!(
+        invalid_json.contains("\"registry_validity\": \"invalid\""),
+        "receipt federation section must record invalid registry validity: {invalid_json}"
+    );
+
+    let absent = ReportContext {
+        federation: Some(FederationReportContext {
+            federation_version: Some("1"),
+            precedence_applied: Some("discovery_fallback"),
+            registry_validity: None,
+            ledger_contributors: None,
+            divergence_summary: None,
+        }),
+        ..ReportContext::default()
+    };
+    let absent_json = render_receipt_with_context("check", &[], false, absent);
+    assert!(
+        absent_json.contains("\"registry_validity\": null"),
+        "an unobserved registry must stay null rather than imply validity: {absent_json}"
     );
 }
 
