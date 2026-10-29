@@ -266,7 +266,7 @@ pub fn evaluate_workflow_syntax_run(
     let mut limitations = vec![
         "the pinned configuration runs with the shellcheck layer disabled, so run-script construction inside workflows is outside this lane's evidence (shell_or_command_construction stays with the security lane and review)".to_string(),
         "local composite action manifests are inventoried but not inspected by this lane's pinned configuration (nested_local_action_uninspected); their construction evidence arrives with the security lane".to_string(),
-        "the precise runner-label ignore carried by the pregate ('label \"macos-15-intel\" is unknown') applies to this lane as well".to_string(),
+        "the precise runner-label ignores carried by the pregate ('label \"macos-15-intel\" is unknown' and 'label \"macos-26\" is unknown') apply to this lane as well".to_string(),
     ];
     if result == WorkflowSyntaxLaneResultV1::InstrumentFailure {
         limitations.push(format!("instrument failures: {}", instrument.join("; ")));
