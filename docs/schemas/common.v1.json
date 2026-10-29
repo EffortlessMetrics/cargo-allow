@@ -105,6 +105,11 @@
           ],
           "description": "Authoritative inventory coverage classification for this artifact."
         },
+        "inventory_skipped_paths": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of paths the filesystem inventory walk omitted (depth/entry caps and unreadable directories). Emitted only when non-zero, alongside the partial completeness the omissions force (#4646)."
+        },
         "source_identity": {
           "type": "string",
           "minLength": 1,
