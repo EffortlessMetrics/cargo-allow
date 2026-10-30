@@ -1,5 +1,7 @@
 use super::*;
-use crate::filesystem::{existing_regular_files_with_metadata, visit_for_test};
+use crate::filesystem::{
+    ReparseClassification, existing_regular_files_with_metadata, visit_for_test,
+};
 use allow_core::source_tree_path_is_ignored;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,6 +22,7 @@ fn inaccessible_paths_make_inventory_partial_even_when_git_failed() {
             &[],
             &[PathBuf::from("blocked.rs")],
             &[],
+            &[],
         ),
         InventoryCompleteness::Partial
     );
@@ -35,12 +38,26 @@ fn inaccessible_paths_make_inventory_partial_even_when_git_failed() {
             &[],
             &[PathBuf::from("blocked.rs")],
             &[PathBuf::from("skipped.rs")],
+            &[],
+        ),
+        InventoryCompleteness::Partial
+    );
+    // #4677: a junctioned alias traversal is a recorded omission too.
+    assert_eq!(
+        super::inventory_completeness(
+            &options,
+            false,
+            &[],
+            &[],
+            &[],
+            &[],
+            &[PathBuf::from("linked_src/lib.rs")],
         ),
         InventoryCompleteness::Partial
     );
     // A fallback walk with no recorded omissions keeps the fallback class.
     assert_eq!(
-        super::inventory_completeness(&options, true, &[], &[], &[], &[]),
+        super::inventory_completeness(&options, true, &[], &[], &[], &[], &[]),
         InventoryCompleteness::Fallback
     );
 }
@@ -276,7 +293,13 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     write_file(root.join("also-kept.txt"), "also kept");
     fs::create_dir_all(root.join("directory"))?;
 
-    let (existing, deleted_tracked, submodule_paths, inaccessible_paths) = existing_regular_files(
+    let ReparseClassification {
+        existing,
+        deleted_tracked,
+        submodule_paths,
+        inaccessible_paths,
+        reparse_skipped_paths,
+    } = existing_regular_files(
         &root,
         vec![
             PathBuf::from("kept.txt"),
@@ -295,6 +318,7 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
     // A tracked path that is a directory is a submodule candidate (#1846).
     assert_eq!(submodule_paths, vec![PathBuf::from("directory")]);
     assert!(inaccessible_paths.is_empty());
+    assert!(reparse_skipped_paths.is_empty());
     remove_dir(&root);
     Ok(())
 }
@@ -303,7 +327,13 @@ fn existing_regular_files_call_presence_observer() -> Result<(), Box<dyn std::er
 fn existing_regular_files_discloses_non_not_found_metadata_errors() {
     let root = temp_root("inaccessible-metadata");
     write_file(root.join("kept.txt"), "kept");
-    let (existing, deleted, submodules, inaccessible) = existing_regular_files_with_metadata(
+    let ReparseClassification {
+        existing,
+        deleted_tracked: deleted,
+        submodule_paths: submodules,
+        inaccessible_paths: inaccessible,
+        reparse_skipped_paths: reparse_skipped,
+    } = existing_regular_files_with_metadata(
         &root,
         vec![
             PathBuf::from("kept.txt"),
@@ -319,12 +349,161 @@ fn existing_regular_files_discloses_non_not_found_metadata_errors() {
                 fs::metadata(path)
             }
         },
+        |_path| false,
     );
 
     assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
     assert_eq!(deleted, vec![PathBuf::from("missing.txt")]);
     assert!(submodules.is_empty());
     assert_eq!(inaccessible, vec![PathBuf::from("blocked.txt")]);
+    assert!(reparse_skipped.is_empty());
+    remove_dir(&root);
+}
+
+/// #4677: a directory reparse point in a repo-relative prefix makes the whole
+/// path an alias traversal. The classification must skip it (with disclosure)
+/// instead of scanning the target tree a second time under the alias spelling.
+/// Runs on every platform through the metadata seam, so no junction support is
+/// required.
+#[test]
+fn alias_directory_prefix_is_skipped_and_disclosed() {
+    let root = temp_root("reparse-alias-prefix");
+    fs::create_dir_all(root.join("real"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("create real dir: {err}")));
+    write_file(root.join("real/lib.rs"), "pub fn demo() {}\n");
+    // Model the #4677 constraint: lstat of `linked_src` is a reparse point
+    // resolving to a directory, while the deeper `linked_src/lib.rs` lstat is
+    // an ordinary path (ancestor reparse points are invisible to lstat).
+    let ReparseClassification {
+        existing,
+        deleted_tracked: deleted,
+        submodule_paths: submodules,
+        inaccessible_paths: inaccessible,
+        reparse_skipped_paths: reparse_skipped,
+    } = existing_regular_files_with_metadata(
+        &root,
+        vec![
+            PathBuf::from("real/lib.rs"),
+            PathBuf::from("linked_src/lib.rs"),
+        ],
+        |path| {
+            if path.ends_with("linked_src/lib.rs") {
+                // Follow-the-link stat resolves the alias to the target
+                // file — exactly why trusting it alone double-counts.
+                Ok(
+                    fs::metadata(root.join("real/lib.rs")).unwrap_or_else(|err| {
+                        std::panic::panic_any(format!("alias target stat: {err}"))
+                    }),
+                )
+            } else if path.ends_with("linked_src") {
+                // The prefix probe follows the link and sees a directory.
+                Ok(fs::metadata(root.join("real"))
+                    .unwrap_or_else(|err| std::panic::panic_any(format!("alias dir stat: {err}"))))
+            } else {
+                fs::metadata(path)
+            }
+        },
+        |path| path.ends_with("linked_src"),
+    );
+
+    assert_eq!(existing, vec![PathBuf::from("real/lib.rs")]);
+    assert_eq!(reparse_skipped, vec![PathBuf::from("linked_src/lib.rs")]);
+    assert!(deleted.is_empty());
+    assert!(submodules.is_empty());
+    assert!(inaccessible.is_empty());
+    remove_dir(&root);
+}
+
+/// #1846 regression guard: the reparse classification must not swallow the
+/// submodule disclosure. A git-tracked path that is a plain directory (no
+/// reparse point) stays a `Submodule` candidate.
+#[test]
+fn plain_directory_stays_submodule_not_reparse_skip() -> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("reparse-plain-dir");
+    fs::create_dir_all(root.join("checked-out-sub"))?;
+    let ReparseClassification {
+        existing,
+        deleted_tracked: deleted,
+        submodule_paths: submodules,
+        inaccessible_paths: inaccessible,
+        reparse_skipped_paths: reparse_skipped,
+    } = existing_regular_files_with_metadata(
+        &root,
+        vec![PathBuf::from("checked-out-sub")],
+        |path: &Path| fs::metadata(path),
+        |_path| false,
+    );
+
+    assert!(existing.is_empty());
+    assert_eq!(submodules, vec![PathBuf::from("checked-out-sub")]);
+    assert!(reparse_skipped.is_empty());
+    assert!(deleted.is_empty());
+    assert!(inaccessible.is_empty());
+    remove_dir(&root);
+    Ok(())
+}
+
+/// #4677: a reparse point as the final component resolving to a directory is
+/// an alias traversal — it must be skipped and disclosed, not classified as a
+/// submodule (today's wrong bucket).
+#[test]
+fn reparse_final_component_resolving_to_dir_is_skipped_not_submodule()
+-> Result<(), Box<dyn std::error::Error>> {
+    let root = temp_root("reparse-final-dir");
+    fs::create_dir_all(root.join("real"))?;
+    let ReparseClassification {
+        existing,
+        deleted_tracked: deleted,
+        submodule_paths: submodules,
+        inaccessible_paths: inaccessible,
+        reparse_skipped_paths: reparse_skipped,
+    } = existing_regular_files_with_metadata(
+        &root,
+        vec![PathBuf::from("junction_dir")],
+        |path: &Path| fs::metadata(path),
+        |path| path.ends_with("junction_dir"),
+    );
+
+    assert!(existing.is_empty());
+    assert!(submodules.is_empty());
+    assert_eq!(reparse_skipped, vec![PathBuf::from("junction_dir")]);
+    assert!(deleted.is_empty());
+    assert!(inaccessible.is_empty());
+    remove_dir(&root);
+    Ok(())
+}
+
+/// #4677: a dangling reparse point as the final component is neither a
+/// deleted tracked file nor scannable content — skip and disclose instead of
+/// today's wrong `Deleted` classification.
+#[test]
+fn dangling_reparse_final_component_is_skipped_not_deleted() {
+    let root = temp_root("reparse-dangling");
+    write_file(root.join("kept.txt"), "kept");
+    let ReparseClassification {
+        existing,
+        deleted_tracked: deleted,
+        submodule_paths: submodules,
+        inaccessible_paths: inaccessible,
+        reparse_skipped_paths: reparse_skipped,
+    } = existing_regular_files_with_metadata(
+        &root,
+        vec![PathBuf::from("kept.txt"), PathBuf::from("broken-link")],
+        |path| {
+            if path.ends_with("broken-link") {
+                Err(std::io::Error::from(std::io::ErrorKind::NotFound))
+            } else {
+                fs::metadata(path)
+            }
+        },
+        |path| path.ends_with("broken-link"),
+    );
+
+    assert_eq!(existing, vec![PathBuf::from("kept.txt")]);
+    assert_eq!(reparse_skipped, vec![PathBuf::from("broken-link")]);
+    assert!(deleted.is_empty());
+    assert!(submodules.is_empty());
+    assert!(inaccessible.is_empty());
     remove_dir(&root);
 }
 

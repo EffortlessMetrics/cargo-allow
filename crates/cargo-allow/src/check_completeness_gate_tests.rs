@@ -69,6 +69,7 @@ fn scanned_inventory_preserves_inventory_skip_counts() {
         git_error: Some("not a repository".to_string()),
         skipped_paths: vec![PathBuf::from("deep/.cargo-allow-inventory-depth-limit-64")],
         submodule_paths: Vec::new(),
+        reparse_skipped_paths: Vec::new(),
     };
     let facts = InventoryFacts::scanned_inventory(&inventory);
     assert_eq!(facts.inventory_skipped_paths, 1);
@@ -91,8 +92,40 @@ fn ignored_subtree_scope_keeps_the_predicate_clean() {
         git_error: Some("not a repository".to_string()),
         skipped_paths: Vec::new(),
         submodule_paths: Vec::new(),
+        reparse_skipped_paths: Vec::new(),
     };
     let facts = InventoryFacts::scanned_inventory(&inventory);
     assert_eq!(facts.inventory_skipped_paths, 0);
     assert!(!check_selected_input_incomplete(&facts));
+}
+
+#[test]
+fn reparse_alias_skips_fail_the_predicate() {
+    // #4677: a junctioned alias traversal is a recorded omission. Even if a
+    // producer carried the disclosure count without the Partial completeness
+    // marker, the gate must fail closed the same way it does for walk skips.
+    let mut facts = complete_fallback_facts();
+    facts.reparse_skipped_paths = 1;
+    assert!(check_selected_input_incomplete(&facts));
+}
+
+#[test]
+fn scanned_inventory_preserves_reparse_skip_counts() {
+    // #4677: the junction alias disclosure must survive the Inventory ->
+    // InventoryFacts projection so the gate and the coverage reason both read it.
+    let inventory = allow_inventory::Inventory {
+        files: vec![PathBuf::from("visible.txt")],
+        source: InventorySource::GitTracked,
+        completeness: InventoryCompleteness::Partial,
+        empty_git_tracked: false,
+        deleted_tracked: Vec::new(),
+        inaccessible_paths: Vec::new(),
+        git_error: None,
+        skipped_paths: Vec::new(),
+        submodule_paths: Vec::new(),
+        reparse_skipped_paths: vec![PathBuf::from("linked_src/lib.rs")],
+    };
+    let facts = InventoryFacts::scanned_inventory(&inventory);
+    assert_eq!(facts.reparse_skipped_paths, 1);
+    assert!(check_selected_input_incomplete(&facts));
 }

@@ -78,6 +78,7 @@ fn legacy_inventory(value: &SourceInventory) -> Inventory {
         git_error: value.git_error.clone(),
         skipped_paths: value.skipped_paths.clone(),
         submodule_paths: value.submodule_paths.clone(),
+        reparse_skipped_paths: Vec::new(),
     }
 }
 

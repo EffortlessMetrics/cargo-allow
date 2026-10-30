@@ -548,6 +548,7 @@ fn doctor(
         git_inventory_error: detail.config.git_inventory_error.as_deref(),
         skipped_paths: detail.config.skipped_paths,
         submodule_paths: detail.config.submodule_paths,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: &detail.scanner.completeness,
         rust_files_considered: scanner.files_considered,
         rust_files_scanned: scanner.files_scanned,
@@ -1080,6 +1081,7 @@ fn inventory_facts(
         rust_files_considered: scanner.map_or(0, |scanner| scanner.files_considered),
         rust_files_with_parse_errors: scanner.map_or(0, |scanner| scanner.files_with_parse_errors),
         inventory_skipped_paths: 0,
+        reparse_skipped_paths: 0,
         policy_digest: None,
     }
 }

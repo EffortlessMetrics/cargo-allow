@@ -670,6 +670,12 @@ fn append_inventory_limitations(limitations: &mut Vec<String>, inventory: &Inven
             inventory.skipped_paths.len()
         ));
     }
+    if !inventory.reparse_skipped_paths.is_empty() {
+        limitations.push(format!(
+            "{} path(s) behind directory links (junctions) were skipped",
+            inventory.reparse_skipped_paths.len()
+        ));
+    }
     if !inventory.deleted_tracked.is_empty() {
         limitations.push(format!(
             "{} tracked path(s) are missing",
@@ -987,6 +993,7 @@ mod tests {
             git_error: None,
             skipped_paths: Vec::new(),
             submodule_paths: Vec::new(),
+            reparse_skipped_paths: Vec::new(),
         }
     }
 

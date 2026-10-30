@@ -132,6 +132,14 @@ pub fn render_doctor_human_styled(facts: DoctorReport<'_>, style: Style) -> Stri
             facts.submodule_paths
         ));
     }
+    if facts.reparse_skipped_paths > 0 {
+        out.push_str(&format!(
+            "inventory warning: {} path(s) live behind directory links \
+             (junctions); these alias paths are excluded so their targets are \
+             not counted twice and coverage is disclosed as partial (#4677)\n",
+            facts.reparse_skipped_paths
+        ));
+    }
     append_file_family_doctor_human(facts, &mut out);
     append_federation_doctor_human(facts, &mut out, style);
     // `--quiet` drops the claim boundary the same way the check report does
@@ -310,6 +318,12 @@ pub fn render_doctor_json(facts: DoctorReport<'_>) -> String {
         config_fields.push(format!(
             "    \"submodule_paths\": {}",
             facts.submodule_paths
+        ));
+    }
+    if facts.reparse_skipped_paths > 0 {
+        config_fields.push(format!(
+            "    \"reparse_skipped_paths\": {}",
+            facts.reparse_skipped_paths
         ));
     }
     for (index, field) in config_fields.iter().enumerate() {

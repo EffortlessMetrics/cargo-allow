@@ -108,6 +108,7 @@ pub(crate) fn cmd_doctor_with_summary_disposition(
     let git_inventory_error = inventory.git_error.as_deref();
     let skipped_paths = inventory.skipped_paths.len();
     let submodule_paths = inventory.submodule_paths.len();
+    let reparse_skipped_paths = inventory.reparse_skipped_paths.len();
     let evidence_source_tree_files = current_evidence_source_tree_files(&root, false);
     let doctor_inventory_facts = InventoryFacts::scanned_inventory(&inventory)
         .with_deleted_tracked(deleted_tracked_files)
@@ -274,6 +275,7 @@ pub(crate) fn cmd_doctor_with_summary_disposition(
         git_inventory_error,
         skipped_paths,
         submodule_paths,
+        reparse_skipped_paths,
         rust_scanner_completeness: rust_scanner_completeness(rust_scan),
         rust_files_considered: rust_scan.files_considered,
         rust_files_scanned: rust_scan
@@ -510,6 +512,12 @@ fn doctor_completeness(
     }
     if report.skipped_paths > 0 {
         reasons.push(format!("{} path(s) were skipped", report.skipped_paths));
+    }
+    if report.reparse_skipped_paths > 0 {
+        reasons.push(format!(
+            "{} path(s) behind directory links (junctions) were skipped",
+            report.reparse_skipped_paths
+        ));
     }
     if report.rust_files_skipped > 0 {
         reasons.push(format!(
@@ -759,6 +767,7 @@ pub(crate) fn sample_doctor_json_for_contract_test() -> String {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,

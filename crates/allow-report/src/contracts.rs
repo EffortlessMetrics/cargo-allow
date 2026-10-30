@@ -623,6 +623,13 @@ pub struct ReportContext<'a> {
     /// `Result: failed (...)` reports the actual trigger instead of only the
     /// blocking status counts. Absent on every non-deny path.
     pub denied_classes: Option<&'a [String]>,
+    /// Operator-facing explanation of why source coverage was incomplete,
+    /// composed by the command layer from the same inventory facts the
+    /// enforcing gate read (#4677). Rendered only inside a failed check's
+    /// reason label — a partial-inventory gate failure previously produced a
+    /// bare `Result: failed` with no cause named. Passing runs and audit never
+    /// surface it.
+    pub partial_coverage_reason: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -696,6 +703,7 @@ impl<'a> ReportContext<'a> {
             rust_files_with_parse_errors: 0,
             lifecycle_posture: None,
             denied_classes: None,
+            partial_coverage_reason: None,
         }
     }
 

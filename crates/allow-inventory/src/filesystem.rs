@@ -1,5 +1,6 @@
 use allow_core::{CargoAllowError, CargoAllowResult};
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -28,55 +29,154 @@ pub const INVENTORY_MAX_ENTRIES: usize = 250_000;
 /// A tracked path that exists as a *directory* (not a file) is recorded as a
 /// submodule candidate (#1846): git ls-files reports submodule gitlinks as
 /// plain paths, but checked-out submodules are directories on disk.
-pub(crate) fn existing_regular_files(
-    root: &Path,
-    files: Vec<PathBuf>,
-) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>) {
-    classify_regular_files(root, files, |path| fs::metadata(path))
+///
+/// #4677: git-for-Windows traverses junctions, so `git ls-files` can emit the
+/// same real file under a junctioned alias spelling on top of its ordinary
+/// spelling. Classifying such a path through the ordinary follow-the-link
+/// metadata probes scans the target tree twice — a zero-signal double count —
+/// and a junction cycle yields only bounded-but-phantom coverage. Every
+/// repo-relative directory prefix is therefore probed once per unique prefix
+/// (one extra stat per directory, cached): a prefix that is itself a reparse
+/// point resolving to a directory makes the whole path an alias traversal,
+/// which is skipped and disclosed instead of scanned.
+///
+/// Skip-and-disclose rather than canonical-path dedup, deliberately: dedup
+/// needs `fs::canonicalize` per file plus verbatim-prefix and broken-link
+/// handling, and — decisive — it makes ledger identity alias-dependent. An
+/// entry legitimately recorded under `linked_src/lib.rs` would become
+/// permanently unmatchable once the junction disappears, recreating the #4678
+/// failure mode by design. Disclosure reuses the proven #1917/#4646 typed-skip
+/// pattern (typed list -> Partial -> enforcing-mode gate) and fails closed.
+///
+/// A reparse point in the *final* path component keeps #1842 walk parity
+/// (follow the target): std reports any reparse point as `is_symlink`
+/// (including cloud-placeholder files), so the component is resolved with the
+/// follow-metadata probe — a regular-file target stays `Existing`; a directory
+/// or missing target is skipped and disclosed instead of today's wrong
+/// `Submodule`/`Deleted` classification. `Submodule` stays strictly for
+/// non-reparse directories (#1846).
+///
+/// Verified std constraint that forces the prefix walk: `symlink_metadata`
+/// does not detect *ancestor* reparse points — with only `linked_src` being
+/// the junction, `symlink_metadata("linked_src/lib.rs").is_symlink()` is
+/// false — so per-path probing alone is insufficient.
+pub(crate) fn existing_regular_files(root: &Path, files: Vec<PathBuf>) -> ReparseClassification {
+    classify_regular_files(
+        root,
+        files,
+        |path| fs::metadata(path),
+        |path| {
+            fs::symlink_metadata(path)
+                .map(|meta| meta.file_type().is_symlink())
+                .unwrap_or(false)
+        },
+    )
 }
 
 #[cfg(test)]
-pub(crate) fn existing_regular_files_with_metadata<F>(
+pub(crate) fn existing_regular_files_with_metadata<F, S>(
     root: &Path,
     files: Vec<PathBuf>,
     metadata: F,
-) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)
+    is_reparse_point: S,
+) -> ReparseClassification
 where
     F: Fn(&Path) -> std::io::Result<fs::Metadata> + Sync,
+    S: Fn(&Path) -> bool + Sync,
 {
-    classify_regular_files(root, files, metadata)
+    classify_regular_files(root, files, metadata, is_reparse_point)
 }
 
-fn classify_regular_files<F>(
+/// The five-way disposition of the git-provided path list: on-disk regular
+/// files, worktree-absent tracked paths, submodule gitlinks, inaccessible
+/// paths, and reparse-alias traversals skipped with disclosure (#4677).
+pub(crate) struct ReparseClassification {
+    pub existing: Vec<PathBuf>,
+    pub deleted_tracked: Vec<PathBuf>,
+    pub submodule_paths: Vec<PathBuf>,
+    pub inaccessible_paths: Vec<PathBuf>,
+    pub reparse_skipped_paths: Vec<PathBuf>,
+}
+
+fn classify_regular_files<F, S>(
     root: &Path,
     files: Vec<PathBuf>,
     metadata: F,
-) -> (Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>, Vec<PathBuf>)
+    is_reparse_point: S,
+) -> ReparseClassification
 where
     F: Fn(&Path) -> std::io::Result<fs::Metadata> + Sync,
+    S: Fn(&Path) -> bool + Sync,
 {
+    // One alias probe per unique repo-relative directory prefix (#4677). The
+    // verdict set is built sequentially and then shared read-only by the
+    // parallel classification below.
+    let mut alias_dir_prefixes: HashMap<PathBuf, ()> = HashMap::new();
+    for path in &files {
+        for prefix in path.ancestors().skip(1) {
+            if prefix.as_os_str().is_empty() {
+                // The empty prefix is the scan root itself, not a traversal.
+                continue;
+            }
+            if alias_dir_prefixes.contains_key(prefix) {
+                continue;
+            }
+            let probe = root.join(prefix);
+            let is_alias_dir =
+                is_reparse_point(&probe) && metadata(&probe).is_ok_and(|m| m.is_dir());
+            if is_alias_dir {
+                alias_dir_prefixes.insert(prefix.to_path_buf(), ());
+            }
+        }
+    }
     let mut existing = Vec::with_capacity(files.len());
     let mut deleted_tracked = Vec::new();
     let mut submodule_paths = Vec::new();
     let mut inaccessible_paths = Vec::new();
+    let mut reparse_skipped_paths = Vec::new();
     let classified = files
         .into_par_iter()
-        .filter_map(|path| match metadata(&root.join(&path)) {
-            Ok(metadata) => {
-                if metadata.file_type().is_file() {
-                    Some(PathDisposition::Existing(path))
-                } else if metadata.file_type().is_dir() {
-                    // A git-tracked path that is a directory on disk is a
-                    // checked-out submodule gitlink (#1846).
-                    Some(PathDisposition::Submodule(path))
-                } else {
-                    None
+        .filter_map(|path| {
+            if path
+                .ancestors()
+                .skip(1)
+                .any(|prefix| alias_dir_prefixes.contains_key(prefix))
+            {
+                // The path reaches its content through a junctioned directory
+                // spelling: scanning it would double-count the target tree
+                // under an alias (#4677).
+                return Some(PathDisposition::ReparseSkipped(path));
+            }
+            let full = root.join(&path);
+            match metadata(&full) {
+                Ok(metadata) => {
+                    if metadata.file_type().is_file() {
+                        Some(PathDisposition::Existing(path))
+                    } else if metadata.file_type().is_dir() {
+                        if is_reparse_point(&full) {
+                            // A reparse point resolving to a directory is an
+                            // alias traversal, not a submodule (#4677).
+                            Some(PathDisposition::ReparseSkipped(path))
+                        } else {
+                            // A git-tracked path that is a directory on disk is
+                            // a checked-out submodule gitlink (#1846).
+                            Some(PathDisposition::Submodule(path))
+                        }
+                    } else {
+                        None
+                    }
                 }
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    if is_reparse_point(&full) {
+                        // A dangling reparse point is neither a deleted tracked
+                        // file nor scannable content; skip + disclose (#4677).
+                        Some(PathDisposition::ReparseSkipped(path))
+                    } else {
+                        Some(PathDisposition::Deleted(path))
+                    }
+                }
+                Err(_) => Some(PathDisposition::Inaccessible(path)),
             }
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-                Some(PathDisposition::Deleted(path))
-            }
-            Err(_) => Some(PathDisposition::Inaccessible(path)),
         })
         .collect::<Vec<_>>();
     for disposition in classified {
@@ -85,14 +185,16 @@ where
             PathDisposition::Deleted(path) => deleted_tracked.push(path),
             PathDisposition::Submodule(path) => submodule_paths.push(path),
             PathDisposition::Inaccessible(path) => inaccessible_paths.push(path),
+            PathDisposition::ReparseSkipped(path) => reparse_skipped_paths.push(path),
         }
     }
-    (
+    ReparseClassification {
         existing,
         deleted_tracked,
         submodule_paths,
         inaccessible_paths,
-    )
+        reparse_skipped_paths,
+    }
 }
 
 enum PathDisposition {
@@ -100,6 +202,7 @@ enum PathDisposition {
     Deleted(PathBuf),
     Submodule(PathBuf),
     Inaccessible(PathBuf),
+    ReparseSkipped(PathBuf),
 }
 
 pub(crate) fn recursive_files(root: &Path) -> CargoAllowResult<(Vec<PathBuf>, Vec<PathBuf>)> {
