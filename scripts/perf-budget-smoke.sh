@@ -31,6 +31,12 @@ full_check_day_changed=0
 PERF_UTC_RETRIES=0
 export PERF_UTC_RETRIES
 
+# CI caches target/ across runs; stale per-run artifacts (worklist page
+# evidence, per-sample receipts, utc-rollover attempts) make
+# measure_worklist_pages refuse to replace retained evidence, failing
+# every merge ref after one interrupted run (#4682). The directory is
+# pure per-run output — start each smoke from empty.
+rm -rf "${output_dir}"
 mkdir -p "${ROOT}/target" "${artifact_dir}"
 : >"${metrics}"
 
