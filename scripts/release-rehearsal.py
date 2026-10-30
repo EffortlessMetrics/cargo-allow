@@ -238,7 +238,9 @@ def _is_ignored_rehearsal_artifact(entry: bytes) -> bool:
     if not entry.startswith(b"!! "):
         return False
     path = entry.removeprefix(b"!! ")
-    if path in {b"target/", b"__pycache__/", b"scripts/__pycache__/"}:
+    # `.zcode/` is the repository's own agent-tooling state directory
+    # (.gitignore): local plans and workflow run state, never release inputs.
+    if path in {b"target/", b"__pycache__/", b"scripts/__pycache__/", b".zcode/"}:
         return True
     match path.split(b"/"):
         case [b"crates", crate, b"target", b""]:

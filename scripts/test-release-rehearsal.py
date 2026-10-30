@@ -1233,6 +1233,37 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
                 finally:
                     path.unlink()
 
+    def test_repository_tooling_state_directory_is_admitted(self) -> None:
+        # `.zcode/` is the repository's own ignored agent-tooling state
+        # directory (.gitignore); carrying it locally must not fail the
+        # clean-checkout preflight (#4690).
+        (self.root / ".gitignore").write_text(
+            "target/\n__pycache__/\n.zcode/\n", encoding="utf-8"
+        )
+        self.git("add", ".gitignore")
+        self.git("commit", "--quiet", "-m", "ignore agent tooling state")
+        tooling = self.root / ".zcode/workflow-runs"
+        tooling.mkdir(parents=True)
+        (tooling / "state.json").write_text("{}\n", encoding="utf-8")
+
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+
+        self.assertEqual(receipt["aggregate_status"], "Incomplete")
+        self.assertTrue(
+            all(value is False for value in receipt["zero_mutation_proof"].values())
+        )
+
+    def test_ignored_artifact_classifier_admits_tooling_state_only_at_root(self) -> None:
+        self.assertTrue(REHEARSAL._is_ignored_rehearsal_artifact(b"!! .zcode/"))
+        for entry in (
+            b"!! .zcode-lookalike/",
+            b"!! .zcode/nested/",
+            b"!! src/.zcode/",
+            b"?? .zcode/",
+        ):
+            with self.subTest(entry=entry):
+                self.assertFalse(REHEARSAL._is_ignored_rehearsal_artifact(entry))
+
     def test_staged_rename_is_rejected_before_phases(self) -> None:
         self.git("mv", "Cargo.lock", "renamed lock")
         with self.assertRaises(ValueError):
