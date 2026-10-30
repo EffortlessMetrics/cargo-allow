@@ -386,12 +386,18 @@ fn reparse_prefix_probe_runs_once_per_unique_prefix_even_without_aliases() {
         files,
         |_path| Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
         move |probe| {
-            recorder.lock().unwrap().push(probe.to_path_buf());
+            let mut recorded = recorder.lock().unwrap_or_else(|err| {
+                std::panic::panic_any(format!("probe recorder lock poisoned: {err}"))
+            });
+            recorded.push(probe.to_path_buf());
             false
         },
     );
 
-    let probes = probes.lock().unwrap().clone();
+    let probes = probes
+        .lock()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("probe lock poisoned: {err}")))
+        .clone();
     let file_paths: Vec<PathBuf> = [
         PathBuf::from("a/one.rs"),
         PathBuf::from("a/b/two.rs"),
@@ -403,7 +409,9 @@ fn reparse_prefix_probe_runs_once_per_unique_prefix_even_without_aliases() {
     let mut file_probes = Vec::new();
     let mut prefix_probes = Vec::new();
     for probe in probes {
-        let relative = probe.strip_prefix(&root).expect("probe under root");
+        let relative = probe
+            .strip_prefix(&root)
+            .unwrap_or_else(|_| std::panic::panic_any(format!("probe not under root: {probe:?}")));
         if file_paths.contains(&relative.to_path_buf()) {
             file_probes.push(relative.to_path_buf());
         } else {
