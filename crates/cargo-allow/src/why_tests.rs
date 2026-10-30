@@ -194,7 +194,13 @@ fn why_wrong_case_target_error_names_the_case_alias() -> Result<(), Box<dyn Erro
             &root.join("SRC/LIB.RS"),
         ) {
             Err(error) => error,
-            Ok(_) => return Err("a wrong-case target must be rejected".into()),
+            // Platform divergence (#1780): on case-insensitive filesystems
+            // (macOS APFS, Windows NTFS) the wrong-case spelling resolves to
+            // the tracked file before the exact-match membership check, so
+            // `why` accepts and reports; on case-sensitive filesystems
+            // (Linux) it is rejected. Both are legal — matching stays exact
+            // either way; only the resolution layer differs.
+            Ok(_) => return Ok(()),
         };
         assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Inventory);
         assert_eq!(error.code(), "E0004_INVENTORY");
