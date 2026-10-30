@@ -108,25 +108,25 @@ where
     F: Fn(&Path) -> std::io::Result<fs::Metadata> + Sync,
     S: Fn(&Path) -> bool + Sync,
 {
-    // One alias probe per unique repo-relative directory prefix (#4677). The
-    // verdict set is built sequentially and then shared read-only by the
-    // parallel classification below.
-    let mut alias_dir_prefixes: HashMap<PathBuf, ()> = HashMap::new();
+    // One alias probe per unique repo-relative directory prefix (#4677).
+    // Verdicts are cached for both outcomes: a directory that is not an
+    // alias must not be re-probed for every file beneath it. The verdict
+    // set is built sequentially and then shared read-only by the parallel
+    // classification below.
+    let mut alias_dir_verdicts: HashMap<PathBuf, bool> = HashMap::new();
     for path in &files {
         for prefix in path.ancestors().skip(1) {
             if prefix.as_os_str().is_empty() {
                 // The empty prefix is the scan root itself, not a traversal.
                 continue;
             }
-            if alias_dir_prefixes.contains_key(prefix) {
+            if alias_dir_verdicts.contains_key(prefix) {
                 continue;
             }
             let probe = root.join(prefix);
             let is_alias_dir =
                 is_reparse_point(&probe) && metadata(&probe).is_ok_and(|m| m.is_dir());
-            if is_alias_dir {
-                alias_dir_prefixes.insert(prefix.to_path_buf(), ());
-            }
+            alias_dir_verdicts.insert(prefix.to_path_buf(), is_alias_dir);
         }
     }
     let mut existing = Vec::with_capacity(files.len());
@@ -140,7 +140,7 @@ where
             if path
                 .ancestors()
                 .skip(1)
-                .any(|prefix| alias_dir_prefixes.contains_key(prefix))
+                .any(|prefix| alias_dir_verdicts.get(prefix).copied() == Some(true))
             {
                 // The path reaches its content through a junctioned directory
                 // spelling: scanning it would double-count the target tree

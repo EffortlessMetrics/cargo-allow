@@ -360,6 +360,80 @@ fn existing_regular_files_discloses_non_not_found_metadata_errors() {
     remove_dir(&root);
 }
 
+/// A prefix that is probed and found NOT to be an alias must be cached like a
+/// positive verdict. The first cut cached only aliases, so every file re-probed
+/// its non-alias ancestors (O(files x depth) stats on a large tree). The other
+/// probe family — one final-component check per file, for #1842 parity and the
+/// dangling-reparse disclosure — is unchanged: each file is probed exactly once.
+#[test]
+fn reparse_prefix_probe_runs_once_per_unique_prefix_even_without_aliases() {
+    use std::sync::Arc;
+    use std::sync::Mutex;
+
+    // Nonexistent root: every probe is answered by the synthetic closures, so
+    // no filesystem fixture is needed.
+    let root = temp_root("reparse-probe-count");
+    let files = vec![
+        PathBuf::from("a/one.rs"),
+        PathBuf::from("a/b/two.rs"),
+        PathBuf::from("a/b/c/three.rs"),
+        PathBuf::from("a/four.rs"),
+    ];
+    let probes = Arc::new(Mutex::new(Vec::<PathBuf>::new()));
+    let recorder = Arc::clone(&probes);
+    let classification = existing_regular_files_with_metadata(
+        &root,
+        files,
+        |_path| Err(std::io::Error::from(std::io::ErrorKind::NotFound)),
+        move |probe| {
+            recorder.lock().unwrap().push(probe.to_path_buf());
+            false
+        },
+    );
+
+    let probes = probes.lock().unwrap().clone();
+    let file_paths: Vec<PathBuf> = [
+        PathBuf::from("a/one.rs"),
+        PathBuf::from("a/b/two.rs"),
+        PathBuf::from("a/b/c/three.rs"),
+        PathBuf::from("a/four.rs"),
+    ]
+    .into_iter()
+    .collect();
+    let mut file_probes = Vec::new();
+    let mut prefix_probes = Vec::new();
+    for probe in probes {
+        let relative = probe.strip_prefix(&root).expect("probe under root");
+        if file_paths.contains(&relative.to_path_buf()) {
+            file_probes.push(relative.to_path_buf());
+        } else {
+            prefix_probes.push(relative.to_path_buf());
+        }
+    }
+
+    // Each unique non-empty prefix (a, a/b, a/b/c) is probed exactly once —
+    // negative verdicts included.
+    prefix_probes.sort();
+    prefix_probes.dedup();
+    assert_eq!(
+        prefix_probes,
+        vec![PathBuf::from("a"), PathBuf::from("a/b"), PathBuf::from("a/b/c")],
+        "each unique directory prefix is probed exactly once"
+    );
+    // The per-file final-component probes stay one per file.
+    file_probes.sort();
+    assert_eq!(
+        file_probes,
+        vec![
+            PathBuf::from("a/b/c/three.rs"),
+            PathBuf::from("a/b/two.rs"),
+            PathBuf::from("a/four.rs"),
+            PathBuf::from("a/one.rs"),
+        ]
+    );
+    assert!(classification.reparse_skipped_paths.is_empty());
+}
+
 /// #4677: a directory reparse point in a repo-relative prefix makes the whole
 /// path an alias traversal. The classification must skip it (with disclosure)
 /// instead of scanning the target tree a second time under the alias spelling.
