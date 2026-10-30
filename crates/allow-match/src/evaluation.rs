@@ -393,7 +393,8 @@ pub fn evaluate_detailed(
             ),
             MatchStatus::Stale => {
                 let alias_hint = entry.path.as_deref().and_then(|scope| {
-                    let hit = case_insensitive_path_alias(&scope.to_string_lossy(), &finding_paths)?;
+                    let hit =
+                        case_insensitive_path_alias(&scope.to_string_lossy(), &finding_paths)?;
                     // Only advise the spelling fix when the entry could really
                     // match the alias finding once corrected: the kind, family,
                     // and selector gates still apply to the corrected spelling,

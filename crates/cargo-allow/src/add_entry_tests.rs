@@ -435,8 +435,7 @@ fn select_add_finding_no_hit_keeps_the_plain_refusal_message()
 /// findings the requested kind could actually select. A case-matched path of a
 /// different finding class would still refuse the add after the spelling fix.
 #[test]
-fn select_add_finding_case_alias_is_kind_filtered()
--> Result<(), Box<dyn std::error::Error>> {
+fn select_add_finding_case_alias_is_kind_filtered() -> Result<(), Box<dyn std::error::Error>> {
     let kind = panic_kind_filter()?;
     let mut unsafe_finding = panic_unwrap_finding("src/lib.rs", 7);
     unsafe_finding.kind = FindingKind::Unsafe;
