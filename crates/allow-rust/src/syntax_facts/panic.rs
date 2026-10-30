@@ -84,26 +84,7 @@ fn panic_method_call(
     let function = node.child_by_field_name("function")?;
 
     match function.kind() {
-        "field_expression" => {
-            let field = function.child_by_field_name("field")?;
-            let method_name = node_text(source, field)?;
-            // #4645: method names may be raw identifiers (`v.r#unwrap()`);
-            // the field token text carries the `r#` prefix.
-            let kind =
-                PanicMethodKind::from_name(method_name.strip_prefix("r#").unwrap_or(method_name))?;
-            let receiver_fingerprint = function
-                .child_by_field_name("value")
-                .and_then(|r| structural_receiver_fingerprint(r, source));
-            let s = field.start_position();
-            Some((
-                s.row as u32 + 1,
-                PanicMethodCall {
-                    kind,
-                    column: source_column(line_index, source, s.row, s.column),
-                    receiver_fingerprint,
-                },
-            ))
-        }
+        "field_expression" => panic_method_from_field_expression(function, source, line_index),
         // Path-qualified: Type::unwrap(x) or <T>::unwrap(x) (#1880).
         // #4645: the method name is the trailing identifier node of the
         // qualified path — walk through a trailing turbofish wrapper
@@ -114,27 +95,66 @@ fn panic_method_call(
         // bare generic free call (`unwrap::<T>(x)`) wraps a plain
         // `identifier`, and a user-defined free function with that name is
         // not a panic method; the unqualified free-call form stays unscanned.
+        // #4671: a turbofish may also sit on a method receiver —
+        // `v.unwrap::<u8>()` is a generic_function wrapping the same
+        // field_expression callee as `v.unwrap()`, so it takes the same
+        // field-name recognition and receiver fingerprint.
         "scoped_identifier" | "generic_function" => {
             let mut qualified = function;
             while qualified.kind() == "generic_function" {
                 qualified = qualified.child_by_field_name("function")?;
             }
-            if qualified.kind() != "scoped_identifier" {
-                return None;
+            match qualified.kind() {
+                "scoped_identifier" => {
+                    let name_node = trailing_identifier_node(qualified)?;
+                    let raw_name = node_text(source, name_node)?;
+                    let kind = PanicMethodKind::from_name(
+                        raw_name.strip_prefix("r#").unwrap_or(raw_name),
+                    )?;
+                    let s = name_node.start_position();
+                    Some((
+                        s.row as u32 + 1,
+                        PanicMethodCall {
+                            kind,
+                            column: source_column(line_index, source, s.row, s.column),
+                            receiver_fingerprint: None,
+                        },
+                    ))
+                }
+                "field_expression" => {
+                    panic_method_from_field_expression(qualified, source, line_index)
+                }
+                // Plain `identifier` callee: an unqualified free call (#4663).
+                _ => None,
             }
-            let name_node = trailing_identifier_node(qualified)?;
-            let raw_name = node_text(source, name_node)?;
-            let kind = PanicMethodKind::from_name(raw_name.strip_prefix("r#").unwrap_or(raw_name))?;
-            let s = name_node.start_position();
-            Some((
-                s.row as u32 + 1,
-                PanicMethodCall {
-                    kind,
-                    column: source_column(line_index, source, s.row, s.column),
-                    receiver_fingerprint: None,
-                },
-            ))
         }
         _ => None,
     }
+}
+
+/// A method-shaped `value.field` callee: `v.unwrap()` directly, or the same
+/// node under a trailing turbofish (`v.unwrap::<u8>()`, #4671). The reported
+/// position is the written field token, and the receiver fingerprint comes
+/// from the `value` child (#4645: the field token text carries the `r#`
+/// prefix for raw method names such as `v.r#unwrap()`).
+fn panic_method_from_field_expression(
+    field_expression: Node<'_>,
+    source: &str,
+    line_index: &SourceLineIndex,
+) -> Option<(u32, PanicMethodCall)> {
+    let field = field_expression.child_by_field_name("field")?;
+    let method_name = node_text(source, field)?;
+    let kind = PanicMethodKind::from_name(method_name.strip_prefix("r#").unwrap_or(method_name))?;
+    let receiver_fingerprint = field_expression
+        .child_by_field_name("value")
+        .and_then(|r| structural_receiver_fingerprint(r, source));
+    let s = field.start_position();
+    Some((
+        s.row as u32 + 1,
+        PanicMethodCall {
+            kind,
+            column: source_column(line_index, source, s.row, s.column),
+            receiver_fingerprint,
+        },
+    ))
 }

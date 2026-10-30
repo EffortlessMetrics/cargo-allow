@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Scanner: a trailing turbofish on a method receiver (`v.unwrap::<T>()`,
+  `v.r#expect::<T>(..)`) is now recognized from source syntax, so these
+  spellings produce the same unwrap/expect findings (and receiver
+  fingerprints) as the plain calls that were already found. Previously the
+  turbofish spelling produced no finding at all and could be omitted from
+  the exception ledger under `check --mode no-new`. Path-qualified
+  turbofish (`Type::unwrap::<T>(x)`) and the unqualified free-call negative
+  control (`unwrap::<T>(x)` calling a user free function) are unchanged.
