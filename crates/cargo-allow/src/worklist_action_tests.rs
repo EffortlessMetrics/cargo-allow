@@ -19,7 +19,7 @@ fn suggested_actions_cover_known_worklist_kinds_and_default() {
         ),
         (
             "expired_allow",
-            "renew the entry's `expires` date in policy/allow.toml (or remove the entry manually) — expired entries are not machine-prunable",
+            "renew the entry's `expires` date in the selected policy ledger (or remove the entry manually) — expired entries are not machine-prunable",
         ),
         (
             "stale_allow",

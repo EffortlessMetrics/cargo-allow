@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Review follow-ups on #4681: the expired-entry renewal advice no longer
+  names the conventional default ledger (worklist and explain accept
+  --config, so the advice now says "the selected policy ledger"), and the
+  doctor intent-provider render labels every delegation config failure
+  cause with "delegation config failure" instead of implying that only
+  parse failures occur.

@@ -114,7 +114,7 @@ fn intent_provider_config_parse_failure_renders_incompatible_with_reason() -> Re
             "{label} config failure must not claim a binary was detected: {rendered}"
         );
         assert!(
-            rendered.contains("delegation config parse failure"),
+            rendered.contains("detected binary/version: not probed (delegation config failure)"),
             "{label} config failure should say no binary was probed: {rendered}"
         );
         assert!(
