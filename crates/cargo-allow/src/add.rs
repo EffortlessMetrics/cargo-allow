@@ -1,6 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
-    MatchOutcome, SimpleDate, normalize_path,
+    MatchOutcome, SimpleDate, case_insensitive_path_alias, normalize_path,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -417,12 +417,32 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                     .collect();
                 match matching.as_slice() {
                     [] => {
+                        // #4678: a wrong-case --path fails kind inference with
+                        // the generic "pass --kind" line before the selection
+                        // level can diagnose it; name the tracked spelling here
+                        // so the remediation is reachable without --kind.
+                        let scanned_paths = findings
+                            .iter()
+                            .map(|f| f.path.to_string_lossy().to_string())
+                            .collect::<Vec<_>>();
+                        let alias_hint = case_insensitive_path_alias(
+                            &path.to_string_lossy(),
+                            &scanned_paths,
+                        )
+                        .map(|hit| {
+                            format!(
+                                ". The tracked finding `{hit}` differs only by letter case — \
+                                 paths are matched case-sensitively; retry with `--path {hit}`"
+                            )
+                        })
+                        .unwrap_or_default();
                         return Err(CargoAllowError::with_kind(
                             CargoAllowErrorKind::Usage,
                             format!(
-                                "no finding at {}:{} to infer --kind from; pass --kind explicitly",
+                                "no finding at {}:{} to infer --kind from; pass --kind explicitly{}",
                                 path.display(),
-                                line
+                                line,
+                                alias_hint
                             ),
                         ));
                     }

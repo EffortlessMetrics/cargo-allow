@@ -52,6 +52,9 @@ pub(crate) fn select_add_finding<'a>(
         );
         let finding_paths = findings
             .iter()
+            // Only alias findings the requested kind could actually select:
+            // a case-matched path of a different kind would still refuse.
+            .filter(|candidate| kind.matches_finding(candidate))
             .map(|candidate| normalize_path(&candidate.path))
             .collect::<Vec<_>>();
         if let Some(hit) = case_insensitive_path_alias(&normalized_path, &finding_paths) {

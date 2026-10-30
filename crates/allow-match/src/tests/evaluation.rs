@@ -402,6 +402,43 @@ fn stale_message_stays_plain_without_a_case_alias() {
 }
 
 #[test]
+fn stale_alias_hint_requires_the_corrected_entry_to_be_able_to_match() {
+    // A case-fold hit alone is not advice: if the entry's kind (or family or
+    // selector) could never match the alias finding even with the corrected
+    // spelling, the spelling fix would leave the entry stale. The remediation
+    // only names the alias when the corrected entry would actually match.
+    let mut wrong_kind = finding_with_hash("fnv1a64:actual");
+    // Same path alias and snippet hash as `stale_message_names_a_case_alias_entry_path`,
+    // but an incompatible finding class: a Panic finding at src/lib.rs cannot
+    // authorize this Unsafe entry after any spelling fix, so the kind gate —
+    // not the path — is what keeps them apart.
+    wrong_kind.kind = FindingKind::Panic;
+    wrong_kind.family = Some("unwrap".to_string());
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.id = "allow-kind".to_string();
+    entry.path = Some(PathBuf::from("SRC/LIB.RS"));
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(entry);
+
+    let outcomes = evaluate(
+        &cfg,
+        &[wrong_kind],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    let stale = outcomes
+        .iter()
+        .find(|outcome| outcome.status == MatchStatus::Stale && outcome.finding_index.is_none())
+        .unwrap_or_else(|| std::panic::panic_any("expected an entry-level stale outcome"));
+    assert!(
+        !stale.message.contains("differs only by letter case"),
+        "kind-incompatible alias must not gain the case remediation: {}",
+        stale.message
+    );
+}
+
+#[test]
 fn evaluate_counts_review_due_for_matched_and_unused_entries() {
     let today = allow_core::SimpleDate::today_utc_approx();
     let past = today.add_days(-5).to_string();

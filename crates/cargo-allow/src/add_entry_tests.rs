@@ -430,3 +430,28 @@ fn select_add_finding_no_hit_keeps_the_plain_refusal_message()
     );
     Ok(())
 }
+
+/// CodeRabbit review follow-up on #4686: the alias remediation must only name
+/// findings the requested kind could actually select. A case-matched path of a
+/// different finding class would still refuse the add after the spelling fix.
+#[test]
+fn select_add_finding_case_alias_is_kind_filtered()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let mut unsafe_finding = panic_unwrap_finding("src/lib.rs", 7);
+    unsafe_finding.kind = FindingKind::Unsafe;
+    unsafe_finding.family = Some("unsafe_fn".to_string());
+    let findings = vec![unsafe_finding];
+
+    let error = match select_add_finding(&findings, kind, Path::new("SRC/LIB.RS"), 7) {
+        Err(error) => error,
+        Ok(_) => return Err("a cross-kind wrong-case path must refuse the add".into()),
+    };
+
+    let message = error.to_string();
+    assert!(
+        !message.contains("differs only by letter case"),
+        "a kind-incompatible alias must not gain the case remediation: {message}"
+    );
+    Ok(())
+}
