@@ -520,6 +520,15 @@ jobs:
       - uses: ./.github/actions/rust-cache
         with:
           lane: operator-latency
+      # rust-cache restores target/ across runs, including target/perf-budget
+      # per-run output (worklist page evidence, retained attempt archives).
+      # The harness treats pre-existing retained evidence as a prior-owner
+      # collision and refuses to replace it (#2468 contract, #4682), so the
+      # cache layer — not the script — must start each run from empty. The
+      # harness-characterization suite plants its own fixtures under
+      # OUTPUT_DIR and requires them to survive smoke start.
+      - name: Clear cached per-run operator-latency output
+        run: rm -rf target/perf-budget
       - name: Operator latency harness contract (#2468)
         run: bash scripts/test-perf-budget-smoke.sh
       - name: Build release cargo-allow binary
