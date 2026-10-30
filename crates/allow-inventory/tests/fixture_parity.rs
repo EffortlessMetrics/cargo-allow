@@ -435,3 +435,295 @@ fn submodule_skip_requires_a_known_unsupported_capability() {
         "fatal: repository setup failed"
     ));
 }
+
+// ---------------------------------------------------------------------------
+// #4677: junctioned source directories. git-for-Windows traverses junctions,
+// so `git ls-files --others` can emit the same real file under a junctioned
+// alias spelling on top of its ordinary spelling. The inventory must skip and
+// disclose the alias traversal instead of double-counting the target tree.
+// Junction creation is Windows-only (`mklink /J`); every test degrades to a
+// reported skip when the filesystem or git cannot produce the fixture.
+// ---------------------------------------------------------------------------
+
+#[cfg(windows)]
+fn create_dir_junction(target: &Path, link: &Path) -> bool {
+    let output = Command::new("cmd")
+        .args(["/C", "mklink", "/J"])
+        .arg(link)
+        .arg(target)
+        .output();
+    match output {
+        Ok(output) if output.status.success() => true,
+        Ok(output) => {
+            eprintln!(
+                "skipped: junction creation failed: {}",
+                String::from_utf8_lossy(&output.stderr).trim()
+            );
+            false
+        }
+        Err(err) => {
+            eprintln!("skipped: junction spawn failed: {err}");
+            false
+        }
+    }
+}
+
+/// Build the #4677 fixture: a tracked real tree plus an untracked sibling
+/// directory that is also reachable through a `linked_src` junction. git's
+/// untracked listing sees the target directory twice — once under each
+/// spelling.
+#[cfg(windows)]
+struct JunctionFixture {
+    root: PathBuf,
+}
+
+#[cfg(windows)]
+fn build_junction_fixture(label: &str) -> JunctionFixture {
+    let root = temp_root(label);
+    std::fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    std::fs::create_dir_all(root.join("real"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("real dir: {err}")));
+    write_file(root.join("src").join("lib.rs"), "pub fn demo() {}\n");
+    write_file(root.join("real").join("lib.rs"), "pub fn extra() {}\n");
+    run_git(&root, &["init"]);
+    configure_empty_excludes_file(&root);
+    run_git(&root, &["config", "user.email", "test@example.com"]);
+    run_git(&root, &["config", "user.name", "Test"]);
+    run_git(&root, &["add", "src/lib.rs"]);
+    let linked = !create_dir_junction(&root.join("real"), &root.join("linked_src"));
+    if linked {
+        eprintln!("skipped: junction fixture unavailable on this filesystem");
+    }
+    JunctionFixture { root }
+}
+
+#[cfg(windows)]
+#[test]
+fn junctioned_source_dir_is_skipped_and_disclosed() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
+    let fixture = build_junction_fixture("junction-alias");
+    if !fixture.root.join("linked_src").exists() {
+        drop_root_best_effort(&fixture.root);
+        return;
+    }
+
+    let snapshot = run_inventory(&fixture.root, &scope_free_options(true));
+
+    assert_eq!(snapshot.source, InventorySource::FilesystemIncludeUntracked);
+    assert_eq!(
+        snapshot.completeness,
+        InventoryCompleteness::Partial,
+        "an alias traversal is a recorded omission and must degrade completeness"
+    );
+    assert_eq!(
+        snapshot.reparse_skipped_paths,
+        vec![PathBuf::from("linked_src/lib.rs")],
+        "the junction spelling must be disclosed, not scanned (#4677)"
+    );
+    assert!(
+        !snapshot
+            .files
+            .iter()
+            .any(|path| path.starts_with("linked_src")),
+        "alias spellings must stay out of the inventoried file set"
+    );
+    assert_eq!(
+        snapshot.files,
+        vec![PathBuf::from("real/lib.rs"), PathBuf::from("src/lib.rs"),],
+        "each real file must be inventoried exactly once, never double-counted \
+         through the junction spelling"
+    );
+
+    drop_root_best_effort(&fixture.root);
+}
+
+/// The junction cycle must terminate (never hang) and must never emit
+/// phantom alias paths. git-for-Windows versions differ on whether they
+/// traverse a cycle — 2.54 refuses with a warning and no paths — so the
+/// partial/disclosure assertions apply only when git actually emitted cycle
+/// spellings; the absence of phantom paths is asserted unconditionally.
+#[cfg(windows)]
+#[test]
+fn junction_cycle_is_bounded_and_disclosed() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
+    let fixture = build_junction_fixture("junction-cycle");
+    if !fixture.root.join("linked_src").exists() {
+        drop_root_best_effort(&fixture.root);
+        return;
+    }
+    // mklink /J does not require an existing target, so the pair is created
+    // out of order to close a true two-junction cycle (a -> b -> a).
+    if !create_dir_junction(&fixture.root.join("cycle_b"), &fixture.root.join("cycle_a"))
+        || !create_dir_junction(&fixture.root.join("cycle_a"), &fixture.root.join("cycle_b"))
+    {
+        drop_root_best_effort(&fixture.root);
+        return;
+    }
+    // Close the cycle: cycle_b's target now contains cycle_a's spelling.
+    let cycle_probe = Command::new("git")
+        .arg("-C")
+        .arg(&fixture.root)
+        .args(["ls-files", "--others", "--exclude-standard", "-z"])
+        .output()
+        .map(|output| {
+            parse_git_ls_files_output(&output.stdout)
+                .into_iter()
+                .filter(|path| path.starts_with("cycle_a") || path.starts_with("cycle_b"))
+                .collect::<Vec<_>>()
+        });
+    let emitted_cycle_paths = cycle_probe.unwrap_or_default();
+
+    let snapshot = run_inventory(&fixture.root, &scope_free_options(true));
+
+    assert!(
+        !snapshot
+            .files
+            .iter()
+            .any(|path| path.starts_with("cycle_a")),
+        "cycle_a spellings must never be inventoried as phantom coverage"
+    );
+    assert!(
+        !snapshot
+            .files
+            .iter()
+            .any(|path| path.starts_with("cycle_b")),
+        "cycle_b spellings must never be inventoried as phantom coverage"
+    );
+    assert!(
+        !snapshot
+            .reparse_skipped_paths
+            .iter()
+            .any(|path| path.starts_with("cycle_a") || path.starts_with("cycle_b"))
+            && snapshot
+                .files
+                .iter()
+                .all(|path| !path.starts_with("cycle_a") && !path.starts_with("cycle_b")),
+        "cycle junctions must be absent from both scanned files and disclosures \
+         when git never emitted them"
+    );
+    if emitted_cycle_paths.is_empty() {
+        eprintln!(
+            "note: this git refuses to traverse the junction cycle; bounded-run \
+             and phantom-absence assertions still hold"
+        );
+    } else {
+        assert_eq!(
+            snapshot.completeness,
+            InventoryCompleteness::Partial,
+            "any emitted cycle spelling is a recorded omission"
+        );
+        for path in &emitted_cycle_paths {
+            assert!(
+                snapshot.reparse_skipped_paths.contains(path),
+                "every emitted cycle spelling must be disclosed: {path:?}"
+            );
+            assert!(
+                !snapshot.files.contains(path),
+                "no emitted cycle spelling may reach the file set: {path:?}"
+            );
+        }
+    }
+
+    drop_root_best_effort(&fixture.root);
+}
+
+/// Regression guard: tracked mode never traverses junctions (`git ls-files`
+/// without `--others` lists only cached paths), so the same fixture must stay
+/// Complete with zero reparse disclosures.
+#[cfg(windows)]
+#[test]
+fn tracked_mode_ignores_junction_spelling() {
+    if !git_available() {
+        eprintln!("skipped: git not available");
+        return;
+    }
+    let fixture = build_junction_fixture("junction-tracked");
+    if !fixture.root.join("linked_src").exists() {
+        drop_root_best_effort(&fixture.root);
+        return;
+    }
+
+    let snapshot = run_inventory(&fixture.root, &scope_free_options(false));
+
+    assert_eq!(snapshot.source, InventorySource::GitTracked);
+    assert_eq!(
+        snapshot.completeness,
+        InventoryCompleteness::Complete,
+        "tracked mode sees only cached paths; a junctioned untracked sibling \
+         must not degrade it"
+    );
+    assert!(snapshot.reparse_skipped_paths.is_empty());
+    assert!(
+        !snapshot
+            .files
+            .iter()
+            .any(|path| path.starts_with("linked_src")),
+        "tracked mode must never emit the junction spelling"
+    );
+    assert_eq!(snapshot.files, vec![PathBuf::from("src/lib.rs")]);
+
+    drop_root_best_effort(&fixture.root);
+}
+
+/// The filesystem fallback walk must keep refusing to recurse into directory
+/// junctions (#1842): no alias paths, no hang, real files inventoried once.
+#[cfg(windows)]
+#[test]
+fn filesystem_fallback_walk_skips_directory_junctions() {
+    let root = temp_root("junction-fallback");
+    std::fs::create_dir_all(root.join("src"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("src dir: {err}")));
+    std::fs::create_dir_all(root.join("real"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("real dir: {err}")));
+    write_file(root.join("real").join("lib.rs"), "pub fn demo() {}\n");
+    write_file(root.join("src").join("lib.rs"), "pub fn demo() {}\n");
+    if !create_dir_junction(&root.join("real"), &root.join("linked_src")) {
+        drop_root_best_effort(&root);
+        return;
+    }
+
+    let snapshot = run_inventory(&root, &scope_free_options(true));
+
+    // Outside any repository, include-untracked mode falls back to the raw
+    // filesystem walk; the fallback is visible in `git_error` and the
+    // `Fallback` completeness, while the source label stays untracked mode.
+    assert!(snapshot.git_error.is_some());
+    assert_eq!(
+        snapshot.completeness,
+        InventoryCompleteness::Fallback,
+        "the walk refuses to recurse into junctions, so no omissions are recorded"
+    );
+    assert!(
+        !snapshot
+            .files
+            .iter()
+            .any(|path| path.starts_with("linked_src")),
+        "the fallback walk must not recurse into junctioned directories"
+    );
+    assert!(snapshot.reparse_skipped_paths.is_empty());
+    assert_eq!(
+        snapshot.files,
+        vec![PathBuf::from("real/lib.rs"), PathBuf::from("src/lib.rs"),],
+        "real files stay inventoried exactly once through the walk"
+    );
+
+    drop_root_best_effort(&root);
+}
+
+/// Local `-z` split for the cycle probe: `parse_git_ls_files_z` is
+/// crate-private, so integration tests keep their own splitter.
+#[cfg(windows)]
+fn parse_git_ls_files_output(stdout: &[u8]) -> Vec<PathBuf> {
+    stdout
+        .split(|byte| *byte == 0)
+        .filter(|path| !path.is_empty())
+        .map(|path| PathBuf::from(String::from_utf8_lossy(path).into_owned()))
+        .collect()
+}
