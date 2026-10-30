@@ -1,6 +1,7 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
-    FindingKind, LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate, normalize_path,
+    FindingKind, LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate,
+    case_insensitive_path_alias, normalize_path,
 };
 use allow_match::score_match;
 use std::path::Path;
@@ -28,7 +29,12 @@ pub(crate) fn select_add_finding<'a>(
         .collect::<Vec<_>>();
     candidates.sort_by_key(|(distance, _, finding)| (*distance, normalize_path(&finding.path)));
     let Some((distance, index, finding)) = candidates.first().copied() else {
-        return Err(CargoAllowError::with_kind(
+        // #4678: a wrong-case `--path` can never equal a finding path exactly
+        // (matching is case-sensitive by law), and the generic advice then
+        // claims the file is untracked when it is tracked. When a finding
+        // path differs only by letter case, append the correct spelling to
+        // the message; matching itself stays exact.
+        let mut error = CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
             format!(
                 "no current {} finding found near {}:{}; \
@@ -43,7 +49,18 @@ pub(crate) fn select_add_finding<'a>(
         .with_next_step(
             "pass the exact --line of one of the listed findings, \
                  or pass a different --kind when the occurrence belongs to another finding class.",
-        ));
+        );
+        let finding_paths = findings
+            .iter()
+            .map(|candidate| normalize_path(&candidate.path))
+            .collect::<Vec<_>>();
+        if let Some(hit) = case_insensitive_path_alias(&normalized_path, &finding_paths) {
+            error = error.with_message_suffix(format!(
+                ". The tracked finding `{hit}` differs only by letter case — paths are matched \
+                 case-sensitively; retry with `--path {hit}`"
+            ));
+        }
+        return Err(error);
     };
     let tied = candidates
         .iter()

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
 use crate::{
-    AllowEntry, FindingKind, Lifecycle, Selector, allow_entry_broad_scope, glob_matches_str,
-    normalize_path, source_tree_path_is_ignored, source_tree_path_matches_filter,
-    source_tree_scope_has_wildcard,
+    AllowEntry, FindingKind, Lifecycle, Selector, allow_entry_broad_scope,
+    case_insensitive_path_alias, glob_matches_str, normalize_path, source_tree_path_is_ignored,
+    source_tree_path_matches_filter, source_tree_scope_has_wildcard,
 };
 
 #[test]
@@ -312,4 +312,97 @@ fn allow_entry_path_or_glob_prefers_path_then_entry_glob_then_selector_glob() {
 
     entry.selector.glob = None;
     assert_eq!(entry.path_or_glob(), "");
+}
+
+// #4678: `case_insensitive_path_alias` is diagnostics-only. Exact matching
+// stays case-sensitive everywhere; these tests pin the helper's contract so
+// remediation text can trust its answers.
+
+#[test]
+fn case_alias_exact_hit_short_circuits_to_none() {
+    let candidates = vec!["src/lib.rs".to_string(), "src/other.rs".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("src/lib.rs", &candidates),
+        None,
+        "an exact hit is a match, not an alias"
+    );
+    // An exact hit anywhere wins even when an earlier candidate would fold.
+    let mixed = vec!["SRC/LIB.RS".to_string(), "src/lib.rs".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("src/lib.rs", &mixed),
+        None,
+        "a matchable target must not be reported as an alias"
+    );
+}
+
+#[test]
+fn case_alias_returns_the_candidate_spelling() {
+    let candidates = vec!["src/other.rs".to_string(), "src/lib.rs".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("SRC/LIB.RS", &candidates),
+        Some("src/lib.rs".to_string()),
+        "the suggestion carries the candidate's spelling for --path"
+    );
+    // The relation is symmetric: a lowercase target folds against a
+    // mixed-case candidate too.
+    let upper = vec!["SRC/LIB.RS".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("src/lib.rs", &upper),
+        Some("SRC/LIB.RS".to_string())
+    );
+}
+
+#[test]
+fn case_alias_no_hit_returns_none() {
+    let candidates = vec!["src/lib.rs".to_string(), "src/main.rs".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("src/missing.rs", &candidates),
+        None
+    );
+    assert_eq!(
+        case_insensitive_path_alias("src/lib.rs.bak", &candidates),
+        None,
+        "a different name is not a case alias"
+    );
+    assert_eq!(case_insensitive_path_alias("src/lib.rs", &[]), None);
+}
+
+#[test]
+fn case_alias_normalizes_separators_and_segments_before_folding() {
+    // Backslash spelling and `.`/`..` segments fold first, so separator or
+    // segment spelling alone is identity, not an alias.
+    let candidates = vec![r"src\lib.rs".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("src/./lib.rs", &candidates),
+        None
+    );
+    assert_eq!(
+        case_insensitive_path_alias("SRC/../SRC/LIB.RS", &candidates),
+        Some("src/lib.rs".to_string())
+    );
+}
+
+#[test]
+fn case_alias_folds_non_ascii_letters() {
+    // ASCII-only folding would miss `É` (U+00C9) vs `é` (U+00E9); a
+    // false-positive suggestion is harmless because matching stays exact.
+    let candidates = vec!["src/café.rs".to_string()];
+    assert_eq!(
+        case_insensitive_path_alias("src/CAFÉ.rs", &candidates),
+        Some("src/café.rs".to_string())
+    );
+}
+
+#[test]
+fn case_alias_treats_glob_shaped_candidates_literally() {
+    // The helper compares paths, not patterns: a glob scope never fold-matches
+    // a concrete target, so glob entries produce no alias suggestion.
+    let candidates = vec!["src/**/*.rs".to_string()];
+    assert_eq!(case_insensitive_path_alias("src/lib.rs", &candidates), None);
+    // Glob-vs-glob case differences still fold — callers pass concrete paths,
+    // and the diagnostic contract is literal comparison on both sides.
+    assert_eq!(
+        case_insensitive_path_alias("SRC/**/*.RS", &candidates),
+        Some("src/**/*.rs".to_string())
+    );
 }

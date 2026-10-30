@@ -141,6 +141,167 @@ fn why_command_uses_the_retained_scoped_context() -> Result<(), Box<dyn Error>> 
     Ok(())
 }
 
+/// #4678 fixture: a tracked `src/lib.rs` asked for through a wrong-case
+/// spelling. The inventory check is lexical, so every platform reproduces the
+/// Windows behavior: the scoped `why` load rejects with E0004, and the typed
+/// Next step must name the case alias instead of leaving the misleading
+/// `--include-untracked` advice as the last word.
+#[test]
+fn why_wrong_case_target_error_names_the_case_alias() -> Result<(), Box<dyn Error>> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-why-case-alias-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    let cleanup = |root: &PathBuf| {
+        let _ = fs::remove_dir_all(root);
+    };
+    fs::create_dir_all(root.join("policy"))?;
+    fs::create_dir_all(root.join("src"))?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )?;
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+    )?;
+    let result = (|| -> Result<(), Box<dyn Error>> {
+        for args in [
+            vec!["init"],
+            vec!["config", "user.email", "cargo-allow@example.invalid"],
+            vec!["config", "user.name", "cargo-allow why test"],
+            vec!["add", "--all"],
+            vec!["commit", "-m", "why case alias fixture"],
+        ] {
+            let status = std::process::Command::new("git")
+                .args(&args)
+                .current_dir(&root)
+                .status()?;
+            if !status.success() {
+                return Err(format!("git command failed: {args:?}").into());
+            }
+        }
+
+        let error = match crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            true,
+            Some("panic"),
+            false,
+            &root.join("SRC/LIB.RS"),
+        ) {
+            Err(error) => error,
+            Ok(_) => return Err("a wrong-case target must be rejected".into()),
+        };
+        assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Inventory);
+        assert_eq!(error.code(), "E0004_INVENTORY");
+        let message = error.to_string();
+        assert!(
+            message.contains("is not present in the source inventory"),
+            "{message}"
+        );
+        let next_step = error
+            .next_step()
+            .ok_or("the case-alias rejection must carry a typed next step")?;
+        assert!(
+            next_step.contains("differs only by letter case"),
+            "the Next step must explain the case mismatch: {next_step}"
+        );
+        assert!(
+            next_step.contains("retry with `--path src/lib.rs`"),
+            "the Next step must name the tracked spelling: {next_step}"
+        );
+        let report = crate::error_report::format_cli_error(&error);
+        assert_eq!(report.matches("Next:").count(), 1, "{report}");
+
+        // An 8.3 short-name alias stays a plain rejection: expansion needs
+        // filesystem calls the scan deliberately avoids (documented gap).
+        let short_error = match crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            true,
+            Some("panic"),
+            false,
+            &root.join("SOURCE~1/lib.rs"),
+        ) {
+            Err(error) => error,
+            Ok(_) => return Err("an 8.3 short-name target must be rejected".into()),
+        };
+        assert_eq!(
+            short_error.kind(),
+            allow_core::CargoAllowErrorKind::Inventory
+        );
+        assert!(
+            short_error.next_step().is_none(),
+            "8.3 aliases are a documented v1 limitation; no case step expected"
+        );
+        Ok(())
+    })();
+    cleanup(&root);
+    result
+}
+
+/// #4678 control: the correct-case target still loads without the inventory
+/// rejection, so the diagnostics cannot have tightened matching.
+#[test]
+fn why_correct_case_target_still_loads_the_scoped_context() -> Result<(), Box<dyn Error>> {
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-why-case-control-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    let cleanup = |root: &PathBuf| {
+        let _ = fs::remove_dir_all(root);
+    };
+    fs::create_dir_all(root.join("policy"))?;
+    fs::create_dir_all(root.join("src"))?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )?;
+    fs::write(
+        root.join("src/lib.rs"),
+        "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+    )?;
+    let result = (|| -> Result<(), Box<dyn Error>> {
+        for args in [
+            vec!["init"],
+            vec!["config", "user.email", "cargo-allow@example.invalid"],
+            vec!["config", "user.name", "cargo-allow why test"],
+            vec!["add", "--all"],
+            vec!["commit", "-m", "why case control fixture"],
+        ] {
+            let status = std::process::Command::new("git")
+                .args(&args)
+                .current_dir(&root)
+                .status()?;
+            if !status.success() {
+                return Err(format!("git command failed: {args:?}").into());
+            }
+        }
+        let scoped = crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            true,
+            Some("panic"),
+            false,
+            &root.join("src/lib.rs"),
+        )?;
+        assert!(
+            !scoped.0.findings.is_empty(),
+            "the correct-case target must still scan to a finding"
+        );
+        Ok(())
+    })();
+    cleanup(&root);
+    result
+}
+
 #[test]
 fn why_missing_evaluation_outcome_is_an_internal_invariant() {
     let err = missing_evaluation_outcome_error(std::path::Path::new("src/lib.rs"), 42);

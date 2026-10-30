@@ -1,4 +1,4 @@
-use allow_core::{AllowEntry, Finding, glob_matches, normalize_path};
+use allow_core::{AllowEntry, Finding, case_insensitive_path_alias, glob_matches, normalize_path};
 
 /// How strongly an allow entry matches a finding. Every selector field is a
 /// hard gate (`return None` on mismatch), so a `Some(strength)` result means
@@ -250,6 +250,20 @@ fn push_field_mismatch(
 
 fn path_mismatch_reason(entry: &AllowEntry, finding: &Finding) -> String {
     let finding_path = normalize_path(&finding.path);
+    // #4678: the exact-path gate already failed, so when the entry's path
+    // scope and the finding path fold to the same lowercased spelling, letter
+    // case — not "outside scope" — is the operative mismatch. Matching stays
+    // exact; this only sharpens the diagnostic.
+    if let Some(scope) = &entry.path
+        && case_insensitive_path_alias(&normalize_path(scope), std::slice::from_ref(&finding_path))
+            .is_some()
+    {
+        return format!(
+            "path mismatch: finding `{finding_path}` differs only by letter case from entry \
+             path scope `{}`; paths are matched case-sensitively",
+            normalize_path(scope)
+        );
+    }
     let mut scopes = Vec::new();
     if let Some(path) = &entry.path {
         scopes.push(format!("path=`{}`", normalize_path(path)));

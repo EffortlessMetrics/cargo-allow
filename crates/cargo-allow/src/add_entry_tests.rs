@@ -362,3 +362,71 @@ fn select_add_finding_ambiguous_error_carries_a_typed_next_step()
     assert_eq!(report.matches("Next:").count(), 1, "{report}");
     Ok(())
 }
+
+/// #4678: a wrong-case `--path` can never match a finding exactly (matching is
+/// case-sensitive by law), and the stock refusal then claims the file may be
+/// untracked when it is tracked. The rejection must append the tracked
+/// spelling as remediation while keeping the #4610 typed next step intact.
+#[test]
+fn select_add_finding_wrong_case_path_carries_the_case_alias_remediation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+    let error = match select_add_finding(&findings, kind, Path::new("SRC/LIB.RS"), 7) {
+        Err(error) => error,
+        Ok(_) => return Err("a wrong-case path must refuse the add".into()),
+    };
+
+    let message = error.to_string();
+    assert!(
+        message.contains("differs only by letter case"),
+        "the refusal must explain the case mismatch: {message}"
+    );
+    assert!(
+        message.contains("retry with `--path src/lib.rs`"),
+        "the refusal must name the tracked spelling: {message}"
+    );
+    assert!(
+        message.contains("SRC/LIB.RS"),
+        "the refusal must keep the requested spelling for context: {message}"
+    );
+    // The #4610 typed next step survives the decoration and renders alone.
+    let next_step = error
+        .next_step()
+        .ok_or("the wrong-case refusal must keep the typed next step")?;
+    assert!(
+        next_step.contains("pass the exact --line"),
+        "the typed next step must be unchanged: {next_step}"
+    );
+    let report = crate::error_report::format_cli_error(&error);
+    assert_eq!(report.matches("Next:").count(), 1, "{report}");
+    assert!(
+        !report.contains("review the command syntax"),
+        "the generic syntax line must stay replaced: {report}"
+    );
+    Ok(())
+}
+
+/// #4678 control: with no case-fold hit the no-finding refusal keeps its
+/// historical message shape (the `--include-untracked` advice is then correct).
+#[test]
+fn select_add_finding_no_hit_keeps_the_plain_refusal_message()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+    let error = match select_add_finding(&findings, kind, Path::new("src/other.rs"), 7) {
+        Err(error) => error,
+        Ok(_) => return Err("an unmatchable path must refuse the add".into()),
+    };
+
+    let message = error.to_string();
+    assert!(
+        message.contains("no current panic finding found near"),
+        "{message}"
+    );
+    assert!(
+        !message.contains("differs only by letter case"),
+        "a non-alias refusal must not gain the case remediation: {message}"
+    );
+    Ok(())
+}

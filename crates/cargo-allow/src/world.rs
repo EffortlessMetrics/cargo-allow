@@ -1,6 +1,7 @@
 use allow_core::{
     AllowConfig, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
-    SOURCE_FILE_READ_MAX_BYTES, normalize_path, source_tree_path_is_ignored,
+    SOURCE_FILE_READ_MAX_BYTES, case_insensitive_path_alias, normalize_path,
+    source_tree_path_is_ignored,
 };
 use allow_inventory::{
     Inventory, InventoryCompleteness, InventoryOptions, InventorySource, inventory,
@@ -782,13 +783,33 @@ pub(crate) fn load_world_for_path(
         )
     })?;
     if !inventory.files.iter().any(|path| path == &target) {
-        return Err(CargoAllowError::with_kind(
+        // #4678: a case-spelling alias (e.g. `SRC/LIB.RS` for tracked
+        // `src/lib.rs`) is the same file on Windows but can never equal an
+        // inventory path exactly, and the in-message `--include-untracked`
+        // advice is then actively misleading — the file IS tracked. When a
+        // case-fold hit exists, the typed Next step names the correct
+        // spelling. Matching itself stays exact; this only decorates the
+        // typed error.
+        let inventory_paths = inventory
+            .files
+            .iter()
+            .map(|path| path.to_string_lossy().into_owned())
+            .collect::<Vec<_>>();
+        let mut err = CargoAllowError::with_kind(
             CargoAllowErrorKind::Inventory,
             format!(
                 "target {} is not present in the source inventory; use --include-untracked if it is intentionally untracked",
                 target_path.display()
             ),
-        ));
+        );
+        if let Some(hit) = case_insensitive_path_alias(&target.to_string_lossy(), &inventory_paths)
+        {
+            err = err.with_next_step(format!(
+                "the tracked file `{hit}` differs only by letter case — paths are matched \
+                 case-sensitively; retry with `--path {hit}`."
+            ));
+        }
+        return Err(err);
     }
     let mut findings = Vec::new();
     let rust_scan = allow_rust::scan_rust_files(&root, &files)?;

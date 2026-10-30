@@ -1,4 +1,7 @@
-use allow_core::{AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate};
+use allow_core::{
+    AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate, case_insensitive_path_alias,
+    normalize_path,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::classification::classify_matched;
@@ -343,6 +346,16 @@ pub fn evaluate_detailed(
         }
     }
 
+    // #4678: exact matching is case-sensitive, so an entry whose path scope
+    // differs from a tracked finding only by letter case can never match and
+    // projects as stale — even though the file is right there. The stale
+    // message names the alias so an operator fixes the spelling instead of
+    // letting `prune --stale` delete a load-bearing entry. Matching itself
+    // stays exact; this only decorates the message.
+    let finding_paths: Vec<String> = findings
+        .iter()
+        .map(|finding| normalize_path(&finding.path))
+        .collect();
     for (entry_index, entry) in cfg.allow.iter().enumerate() {
         if state.used_entries.contains(&entry_index) {
             continue;
@@ -378,11 +391,21 @@ pub fn evaluate_detailed(
                     .as_deref()
                     .unwrap_or("<missing>")
             ),
-            MatchStatus::Stale => format!(
-                "{} is stale: no current finding matched {}",
-                entry.id,
-                entry.path_or_glob()
-            ),
+            MatchStatus::Stale => match entry.path.as_deref().and_then(|scope| {
+                case_insensitive_path_alias(&scope.to_string_lossy(), &finding_paths)
+            }) {
+                Some(hit) => format!(
+                    "{} is stale: no current finding matched {}; a tracked finding at `{hit}` \
+                     differs only by letter case — fix the entry path spelling",
+                    entry.id,
+                    entry.path_or_glob()
+                ),
+                None => format!(
+                    "{} is stale: no current finding matched {}",
+                    entry.id,
+                    entry.path_or_glob()
+                ),
+            },
             MatchStatus::MissingRequiredField => format!(
                 "{} has a malformed lifecycle date; the entry fails closed until its expires/review_after values parse (#1804)",
                 entry.id
