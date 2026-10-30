@@ -1,7 +1,7 @@
 use super::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
-    select_add_finding,
+    case_alias_hint_for_inference, count_in_scope_findings, ensure_addable_outcome,
+    ensure_broad_scope_addable, next_allow_id, select_add_finding,
 };
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowErrorKind, Finding, FindingKind, Lifecycle, MatchStatus,
@@ -453,4 +453,32 @@ fn select_add_finding_case_alias_is_kind_filtered() -> Result<(), Box<dyn std::e
         "a kind-incompatible alias must not gain the case remediation: {message}"
     );
     Ok(())
+}
+
+/// The inference-failure remediation names the tracked spelling for a
+/// wrong-case `--path`, so `add` without `--kind` still reaches the advice.
+#[test]
+fn case_alias_hint_for_inference_names_the_tracked_spelling() {
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+
+    let hint = case_alias_hint_for_inference(&findings, Path::new("SRC/LIB.RS"))
+        .unwrap_or_else(|| std::panic::panic_any("a wrong-case path must produce a hint"));
+    assert!(
+        hint.starts_with(". The tracked finding `src/lib.rs` differs only by letter case"),
+        "{hint}"
+    );
+}
+
+#[test]
+fn case_alias_hint_for_inference_is_silent_without_a_case_hit() {
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+
+    assert!(
+        case_alias_hint_for_inference(&findings, Path::new("src/other.rs")).is_none(),
+        "an unrelated path has no alias to name"
+    );
+    assert!(
+        case_alias_hint_for_inference(&findings, Path::new("src/lib.rs")).is_none(),
+        "the exact spelling is matching's business, not an alias"
+    );
 }

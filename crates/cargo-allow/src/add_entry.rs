@@ -8,6 +8,22 @@ use std::path::Path;
 
 use crate::{KindFilter, selector_from_finding};
 
+/// The #4678 case-alias remediation for the kind-inference failure path:
+/// when `add` without `--kind` finds no finding at the exact spelling, name
+/// the tracked spelling so the advice is reachable without `--kind`.
+pub(super) fn case_alias_hint_for_inference(findings: &[Finding], path: &Path) -> Option<String> {
+    let scanned_paths = findings
+        .iter()
+        .map(|finding| finding.path.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    case_insensitive_path_alias(&path.to_string_lossy(), &scanned_paths).map(|hit| {
+        format!(
+            ". The tracked finding `{hit}` differs only by letter case — \
+             paths are matched case-sensitively; retry with `--path {hit}`"
+        )
+    })
+}
+
 pub(crate) fn select_add_finding<'a>(
     findings: &'a [Finding],
     kind: KindFilter,

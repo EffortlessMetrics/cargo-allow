@@ -1,6 +1,6 @@
 use allow_core::{
     AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding, FindingKind,
-    MatchOutcome, SimpleDate, case_insensitive_path_alias, normalize_path,
+    MatchOutcome, SimpleDate, normalize_path,
 };
 use allow_match::{CheckMode, evaluate};
 use allow_policy::{render_policy, validate_policy};
@@ -21,7 +21,8 @@ pub(crate) use add_args::AddArgs;
 pub(crate) use add_entry::select_add_finding;
 use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
+    case_alias_hint_for_inference, count_in_scope_findings, ensure_addable_outcome,
+    ensure_broad_scope_addable, next_allow_id,
 };
 pub(crate) use add_policy::transpose_for_existing_target;
 #[cfg(test)]
@@ -421,21 +422,8 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                         // the generic "pass --kind" line before the selection
                         // level can diagnose it; name the tracked spelling here
                         // so the remediation is reachable without --kind.
-                        let scanned_paths = findings
-                            .iter()
-                            .map(|f| f.path.to_string_lossy().to_string())
-                            .collect::<Vec<_>>();
-                        let alias_hint = case_insensitive_path_alias(
-                            &path.to_string_lossy(),
-                            &scanned_paths,
-                        )
-                        .map(|hit| {
-                            format!(
-                                ". The tracked finding `{hit}` differs only by letter case — \
-                                 paths are matched case-sensitively; retry with `--path {hit}`"
-                            )
-                        })
-                        .unwrap_or_default();
+                        let alias_hint =
+                            case_alias_hint_for_inference(&findings, path).unwrap_or_default();
                         return Err(CargoAllowError::with_kind(
                             CargoAllowErrorKind::Usage,
                             format!(
