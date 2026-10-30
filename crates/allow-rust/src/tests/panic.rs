@@ -144,6 +144,61 @@ fn syntax_panic_methods_record_unicode_receiver_fingerprint() {
     );
 }
 #[test]
+fn syntax_panic_methods_record_method_receiver_turbofish() {
+    // #4671: a trailing turbofish on a method receiver parses as a
+    // generic_function wrapping the same field_expression callee as the
+    // plain call, and previously produced no finding at all.
+    let src = r#"
+        fn load(v: Option<u8>, w: Option<u8>) -> u8 {
+            v.unwrap::<u8>()
+                + w.r#expect::<T>("loaded")
+        }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    let unwrap = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("unwrap"))
+        .unwrap_or_else(|| std::panic::panic_any("expected unwrap finding"));
+    assert_eq!(unwrap.identity.ast_kind, "method_call");
+    assert_eq!(unwrap.span.as_ref().map(|span| span.line), Some(3));
+    assert_eq!(unwrap.identity.line_hint, Some(3));
+    assert_eq!(
+        unwrap.identity.receiver_fingerprint.as_deref(),
+        Some("param:0")
+    );
+
+    let expect = findings
+        .iter()
+        .find(|f| f.kind == FindingKind::Panic && f.family.as_deref() == Some("expect"))
+        .unwrap_or_else(|| std::panic::panic_any("expected expect finding"));
+    assert_eq!(expect.identity.ast_kind, "method_call");
+    assert_eq!(expect.span.as_ref().map(|span| span.line), Some(4));
+    assert_eq!(expect.identity.line_hint, Some(4));
+    assert_eq!(
+        expect.identity.receiver_fingerprint.as_deref(),
+        Some("param:1")
+    );
+}
+
+#[test]
+fn syntax_panic_methods_ignore_unqualified_generic_free_calls() {
+    // #4663 control: a turbofish wrapping a plain identifier callee is a
+    // user-defined free function, not a panic method; it stays unscanned.
+    let src = r#"
+        fn unwrap<T>(v: T) -> T { v }
+        fn load(v: u8) -> u8 { unwrap::<u8>(v) }
+        "#;
+    let findings = scan_rust_source("src/lib.rs", src);
+
+    assert!(
+        !findings
+            .iter()
+            .any(|f| f.kind == FindingKind::Panic && f.identity.ast_kind == "method_call")
+    );
+}
+
+#[test]
 fn syntax_panic_methods_ignore_text_in_strings_and_comments() {
     let src = r#"
         fn load() {
