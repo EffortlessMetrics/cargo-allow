@@ -236,6 +236,9 @@ fn staged_inventory(snapshot: &StagedRepositorySnapshot, options: &InventoryOpti
         git_error: None,
         skipped_paths: Vec::new(),
         submodule_paths: Vec::new(),
+        // The staged candidate is an explicit index snapshot, not a worktree
+        // walk, so no junctioned alias spelling can occur (#4677).
+        reparse_skipped_paths: Vec::new(),
     }
 }
 

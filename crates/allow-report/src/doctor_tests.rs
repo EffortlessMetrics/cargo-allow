@@ -23,6 +23,7 @@ fn doctor_json_renderer_records_root_config_and_inventory() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -151,6 +152,7 @@ fn doctor_json_renderer_records_config_provenance_without_claiming_validation() 
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -214,6 +216,7 @@ fn doctor_human_renderer_records_root_config_and_inventory() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -267,6 +270,7 @@ fn doctor_json_renderer_suggests_init_when_config_is_missing() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -317,6 +321,7 @@ fn doctor_human_renderer_reports_invalid_config_status() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -373,6 +378,7 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
             git_inventory_error: None,
             skipped_paths: 0,
             submodule_paths: 0,
+            reparse_skipped_paths: 0,
             rust_scanner_completeness: "unknown",
             rust_files_considered: 0,
             rust_files_scanned: 0,
@@ -421,6 +427,7 @@ fn doctor_human_renderer_styles_fixed_status_labels_only() {
             git_inventory_error: None,
             skipped_paths: 0,
             submodule_paths: 0,
+            reparse_skipped_paths: 0,
             rust_scanner_completeness: "unknown",
             rust_files_considered: 0,
             rust_files_scanned: 0,
@@ -464,6 +471,7 @@ fn doctor_json_renderer_includes_optional_evidence_health_counts() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -507,6 +515,7 @@ fn doctor_json_renderer_routes_evidence_repair_queues() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -564,6 +573,7 @@ fn doctor_json_renderer_always_includes_evidence_repair_queues_even_when_clean()
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -610,6 +620,7 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,
@@ -640,4 +651,61 @@ fn doctor_json_renderer_records_configured_federation_ledgers() {
     assert!(json.contains("\"id\": \"source-policy\""));
     assert!(json.contains("\"dialect\": \"cargo-allow\""));
     assert!(json.contains("\"provenance\": \"fixed_allow_config\""));
+}
+
+#[test]
+fn doctor_discloses_reparse_skipped_paths_in_human_and_json() {
+    let report = DoctorReport {
+        source_tree_root: "H:/Code/Rust/repo",
+        root_discovery: "nearest_git_root",
+        config_path: Some("policy/allow.toml"),
+        config_schema_version: Some("0.1"),
+        config_policy: Some("cargo-allow"),
+        config_owner: None,
+        config_status: None,
+        config_provenance: None,
+        config_valid: Some(true),
+        config_diagnostic: None,
+        broken_evidence_links: None,
+        weak_evidence_references: None,
+        inventory_source: "git_tracked",
+        inventory_completeness: "partial",
+        files_scanned: 3,
+        empty_git_tracked: false,
+        deleted_tracked_files: 0,
+        git_inventory_error: None,
+        skipped_paths: 0,
+        submodule_paths: 0,
+        reparse_skipped_paths: 2,
+        rust_scanner_completeness: "complete",
+        rust_files_considered: 1,
+        rust_files_scanned: 1,
+        rust_files_skipped: 0,
+        rust_files_with_parse_errors: 0,
+        rust_files_skipped_by_read_or_unsupported: 0,
+        federation_config_path: None,
+        federation_config_found: false,
+        federation_config_valid: None,
+        configured_ledgers: None,
+        federation_diagnostics: None,
+        federation_divergences: None,
+        file_family_rules: &[],
+        file_family_conflicts: &[],
+    };
+
+    let human = render_doctor_human(report);
+    assert!(
+        human.contains(
+            "inventory warning: 2 path(s) live behind directory links \
+             (junctions); these alias paths are excluded so their targets are \
+             not counted twice and coverage is disclosed as partial (#4677)"
+        ),
+        "human doctor output must disclose junction alias skips: {human}"
+    );
+
+    let json = render_doctor_json(report);
+    assert!(
+        json.contains("\"reparse_skipped_paths\": 2"),
+        "doctor JSON must carry the junction alias skip count: {json}"
+    );
 }

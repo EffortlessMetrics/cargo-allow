@@ -678,6 +678,7 @@ pub(crate) fn summary_completeness(facts: &crate::InventoryFacts) -> Completenes
     if facts.rust_files_skipped > 0
         || facts.rust_files_with_parse_errors > 0
         || facts.inventory_skipped_paths > 0
+        || facts.reparse_skipped_paths > 0
         || facts.deleted_tracked.unwrap_or(0) > 0
         || facts.empty_git_tracked
     {
@@ -738,6 +739,12 @@ pub(crate) fn partial_coverage_reason(facts: &crate::InventoryFacts) -> String {
             facts.inventory_skipped_paths
         ));
     }
+    if facts.reparse_skipped_paths > 0 {
+        reasons.push(format!(
+            "{} source path(s) behind directory links (junctions) were skipped",
+            facts.reparse_skipped_paths
+        ));
+    }
     if matches!(
         facts.completeness,
         InventoryCompleteness::Fallback | InventoryCompleteness::Partial
@@ -764,6 +771,18 @@ fn render_detail(args: &ReportRenderArgs<'_>) -> String {
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
     context.denied_classes = args.denied_classes;
+    // #4677: an enforcing check that fails only through the completeness gate
+    // has zero blocking outcomes to name. Compose the partial-coverage
+    // explanation from the same facts the gate read so the human and markdown
+    // failure labels disclose the cause instead of a bare `failed`.
+    let partial_coverage_reason_text;
+    if args.command == "check"
+        && args.enforcement == Some(allow_report::RECEIPT_ENFORCEMENT_ENFORCING)
+        && crate::check::check_selected_input_incomplete(&args.inventory_facts)
+    {
+        partial_coverage_reason_text = partial_coverage_reason(&args.inventory_facts);
+        context.partial_coverage_reason = Some(&partial_coverage_reason_text);
+    }
     context.style = if args.format == OutputFormat::Human && args.output.is_none() {
         crate::reporting::output_style()
     } else {

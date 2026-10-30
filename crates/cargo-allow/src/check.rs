@@ -569,10 +569,13 @@ pub(crate) fn source_coupling_relation(
 /// filesystem fallback stays a supported route while a truncated or
 /// unreadable selected input can never look like complete enforcement.
 /// Audit results remain informational; the gate applies this only in
-/// enforcing modes.
-fn check_selected_input_incomplete(facts: &InventoryFacts) -> bool {
+/// enforcing modes. The report renderer reads the same predicate so a
+/// gate failure names its partial-coverage cause in the failure label
+/// (#4677) instead of folding it into a bare `failed`.
+pub(crate) fn check_selected_input_incomplete(facts: &InventoryFacts) -> bool {
     facts.completeness == allow_inventory::InventoryCompleteness::Partial
         || facts.inventory_skipped_paths > 0
+        || facts.reparse_skipped_paths > 0
         || facts.rust_files_skipped > 0
         || facts.rust_files_with_parse_errors > 0
 }

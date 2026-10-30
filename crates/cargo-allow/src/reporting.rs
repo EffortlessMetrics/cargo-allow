@@ -158,11 +158,13 @@ impl SourceTreeReportContext {
         if self.inventory_facts.rust_files_skipped > 0
             || self.inventory_facts.rust_files_with_parse_errors > 0
             || self.inventory_facts.inventory_skipped_paths > 0
+            || self.inventory_facts.reparse_skipped_paths > 0
         {
             // #4646: any recorded omission — scanner skips, parse errors,
             // or truncated inventory walks — must surface as `partial` in
             // the report JSON and receipt inventory, never be erased by
-            // fallback provenance.
+            // fallback provenance. #4677: junctioned alias skips are the
+            // same class of recorded omission.
             "partial"
         } else {
             self.inventory_facts.completeness.as_str()

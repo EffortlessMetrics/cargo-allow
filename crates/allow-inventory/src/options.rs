@@ -97,6 +97,17 @@ pub struct Inventory {
     /// Their contents are not scanned (submodule recursion is out of scope) but
     /// the paths are surfaced so the exclusion is never silent (#1846).
     pub submodule_paths: Vec<PathBuf>,
+    /// Git-provided paths that reach their content through a directory reparse
+    /// point (junction or directory symlink) in a repo-relative prefix, or a
+    /// reparse point as the final component resolving to a directory. Scanning
+    /// them would double-count the target tree under an alias spelling, and a
+    /// junction cycle would only yield bounded-but-phantom coverage, so they
+    /// are skipped and disclosed (#4677). Disclosure over canonical-path dedup
+    /// is deliberate: dedup would make ledger identity alias-dependent and
+    /// permanently unmatch an entry once its junction spelling disappears
+    /// (#4678). Empty for filesystem-walk sources, which already refuse to
+    /// recurse into reparse directories (#1842).
+    pub reparse_skipped_paths: Vec<PathBuf>,
 }
 
 #[cfg(test)]

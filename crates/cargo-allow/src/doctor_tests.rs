@@ -525,6 +525,7 @@ fn render_doctor_json_records_setup_context() {
         git_inventory_error: None,
         skipped_paths: 0,
         submodule_paths: 0,
+        reparse_skipped_paths: 0,
         rust_scanner_completeness: "unknown",
         rust_files_considered: 0,
         rust_files_scanned: 0,

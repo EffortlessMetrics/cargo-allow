@@ -181,6 +181,9 @@ pub(crate) fn inventory_identity_from_inventory(
             &format!("submodule:{}", normalize_path(path)),
         );
     }
+    for path in &inventory.reparse_skipped_paths {
+        push_bound_value(&mut canonical, &format!("reparse:{}", normalize_path(path)));
+    }
     Ok(sha256_v1_bytes(&canonical))
 }
 
@@ -261,6 +264,7 @@ mod tests {
             git_error: None,
             skipped_paths: Vec::new(),
             submodule_paths: Vec::new(),
+            reparse_skipped_paths: Vec::new(),
         };
         let mut changed = base.clone();
         changed.inaccessible_paths = vec![PathBuf::from("blocked.rs")];

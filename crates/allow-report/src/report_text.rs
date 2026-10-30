@@ -218,11 +218,12 @@ pub(crate) fn blocks_check_str(status: &str) -> bool {
 
 /// Build a human-readable reason for why a check failed, based on blocking
 /// status counts from the summary plus the `--deny` classes whose positive
-/// counts escalated the run (#4631) and the invalid-federation-registry
-/// fallback that fails the gate with no blocking outcome to name (#4655).
+/// counts escalated the run (#4631), the invalid-federation-registry
+/// fallback that fails the gate with no blocking outcome to name (#4655),
+/// and the partial-coverage explanation the command layer composed from the
+/// same inventory facts the enforcing gate read (#4677).
 /// Returns None if neither is present (the failure may come from evidence
-/// links, federation divergence, inventory parse errors, or other out-of-band
-/// conditions).
+/// links, federation divergence, or other out-of-band conditions).
 fn check_failure_reason(summary: &Summary, context: &ReportContext<'_>) -> Option<String> {
     let mut parts: Vec<String> = Vec::new();
     for status in BLOCKING_STATUSES {
@@ -241,6 +242,13 @@ fn check_failure_reason(summary: &Summary, context: &ReportContext<'_>) -> Optio
         // even though every blocking count is advisory-only there, and the
         // old label blamed counts that did not trigger the exit.
         parts.push(format!("{}, denied", denied_classes.join(", ")));
+    }
+    if let Some(reason) = context.partial_coverage_reason {
+        // The gate can fail a run with zero blocking outcomes — a skipped,
+        // truncated, or alias-skipped input never reaches matching, so no
+        // status count explains the exit. Name the coverage cause instead of
+        // leaving a bare `failed` (#4677).
+        parts.push(format!("partial coverage: {reason}"));
     }
     if parts.is_empty() {
         return None;

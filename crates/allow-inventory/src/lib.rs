@@ -71,22 +71,23 @@ pub fn inventory(
         mut skipped_paths,
         submodule_paths,
         inaccessible_paths,
+        mut reparse_skipped_paths,
     ) = if options.include_untracked {
         // Prefer git's own .gitignore rules when available (#1843). Fall
         // back to raw filesystem walk only when not in a git repo.
         match git_ls_files_include_untracked(root) {
             Ok(files) => {
-                let (existing, deleted, submods, inaccessible) =
-                    existing_regular_files(root, files);
+                let classified = existing_regular_files(root, files);
                 (
-                    existing,
+                    classified.existing,
                     InventorySource::FilesystemIncludeUntracked,
                     false,
-                    deleted,
+                    classified.deleted_tracked,
                     None,
                     Vec::new(),
-                    submods,
-                    inaccessible,
+                    classified.submodule_paths,
+                    classified.inaccessible_paths,
+                    classified.reparse_skipped_paths,
                 )
             }
             Err(err) => {
@@ -100,6 +101,7 @@ pub fn inventory(
                     skipped,
                     Vec::new(),
                     Vec::new(),
+                    Vec::new(),
                 )
             }
         }
@@ -107,17 +109,17 @@ pub fn inventory(
         match git_ls_files(root) {
             Ok(files) => {
                 let empty_git_tracked = files.is_empty();
-                let (existing, deleted_tracked, submodule_paths, inaccessible_paths) =
-                    existing_regular_files(root, files);
+                let classified = existing_regular_files(root, files);
                 (
-                    existing,
+                    classified.existing,
                     InventorySource::GitTracked,
                     empty_git_tracked,
-                    deleted_tracked,
+                    classified.deleted_tracked,
                     None,
                     Vec::new(),
-                    submodule_paths,
-                    inaccessible_paths,
+                    classified.submodule_paths,
+                    classified.inaccessible_paths,
+                    classified.reparse_skipped_paths,
                 )
             }
             Err(err) => {
@@ -129,6 +131,7 @@ pub fn inventory(
                     Vec::new(),
                     Some(err.to_string()),
                     skipped,
+                    Vec::new(),
                     Vec::new(),
                     Vec::new(),
                 )
@@ -144,8 +147,11 @@ pub fn inventory(
     // with the same rule as files so an unreadable or depth-capped ignored
     // directory cannot classify the inventory Partial and fail enforcing
     // modes. Skips outside the ignored scope (and the synthetic entry-limit
-    // marker, which has no attributable directory) are kept fail-closed.
+    // marker, which has no attributable directory) are kept fail-closed. The
+    // same rule governs reparse-alias skips (#4677): a junction inside a
+    // policy-ignored subtree is scope, not omission.
     skipped_paths.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
+    reparse_skipped_paths.retain(|path| !source_tree_path_is_ignored(path, &options.ignored));
     let completeness = inventory_completeness(
         options,
         git_error.is_some(),
@@ -153,6 +159,7 @@ pub fn inventory(
         &submodule_paths,
         &inaccessible_paths,
         &skipped_paths,
+        &reparse_skipped_paths,
     );
     Ok(Inventory {
         files,
@@ -164,6 +171,7 @@ pub fn inventory(
         skipped_paths,
         submodule_paths,
         inaccessible_paths,
+        reparse_skipped_paths,
     })
 }
 
@@ -174,6 +182,7 @@ fn inventory_completeness(
     submodule_paths: &[PathBuf],
     inaccessible_paths: &[PathBuf],
     skipped_paths: &[PathBuf],
+    reparse_skipped_paths: &[PathBuf],
 ) -> options::InventoryCompleteness {
     // #4646: recorded omissions must outrank fallback provenance. A
     // filesystem walk that hit the depth/entry caps or read errors is
@@ -185,6 +194,7 @@ fn inventory_completeness(
         || !submodule_paths.is_empty()
         || !inaccessible_paths.is_empty()
         || !skipped_paths.is_empty()
+        || !reparse_skipped_paths.is_empty()
     {
         options::InventoryCompleteness::Partial
     } else if git_failed {

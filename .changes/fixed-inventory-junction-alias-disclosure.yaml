@@ -1,0 +1,22 @@
+kind: Fixed
+body: >-
+  Junctioned source directories double-counted findings with zero signal,
+  and junction cycles yielded bounded-but-phantom coverage: git-for-Windows
+  traverses junctions, so `git ls-files` emitted the same real file under a
+  junctioned alias spelling while the classification probes followed the
+  reparse point and scanned the target tree a second time. Every
+  git-provided path now has its repo-relative directory prefixes probed once
+  per unique directory (cached), and a prefix that is itself a reparse point
+  resolving to a directory marks the whole path as an alias traversal that
+  is skipped and disclosed as `reparse_skipped_paths` — folding inventory
+  completeness to `partial`, failing every enforcing mode through the #4646
+  gate, and surfacing in check failure labels, the coverage reason, doctor,
+  and adoption limitations. A reparse point as the final path component
+  keeps #1842 walk parity: a regular-file target stays scanned, while a
+  directory or missing target is now skipped and disclosed instead of the
+  wrong submodule/deleted classification. Skip-and-disclose was chosen over
+  canonical-path dedup because dedup would make ledger identity
+  alias-dependent and permanently unmatch an entry once its junction
+  spelling disappears (#4678). `check` also now renders its
+  `partial_coverage_reason` in human and markdown failure labels instead of
+  folding a gate failure into a bare `failed` (#4677).

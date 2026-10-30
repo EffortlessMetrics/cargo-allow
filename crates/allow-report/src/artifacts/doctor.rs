@@ -69,6 +69,10 @@ pub struct DoctorReport<'a> {
     /// Count of detected submodule gitlinks (checked-out directories that are
     /// git-tracked). Their contents are not scanned (#1846).
     pub submodule_paths: usize,
+    /// Count of git-provided paths skipped because they traverse a directory
+    /// reparse point (junction/directory symlink); scanning them would
+    /// double-count the target tree under an alias spelling (#4677).
+    pub reparse_skipped_paths: usize,
     /// Completeness of the Rust source scan, independent of inventory
     /// traversal completeness. `unknown` means no Rust files were selected.
     pub rust_scanner_completeness: &'a str,
