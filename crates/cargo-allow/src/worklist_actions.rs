@@ -25,7 +25,9 @@ pub(crate) fn suggested_actions(kind: &str) -> Vec<String> {
         EXPIRED_ALLOW => vec![
             // #4679: expired entries classify as Expired, never Stale, so
             // `prune --stale` cannot select them. Advise the real route.
-            "renew the entry's `expires` date in policy/allow.toml (or remove the entry manually) — expired entries are not machine-prunable".to_string(),
+            // Ledger-agnostic: worklist and explain accept --config, so the advice
+            // must not name the conventional default ledger (#4681 review).
+            "renew the entry's `expires` date in the selected policy ledger (or remove the entry manually) — expired entries are not machine-prunable".to_string(),
             "or re-review with fresh evidence before changing lifecycle dates".to_string(),
         ],
         STALE_ALLOW => vec![
