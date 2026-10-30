@@ -1,7 +1,7 @@
 use super::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
-    select_add_finding,
+    case_alias_hint_for_inference, count_in_scope_findings, ensure_addable_outcome,
+    ensure_broad_scope_addable, next_allow_id, select_add_finding,
 };
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowErrorKind, Finding, FindingKind, Lifecycle, MatchStatus,
@@ -361,4 +361,124 @@ fn select_add_finding_ambiguous_error_carries_a_typed_next_step()
     );
     assert_eq!(report.matches("Next:").count(), 1, "{report}");
     Ok(())
+}
+
+/// #4678: a wrong-case `--path` can never match a finding exactly (matching is
+/// case-sensitive by law), and the stock refusal then claims the file may be
+/// untracked when it is tracked. The rejection must append the tracked
+/// spelling as remediation while keeping the #4610 typed next step intact.
+#[test]
+fn select_add_finding_wrong_case_path_carries_the_case_alias_remediation()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+    let error = match select_add_finding(&findings, kind, Path::new("SRC/LIB.RS"), 7) {
+        Err(error) => error,
+        Ok(_) => return Err("a wrong-case path must refuse the add".into()),
+    };
+
+    let message = error.to_string();
+    assert!(
+        message.contains("differs only by letter case"),
+        "the refusal must explain the case mismatch: {message}"
+    );
+    assert!(
+        message.contains("retry with `--path src/lib.rs`"),
+        "the refusal must name the tracked spelling: {message}"
+    );
+    assert!(
+        message.contains("SRC/LIB.RS"),
+        "the refusal must keep the requested spelling for context: {message}"
+    );
+    // The #4610 typed next step survives the decoration and renders alone.
+    let next_step = error
+        .next_step()
+        .ok_or("the wrong-case refusal must keep the typed next step")?;
+    assert!(
+        next_step.contains("pass the exact --line"),
+        "the typed next step must be unchanged: {next_step}"
+    );
+    let report = crate::error_report::format_cli_error(&error);
+    assert_eq!(report.matches("Next:").count(), 1, "{report}");
+    assert!(
+        !report.contains("review the command syntax"),
+        "the generic syntax line must stay replaced: {report}"
+    );
+    Ok(())
+}
+
+/// #4678 control: with no case-fold hit the no-finding refusal keeps its
+/// historical message shape (the `--include-untracked` advice is then correct).
+#[test]
+fn select_add_finding_no_hit_keeps_the_plain_refusal_message()
+-> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+    let error = match select_add_finding(&findings, kind, Path::new("src/other.rs"), 7) {
+        Err(error) => error,
+        Ok(_) => return Err("an unmatchable path must refuse the add".into()),
+    };
+
+    let message = error.to_string();
+    assert!(
+        message.contains("no current panic finding found near"),
+        "{message}"
+    );
+    assert!(
+        !message.contains("differs only by letter case"),
+        "a non-alias refusal must not gain the case remediation: {message}"
+    );
+    Ok(())
+}
+
+/// CodeRabbit review follow-up on #4686: the alias remediation must only name
+/// findings the requested kind could actually select. A case-matched path of a
+/// different finding class would still refuse the add after the spelling fix.
+#[test]
+fn select_add_finding_case_alias_is_kind_filtered() -> Result<(), Box<dyn std::error::Error>> {
+    let kind = panic_kind_filter()?;
+    let mut unsafe_finding = panic_unwrap_finding("src/lib.rs", 7);
+    unsafe_finding.kind = FindingKind::Unsafe;
+    unsafe_finding.family = Some("unsafe_fn".to_string());
+    let findings = vec![unsafe_finding];
+
+    let error = match select_add_finding(&findings, kind, Path::new("SRC/LIB.RS"), 7) {
+        Err(error) => error,
+        Ok(_) => return Err("a cross-kind wrong-case path must refuse the add".into()),
+    };
+
+    let message = error.to_string();
+    assert!(
+        !message.contains("differs only by letter case"),
+        "a kind-incompatible alias must not gain the case remediation: {message}"
+    );
+    Ok(())
+}
+
+/// The inference-failure remediation names the tracked spelling for a
+/// wrong-case `--path`, so `add` without `--kind` still reaches the advice.
+#[test]
+fn case_alias_hint_for_inference_names_the_tracked_spelling() {
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+
+    let hint = case_alias_hint_for_inference(&findings, Path::new("SRC/LIB.RS"))
+        .unwrap_or_else(|| std::panic::panic_any("a wrong-case path must produce a hint"));
+    assert!(
+        hint.starts_with(". The tracked finding `src/lib.rs` differs only by letter case"),
+        "{hint}"
+    );
+}
+
+#[test]
+fn case_alias_hint_for_inference_is_silent_without_a_case_hit() {
+    let findings = vec![panic_unwrap_finding("src/lib.rs", 7)];
+
+    assert!(
+        case_alias_hint_for_inference(&findings, Path::new("src/other.rs")).is_none(),
+        "an unrelated path has no alias to name"
+    );
+    assert!(
+        case_alias_hint_for_inference(&findings, Path::new("src/lib.rs")).is_none(),
+        "the exact spelling is matching's business, not an alias"
+    );
 }

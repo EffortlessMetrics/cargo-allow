@@ -1,11 +1,28 @@
 use allow_core::{
     AllowConfig, AllowEntry, CargoAllowError, CargoAllowErrorKind, CargoAllowResult, Finding,
-    FindingKind, LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate, normalize_path,
+    FindingKind, LastSeen, Lifecycle, MatchStatus, Selector, SimpleDate,
+    case_insensitive_path_alias, normalize_path,
 };
 use allow_match::score_match;
 use std::path::Path;
 
 use crate::{KindFilter, selector_from_finding};
+
+/// The #4678 case-alias remediation for the kind-inference failure path:
+/// when `add` without `--kind` finds no finding at the exact spelling, name
+/// the tracked spelling so the advice is reachable without `--kind`.
+pub(super) fn case_alias_hint_for_inference(findings: &[Finding], path: &Path) -> Option<String> {
+    let scanned_paths = findings
+        .iter()
+        .map(|finding| finding.path.to_string_lossy().to_string())
+        .collect::<Vec<_>>();
+    case_insensitive_path_alias(&path.to_string_lossy(), &scanned_paths).map(|hit| {
+        format!(
+            ". The tracked finding `{hit}` differs only by letter case — \
+             paths are matched case-sensitively; retry with `--path {hit}`"
+        )
+    })
+}
 
 pub(crate) fn select_add_finding<'a>(
     findings: &'a [Finding],
@@ -28,7 +45,12 @@ pub(crate) fn select_add_finding<'a>(
         .collect::<Vec<_>>();
     candidates.sort_by_key(|(distance, _, finding)| (*distance, normalize_path(&finding.path)));
     let Some((distance, index, finding)) = candidates.first().copied() else {
-        return Err(CargoAllowError::with_kind(
+        // #4678: a wrong-case `--path` can never equal a finding path exactly
+        // (matching is case-sensitive by law), and the generic advice then
+        // claims the file is untracked when it is tracked. When a finding
+        // path differs only by letter case, append the correct spelling to
+        // the message; matching itself stays exact.
+        let mut error = CargoAllowError::with_kind(
             CargoAllowErrorKind::Usage,
             format!(
                 "no current {} finding found near {}:{}; \
@@ -43,7 +65,21 @@ pub(crate) fn select_add_finding<'a>(
         .with_next_step(
             "pass the exact --line of one of the listed findings, \
                  or pass a different --kind when the occurrence belongs to another finding class.",
-        ));
+        );
+        let finding_paths = findings
+            .iter()
+            // Only alias findings the requested kind could actually select:
+            // a case-matched path of a different kind would still refuse.
+            .filter(|candidate| kind.matches_finding(candidate))
+            .map(|candidate| normalize_path(&candidate.path))
+            .collect::<Vec<_>>();
+        if let Some(hit) = case_insensitive_path_alias(&normalized_path, &finding_paths) {
+            error = error.with_message_suffix(format!(
+                ". The tracked finding `{hit}` differs only by letter case — paths are matched \
+                 case-sensitively; retry with `--path {hit}`"
+            ));
+        }
+        return Err(error);
     };
     let tied = candidates
         .iter()

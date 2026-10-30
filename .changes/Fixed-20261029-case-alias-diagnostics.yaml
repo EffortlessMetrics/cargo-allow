@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Name case-spelling path aliases in the remediation for permanently
+  unmatchable ledger entries (#4678). A `why`/`add` target or an allow entry
+  spelled with different letter case than the tracked file (for example
+  `SRC/LIB.RS` vs `src/lib.rs`) could never match exactly, and the stock
+  advice then claimed the file was untracked while `prune --stale` offered
+  to delete the load-bearing entry. The inventory rejection, the add
+  refusal, the stale classification, and the explain path-mismatch reason
+  now name the case-only alias and the tracked spelling. Matching itself
+  stays strictly case-sensitive; 8.3 short-name aliases remain a
+  documented limitation.

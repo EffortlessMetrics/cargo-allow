@@ -601,3 +601,39 @@ fn explain_match_failure_empty_when_entry_matches() {
     assert!(explain_match_failure(&entry, &finding).is_empty());
     assert!(classify_match(&entry, &finding).is_some());
 }
+
+#[test]
+fn path_mismatch_reason_names_a_case_alias_scope() {
+    // #4678: when the entry's path scope and the finding path differ only by
+    // letter case, that — not "outside scope" — is the operative mismatch in
+    // the explain output. Matching itself stays exact (classify_match is None).
+    // The entry keeps the finding's snippet hash so the case-only path
+    // mismatch is the only failed gate under classification.
+    let finding = finding_with_hash("fnv1a64:actual");
+    let mut entry = entry_with_hash("fnv1a64:actual");
+    entry.path = Some(PathBuf::from("SRC/LIB.RS"));
+
+    assert_eq!(classify_match(&entry, &finding), None);
+    let reasons = explain_match_failure(&entry, &finding);
+    assert!(
+        reasons
+            .iter()
+            .any(|reason| reason.contains("differs only by letter case")),
+        "{reasons:?}"
+    );
+    assert!(
+        reasons.iter().any(|reason| reason.contains("src/lib.rs")),
+        "{reasons:?}"
+    );
+
+    // A genuinely different path keeps the outside-scope wording.
+    let mut wrong_file = entry_with_hash("fnv1a64:actual");
+    wrong_file.path = Some(PathBuf::from("src/other.rs"));
+    let reasons = explain_match_failure(&wrong_file, &finding);
+    assert!(
+        reasons
+            .iter()
+            .any(|reason| reason.contains("is outside entry scope")),
+        "{reasons:?}"
+    );
+}

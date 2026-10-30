@@ -178,6 +178,52 @@ pub fn allow_entry_broad_scope(entry: &AllowEntry) -> Option<String> {
         })
 }
 
+/// Detect a case-spelling alias between `target` and one of `candidates`.
+///
+/// #4678: platform path aliases — most visibly Windows case-insensitive
+/// spellings (`SRC/LIB.RS` for the tracked `src/lib.rs`) — make a ledger
+/// entry or a CLI `--path` permanently unmatchable, because matching is
+/// exact by law (fail-closed). This helper is diagnostics-only: it never
+/// relaxes a match decision. It answers "is there a candidate that differs
+/// only by letter case?" so remediation text can name the correct spelling.
+///
+/// Contract:
+///
+/// - Both sides go through [`normalize_path`] first, so separator spelling,
+///   Unicode form, and `.`/`..` segments cannot fake an alias.
+/// - An exact normalized hit short-circuits to `None`: identical paths are
+///   not aliases, and that case belongs to normal exact matching.
+/// - Otherwise the first candidate whose Unicode-lowercase fold equals the
+///   target's fold is returned in **its own normalized spelling**, so the
+///   remediation can tell the operator exactly what to type. Unicode
+///   `to_lowercase` (not ASCII-only) is deliberate: a false-positive
+///   suggestion is harmless because matching stays exact, while a missed
+///   non-ASCII alias would hide the remediation.
+/// - Candidates are compared literally. A glob-shaped candidate (containing
+///   `*`/`?`) can only fold-match a glob-shaped target; callers pass
+///   concrete inventory or finding paths, so glob scopes never produce
+///   suggestions.
+///
+/// 8.3 short-name aliases (for example `SOURCE~1/lib.rs`) are NOT detected:
+/// full expansion requires platform filesystem calls, and the scan deliberately
+/// stays off the filesystem.
+pub fn case_insensitive_path_alias(target: &str, candidates: &[String]) -> Option<String> {
+    let normalized_target = normalize_path(target);
+    let folded_target = normalized_target.to_lowercase();
+    let mut alias: Option<String> = None;
+    for candidate in candidates {
+        let normalized_candidate = normalize_path(candidate);
+        if normalized_candidate == normalized_target {
+            // Exact identity is matching's business, not an alias.
+            return None;
+        }
+        if alias.is_none() && normalized_candidate.to_lowercase() == folded_target {
+            alias = Some(normalized_candidate);
+        }
+    }
+    alias
+}
+
 /// Strip Win32 verbatim path prefixes (`\\?\` and `\\?\UNC\`) from a path
 /// string for clean display in error messages and JSON output (#3180-#3187).
 ///

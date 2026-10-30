@@ -56,9 +56,9 @@ pub use policy::{
     SUPPORTED_SCHEMA_VERSION_ALIAS, Selector, WorkspaceConfig, WorkspaceMode,
 };
 pub use source_tree_path::{
-    GLOB_MATCH_MAX_STEPS, allow_entry_broad_scope, glob_matches, glob_matches_str, normalize_path,
-    source_tree_path_is_ignored, source_tree_path_matches_filter, source_tree_scope_has_wildcard,
-    strip_win32_verbatim_prefix,
+    GLOB_MATCH_MAX_STEPS, allow_entry_broad_scope, case_insensitive_path_alias, glob_matches,
+    glob_matches_str, normalize_path, source_tree_path_is_ignored, source_tree_path_matches_filter,
+    source_tree_scope_has_wildcard, strip_win32_verbatim_prefix,
 };
 
 #[cfg(test)]

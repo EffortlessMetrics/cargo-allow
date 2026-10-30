@@ -21,7 +21,8 @@ pub(crate) use add_args::AddArgs;
 pub(crate) use add_entry::select_add_finding;
 use add_entry::{
     AddBroadRequest, AddEntryRequest, allow_entry_broad, allow_entry_from_finding,
-    count_in_scope_findings, ensure_addable_outcome, ensure_broad_scope_addable, next_allow_id,
+    case_alias_hint_for_inference, count_in_scope_findings, ensure_addable_outcome,
+    ensure_broad_scope_addable, next_allow_id,
 };
 pub(crate) use add_policy::transpose_for_existing_target;
 #[cfg(test)]
@@ -417,12 +418,19 @@ pub(crate) fn cmd_add(args: &AddArgs) -> CargoAllowResult<()> {
                     .collect();
                 match matching.as_slice() {
                     [] => {
+                        // #4678: a wrong-case --path fails kind inference with
+                        // the generic "pass --kind" line before the selection
+                        // level can diagnose it; name the tracked spelling here
+                        // so the remediation is reachable without --kind.
+                        let alias_hint =
+                            case_alias_hint_for_inference(&findings, path).unwrap_or_default();
                         return Err(CargoAllowError::with_kind(
                             CargoAllowErrorKind::Usage,
                             format!(
-                                "no finding at {}:{} to infer --kind from; pass --kind explicitly",
+                                "no finding at {}:{} to infer --kind from; pass --kind explicitly{}",
                                 path.display(),
-                                line
+                                line,
+                                alias_hint
                             ),
                         ));
                     }

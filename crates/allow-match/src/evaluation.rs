@@ -1,11 +1,14 @@
-use allow_core::{AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate};
+use allow_core::{
+    AllowConfig, Finding, MatchOutcome, MatchStatus, SimpleDate, case_insensitive_path_alias,
+    normalize_path,
+};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::classification::classify_matched;
 use crate::lifecycle::unused_entry_status;
 use crate::messages::{family_suffix, finding_location};
 use crate::mode::CheckMode;
-use crate::scoring::{MatchStrength, classify_match};
+use crate::scoring::{MatchStrength, classify_match, score_match};
 
 /// Per-entry occurrence accounting produced by [`evaluate_detailed`].
 ///
@@ -343,6 +346,16 @@ pub fn evaluate_detailed(
         }
     }
 
+    // #4678: exact matching is case-sensitive, so an entry whose path scope
+    // differs from a tracked finding only by letter case can never match and
+    // projects as stale — even though the file is right there. The stale
+    // message names the alias so an operator fixes the spelling instead of
+    // letting `prune --stale` delete a load-bearing entry. Matching itself
+    // stays exact; this only decorates the message.
+    let finding_paths: Vec<String> = findings
+        .iter()
+        .map(|finding| normalize_path(&finding.path))
+        .collect();
     for (entry_index, entry) in cfg.allow.iter().enumerate() {
         if state.used_entries.contains(&entry_index) {
             continue;
@@ -378,11 +391,35 @@ pub fn evaluate_detailed(
                     .as_deref()
                     .unwrap_or("<missing>")
             ),
-            MatchStatus::Stale => format!(
-                "{} is stale: no current finding matched {}",
-                entry.id,
-                entry.path_or_glob()
-            ),
+            MatchStatus::Stale => {
+                let alias_hint = entry.path.as_deref().and_then(|scope| {
+                    let hit =
+                        case_insensitive_path_alias(&scope.to_string_lossy(), &finding_paths)?;
+                    // Only advise the spelling fix when the entry could really
+                    // match the alias finding once corrected: the kind, family,
+                    // and selector gates still apply to the corrected spelling,
+                    // so a path-only remediation would leave the entry stale.
+                    let mut corrected = entry.clone();
+                    corrected.path = Some(std::path::PathBuf::from(&hit));
+                    findings
+                        .iter()
+                        .any(|finding| score_match(&corrected, finding).is_some())
+                        .then_some(hit)
+                });
+                match alias_hint {
+                    Some(hit) => format!(
+                        "{} is stale: no current finding matched {}; a tracked finding at `{hit}` \
+                         differs only by letter case — fix the entry path spelling",
+                        entry.id,
+                        entry.path_or_glob()
+                    ),
+                    None => format!(
+                        "{} is stale: no current finding matched {}",
+                        entry.id,
+                        entry.path_or_glob()
+                    ),
+                }
+            }
             MatchStatus::MissingRequiredField => format!(
                 "{} has a malformed lifecycle date; the entry fails closed until its expires/review_after values parse (#1804)",
                 entry.id
