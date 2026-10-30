@@ -596,19 +596,19 @@ fn junction_cycle_is_bounded_and_disclosed() {
             .any(|path| path.starts_with("cycle_b")),
         "cycle_b spellings must never be inventoried as phantom coverage"
     );
-    assert!(
-        !snapshot
-            .reparse_skipped_paths
-            .iter()
-            .any(|path| path.starts_with("cycle_a") || path.starts_with("cycle_b"))
-            && snapshot
-                .files
-                .iter()
-                .all(|path| !path.starts_with("cycle_a") && !path.starts_with("cycle_b")),
-        "cycle junctions must be absent from both scanned files and disclosures \
-         when git never emitted them"
-    );
     if emitted_cycle_paths.is_empty() {
+        // The files-side absence is already asserted unconditionally above;
+        // this is the disclosures-side absence for a git that refuses to
+        // traverse the cycle. When git does emit cycle spellings, the else
+        // branch below requires the opposite (every emission disclosed), so
+        // this check is meaningful only in the no-emission case.
+        assert!(
+            !snapshot
+                .reparse_skipped_paths
+                .iter()
+                .any(|path| path.starts_with("cycle_a") || path.starts_with("cycle_b")),
+            "cycle junctions must be absent from disclosures when git never emitted them"
+        );
         eprintln!(
             "note: this git refuses to traverse the junction cycle; bounded-run \
              and phantom-absence assertions still hold"
