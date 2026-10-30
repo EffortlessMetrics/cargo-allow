@@ -417,7 +417,11 @@ fn reparse_prefix_probe_runs_once_per_unique_prefix_even_without_aliases() {
     prefix_probes.dedup();
     assert_eq!(
         prefix_probes,
-        vec![PathBuf::from("a"), PathBuf::from("a/b"), PathBuf::from("a/b/c")],
+        vec![
+            PathBuf::from("a"),
+            PathBuf::from("a/b"),
+            PathBuf::from("a/b/c")
+        ],
         "each unique directory prefix is probed exactly once"
     );
     // The per-file final-component probes stay one per file.
