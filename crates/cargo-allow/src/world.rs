@@ -811,6 +811,16 @@ pub(crate) fn load_world_for_path(
                 "the tracked file `{hit}` differs only by letter case — paths are matched \
                  case-sensitively; retry with `--path {hit}`."
             ));
+        } else if target_path.is_file() {
+            // The file exists in the working tree but outside the git-tracked
+            // inventory: the generic revision-verification fallback would send
+            // the operator down the wrong path, so name the same remedy as the
+            // message (#4692).
+            err = err.with_next_step(
+                "the file exists in the working tree but is outside the git-tracked \
+                 inventory; retry with `--include-untracked` to include untracked files, \
+                 or commit the file, then retry.",
+            );
         }
         return Err(err);
     }

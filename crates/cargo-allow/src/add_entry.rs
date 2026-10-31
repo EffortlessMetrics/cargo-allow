@@ -74,10 +74,19 @@ pub(crate) fn select_add_finding<'a>(
             .map(|candidate| normalize_path(&candidate.path))
             .collect::<Vec<_>>();
         if let Some(hit) = case_insensitive_path_alias(&normalized_path, &finding_paths) {
-            error = error.with_message_suffix(format!(
-                ". The tracked finding `{hit}` differs only by letter case — paths are matched \
-                 case-sensitively; retry with `--path {hit}`"
-            ));
+            error = error
+                .with_message_suffix(format!(
+                    ". The tracked finding `{hit}` differs only by letter case — paths are matched \
+                     case-sensitively; retry with `--path {hit}`"
+                ))
+                // When the case-alias remedy is present, the generic
+                // exact-line/different-kind Next contradicts it (#4693): the
+                // specific fix is the corrected spelling.
+                .with_next_step(format!(
+                    "retry with `--path {hit}`, the tracked spelling; run \
+                     `cargo-allow check --kind {} --format json` to list current findings.",
+                    kind.kind
+                ));
         }
         return Err(error);
     };
