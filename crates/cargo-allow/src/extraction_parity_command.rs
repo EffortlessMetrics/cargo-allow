@@ -264,6 +264,24 @@ fn load_registry(
 ) -> CargoAllowResult<allow_policy::extraction_parity::ExtractionParityRegistry> {
     let path = root.join("policy/extraction-parity.toml");
     let input = fs::read_to_string(&path).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            // #4696: a missing registry is a missing input, not an unknown
+            // failure — and `doctor` cannot help. Name the path and where the
+            // registry comes from.
+            return CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                format!(
+                    "extraction parity registry {} was not found; this command requires \
+                     the dogfood parity registry maintained in the cargo-allow repository \
+                     itself",
+                    path.display()
+                ),
+            )
+            .with_next_step(
+                "run this command from the cargo-allow repository checkout that contains \
+                 policy/extraction-parity.toml, or provide the registry at that path.",
+            );
+        }
         CargoAllowError::new(format!(
             "read extraction parity registry {}: {error}",
             path.display()
