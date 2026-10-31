@@ -382,6 +382,45 @@ fn why_untracked_target_next_step_names_the_include_untracked_remedy() -> Result
             !next_step.contains("verify the named revision"),
             "the generic revision fallback must not contradict the untracked remedy: {next_step}"
         );
+
+        // #4694 review: a file excluded by the policy's ignore rules must not
+        // receive the untracked remedy — --include-untracked does not override
+        // workspace.ignored. The Next step must name the ignore configuration.
+        fs::write(
+            root.join("ignored_probe.rs"),
+            "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+        )?;
+        fs::write(
+            root.join("policy/allow.toml"),
+            "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = [\"ignored_probe.rs\"]\ngenerated = []\n",
+        )?;
+
+        let ignored_error = match crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            false,
+            Some("panic"),
+            false,
+            &root.join("ignored_probe.rs"),
+        ) {
+            Err(error) => error,
+            Ok(_) => return Err("an ignored target must be rejected".into()),
+        };
+        assert_eq!(
+            ignored_error.kind(),
+            allow_core::CargoAllowErrorKind::Inventory
+        );
+        let ignored_next = ignored_error
+            .next_step()
+            .ok_or("the ignored rejection must carry a typed next step")?;
+        assert!(
+            ignored_next.contains("ignore rules"),
+            "the Next step must name the ignore-rule remedy: {ignored_next}"
+        );
+        assert!(
+            !ignored_next.contains("--include-untracked"),
+            "the untracked remedy must not fire for an ignore-rule exclusion: {ignored_next}"
+        );
         Ok(())
     })();
     cleanup(&root);

@@ -769,14 +769,12 @@ pub(crate) fn load_world_for_path(
         policy_path,
         EvidenceValidationMode::ReportOnly,
     )?;
-    let inventory = inventory(
-        &root,
-        &inventory_options_with_tool_cache_ignore(InventoryOptions {
-            ignored: cfg.workspace.ignored.clone(),
-            generated: cfg.workspace.generated.clone(),
-            include_untracked,
-        }),
-    )?;
+    let inventory_options = inventory_options_with_tool_cache_ignore(InventoryOptions {
+        ignored: cfg.workspace.ignored.clone(),
+        generated: cfg.workspace.generated.clone(),
+        include_untracked,
+    });
+    let inventory = inventory(&root, &inventory_options)?;
     // Normalize the target path to repo-relative for the scan.
     let files = vec![normalize_to_repo_relative(&root, target_path)];
     let target = files.first().cloned().ok_or_else(|| {
@@ -812,15 +810,33 @@ pub(crate) fn load_world_for_path(
                  case-sensitively; retry with `--path {hit}`."
             ));
         } else if target_path.is_file() {
-            // The file exists in the working tree but outside the git-tracked
-            // inventory: the generic revision-verification fallback would send
-            // the operator down the wrong path, so name the same remedy as the
-            // message (#4692).
-            err = err.with_next_step(
-                "the file exists in the working tree but is outside the git-tracked \
-                 inventory; retry with `--include-untracked` to include untracked files, \
-                 or commit the file, then retry.",
-            );
+            // The file exists in the working tree but outside the inventory.
+            // The remedy depends on why: policy ignore rules beat the
+            // untracked advice (--include-untracked does not override
+            // workspace.ignored), and a still-missing target with the flag
+            // already passed needs a different diagnosis (#4694 review).
+            let excluded_by_rules =
+                source_tree_path_is_ignored(&target, inventory_options.ignored.as_slice())
+                    || source_tree_path_is_ignored(&target, inventory_options.generated.as_slice());
+            if excluded_by_rules {
+                err = err.with_next_step(
+                    "the path is excluded by the configured ignore rules (workspace \
+                     ignored/generated lists in the policy); adjust the ignore \
+                     configuration if this file should be scanned, then retry.",
+                );
+            } else if include_untracked {
+                err = err.with_next_step(
+                    "the file exists but is still outside the source inventory even with \
+                     --include-untracked; verify the path spelling and the workspace \
+                     ignore rules, then retry.",
+                );
+            } else {
+                err = err.with_next_step(
+                    "the file exists in the working tree but is outside the git-tracked \
+                     inventory; retry with `--include-untracked` to include untracked files, \
+                     or commit the file, then retry.",
+                );
+            }
         }
         return Err(err);
     }
