@@ -1165,7 +1165,9 @@ fn read_plan(path: &Path) -> CargoAllowResult<LocalHookPlanV1> {
         )
         .with_next_step(
             "regenerate the plan with `cargo-allow hooks plan --output <path>` (the plan \
-             file must contain the JSON plan, not the human preview), then retry.",
+             file must contain the JSON plan, not the human preview), repeating the \
+             original --stage and any --binary/--digest runtime options — the default \
+             plan is pre-commit with the ambient executable — then retry.",
         )
     })
 }
