@@ -264,6 +264,24 @@ fn load_registry(
 ) -> CargoAllowResult<allow_policy::extraction_parity::ExtractionParityRegistry> {
     let path = root.join("policy/extraction-parity.toml");
     let input = fs::read_to_string(&path).map_err(|error| {
+        if error.kind() == std::io::ErrorKind::NotFound {
+            // #4696: a missing registry is a missing input, not an unknown
+            // failure — and `doctor` cannot help. Name the path and where the
+            // registry comes from.
+            return CargoAllowError::with_kind(
+                CargoAllowErrorKind::Usage,
+                format!(
+                    "extraction parity registry {} was not found; this command requires \
+                     the dogfood parity registry maintained in the cargo-allow repository \
+                     itself",
+                    path.display()
+                ),
+            )
+            .with_next_step(
+                "run this command from the cargo-allow repository checkout that contains \
+                 policy/extraction-parity.toml, or provide the registry at that path.",
+            );
+        }
         CargoAllowError::new(format!(
             "read extraction parity registry {}: {error}",
             path.display()
@@ -1349,6 +1367,31 @@ mod tests {
         workspace_root()
             .join("target")
             .join(format!("extraction-cutover-{name}-{}", std::process::id()))
+    }
+
+    /// #4696: a missing dogfood registry is typed usage naming the registry
+    /// path, not an unknown error with a doctor redirect.
+    #[test]
+    fn load_registry_missing_file_is_typed_usage_with_registry_next()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = fixture_root("missing-registry");
+        fs::create_dir_all(&root)?;
+        let error = match load_registry(&root) {
+            Err(error) => error,
+            Ok(_) => return Err("missing registry must refuse".into()),
+        };
+        assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
+        let next = error.next_step().ok_or("typed next step missing")?;
+        assert!(
+            next.contains("extraction-parity.toml"),
+            "the Next step must name the registry path: {next}"
+        );
+        assert!(
+            next.contains("cargo-allow repository"),
+            "the Next step must point at the dogfood checkout: {next}"
+        );
+        let _ = fs::remove_dir_all(&root);
+        Ok(())
     }
 
     fn write_json(path: &Path, value: &impl Serialize) -> CargoAllowResult<()> {

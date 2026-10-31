@@ -70,9 +70,10 @@ pub(crate) struct HookPlanArgs {
     /// Hook stage to describe.
     #[arg(long, value_enum, default_value_t = HookStage::PreCommit)]
     pub(crate) stage: HookStage,
-    /// Output format.
-    #[arg(long, value_enum, default_value_t = HookPlanFormat::Human)]
-    pub(crate) format: HookPlanFormat,
+    /// Output format. Defaults to JSON for `--output` files (the machine
+    /// artifact an apply step consumes) and human text for stdout.
+    #[arg(long, value_enum)]
+    pub(crate) format: Option<HookPlanFormat>,
     /// Write the plan to a file instead of stdout.
     #[arg(long)]
     pub(crate) output: Option<PathBuf>,
@@ -330,7 +331,15 @@ pub(crate) fn cmd_hooks(args: &HooksArgs) -> CargoAllowResult<()> {
                 verify_plan_runtime(runtime)?;
             }
             let plan = build_plan_with_runtime(plan_args.stage, verified_runtime);
-            let rendered = match plan_args.format {
+            // #4695: an --output file is the machine artifact an apply step
+            // consumes, so a non-explicit format defaults to JSON there;
+            // stdout stays human by default.
+            let format = plan_args.format.unwrap_or(if plan_args.output.is_some() {
+                HookPlanFormat::Json
+            } else {
+                HookPlanFormat::Human
+            });
+            let rendered = match format {
                 HookPlanFormat::Human => render_human(&plan),
                 HookPlanFormat::Json => serde_json::to_string_pretty(&plan).map_err(|error| {
                     CargoAllowError::with_kind(
@@ -781,6 +790,11 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
                 rollback: "no mutation; the recognized managed block already matches this plan",
             },
         )?;
+        println!(
+            "hooks apply: disposition {disposition} at {}; receipt: {}",
+            hook_path.display(),
+            receipt_path.display()
+        );
         return Ok(());
     }
     if disposition != "Missing" {
@@ -831,6 +845,11 @@ fn apply_resolved(args: &HookApplyArgs, root: &Path) -> CargoAllowResult<()> {
             ),
         )
     })?;
+    println!(
+        "hooks apply: created managed hook {}; receipt: {}",
+        hook_path.display(),
+        receipt_path.display()
+    );
     Ok(())
 }
 
@@ -903,6 +922,11 @@ fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
                 rollback: "no mutation; re-run hooks apply with a matching plan if the hook should be restored",
             };
             write_json_receipt(&result_receipt, &receipt)?;
+            println!(
+                "hooks remove: no managed hook at {}; receipt: {}",
+                hook_path.display(),
+                result_receipt.display()
+            );
             return Ok(());
         }
         Err(error) => {
@@ -951,7 +975,13 @@ fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
             removed: true,
             rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed hook",
         };
-        return write_json_receipt(&result_receipt, &receipt);
+        write_json_receipt(&result_receipt, &receipt)?;
+        println!(
+            "hooks remove: removed managed hook {}; receipt: {}",
+            hook_path.display(),
+            result_receipt.display()
+        );
+        return Ok(());
     }
 
     match locate_managed_block(&contents, &plan) {
@@ -971,6 +1001,11 @@ fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
                         removed: true,
                         rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed block",
                     };
+                    println!(
+                        "hooks remove: removed managed block from {}; receipt: {}",
+                        hook_path.display(),
+                        result_receipt.display()
+                    );
                     write_json_receipt(&result_receipt, &receipt)
                 }
                 None => {
@@ -997,6 +1032,11 @@ fn remove_resolved(args: &HookRemoveArgs, root: &Path) -> CargoAllowResult<()> {
                         removed: true,
                         rollback: "re-run hooks plan for this stage and hooks apply with --accept to recreate the managed hook",
                     };
+                    println!(
+                        "hooks remove: removed managed block from {}; receipt: {}",
+                        hook_path.display(),
+                        result_receipt.display()
+                    );
                     write_json_receipt(&result_receipt, &receipt)
                 }
             }
@@ -1122,6 +1162,12 @@ fn read_plan(path: &Path) -> CargoAllowResult<LocalHookPlanV1> {
         CargoAllowError::with_kind(
             CargoAllowErrorKind::InvalidConfig,
             format!("failed to parse hook plan {}: {error}", path.display()),
+        )
+        .with_next_step(
+            "regenerate the plan with `cargo-allow hooks plan --output <path>` (the plan \
+             file must contain the JSON plan, not the human preview), repeating the \
+             original --stage and any --binary/--digest runtime options — the default \
+             plan is pre-commit with the ambient executable — then retry.",
         )
     })
 }
@@ -1537,7 +1583,7 @@ mod tests {
         let args = HooksArgs {
             command: HooksCommand::Plan(HookPlanArgs {
                 stage,
-                format,
+                format: Some(format),
                 output: Some(path.clone()),
                 binary: None,
                 digest: None,
@@ -1549,6 +1595,34 @@ mod tests {
         let contents = fs::read_to_string(&path).map_err(|error| error.to_string());
         let _ = fs::remove_file(&path);
         result.and(contents)
+    }
+
+    /// #4695: with no explicit --format, an --output file carries the JSON
+    /// plan (the artifact an apply step consumes), not the human preview.
+    #[test]
+    fn plan_output_defaults_to_json_for_the_apply_step() -> Result<(), String> {
+        let path = output_path("default-output");
+        let args = HooksArgs {
+            command: HooksCommand::Plan(HookPlanArgs {
+                stage: HookStage::PreCommit,
+                format: None,
+                output: Some(path.clone()),
+                binary: None,
+                digest: None,
+                mode: ToolSelectionMode::InstalledPinned,
+                expected_build_source_commit: None,
+            }),
+        };
+        let result = cmd_hooks(&args).map_err(|error| error.to_string());
+        let contents = fs::read_to_string(&path).map_err(|error| error.to_string());
+        let _ = fs::remove_file(&path);
+        let contents = result.and(contents)?;
+        let parsed: serde_json::Value =
+            serde_json::from_str(&contents).map_err(|error| error.to_string())?;
+        if parsed.get("schema") != Some(&serde_json::json!(PLAN_SCHEMA)) {
+            return Err("default --output must carry the JSON plan".to_string());
+        }
+        Ok(())
     }
 
     #[test]
@@ -2121,7 +2195,7 @@ mod tests {
     fn runtime_plan_arguments_fail_closed_and_preserve_optional_commit() -> Result<(), String> {
         let mut args = HookPlanArgs {
             stage: HookStage::PreCommit,
-            format: HookPlanFormat::Json,
+            format: Some(HookPlanFormat::Json),
             output: None,
             binary: None,
             digest: None,
@@ -2232,7 +2306,7 @@ mod tests {
     fn runtime_plan_argument_failures_have_usage_kind() -> Result<(), String> {
         let mut args = HookPlanArgs {
             stage: HookStage::PreCommit,
-            format: HookPlanFormat::Json,
+            format: Some(HookPlanFormat::Json),
             output: None,
             binary: Some(PathBuf::from("relative-cargo-allow")),
             digest: Some("sha256:v1:test".to_string()),
@@ -2975,7 +3049,7 @@ mod tests {
         cmd_hooks(&HooksArgs {
             command: HooksCommand::Plan(HookPlanArgs {
                 stage: HookStage::PreCommit,
-                format: HookPlanFormat::Json,
+                format: Some(HookPlanFormat::Json),
                 output: Some(plan_path.clone()),
                 binary: None,
                 digest: None,
