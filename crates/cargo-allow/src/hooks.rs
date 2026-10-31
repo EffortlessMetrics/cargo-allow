@@ -1597,6 +1597,34 @@ mod tests {
         result.and(contents)
     }
 
+    /// #4695: with no explicit --format, an --output file carries the JSON
+    /// plan (the artifact an apply step consumes), not the human preview.
+    #[test]
+    fn plan_output_defaults_to_json_for_the_apply_step() -> Result<(), String> {
+        let path = output_path("default-output");
+        let args = HooksArgs {
+            command: HooksCommand::Plan(HookPlanArgs {
+                stage: HookStage::PreCommit,
+                format: None,
+                output: Some(path.clone()),
+                binary: None,
+                digest: None,
+                mode: ToolSelectionMode::InstalledPinned,
+                expected_build_source_commit: None,
+            }),
+        };
+        let result = cmd_hooks(&args).map_err(|error| error.to_string());
+        let contents = fs::read_to_string(&path).map_err(|error| error.to_string());
+        let _ = fs::remove_file(&path);
+        let contents = result.and(contents)?;
+        let parsed: serde_json::Value =
+            serde_json::from_str(&contents).map_err(|error| error.to_string())?;
+        if parsed.get("schema") != Some(&serde_json::json!(PLAN_SCHEMA)) {
+            return Err("default --output must carry the JSON plan".to_string());
+        }
+        Ok(())
+    }
+
     #[test]
     fn plan_json_is_subject_honest_and_non_mutating() -> Result<(), String> {
         let plan = build_plan(HookStage::PreCommit);

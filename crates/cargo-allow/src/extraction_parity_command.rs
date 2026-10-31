@@ -1369,6 +1369,31 @@ mod tests {
             .join(format!("extraction-cutover-{name}-{}", std::process::id()))
     }
 
+    /// #4696: a missing dogfood registry is typed usage naming the registry
+    /// path, not an unknown error with a doctor redirect.
+    #[test]
+    fn load_registry_missing_file_is_typed_usage_with_registry_next()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let root = fixture_root("missing-registry");
+        fs::create_dir_all(&root)?;
+        let error = match load_registry(&root) {
+            Err(error) => error,
+            Ok(_) => return Err("missing registry must refuse".into()),
+        };
+        assert_eq!(error.kind(), CargoAllowErrorKind::Usage);
+        let next = error.next_step().ok_or("typed next step missing")?;
+        assert!(
+            next.contains("extraction-parity.toml"),
+            "the Next step must name the registry path: {next}"
+        );
+        assert!(
+            next.contains("cargo-allow repository"),
+            "the Next step must point at the dogfood checkout: {next}"
+        );
+        let _ = fs::remove_dir_all(&root);
+        Ok(())
+    }
+
     fn write_json(path: &Path, value: &impl Serialize) -> CargoAllowResult<()> {
         let contents = serde_json::to_vec_pretty(value)
             .map_err(|error| CargoAllowError::new(format!("render test evidence: {error}")))?;
