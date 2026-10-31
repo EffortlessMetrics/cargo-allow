@@ -390,13 +390,19 @@ fn select_add_finding_wrong_case_path_carries_the_case_alias_remediation()
         message.contains("SRC/LIB.RS"),
         "the refusal must keep the requested spelling for context: {message}"
     );
-    // The #4610 typed next step survives the decoration and renders alone.
+    // When the case-alias remedy is present, the typed Next step must agree
+    // with it: the fix is the corrected spelling, not a different --line or
+    // --kind (#4693).
     let next_step = error
         .next_step()
         .ok_or("the wrong-case refusal must keep the typed next step")?;
     assert!(
-        next_step.contains("pass the exact --line"),
-        "the typed next step must be unchanged: {next_step}"
+        next_step.contains("retry with `--path src/lib.rs`"),
+        "the typed next step must name the corrected spelling: {next_step}"
+    );
+    assert!(
+        !next_step.contains("pass the exact --line"),
+        "the generic next step must not contradict the case remedy: {next_step}"
     );
     let report = crate::error_report::format_cli_error(&error);
     assert_eq!(report.matches("Next:").count(), 1, "{report}");

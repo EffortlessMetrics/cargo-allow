@@ -240,10 +240,16 @@ fn why_wrong_case_target_error_names_the_case_alias() -> Result<(), Box<dyn Erro
             short_error.kind(),
             allow_core::CargoAllowErrorKind::Inventory
         );
-        assert!(
-            short_error.next_step().is_none(),
-            "8.3 aliases are a documented v1 limitation; no case step expected"
-        );
+        // 8.3 aliases are a documented v1 limitation: no case-remedy step.
+        // On volumes where the short name resolves, the untracked-file remedy
+        // (#4692) may attach instead — legal, as long as no case mismatch is
+        // claimed for an 8.3 spelling.
+        if let Some(step) = short_error.next_step() {
+            assert!(
+                !step.contains("differs only by letter case"),
+                "8.3 aliases must not receive the case remedy: {step}"
+            );
+        }
         Ok(())
     })();
     cleanup(&root);
@@ -301,6 +307,119 @@ fn why_correct_case_target_still_loads_the_scoped_context() -> Result<(), Box<dy
         assert!(
             !scoped.0.findings.is_empty(),
             "the correct-case target must still scan to a finding"
+        );
+        Ok(())
+    })();
+    cleanup(&root);
+    result
+}
+
+/// #4692: an existing-but-untracked target gets the `--include-untracked`
+/// remedy as its typed Next step — the same remedy the message already names —
+/// instead of the generic revision-verification fallback that does not apply
+/// to a file sitting in the working tree.
+#[test]
+fn why_untracked_target_next_step_names_the_include_untracked_remedy() -> Result<(), Box<dyn Error>>
+{
+    let root = std::env::temp_dir().join(format!(
+        "cargo-allow-why-untracked-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_nanos()
+    ));
+    let cleanup = |root: &PathBuf| {
+        let _ = fs::remove_dir_all(root);
+    };
+    fs::create_dir_all(root.join("policy"))?;
+    fs::write(
+        root.join("policy/allow.toml"),
+        "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = []\ngenerated = []\n",
+    )?;
+    let result = (|| -> Result<(), Box<dyn Error>> {
+        for args in [
+            vec!["init"],
+            vec!["config", "user.email", "cargo-allow@example.invalid"],
+            vec!["config", "user.name", "cargo-allow why test"],
+            vec!["add", "--all"],
+            vec!["commit", "-m", "why untracked fixture"],
+        ] {
+            let status = std::process::Command::new("git")
+                .args(&args)
+                .current_dir(&root)
+                .status()?;
+            if !status.success() {
+                return Err(format!("git command failed: {args:?}").into());
+            }
+        }
+        // Exists on disk, never git-added, and shares no case-fold with any
+        // tracked path: the plain untracked case.
+        fs::write(
+            root.join("untracked_probe.rs"),
+            "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+        )?;
+
+        let error = match crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            true,
+            Some("panic"),
+            false,
+            &root.join("untracked_probe.rs"),
+        ) {
+            Err(error) => error,
+            Ok(_) => return Err("an untracked target must be rejected".into()),
+        };
+        assert_eq!(error.kind(), allow_core::CargoAllowErrorKind::Inventory);
+        let next_step = error
+            .next_step()
+            .ok_or("the untracked rejection must carry a typed next step")?;
+        assert!(
+            next_step.contains("--include-untracked"),
+            "the Next step must name the untracked remedy: {next_step}"
+        );
+        assert!(
+            !next_step.contains("verify the named revision"),
+            "the generic revision fallback must not contradict the untracked remedy: {next_step}"
+        );
+
+        // #4694 review: a file excluded by the policy's ignore rules must not
+        // receive the untracked remedy — --include-untracked does not override
+        // workspace.ignored. The Next step must name the ignore configuration.
+        fs::write(
+            root.join("ignored_probe.rs"),
+            "pub fn probe() { let value: Option<u8> = None; let _ = value.unwrap(); }\n",
+        )?;
+        fs::write(
+            root.join("policy/allow.toml"),
+            "schema_version = 1\npolicy = \"cargo-allow\"\n\n[workspace]\nignored = [\"ignored_probe.rs\"]\ngenerated = []\n",
+        )?;
+
+        let ignored_error = match crate::world::load_world_for_path(
+            Some(&root),
+            None,
+            false,
+            Some("panic"),
+            false,
+            &root.join("ignored_probe.rs"),
+        ) {
+            Err(error) => error,
+            Ok(_) => return Err("an ignored target must be rejected".into()),
+        };
+        assert_eq!(
+            ignored_error.kind(),
+            allow_core::CargoAllowErrorKind::Inventory
+        );
+        let ignored_next = ignored_error
+            .next_step()
+            .ok_or("the ignored rejection must carry a typed next step")?;
+        assert!(
+            ignored_next.contains("ignore rules"),
+            "the Next step must name the ignore-rule remedy: {ignored_next}"
+        );
+        assert!(
+            !ignored_next.contains("--include-untracked"),
+            "the untracked remedy must not fire for an ignore-rule exclusion: {ignored_next}"
         );
         Ok(())
     })();
