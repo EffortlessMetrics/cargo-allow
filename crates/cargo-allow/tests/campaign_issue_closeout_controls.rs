@@ -13,24 +13,17 @@ use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::mpsc;
 use std::thread;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
-
-struct StubRequest {
-    method: String,
-    path: String,
-}
 
 fn serve_stub(
     pulls: &str,
     compare: &str,
     log_path: &Path,
-) -> std::io::Result<(String, mpsc::Receiver<StubRequest>, thread::JoinHandle<()>)> {
+) -> std::io::Result<(String, thread::JoinHandle<()>)> {
     let listener = TcpListener::bind("127.0.0.1:0")?;
     let port = listener.local_addr()?.port().to_string();
-    let (tx, rx) = mpsc::channel();
     let pulls = pulls.to_string();
     let compare = compare.to_string();
     let log_path = log_path.to_path_buf();
@@ -74,10 +67,6 @@ fn serve_stub(
                 .split_whitespace();
             let method = parts.next().unwrap_or_default().to_string();
             let path = parts.next().unwrap_or_default().to_string();
-            let _ = tx.send(StubRequest {
-                method: method.clone(),
-                path: path.clone(),
-            });
             let (payload, code) = if path.starts_with("/pulls/") {
                 (pulls.clone(), 200)
             } else if path.contains("/compare/") {
@@ -105,7 +94,7 @@ fn serve_stub(
             let _ = stream.flush();
         }
     });
-    Ok((port, rx, handle))
+    Ok((port, handle))
 }
 
 fn scratch_dir() -> std::io::Result<PathBuf> {
@@ -175,7 +164,7 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> TestResu
     let compare = r#"{"status": "identical"}"#.to_string();
     let dir = scratch_dir()?;
     let log_path = dir.join("stub-requests.log");
-    let (port, _rx, handle) = serve_stub(&pulls, &compare, &log_path)?;
+    let (port, handle) = serve_stub(&pulls, &compare, &log_path)?;
     let api_url = format!("http://127.0.0.1:{port}");
 
     // Case 1: a closure with no closeout marker reopens the issue with the
