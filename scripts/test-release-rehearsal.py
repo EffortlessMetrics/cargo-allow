@@ -724,7 +724,7 @@ class TestReleaseRehearsal(unittest.TestCase):
         workflow = receipt.get("workflow_graph_permissions")
         if phases["workflow_graph_permissions"] == "Complete":
             self.assertIsInstance(workflow, dict)
-            self.assertEqual(workflow["mode"], "yaml")
+            self.assertIn(workflow["mode"], {"yaml", "scoped_text"})
             self.assertTrue(workflow["top_level_read_scoped"])
             self.assertTrue(workflow["top_level_contents_read_scoped"])
             self.assertFalse(workflow["top_level_write_scoped"])
@@ -1725,6 +1725,90 @@ class TestWorkflowGraphLeastPrivilege(unittest.TestCase):
         fixture["jobs"]["preflight"]["permissions"] = "write-all"
         self.assertIsNone(REHEARSAL._least_privilege_workflow_graph_proof(fixture, True))
 
+    def test_scoped_parser_matches_current_release_permission_map(self) -> None:
+        release_path = ROOT / ".github/workflows/release.yml"
+        source = release_path.read_text(encoding="utf-8")
+        parsed = REHEARSAL._scoped_text_workflow_inventory(source)
+        self.assertNotIn("error", parsed)
+        proof = REHEARSAL._least_privilege_workflow_graph_proof(parsed, True)
+        self.assertIsNotNone(proof)
+        self.assertEqual(proof["mode"], "scoped_text")
+        self.assertTrue(proof["top_level_permissions_least_privilege"])
+        self.assertTrue(proof["github_release_scoped"])
+        self.assertTrue(proof["non_publisher_jobs_read_only"])
+
+    def test_strict_fallback_never_confuses_publisher_and_global_grants(self) -> None:
+        base = (
+            "name: Release\n"
+            "permissions:\n  actions: read\n  contents: read\n"
+            "jobs:\n"
+            "  preflight:\n    runs-on: ubuntu-latest\n"
+            "    steps:\n      - run: echo accepted\n"
+            "  github-release:\n    permissions:\n"
+            "      contents: write\n      attestations: write\n      id-token: write\n"
+        )
+        success = REHEARSAL._scoped_text_workflow_inventory(base)
+        self.assertNotIn("error", success)
+        proof = REHEARSAL._least_privilege_workflow_graph_proof(success, True)
+        self.assertTrue(proof["top_level_permissions_least_privilege"])
+        controls = {
+            "broad_global_write": base.replace(
+                "  contents: read\n", "  contents: write\n", 1,
+            ),
+            "global_duplicate": base.replace(
+                "jobs:\n", "permissions:\n  contents: read\njobs:\n", 1,
+            ),
+            "job_duplicate": base + "  github-release:\n    permissions:\n      contents: write\n",
+            "job_merge_alias": base.replace(
+                "    steps:\n", "    <<: *privileged\n    steps:\n", 1,
+            ),
+            "publisher_shorthand": base.replace(
+                "    permissions:\n", "    permissions: write-all\n", 1,
+            ),
+            "malformed_level": base.replace(
+                "      id-token: write\n", "      id-token: write#alias\n", 1,
+            ),
+            "nonpublisher_write": base.replace(
+                "    runs-on: ubuntu-latest\n",
+                "    permissions:\n      contents: write\n    runs-on: ubuntu-latest\n",
+                1,
+            ),
+        }
+        for name, source in controls.items():
+            with self.subTest(name=name):
+                parsed = REHEARSAL._scoped_text_workflow_inventory(source)
+                if "error" in parsed:
+                    continue
+                proof = REHEARSAL._least_privilege_workflow_graph_proof(parsed, True)
+                self.assertIsNotNone(proof)
+                self.assertFalse(
+                    proof["top_level_permissions_least_privilege"]
+                    and proof["github_release_scoped"]
+                    and proof["non_publisher_jobs_read_only"],
+                    f"{name} must not prove least privilege",
+                )
+
+    def test_missing_pyyaml_uses_scoped_fallback_for_valid_release(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workflows = root / ".github/workflows"
+            workflows.mkdir(parents=True)
+            source = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+            (workflows / "release.yml").write_text(source, encoding="utf-8")
+            (workflows / "release-authorized.yml").write_text(
+                "namespace step: --mode namespace\n", encoding="utf-8",
+            )
+            receipt = {}
+            with mock.patch.object(REHEARSAL, "ROOT", root), mock.patch.object(
+                REHEARSAL, "_yaml_workflow_inventory", return_value=None,
+            ):
+                self.assertEqual(
+                    REHEARSAL.run_phase_workflow_graph_permissions(receipt),
+                    "Complete",
+                )
+            self.assertEqual(receipt["workflow_graph_permissions"]["mode"], "scoped_text")
+
+
     def test_parser_absence_never_promotes_text_search_to_complete(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -1745,7 +1829,7 @@ class TestWorkflowGraphLeastPrivilege(unittest.TestCase):
             ):
                 self.assertEqual(
                     REHEARSAL.run_phase_workflow_graph_permissions(receipt),
-                    "Incomplete",
+                    "Mismatch",
                 )
             self.assertEqual(receipt, {})
 
