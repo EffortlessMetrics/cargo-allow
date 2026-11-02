@@ -113,7 +113,8 @@ fn scratch_dir() -> std::io::Result<PathBuf> {
         "closeout-controls-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)?
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(std::io::Error::other)?
             .as_nanos()
     ));
     std::fs::create_dir_all(&dir)?;
