@@ -477,7 +477,7 @@ fn expected_add_policy(initial: &str) -> CargoAllowResult<String> {
         occurrence_limit: Some(1),
         lifecycle: Lifecycle {
             created: Some(SimpleDate::today_utc_approx().to_string()),
-            review_after: Some("2099-01-01".to_string()),
+            review_after: Some(crate::add::REPO_EDIT_PARITY_REVIEW_AFTER.to_string()),
             expires: None,
         },
         selector: Selector {
