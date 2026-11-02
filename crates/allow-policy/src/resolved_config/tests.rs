@@ -1905,6 +1905,45 @@ fn resolved_config_candidates_retain_projection_order() -> TestResult {
     Ok(())
 }
 
+#[test]
+fn is_safe_relative_path_accepts_only_bounded_relative_normal_paths() -> TestResult {
+    for accepted in [
+        "policy/allow.toml",
+        "crates/member/Cargo.toml",
+        "docs.md",
+        "a/b/c",
+    ] {
+        ensure(
+            is_safe_relative_path(Path::new(accepted)),
+            &format!("relative normal path should be accepted: {accepted}"),
+        )?;
+    }
+    for rejected in [
+        "../escape.toml",
+        "a/../b.toml",
+        "/absolute/unix.toml",
+        "\\absolute\\windows.toml",
+        "C:\\absolute\\windows.toml",
+    ] {
+        ensure(
+            !is_safe_relative_path(Path::new(rejected)),
+            &format!("unsafe path should be rejected: {rejected}"),
+        )?;
+    }
+    // The unix-backslash rejection only arms on unix; the same spelling must
+    // keep its platform-accurate verdict on both sides of the cfg.
+    ensure_eq(
+        has_unix_backslash(Path::new("a\\b.toml")),
+        cfg!(unix),
+        "unix backslash detection tracks the target platform",
+    )?;
+    ensure(
+        is_safe_relative_path(Path::new("a\\b.toml")) == !cfg!(unix),
+        "backslash spelling acceptance must match the platform cfg",
+    )?;
+    Ok(())
+}
+
 fn valid_policy() -> &'static str {
     r#"schema_version = "0.1"
 policy = "cargo-allow"
