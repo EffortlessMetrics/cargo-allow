@@ -46,7 +46,9 @@ fn serve_stub(
                 if read == 0 {
                     break;
                 }
-                buffer.extend_from_slice(&chunk[..read]);
+                if let Some(received) = chunk.get(..read) {
+                    buffer.extend_from_slice(received);
+                }
                 let text = String::from_utf8_lossy(&buffer);
                 let Some(header_end) = text.find("\r\n\r\n") else {
                     continue;
@@ -54,11 +56,9 @@ fn serve_stub(
                 let length = text
                     .split("\r\n")
                     .find_map(|line| {
-                        let lower = line.to_ascii_lowercase();
-                        lower
-                            .starts_with("content-length:")
-                            .then(|| line[15..].trim().parse::<usize>().ok())
-                            .flatten()
+                        line.split_once(':')
+                            .and_then(|(_, rest)| rest.trim().parse::<usize>().ok())
+                            .filter(|_| line.to_ascii_lowercase().starts_with("content-length"))
                     })
                     .unwrap_or(0);
                 let body_start = header_end + 4;
