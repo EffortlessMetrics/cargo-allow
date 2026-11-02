@@ -94,7 +94,12 @@ fn canonical_companion_findings_match_migrated_policy_entries() {
         &cfg,
         &findings,
         CheckMode::NoNew,
-        allow_core::SimpleDate::today_utc_approx(),
+        // Structural companion matching is independent of lifecycle cadence.
+        allow_core::SimpleDate {
+            year: 2026,
+            month: 10,
+            day: 1,
+        },
     );
 
     assert_eq!(findings.len(), 6);

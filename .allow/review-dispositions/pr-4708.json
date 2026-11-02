@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4708,
+  "base_ref": "main",
+  "base_sha": "178b700d98f23cdb124c9c6993dfaf927836e754",
+  "head_ref": "fix/4707-clock-stable-fixtures",
+  "head_sha": "da63ce1d282fb44e806f15e12d9710d7fe032e0e",
+  "merge_base": "178b700d98f23cdb124c9c6993dfaf927836e754",
+  "reviewed_diff_digest": "sha256:v1:5dc449c45a1ef03b7a9eeee78d2372951f5038311fab3c074d238ced82abb1c8",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT technical review of original exact head (PR review 5733563366), then source-and-governance current-pair readback for staged commit da63ce1d; coordinating GitHub maintainer account is also source author, no independent-human approval or independent C1 model audit is claimed.",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4708#pullrequestreview-5733563366",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4708#discussion_r4439928529",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4708#discussion_r4439928543",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4708#discussion_r4440211050",
+    "All three current inline threads were read, materially addressed or refuted after completion, replied to and verified resolved; Devin's missing-native-qualification concern was disproved by the completed 26/26 exact synthetic-merge run.",
+    "CI #41409026258 passed the original nine-source-file candidate H0 dc098399 and its synthetic merge 01131782 (base 178b700d + H0) including 1800/0 MSRV; do not reuse that CI for the new eleven-source-file C1 or this ledger bootstrap C2.",
+    "Staged H1 da63ce1d has precisely the original nine source/fixture paths plus policy/allow.toml and .allow/revisions/4708-review-disposition.toml. The earlier nine-file full source review remains applicable to unchanged files; the two additional paths were inspected as reviewer-owned governance with no runtime behavior change.",
+    "Both added allow entries are exact configuration tracked_file selectors, with unchanged existing policy prefix. Their checked after_fingerprints were independently reproduced from the allow-core canonical SHA-256 implementation and compared against known PR4703 fingerprints.",
+    "Full git diff digest over base..H1 was reconstructed from GitHub's actual compare blob SHAs and patches, using Git's 8-character object abbreviation; calibration matched the provider's prior H0 review-readiness digest exactly. This is provenance for H1, not evidence of native qualification.",
+    "CodeRabbit reviewed an earlier head and later returned a quota-limited result; that later result is not clean-review proof. Devin reviewed H0 with a qualification-timing concern subsequently answered by authentic CI; neither bot is claimed as an independent full review of H1.",
+    "The retained disposition is committed only as a subsequent ledger-only delta H1..H2; the existing review-readiness projector must still prove that bootstrap and publish success before merge."
+  ],
+  "required_ci": {
+    "owner": "Current PR merge owner: require post-bootstrap exact base/head CI (all applicable jobs terminal successful), review-readiness success on live H2, current review/threads and no-new/diff/revision proof; do not reuse H0's green run; perform separate guarded expected-head merge and resulting-main readback.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4708",
+  "reviewed_at_utc": "2026-11-02T09:47:42.711Z"
+}
