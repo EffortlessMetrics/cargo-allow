@@ -167,7 +167,6 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
     remove_temp_root(root)
 }
 
-
 /// #4714: a preflight rejection must not create or replace the live ledger.
 /// These cases execute the installed bin with real argv, root/cwd resolution,
 /// and filesystem effects; error-summary emission remains best effort.
