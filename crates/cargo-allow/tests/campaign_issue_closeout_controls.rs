@@ -13,9 +13,10 @@ use std::process::Command;
 #[test]
 fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> Result<(), Box<dyn Error>> {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let script = repo_root.join("scripts/test-campaign-closeout-request-law.py");
+    let script = repo_root.join("scripts/test-campaign-issue-closeout.py");
     let output = Command::new("python3")
         .arg(&script)
+        .arg("TestCampaignCloseoutRequestLaw")
         .current_dir(&repo_root)
         .env_remove("GITHUB_TOKEN")
         .env_remove("GH_TOKEN")
