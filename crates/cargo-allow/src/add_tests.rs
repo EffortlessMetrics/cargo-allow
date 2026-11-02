@@ -8,6 +8,10 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
+// Non-lifecycle add fixtures use a fixed future review date so current-day
+// creation cannot become invalid after a calendar rollover. Actual review
+// cadence and date validation are verified by their dedicated tests.
+
 #[test]
 fn candidate_stderr_note_skips_capture_and_sidecar_writes() {
     // #4509: the note is terminal-only — captured output (tests, wrappers)
@@ -199,7 +203,7 @@ fn allow_entry_from_finding_uses_structural_selector_and_review_metadata() {
         classification: "validated_invariant".to_string(),
         reason: "Parser validates the span before unwrapping.".to_string(),
         evidence: vec!["test:parser_validates_span".to_string()],
-        review_after: "2026-11-01".to_string(),
+        review_after: "2099-01-01".to_string(),
         expires: None,
     });
 
@@ -388,7 +392,7 @@ fn cmd_add_rejects_duplicate_allow_id() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: Some(duplicate_id.clone()),
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -436,7 +440,7 @@ fn cmd_add_summary_collision_rejects_before_candidate_write() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(candidate.clone()),
@@ -480,7 +484,7 @@ fn cmd_add_rejects_already_matched_finding() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -524,7 +528,7 @@ fn cmd_add_rejects_untracked_local_evidence_by_default() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -572,7 +576,7 @@ fn cmd_add_include_untracked_accepts_untracked_local_evidence() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: true,
         write: Some(output.clone()),
@@ -633,7 +637,7 @@ fn cmd_add_reports_missing_policy_config_with_exact_error() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -678,7 +682,7 @@ fn cmd_add_validate_policy_rejects_unsupported_schema_version() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -728,7 +732,7 @@ fn cmd_add_rejects_write_to_existing_output_without_force() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -793,7 +797,7 @@ fn cmd_add_update_writes_entry_into_live_policy() -> Result<(), Box<dyn std::err
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: None,
@@ -854,7 +858,7 @@ fn cmd_add_update_preserves_crlf_ledger_byte_form() -> Result<(), Box<dyn std::e
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: None,
@@ -916,7 +920,7 @@ fn cmd_add_update_keeps_lf_ledger_byte_form() -> Result<(), Box<dyn std::error::
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: None,
@@ -1018,7 +1022,7 @@ fn cmd_add_write_force_keeps_crlf_candidate_envelope() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -1069,7 +1073,7 @@ fn cmd_add_update_rejects_when_write_also_set() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(root.join("policy/allow.proposed.toml")),
@@ -1122,7 +1126,7 @@ fn cmd_add_update_requires_existing_policy() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: None,
@@ -1162,7 +1166,7 @@ fn cmd_add_rejects_empty_broad_scope_as_usage() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: Some(output.clone()),
@@ -1214,7 +1218,7 @@ fn cmd_add_update_json_summary_reports_discovered_target_and_written() {
         reason: "Parser validates before unwrap.".to_string(),
         evidence: vec!["test:parser_validates".to_string()],
         id: None,
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some("2099-01-01".to_string()),
         expires: None,
         include_untracked: false,
         write: None,
@@ -1312,7 +1316,7 @@ path = "policy/allow.toml"
 owner = "core"
 classification = "fixture"
 reason = "fixture policy file"
-review_after = "2026-11-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1334,7 +1338,7 @@ owner = "core"
 classification = "reviewed_exception"
 reason = "fixture"
 evidence = ["test:parser_validates"]
-review_after = "2026-11-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "method_call"
@@ -1358,7 +1362,7 @@ path = "policy/allow.toml"
 owner = "core"
 classification = "fixture"
 reason = "fixture policy file"
-review_after = "2026-11-01"
+review_after = "2099-01-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -1430,7 +1434,7 @@ fn test_policy_entry_with_untracked_evidence() -> AllowEntry {
         occurrence_limit: None,
         lifecycle: allow_core::Lifecycle {
             created: None,
-            review_after: Some("2026-11-01".to_string()),
+            review_after: Some("2099-01-01".to_string()),
             expires: None,
         },
         selector: allow_core::Selector {

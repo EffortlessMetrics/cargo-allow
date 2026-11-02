@@ -12,7 +12,8 @@ fn explain_entry_json_records_context_and_live_status() {
     entry.family = Some("documentation".to_string());
     entry.evidence = vec!["test:explain_fixture".to_string()];
     entry.lifecycle.created = Some("2026-05-27".to_string());
-    entry.lifecycle.review_after = Some("2026-11-01".to_string());
+    // Preserve a matched status regardless of the execution calendar.
+    entry.lifecycle.review_after = Some("2099-01-01".to_string());
     cfg.allow.push(entry.clone());
     let mut finding = test_finding(
         FindingKind::NonRustFile,
