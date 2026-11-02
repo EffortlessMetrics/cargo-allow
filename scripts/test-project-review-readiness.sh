@@ -15,6 +15,9 @@ REAL_MKTEMP="$(command -v mktemp)"
 # Native jq on Git Bash otherwise emits CRLF into shell variables.
 cat >"${work}/bin/jq" <<'SH'
 #!/usr/bin/env bash
+if [ "$1" = "-n" ] && [ -n "${FIXTURE_STATE:-}" ]; then
+  printf '%s\n' "$@" >>"${FIXTURE_STATE}/jq-args-live"
+fi
 case "${FIXTURE_JQ_FAILURE:-none}:$1:${2:-}" in
   validate:-se:* | conclusion:-er:.conclusion | summary:-er:.conclusion_reasons* | snapshot:-cse:* | live:-n:* | candidate:-r:--arg | selected:-r:.head_sha*)
     printf 'private-jq-canary\n' >&2
@@ -50,7 +53,12 @@ read -r pr <"${FIXTURE_STATE}/active-pr"
 printf '%s\n' "$@" >>"${FIXTURE_STATE}/git-args-${pr}"
 base="${FIXTURE_BASE_ID}" head=2
 if [ "$pr" = 4166 ]; then base=6; head=5; fi
-case "$1" in
+# The pinned v2 digest recipe passes -c <key>=<value> pairs before the
+# subcommand; strip them so subcommand dispatch and positional checks
+# keep their historical shape.
+rest=("$@")
+while [ "${rest[0]:-}" = "-c" ]; do rest=("${rest[@]:2}"); done
+case "${rest[0]}" in
   fetch)
     [ "$*" = "fetch --no-tags --no-write-fetch-head --refmap= origin $(printf '%040d' "$base") $(printf '%040d' "$head")" ] || exit 93
     if [ "$pr" = "${FIXTURE_FETCH_FAIL_PR}" ]; then exit 29; fi
@@ -504,4 +512,22 @@ PR_HEAD_SHA="$(printf '%040d' 9)"
 run_case push_two_independent_pairs 0 POST 'published success'
 FIXTURE_FETCH_FAIL_PR=4165
 run_case push_first_failed_second_succeeds 1 POST 'published success'
+# #3844: the disposition digest must use the pinned v2 recipe. Assert the
+# recorded producer contract from the last success case: the git diff
+# invocation carries every pinned knob, and the live input carries the
+# sha256:v2: label.
+digest_args_file="${work}/push_success/git-args-4165"
+live_args_file="${work}/push_success/jq-args-live"
+[ -f "${digest_args_file}" ] || { echo 'review-readiness: missing recorded git args for the digest contract' >&2; exit 1; }
+for knob in 'diff.algorithm=histogram' 'diff.renames=true' 'diff.noprefix=false' 'core.autocrlf=false' '--no-ext-diff' '--no-textconv' '--binary' '--full-index' '-U3'; do
+  grep -q -- "${knob}" "${digest_args_file}" || {
+    echo "review-readiness: pinned digest recipe missing ${knob}" >&2
+    exit 1
+  }
+done
+grep -q -- 'sha256:v2:' "${live_args_file}" || {
+  echo 'review-readiness: live input does not carry the sha256:v2: digest label' >&2
+  exit 1
+}
+
 printf 'all review-readiness adapter characterization checks passed\n'

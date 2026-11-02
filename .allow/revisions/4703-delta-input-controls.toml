@@ -1,0 +1,16 @@
+# #4703: exact committed-subject dependency-graph delta input producer controls.
+# No release, publication, source-exception weakening, or CI bypass authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4703-delta-input-tests"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cc20f8d8f780280bf9775237da973af0d333b97366a5fdeffa5d6ad3e72e4482"
+reason = "Real-Git fixed-commit input boundary falsifiers for the dependency-delta producer (#4703); the capture-only child cannot generate a semantic or release receipt."
+
+[[records]]
+allow_ids = ["allow-4703-delta-input-note"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:72735f29da990e822dc67f5119a2bfe10ca6be450d5c710dc8829fd901e769e0"
+reason = "Self-covering revision note for the exact Python input-boundary test allowance (#4703); grants no policy-wide, CI-bypass, or release authority."
