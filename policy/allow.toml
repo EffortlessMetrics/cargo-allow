@@ -25535,3 +25535,47 @@ glob = ".allow/revisions/4703-delta-input-controls.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4704-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4704.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact-pair reviewed source disposition for committed dependency-delta input integrity (#4703/#4704); binds real test and review evidence without waiving merge, CI, or release controls."
+evidence = ["pr:4704", "issue:4703", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-02"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4704.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4704.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4704-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4704-review-disposition.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering change-control note for the exact-file #4704 review disposition; no broad policy, scanner, review, CI, or release bypass."
+evidence = ["pr:4704", "issue:4703"]
+created = "2026-11-02"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4704-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4704-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
