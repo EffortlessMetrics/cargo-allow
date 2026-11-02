@@ -46,6 +46,10 @@ use effortless_repo_edit::{
 
 const ADD_REVIEW_AFTER_DEFAULT_DAYS: i64 = 90;
 
+// This selected RepoEdit parity fixture must be valid independently of UTC
+// calendar rollover; it is not the public add command's default lifecycle.
+pub(crate) const REPO_EDIT_PARITY_REVIEW_AFTER: &str = "2099-01-01";
+
 use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 
@@ -62,7 +66,7 @@ pub(crate) fn parity_add_args(root: PathBuf, config: PathBuf) -> AddArgs {
         owner: "parity".to_string(),
         reason: "RepoEdit parity fixture exception".to_string(),
         classification: "reviewed_exception".to_string(),
-        review_after: Some("2026-11-01".to_string()),
+        review_after: Some(REPO_EDIT_PARITY_REVIEW_AFTER.to_string()),
         expires: None,
         evidence: Vec::new(),
         id: None,
