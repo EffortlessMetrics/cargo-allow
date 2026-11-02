@@ -675,7 +675,8 @@ fn non_rust_prune_fixture_entry(id: &str, path: &str) -> AllowEntry {
     let mut entry = test_entry(id, FindingKind::NonRustFile);
     entry.family = Some("documentation".to_string());
     entry.path = Some(PathBuf::from(path));
-    entry.lifecycle.review_after = Some("2026-11-01".to_string());
+    // This fixture tests stale pruning, not review cadence; keep review due out of the way.
+    entry.lifecycle.review_after = Some("2099-01-01".to_string());
     entry
 }
 
