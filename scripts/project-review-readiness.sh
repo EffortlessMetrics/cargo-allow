@@ -23,8 +23,17 @@
 # already existing check. Aggregate ordering remains separate (#3839).
 #
 # Disposition digest recipe (binds the retained record to the exact
-# pair): `git diff <merge_base>..<head_sha>` hashed with sha256sum.
-# The review flow that authors dispositions must use the same recipe.
+# pair). v2 (#4251-lineage: #3844): every diff-affecting knob is pinned
+# on the command line so the digest is reproducible across environments:
+#   git -c diff.algorithm=histogram -c diff.renames=true \
+#       -c diff.noprefix=false -c core.autocrlf=false \
+#       diff --no-ext-diff --no-textconv --binary --full-index -U3 \
+#       <merge_base>..<head_sha> | sha256sum
+# labeled `sha256:v2:`. Historical `sha256:v1:` records hashed ambient
+# `git diff` bytes (algorithm/renames/context/autocrlf/textconv varied
+# by environment); they are never relabeled — they verify only against
+# their own v1 recompute. The review flow that authors dispositions
+# must use the same pinned recipe.
 #
 # Fork PRs receive a read-only token: when the check-run publish is
 # refused, the adapter logs the refusal and exits nonzero so the job
@@ -120,7 +129,7 @@ publish() {
   # consumer can identify the observed pair. This is not an atomic CAS.
   local head_sha="$1" conclusion="$2" summary="$3" base_sha="$4" merge_base="$5" diff_digest="$6"
   local pr_number="$7" pr_snapshot="$8" output
-  output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v1:%s\n\n%s' \
+  output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v2:%s\n\n%s' \
     "${base_sha}" "${merge_base}" "${diff_digest}" "${summary}")"
   # These functions run in conditional contexts, where Bash disables
   # errexit. Check every API status explicitly, and keep raw tool
@@ -261,7 +270,7 @@ project_pr() {
     printf 'review-readiness: instrument failure: merge-base read failed (exit %s)\n' "${input_status}" >&2
     return 1
   fi
-  if diff_digest="$( { git diff "${merge_base}..${head_sha}" | sha256sum | cut -d' ' -f1; } 2>/dev/null)" &&
+  if diff_digest="$( { git -c diff.algorithm=histogram -c diff.renames=true -c diff.noprefix=false -c core.autocrlf=false diff --no-ext-diff --no-textconv --binary --full-index -U3 "${merge_base}..${head_sha}" | sha256sum | cut -d' ' -f1; } 2>/dev/null)" &&
     [[ "${diff_digest}" =~ ^[a-f0-9]{64}$ ]]; then
     :
   else
@@ -283,7 +292,7 @@ project_pr() {
     --arg head_ref "${head_ref}" \
     --arg head_sha "${head_sha}" \
     --arg merge_base "${merge_base}" \
-    --arg diff_digest "sha256:v1:${diff_digest}" \
+    --arg diff_digest "sha256:v2:${diff_digest}" \
     '{repository: $repository, pr_number: $pr_number,
       base_ref: $base_ref, base_sha: $base_sha,
       head_ref: $head_ref, head_sha: $head_sha,

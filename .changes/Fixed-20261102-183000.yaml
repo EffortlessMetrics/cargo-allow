@@ -1,0 +1,3 @@
+kind: Fixed
+body: Pin the review-readiness disposition digest recipe (algorithm, rename detection, prefixes, autocrlf, external/textconv drivers, context) and label records sha256:v2, so the digest is reproducible across environments; historical sha256:v1 records verify only against their own recompute.
+time: 2026-11-02T18:30:00Z

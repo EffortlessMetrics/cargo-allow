@@ -36,6 +36,8 @@ jobs:
           fetch-depth: 0
       - name: Characterize review readiness adapter
         run: bash scripts/test-project-review-readiness.sh
+      - name: Prove digest recipe environment-invariance
+        run: bash scripts/test-review-readiness-digest-stability.sh
       - uses: dtolnay/rust-toolchain@1.95.0
       - name: Project review readiness
         env:
