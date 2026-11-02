@@ -1204,16 +1204,26 @@ fn missing_selected_path_has_authorized_parent(anchor: &Path, path: &Path) -> bo
     }
 }
 
+fn has_unix_backslash(path: &Path) -> bool {
+    cfg!(unix) && path.to_string_lossy().contains('\\')
+}
+
 fn is_safe_relative_path(path: &Path) -> bool {
-    path.to_str().is_some()
-        && !(cfg!(unix) && path.to_string_lossy().contains('\\'))
-        && !path.is_absolute()
-        && !path.components().any(|component| {
-            matches!(
-                component,
-                Component::ParentDir | Component::RootDir | Component::Prefix(_)
-            )
-        })
+    if path.to_str().is_none() {
+        return false;
+    }
+    if has_unix_backslash(path) {
+        return false;
+    }
+    if path.is_absolute() {
+        return false;
+    }
+    !path.components().any(|component| {
+        matches!(
+            component,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_)
+        )
+    })
 }
 
 fn is_safe_portable_path_text(path: &str) -> bool {
