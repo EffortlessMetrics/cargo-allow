@@ -84,7 +84,9 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         "family='expect_attribute'\r\npath='src/lib.rs'\nowner='lint'\r\n",
         "classification='reviewed_lint_exception'\nreason='Refresh receipt fixture.'\r\n",
         "evidence=['test:refresh-receipt-fixture']\ncreated='2026-05-09'\r\n",
-        "review_after='2027-06-30'\nexpires='2027-09-30'\r\n",
+        // Runtime cmd_refresh also evaluates this source fixture against the
+        // actual UTC day; bound its selected lifetime away from calendar rollover.
+        "review_after='2099-01-01'\nexpires='2099-12-31'\r\n",
         "[allow.selector]\nast_kind='attribute'\r\nlint='clippy::unwrap_used'\n",
         "target_fingerprint='policy:allow-0250'\r\ncontainer='fixture_refresh_drift'\n",
         "line_hint='1' # inert legacy hint\r\n[allow.last_seen]\nline = "
