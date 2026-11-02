@@ -20,9 +20,15 @@ if [ -z "$BASE" ]; then
   BASE="$(git merge-base origin/main HEAD 2>/dev/null || git rev-parse origin/main)"
 fi
 
+# Resolve immutable subjects before routing or acquiring any input. A supplied
+# base must never silently fall back to a different comparison.
+BASE_COMMIT="$(git rev-parse --verify --end-of-options "${BASE}^{commit}")" \
+  || { echo "check-dependency-graph-delta: base commit unavailable: $BASE" >&2; exit 1; }
+HEAD_COMMIT="$(git rev-parse --verify HEAD^{commit})"
+
 # Routing economy: only manifest, lockfile, topology, feature, or
 # dependency-policy inputs can move the graph.
-if git diff --quiet "$BASE" HEAD -- \
+if git diff --quiet "$BASE_COMMIT" "$HEAD_COMMIT" -- \
   'Cargo.lock' \
   'Cargo.toml' \
   '*/Cargo.toml' \
@@ -32,22 +38,44 @@ if git diff --quiet "$BASE" HEAD -- \
   'policy/dependency-*.toml' 2>/dev/null; then
   echo "check-dependency-graph-delta: no manifest/lock/policy inputs changed vs $BASE; not applicable"
   exit 0
+else
+  diff_status=$?
+  [ "$diff_status" -eq 1 ] || {
+    echo "check-dependency-graph-delta: input routing failed (git diff exit $diff_status)" >&2
+    exit 1
+  }
 fi
 
-echo "check-dependency-graph-delta: compiling delta against base $BASE"
-git show "$BASE:Cargo.toml" > "$work/base-root-Cargo.toml" 2>/dev/null \
-  || { echo "check-dependency-graph-delta: base manifest unavailable at $BASE" >&2; exit 1; }
-git show "$BASE:Cargo.lock" > "$work/base-Cargo.lock" 2>/dev/null \
-  || { echo "check-dependency-graph-delta: base lock unavailable at $BASE" >&2; exit 1; }
-cp Cargo.toml "$work/head-root-Cargo.toml"
-cp Cargo.lock "$work/head-Cargo.lock"
+echo "check-dependency-graph-delta: compiling delta against base $BASE_COMMIT"
+# The declared commit identities govern BOTH sides. Never mix working-tree
+# root/member files, the index, or untracked crates into a committed receipt.
+git show "$BASE_COMMIT:Cargo.toml" > "$work/base-root-Cargo.toml"
+git show "$BASE_COMMIT:Cargo.lock" > "$work/base-Cargo.lock"
+git show "$HEAD_COMMIT:Cargo.toml" > "$work/head-root-Cargo.toml"
+git show "$HEAD_COMMIT:Cargo.lock" > "$work/head-Cargo.lock"
 
-# Member list is the bounded depth-2 workspace layout; the same rule
-# enumerates both sides so the denominator cannot drift.
-git ls-tree --name-only "$BASE" crates/ > "$work/base-members.txt" 2>/dev/null \
-  || { echo "check-dependency-graph-delta: base member list unavailable" >&2; exit 1; }
-find crates -maxdepth 2 -name Cargo.toml > "$work/head-member-manifests.txt" 2>/dev/null || : > "$work/head-member-manifests.txt"
-sed 's#$#/Cargo.toml#' "$work/base-members.txt" > "$work/base-member-manifests.txt"
+# Enumerate only committed crates/<member>/Cargo.toml blobs at the existing
+# bounded depth. NUL framing preserves spaces, tabs and newlines in Git paths.
+member_manifests() {
+  python3 - "$1" "$2" <<'PY_MEMBERS'
+import subprocess
+import sys
+from pathlib import Path
+
+raw = subprocess.check_output(["git", "ls-tree", "-rz", "--name-only", sys.argv[1], "--", "crates/"])
+paths = []
+for path in raw.split(b"\0"):
+    parts = path.split(b"/")
+    if len(parts) == 3 and parts[0] == b"crates" and parts[2] == b"Cargo.toml":
+        # Source paths and TOML are UTF-8 inputs to this bounded compiler.
+        # Refuse unrepresentable paths rather than rewriting their identity.
+        path.decode("utf-8")
+        paths.append(path)
+Path(sys.argv[2]).write_bytes(b"".join(path + b"\0" for path in sorted(paths)))
+PY_MEMBERS
+}
+member_manifests "$BASE_COMMIT" "$work/base-member-manifests.txt"
+member_manifests "$HEAD_COMMIT" "$work/head-member-manifests.txt"
 
 # Synthesize one merged manifest per side: the root's
 # [workspace.dependencies] (normalized inline) plus every member's
@@ -65,11 +93,12 @@ def load(path):
     with open(path, "rb") as handle:
         return tomllib.load(handle)
 
-def show_base(commit, path):
-    raw = subprocess.run(["git", "show", f"{commit}:{path}"], capture_output=True)
-    if raw.returncode != 0:
-        return None
-    return tomllib.loads(raw.stdout.decode("utf-8", errors="replace"))
+def show_member(commit, path):
+    # Enumeration already proved this path exists at the selected commit.
+    # Any failed read/decode/parse is an instrumentation failure, not an
+    # absent member or a replacement-character approximation of its bytes.
+    raw = subprocess.check_output(["git", "show", f"{commit}:{path}"])
+    return tomllib.loads(raw.decode("utf-8"))
 
 def inline(value):
     if isinstance(value, bool):
@@ -90,20 +119,10 @@ root = load(sys.argv[1])
 workspace_deps = root.get("workspace", {}).get("dependencies", {})
 
 merged = {}
-manifest_paths = [line.strip() for line in open(sys.argv[2], encoding="utf-8") if line.strip()]
+with open(sys.argv[2], "rb") as handle:
+    manifest_paths = [path.decode("utf-8") for path in handle.read().split(b"\0") if path]
 for member_path in sorted(manifest_paths):
-    doc = show_base(sys.argv[4], member_path) if sys.argv[4] != "HEAD" else None
-    if doc is None and sys.argv[4] == "HEAD":
-        # A missing or unparseable head manifest is a broken review
-        # tree: fail closed instead of compiling an incomplete set.
-        try:
-            doc = load(member_path)
-        except (OSError, tomllib.TOMLDecodeError) as error:
-            raise SystemExit(f"head member manifest {member_path} fails to load: {error}")
-    if doc is None:
-        # Base side: a member absent from the base tree is a crate
-        # added by this PR; nothing to merge for it.
-        continue
+    doc = show_member(sys.argv[4], member_path)
     for name, spec in doc.get("dependencies", {}).items():
         normalized = inline(spec)
         prior = merged.get(name)
@@ -120,11 +139,8 @@ with open(sys.argv[3], "w", encoding="utf-8", newline="\n") as handle:
 PY
 }
 
-synthesize "$work/base-root-Cargo.toml" "$work/base-member-manifests.txt" "$work/base-Cargo.toml" "$BASE"
-synthesize "$work/head-root-Cargo.toml" "$work/head-member-manifests.txt" "$work/head-Cargo.toml" HEAD
-
-BASE_COMMIT="$(git rev-parse "$BASE")"
-HEAD_COMMIT="$(git rev-parse HEAD)"
+synthesize "$work/base-root-Cargo.toml" "$work/base-member-manifests.txt" "$work/base-Cargo.toml" "$BASE_COMMIT"
+synthesize "$work/head-root-Cargo.toml" "$work/head-member-manifests.txt" "$work/head-Cargo.toml" "$HEAD_COMMIT"
 
 cargo run -q -p cargo-allow -- dependency-graph-delta compile \
   --base-manifest "$work/base-Cargo.toml" \
