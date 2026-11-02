@@ -23,9 +23,7 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> Result<(
         .output()?;
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        output.status.success()
-            && stderr.contains("Ran 6 tests in")
-            && stderr.contains("\nOK\n"),
+        output.status.success() && stderr.contains("Ran 6 tests in") && stderr.contains("\nOK\n"),
         "campaign closeout request-law suite failed, or collected no cases.\nstdout:\n{}\nstderr:\n{stderr}",
         String::from_utf8_lossy(&output.stdout),
     );
