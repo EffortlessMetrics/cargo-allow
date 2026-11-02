@@ -32,10 +32,7 @@ fn serve_stub(
             let Ok(mut stream) = stream else { continue };
             let mut buffer = Vec::new();
             let mut chunk = [0u8; 4096];
-            loop {
-                let Ok(read) = stream.read(&mut chunk) else {
-                    break;
-                };
+            while let Ok(read) = stream.read(&mut chunk) {
                 if read == 0 {
                     break;
                 }
@@ -192,9 +189,7 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> TestResu
 
     // Case 2: a valid Complete closeout with sufficient evidence publishes
     // nothing (no reopen PATCH) and verifies the merged pull request.
-    let payload = format!(
-        r#"{{"schema_id": "cargo-allow.campaign-issue-closeout.v1", "issue": 3846, "result": "Complete", "merged_pr": 4147, "closeout_id": "fixture-closeout-3846-controls", "evidence_surfaces": ["release-authorization-v1"]}}"#
-    );
+    let payload = r#"{"schema_id": "cargo-allow.campaign-issue-closeout.v1", "issue": 3846, "result": "Complete", "merged_pr": 4147, "closeout_id": "fixture-closeout-3846-controls", "evidence_surfaces": ["release-authorization-v1"]}"#;
     let body = format!(
         "closing comment\n\n<!-- cargo-allow:campaign-closeout.v1 -->\n```json\n{payload}\n```\n"
     );
