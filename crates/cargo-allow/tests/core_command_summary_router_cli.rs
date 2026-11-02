@@ -1736,20 +1736,30 @@ fn a_relative_summary_path_from_outside_the_root_never_writes_into_the_repo() ->
         .to_string_lossy()
         .to_string();
 
-    // `init` goes first: its own policy write precedes the summary stage, so
-    // the refusal must leave the policy in place while the sidecar lands
-    // nowhere. The commit it enables is what lets `diff --base HEAD` below
-    // reach its own summary stage.
+    // #4714: the same outside-root summary refusal must now precede even
+    // init's policy mutation. A prior characterization expected the old
+    // partial-write defect; do not preserve that false-positive behavior.
     let init_output = run_summary_from_outside(&parent, &name, "init", &["init"])?;
     require(
-        root.join("policy/allow.toml").is_file(),
+        !root.join("policy/allow.toml").exists(),
         format!(
-            "init's own policy write must survive the sidecar refusal, got {:?} / {}",
+            "init must preserve policy absence on sidecar refusal, got {:?} / {}",
             init_output.status,
             String::from_utf8_lossy(&init_output.stderr)
         ),
     )?;
     require_summary_refused("init", &init_output, &root, &parent)?;
+
+    // Create a policy through the normal, valid route so later
+    // `diff --base HEAD` checks have the same committed fixture as before.
+    let valid_init = run(&root, &["init"])?;
+    require(
+        valid_init.status.success() && root.join("policy/allow.toml").is_file(),
+        format!(
+            "normal init must succeed after refusal: {}",
+            String::from_utf8_lossy(&valid_init.stderr)
+        ),
+    )?;
     git_commit_fixture(&root)?;
 
     let commands: [(&str, &[&str]); 8] = [
