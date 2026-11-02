@@ -724,9 +724,12 @@ class TestReleaseRehearsal(unittest.TestCase):
         workflow = receipt.get("workflow_graph_permissions")
         if phases["workflow_graph_permissions"] == "Complete":
             self.assertIsInstance(workflow, dict)
-            self.assertIn(workflow["mode"], {"yaml", "text"})
+            self.assertEqual(workflow["mode"], "yaml")
             self.assertTrue(workflow["top_level_read_scoped"])
-            self.assertTrue(workflow["top_level_write_scoped"])
+            self.assertTrue(workflow["top_level_contents_read_scoped"])
+            self.assertFalse(workflow["top_level_write_scoped"])
+            self.assertTrue(workflow["top_level_permissions_least_privilege"])
+            self.assertTrue(workflow["non_publisher_jobs_read_only"])
             self.assertTrue(workflow["github_release_scoped"])
             self.assertTrue(workflow["authorized_namespace_mode"])
 
@@ -1646,6 +1649,105 @@ class TestInvocationBoundary(unittest.TestCase):
                 REHEARSAL.resolve_commit("HEAD")
             terminal.assert_not_called()
             self.assertIsNone(REHEARSAL._INVOCATION.get())
+
+
+
+class TestWorkflowGraphLeastPrivilege(unittest.TestCase):
+    """Scope-sensitive positive and negative controls for the rehearsal proof."""
+
+    @staticmethod
+    def fixture() -> dict:
+        return {
+            "top_level_permissions": {"actions": "read", "contents": "read"},
+            "jobs": {
+                "preflight": {"permissions": None},
+                "publish": {"permissions": None},
+                "github-release": {"permissions": {
+                    "contents": "write", "attestations": "write", "id-token": "write",
+                }},
+            },
+        }
+
+    def test_publisher_only_write_scope_is_complete(self) -> None:
+        proof = REHEARSAL._least_privilege_workflow_graph_proof(self.fixture(), True)
+        self.assertIsNotNone(proof)
+        self.assertEqual(proof["privileged_jobs"], ["github-release"])
+        self.assertTrue(proof["top_level_contents_read_scoped"])
+        self.assertFalse(proof["top_level_write_scoped"])
+        self.assertTrue(proof["top_level_permissions_least_privilege"])
+        self.assertTrue(proof["github_release_scoped"])
+        self.assertTrue(proof["non_publisher_jobs_read_only"])
+        self.assertTrue(proof["authorized_namespace_mode"])
+
+    def test_broad_and_wrong_job_scopes_cannot_prove_complete(self) -> None:
+        controls = {
+            "broad_contents_write": lambda c: c["top_level_permissions"].update(
+                {"contents": "write"},
+            ),
+            "extra_global_scope": lambda c: c["top_level_permissions"].update(
+                {"issues": "write"},
+            ),
+            "missing_publisher_oidc": lambda c: c["jobs"]["github-release"][
+                "permissions"
+            ].pop("id-token"),
+            "extra_publisher_scope": lambda c: c["jobs"]["github-release"][
+                "permissions"
+            ].update({"issues": "write"}),
+            "unauthorized_preflight_write": lambda c: c["jobs"]["preflight"].update(
+                {"permissions": {"contents": "write"}},
+            ),
+        }
+        for name, mutate in controls.items():
+            with self.subTest(name=name):
+                candidate = self.fixture()
+                mutate(candidate)
+                proof = REHEARSAL._least_privilege_workflow_graph_proof(candidate, True)
+                self.assertIsNotNone(proof)
+                acceptable = (
+                    proof["top_level_read_scoped"]
+                    and proof["top_level_contents_read_scoped"]
+                    and not proof["top_level_write_scoped"]
+                    and proof["top_level_permissions_least_privilege"]
+                    and proof["github_release_scoped"]
+                    and proof["non_publisher_jobs_read_only"]
+                )
+                self.assertFalse(acceptable, f"{name} must be rejected")
+
+    def test_malformed_maps_cannot_be_proved(self) -> None:
+        for bad in (None, "read-all", ["contents: write"], {"contents": "owner"}):
+            with self.subTest(bad=bad):
+                fixture = self.fixture()
+                fixture["top_level_permissions"] = bad
+                self.assertIsNone(
+                    REHEARSAL._least_privilege_workflow_graph_proof(fixture, True),
+                )
+        fixture = self.fixture()
+        fixture["jobs"]["preflight"]["permissions"] = "write-all"
+        self.assertIsNone(REHEARSAL._least_privilege_workflow_graph_proof(fixture, True))
+
+    def test_parser_absence_never_promotes_text_search_to_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workflows = root / ".github/workflows"
+            workflows.mkdir(parents=True)
+            (workflows / "release.yml").write_text(
+                "permissions:\n  actions: read\n  contents: write\n"
+                "jobs:\n  github-release:\n    permissions:\n"
+                "      contents: write\n      id-token: write\n",
+                encoding="utf-8",
+            )
+            (workflows / "release-authorized.yml").write_text(
+                "--mode namespace\n", encoding="utf-8",
+            )
+            receipt = {}
+            with mock.patch.object(REHEARSAL, "ROOT", root), mock.patch.object(
+                REHEARSAL, "_yaml_workflow_inventory", return_value=None,
+            ):
+                self.assertEqual(
+                    REHEARSAL.run_phase_workflow_graph_permissions(receipt),
+                    "Incomplete",
+                )
+            self.assertEqual(receipt, {})
 
 
 if __name__ == "__main__":

@@ -848,7 +848,7 @@ def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
 
 
 def _yaml_workflow_inventory(path: Path) -> dict[str, Any] | None:
-    """Parse one workflow manifest with PyYAML; None when unavailable."""
+    """Parse the release workflow without granting a text-search fallback authority."""
     try:
         import yaml
     except ImportError:
@@ -857,83 +857,102 @@ def _yaml_workflow_inventory(path: Path) -> dict[str, Any] | None:
         parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
     except Exception as exc:
         return {"error": f"YAML parse error: {exc}"}
-    if not isinstance(parsed, dict) or "jobs" not in parsed:
-        return {"error": "workflow is not a mapping with jobs"}
-    jobs = {
-        job_name: {
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("jobs"), dict):
+        return {"error": "workflow must contain a mapping of jobs"}
+    jobs = {}
+    for job_name, job in parsed["jobs"].items():
+        if not isinstance(job_name, str) or not isinstance(job, dict):
+            return {"error": "workflow job must be a named mapping"}
+        jobs[job_name] = {
             "permissions": job.get("permissions"),
             "runs_on": job.get("runs-on"),
         }
-        for job_name, job in parsed["jobs"].items()
-        if isinstance(job, dict)
-    }
     return {"top_level_permissions": parsed.get("permissions"), "jobs": jobs}
 
 
-def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
-    """Bind the release workflow graph's permission surface (#3751 phase).
+def _valid_permission_map(value: Any) -> bool:
+    """Reject shorthand, malformed and unevaluated permission declarations."""
+    return isinstance(value, dict) and all(
+        isinstance(scope, str)
+        and isinstance(level, str)
+        and level in {"read", "write", "none"}
+        for scope, level in value.items()
+    )
 
-    Enforces the least-privilege law — top-level ``actions: read`` and
-    ``contents: write``, with ``github-release`` as the write/OIDC-scoped
-    job and the authorized namespace workflow in namespace mode — and
-    records the proof. PyYAML is used when available; otherwise the same
-    law is checked on the pinned manifest strings.
+
+def _least_privilege_workflow_graph_proof(
+    parsed: dict[str, Any], authorized_namespace_mode: bool,
+) -> dict[str, Any] | None:
+    """Project actual YAML permission scopes, never substring matches."""
+    top = parsed.get("top_level_permissions")
+    jobs = parsed.get("jobs")
+    if not _valid_permission_map(top) or not isinstance(jobs, dict) or not jobs:
+        return None
+    if "github-release" not in jobs:
+        return None
+    for name, job in jobs.items():
+        if not isinstance(name, str) or not isinstance(job, dict):
+            return None
+        permissions = job.get("permissions")
+        if permissions is not None and not _valid_permission_map(permissions):
+            return None
+
+    publisher = jobs["github-release"]["permissions"]
+    privileged = sorted(
+        name for name, job in jobs.items()
+        if job["permissions"] is not None
+        and any(level == "write" for level in job["permissions"].values())
+    )
+    return {
+        "mode": "yaml",
+        "release_jobs": sorted(jobs),
+        "privileged_jobs": privileged,
+        "top_level_read_scoped": top.get("actions") == "read",
+        "top_level_contents_read_scoped": top.get("contents") == "read",
+        "top_level_write_scoped": top.get("contents") == "write",
+        "top_level_permissions_least_privilege": top == {
+            "actions": "read", "contents": "read",
+        },
+        "github_release_scoped": publisher == {
+            "contents": "write",
+            "attestations": "write",
+            "id-token": "write",
+        },
+        "non_publisher_jobs_read_only": privileged == ["github-release"],
+        "authorized_namespace_mode": authorized_namespace_mode,
+    }
+
+
+def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
+    """Prove read-default release permissions and one job-scoped publisher.
+
+    Without a YAML parser, an unscoped textual search is insufficient to
+    certify GitHub's effective permission map. Report Incomplete rather than
+    silently treating the publisher's write grant as a global grant.
     """
     release_path = ROOT / ".github/workflows/release.yml"
     authorized_path = ROOT / ".github/workflows/release-authorized.yml"
     try:
-        release_text = release_path.read_text(encoding="utf-8")
         authorized_text = authorized_path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return PHASE_MISMATCH
-
     parsed = _yaml_workflow_inventory(release_path)
-    if parsed is not None and "error" in parsed:
-        return PHASE_MISMATCH
-
-    authorized_namespace_mode = "--mode namespace" in authorized_text
     if parsed is None:
-        proof = {
-            "mode": "text",
-            "release_jobs": [],
-            "privileged_jobs": [],
-            "top_level_read_scoped": "actions: read" in release_text,
-            "top_level_write_scoped": "contents: write" in release_text,
-            "github_release_scoped": "id-token: write" in release_text,
-            "authorized_namespace_mode": authorized_namespace_mode,
-        }
-    else:
-        jobs = parsed["jobs"]
-        if not isinstance(jobs, dict) or not jobs:
-            return PHASE_MISMATCH
-        privileged = sorted(
-            job_name
-            for job_name, job in jobs.items()
-            if isinstance(job.get("permissions"), dict)
-        )
-        proof = {
-            "mode": "yaml",
-            "release_jobs": sorted(jobs),
-            "privileged_jobs": privileged,
-            "top_level_read_scoped": parsed.get("top_level_permissions", {}).get(
-                "actions"
-            )
-            == "read",
-            "top_level_write_scoped": parsed.get("top_level_permissions", {}).get(
-                "contents"
-            )
-            == "write",
-            "github_release_scoped": jobs.get("github-release", {}).get(
-                "permissions", {}
-            ).get("id-token")
-            == "write",
-            "authorized_namespace_mode": authorized_namespace_mode,
-        }
-
+        return PHASE_INCOMPLETE
+    if "error" in parsed:
+        return PHASE_MISMATCH
+    proof = _least_privilege_workflow_graph_proof(
+        parsed, "--mode namespace" in authorized_text,
+    )
+    if proof is None:
+        return PHASE_MISMATCH
     if not (
         proof["top_level_read_scoped"]
-        and proof["top_level_write_scoped"]
+        and proof["top_level_contents_read_scoped"]
+        and not proof["top_level_write_scoped"]
+        and proof["top_level_permissions_least_privilege"]
         and proof["github_release_scoped"]
+        and proof["non_publisher_jobs_read_only"]
         and proof["authorized_namespace_mode"]
     ):
         return PHASE_MISMATCH
