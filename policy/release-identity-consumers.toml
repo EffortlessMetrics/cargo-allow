@@ -487,3 +487,14 @@ exact_counts = [
 ]
 sites = ["def rehearsal(subject):", "def experience_native_controls(binary):", "def native_controls(binary):"]
 claim_boundary = "The two native fixture builders write synthetic workspace manifests; the intercepted rehearsal producer receives one explicit stable release-identity fixture. It does not parse a caller-selected release version or infer a release channel. The production qualifier and native consumers retain their existing typed identity and incomplete-authority boundaries; these fixtures grant no live provider, custody, authorization or release proof."
+
+[[consumers]]
+id = "dependency-delta-input-fixtures"
+path = "scripts/test-dependency-delta-inputs.py"
+role = "real-Git input-boundary fixtures for the dependency graph delta producer"
+disposition = "historical-fixture-only"
+owner = "#4703"
+marker_classes = ["workspace-reader"]
+exact_counts = [{ class = "workspace-reader", count = 2 }]
+sites = ["class InputBoundary(unittest.TestCase):", "def test_dirty_root_cannot_borrow_head_identity(self):"]
+claim_boundary = "Both [workspace] markers construct temporary Cargo.toml fixture content for exact Git-commit input admission; the test driver neither reads the actual workspace release version nor parses, infers or authorizes a release channel. Cargo execution is intercepted before semantic or release receipts."
