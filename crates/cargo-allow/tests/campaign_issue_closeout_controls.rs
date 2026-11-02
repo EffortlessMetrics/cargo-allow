@@ -16,32 +16,24 @@ use std::process::Command;
 use std::sync::mpsc;
 use std::thread;
 
+type TestResult = Result<(), Box<dyn std::error::Error>>;
+
 struct StubRequest {
     method: String,
     path: String,
-    body: String,
 }
 
 fn serve_stub(
     pulls: &str,
     compare: &str,
-) -> (
-    String,
-    PathBuf,
-    mpsc::Receiver<StubRequest>,
-    thread::JoinHandle<()>,
-) {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("bind loopback");
-    let port = listener
-        .local_addr()
-        .expect("local addr")
-        .port()
-        .to_string();
+    log_path: &Path,
+) -> std::io::Result<(String, mpsc::Receiver<StubRequest>, thread::JoinHandle<()>)> {
+    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let port = listener.local_addr()?.port().to_string();
     let (tx, rx) = mpsc::channel();
-    let log_dir = tempfile_dir();
-    let log_path = log_dir.join("stub-requests.log");
     let pulls = pulls.to_string();
     let compare = compare.to_string();
+    let log_path = log_path.to_path_buf();
     let handle = thread::spawn(move || {
         for stream in listener.incoming() {
             let Ok(mut stream) = stream else { continue };
@@ -56,40 +48,35 @@ fn serve_stub(
                 }
                 buffer.extend_from_slice(&chunk[..read]);
                 let text = String::from_utf8_lossy(&buffer);
-                if text.contains("\r\n\r\n") {
-                    let header_end = text.find("\r\n\r\n").expect("header terminator");
-                    let length_key = "Content-Length:";
-                    let length = text
-                        .split("\r\n")
-                        .find_map(|line| {
-                            let lower = line.to_ascii_lowercase();
-                            lower
-                                .starts_with(&length_key.to_ascii_lowercase())
-                                .then(|| line[length_key.len()..].trim().parse::<usize>().ok())
-                                .flatten()
-                        })
-                        .unwrap_or(0);
-                    let body_start = header_end + 4;
-                    if buffer.len() >= body_start + length {
-                        break;
-                    }
+                let Some(header_end) = text.find("\r\n\r\n") else {
+                    continue;
+                };
+                let length = text
+                    .split("\r\n")
+                    .find_map(|line| {
+                        let lower = line.to_ascii_lowercase();
+                        lower
+                            .starts_with("content-length:")
+                            .then(|| line[15..].trim().parse::<usize>().ok())
+                            .flatten()
+                    })
+                    .unwrap_or(0);
+                let body_start = header_end + 4;
+                if buffer.len() >= body_start + length {
+                    break;
                 }
             }
             let text = String::from_utf8_lossy(&buffer).to_string();
-            let mut lines = text.split("\r\n");
-            let request_line = lines.next().unwrap_or_default().to_string();
-            let mut parts = request_line.split_whitespace();
+            let mut parts = text
+                .split("\r\n")
+                .next()
+                .unwrap_or_default()
+                .split_whitespace();
             let method = parts.next().unwrap_or_default().to_string();
             let path = parts.next().unwrap_or_default().to_string();
-            let body = text
-                .split("\r\n\r\n")
-                .nth(1)
-                .unwrap_or_default()
-                .to_string();
             let _ = tx.send(StubRequest {
                 method: method.clone(),
                 path: path.clone(),
-                body: body.clone(),
             });
             let (payload, code) = if path.starts_with("/pulls/") {
                 (pulls.clone(), 200)
@@ -105,40 +92,32 @@ fn serve_stub(
                 payload.len(),
                 payload
             );
-            let _ = stream.write_all(response.as_bytes());
-            let mut log = std::fs::OpenOptions::new()
+            if stream.write_all(response.as_bytes()).is_err() {
+                continue;
+            }
+            if let Ok(mut log) = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
                 .open(&log_path)
-                .expect("open stub log");
-            let _ = writeln!(log, "{method} {path} {body}");
+            {
+                let _ = writeln!(log, "{method} {path}");
+            }
             let _ = stream.flush();
         }
     });
-    (port, log_path, rx, handle)
+    Ok((port, rx, handle))
 }
 
-fn tempfile_dir() -> PathBuf {
+fn scratch_dir() -> std::io::Result<PathBuf> {
     let dir = std::env::temp_dir().join(format!(
         "closeout-controls-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("clock")
+            .duration_since(std::time::UNIX_EPOCH)?
             .as_nanos()
     ));
-    std::fs::create_dir_all(&dir).expect("create temp dir");
-    dir
-}
-
-fn write_event(dir: &Path, body: &str) -> PathBuf {
-    let event = format!(
-        r#"{{"action": "closed", "issue": {{"number": 3846, "body": {}}}}}"#,
-        json_string(body)
-    );
-    let path = dir.join("event.json");
-    std::fs::write(&path, event).expect("write event");
-    path
+    std::fs::create_dir_all(&dir)?;
+    Ok(dir)
 }
 
 fn json_string(value: &str) -> String {
@@ -156,8 +135,22 @@ fn json_string(value: &str) -> String {
     out
 }
 
-fn run_verifier(event_path: &Path, api_url: &str, repo_root: &Path) -> (i32, String, String) {
-    let output = Command::new("python3")
+fn write_event(dir: &Path, number: u64, body: &str) -> std::io::Result<PathBuf> {
+    let event = format!(
+        r#"{{"action": "closed", "issue": {{"number": {number}, "body": {}}}}}"#,
+        json_string(body)
+    );
+    let path = dir.join(format!("event-{number}.json"));
+    std::fs::write(&path, event)?;
+    Ok(path)
+}
+
+fn run_verifier(
+    event_path: &Path,
+    api_url: &str,
+    repo_root: &Path,
+) -> std::io::Result<std::process::Output> {
+    Command::new("python3")
         .arg(repo_root.join("scripts/verify-campaign-issue-closeout.py"))
         .env("GITHUB_EVENT_PATH", event_path)
         .env("GITHUB_API_URL", api_url)
@@ -165,12 +158,6 @@ fn run_verifier(event_path: &Path, api_url: &str, repo_root: &Path) -> (i32, Str
         .env("GITHUB_TOKEN", "fixture-token")
         .current_dir(repo_root)
         .output()
-        .expect("spawn verifier");
-    (
-        output.status.code().unwrap_or(-1),
-        String::from_utf8_lossy(&output.stdout).to_string(),
-        String::from_utf8_lossy(&output.stderr).to_string(),
-    )
 }
 
 fn stub_log(log_path: &Path) -> String {
@@ -178,22 +165,27 @@ fn stub_log(log_path: &Path) -> String {
 }
 
 #[test]
-fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() {
+fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> TestResult {
     let repo_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let pulls = format!(
         r#"{{"merged_at": "2026-11-02T00:00:00Z", "state": "closed", "base": {{"ref": "main"}}, "merge_commit_sha": "{}"}}"#,
         "a".repeat(40)
     );
     let compare = r#"{"status": "identical"}"#.to_string();
-    let (port, log_path, _rx, handle) = serve_stub(&pulls, &compare);
+    let dir = scratch_dir()?;
+    let log_path = dir.join("stub-requests.log");
+    let (port, _rx, handle) = serve_stub(&pulls, &compare, &log_path)?;
     let api_url = format!("http://127.0.0.1:{port}");
-    let dir = tempfile_dir();
 
     // Case 1: a closure with no closeout marker reopens the issue with the
     // bounded rejection comment and never consults pull-request evidence.
-    let event = write_event(&dir, "plain closure without a closeout record");
-    let (code, _stdout, stderr) = run_verifier(&event, &api_url, &repo_root);
-    assert_eq!(code, 0, "verifier exit: {stderr}");
+    let event = write_event(&dir, 3846, "plain closure without a closeout record")?;
+    let output = run_verifier(&event, &api_url, &repo_root)?;
+    assert!(
+        output.status.success(),
+        "verifier exit: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let log = stub_log(&log_path);
     assert!(
         log.contains("PATCH /issues/3846"),
@@ -217,9 +209,13 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() {
         "closing comment\n\n<!-- cargo-allow:campaign-closeout.v1 -->\n```json\n{payload}\n```\n"
     );
     std::fs::remove_file(&log_path).ok();
-    let event = write_event(&dir, &body);
-    let (code, _stdout, stderr) = run_verifier(&event, &api_url, &repo_root);
-    assert_eq!(code, 0, "verifier exit: {stderr}");
+    let event = write_event(&dir, 3846, &body)?;
+    let output = run_verifier(&event, &api_url, &repo_root)?;
+    assert!(
+        output.status.success(),
+        "verifier exit: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let log = stub_log(&log_path);
     assert!(
         log.contains("/pulls/4147"),
@@ -231,20 +227,20 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() {
     );
 
     // Case 3: a non-denominator issue number is a no-op.
-    let event_body = format!(
-        r#"{{"action": "closed", "issue": {{"number": 999999, "body": {}}}}}"#,
-        json_string("not in the denominator")
-    );
-    let event = dir.join("event-other.json");
-    std::fs::write(&event, event_body).expect("write event");
     std::fs::remove_file(&log_path).ok();
-    let (code, _stdout, stderr) = run_verifier(&event, &api_url, &repo_root);
-    assert_eq!(code, 0, "verifier exit: {stderr}");
+    let event = write_event(&dir, 999999, "not in the denominator")?;
+    let output = run_verifier(&event, &api_url, &repo_root)?;
     assert!(
-        stub_log(&log_path).is_empty(),
-        "non-denominator issue must be a stub no-op; stub log:\n{}",
-        stub_log(&log_path)
+        output.status.success(),
+        "verifier exit: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let log = stub_log(&log_path);
+    assert!(
+        log.is_empty(),
+        "non-denominator issue must be a stub no-op; stub log:\n{log}"
     );
 
     drop(handle);
+    Ok(())
 }
