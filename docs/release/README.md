@@ -6,11 +6,14 @@ as `CARGO_REGISTRY_TOKEN`; Trusted Publishing is optional post-release
 hardening, not a release prerequisite.
 
 This document is the operator source of truth for automated release
-prerequisites. `0.1.11` is the latest published cargo-allow release. The
-workspace `0.2.0` version and its [release record](0.2.0.md) are an unpublished
+prerequisites. `0.2.0-rc.1` is the latest published cargo-allow release (see
+its [prerelease record](0.2.0-rc.1.md); it carries the rc.1 incident lineage
+and is not reusable as final package bytes or authorization). The workspace
+`0.2.0` version and its [release record](0.2.0.md) remain an unpublished
 candidate until both release rails below are separately authorized and proven.
 The [0.1.11 qualification snapshot](0.1.11-readiness.md) remains historical
-evidence for the published patch release.
+evidence for the published patch release, which stays the stable rollback
+baseline.
 
 ## Rehearsal receipt output
 
