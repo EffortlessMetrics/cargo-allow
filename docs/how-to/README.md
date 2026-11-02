@@ -21,6 +21,10 @@ Use these guides when you already know the task you want to complete.
 - [Run the spec-system profile in CI](run-spec-system-in-ci.md)
 - [Adopt cargo-allow across repos](adopt-cargo-allow-across-repos.md)
 - [Operate the source-exception ledger](operate-source-exception-ledger.md)
+- [Manage the changelog](manage-changelog.md)
+- [Migrate from a bare allow.toml](migrate-from-bare-allow.md)
+- [Run the changie sensor](run-changie-sensor.md)
+- [Upgrade and roll back 0.1.11 to 0.2.0](upgrade-and-rollback-0.1.11-to-0.2.0.md)
 
 All guides keep the same claim boundary: cargo-allow scans repository files
 directly and does not execute repository code, Cargo metadata, rustc, Clippy,
