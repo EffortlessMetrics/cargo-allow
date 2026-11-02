@@ -109,7 +109,11 @@ fn refresh_command_case(workspace: &Path) -> CargoAllowResult<RepoEditParityCase
         &preflight_config,
         &preflight_findings,
         CheckMode::NoNew,
-        allow_core::SimpleDate::today_utc_approx(),
+        allow_core::SimpleDate {
+            year: 2026,
+            month: 10,
+            day: 1,
+        },
     );
     let preflight_status = preflight_outcomes
         .iter()
@@ -311,7 +315,7 @@ fn parity_prune_entry(id: &str, path: &str) -> AllowEntry {
         occurrence_limit: None,
         lifecycle: Lifecycle {
             created: Some("2026-05-09".to_string()),
-            review_after: Some("2026-11-01".to_string()),
+            review_after: Some("2099-01-01".to_string()),
             expires: None,
         },
         selector: Selector {
@@ -473,7 +477,7 @@ fn expected_add_policy(initial: &str) -> CargoAllowResult<String> {
         occurrence_limit: Some(1),
         lifecycle: Lifecycle {
             created: Some(SimpleDate::today_utc_approx().to_string()),
-            review_after: Some("2026-11-01".to_string()),
+            review_after: Some("2099-01-01".to_string()),
             expires: None,
         },
         selector: Selector {

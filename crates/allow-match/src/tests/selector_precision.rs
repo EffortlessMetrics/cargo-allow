@@ -105,7 +105,13 @@ fn assert_eval_matched(
         cfg,
         findings,
         CheckMode::NoNew,
-        allow_core::SimpleDate::today_utc_approx(),
+        // The selected fixture policy's review date is 2026-11-01; do not
+        // accidentally test review-due instead of structural selector identity.
+        allow_core::SimpleDate {
+            year: 2026,
+            month: 10,
+            day: 1,
+        },
     );
     let matched = outcomes
         .iter()
