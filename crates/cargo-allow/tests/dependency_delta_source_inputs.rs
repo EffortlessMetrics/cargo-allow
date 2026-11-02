@@ -6,7 +6,8 @@ use std::path::Path;
 use std::process::Command;
 
 #[test]
-fn dependency_delta_reads_the_declared_committed_inputs() -> Result<(), Box<dyn std::error::Error>> {
+fn dependency_delta_reads_the_declared_committed_inputs() -> Result<(), Box<dyn std::error::Error>>
+{
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let output = Command::new("python3")
         .arg(root.join("scripts/test-dependency-delta-inputs.py"))
