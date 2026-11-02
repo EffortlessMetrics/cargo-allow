@@ -231,7 +231,10 @@ fn preflight_summary_destination_structure(path: &Path) -> CargoAllowResult<()> 
         Ok(metadata) if !metadata.is_file() => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Artifact,
-                format!("--command-summary-output target {} is not a regular file", path.display()),
+                format!(
+                    "--command-summary-output target {} is not a regular file",
+                    path.display()
+                ),
             ));
         }
         Ok(_) => {}
@@ -239,7 +242,10 @@ fn preflight_summary_destination_structure(path: &Path) -> CargoAllowResult<()> 
         Err(error) => {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Artifact,
-                format!("cannot inspect --command-summary-output target {}: {error}", path.display()),
+                format!(
+                    "cannot inspect --command-summary-output target {}: {error}",
+                    path.display()
+                ),
             ));
         }
     }

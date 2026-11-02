@@ -180,10 +180,19 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
     let outside = root.with_extension("outside-summary.json");
     let outside_text = outside.to_string_lossy().into_owned();
 
-    let first = run(&root, &[
-        "--command-summary-output", &outside_text, "init", "--strict",
-    ])?;
-    require(!first.status.success(), "outside-root summary must be refused")?;
+    let first = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &outside_text,
+            "init",
+            "--strict",
+        ],
+    )?;
+    require(
+        !first.status.success(),
+        "outside-root summary must be refused",
+    )?;
     require(
         !policy.exists() && !outside.exists(),
         "outside-root refusal created policy or summary before returning",
@@ -193,11 +202,20 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
         .map_err(|error| format!("create policy dir: {error}"))?;
     let canary = b"policy = \"cargo-allow\"\n# original-policy-canary\n";
     fs::write(&policy, canary).map_err(|error| format!("seed policy: {error}"))?;
-    let force = run(&root, &[
-        "--command-summary-output", &outside_text,
-        "init", "--strict", "--force",
-    ])?;
-    require(!force.status.success(), "force must refuse outside-root sidecar")?;
+    let force = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &outside_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        !force.status.success(),
+        "force must refuse outside-root sidecar",
+    )?;
     require(
         fs::read(&policy).map_err(|error| error.to_string())? == canary,
         "force mutated the original policy before sidecar refusal",
@@ -212,12 +230,19 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
         .map_err(|error| format!("seed blocked parent: {error}"))?;
     let invalid = blocked.join("summary.json");
     let invalid_text = invalid.to_string_lossy().into_owned();
-    let impossible = run(&root, &[
-        "--command-summary-output", &invalid_text,
-        "init", "--strict", "--force",
-    ])?;
+    let impossible = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &invalid_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
     require(
-        !impossible.status.success(), "file-parent summary must be refused",
+        !impossible.status.success(),
+        "file-parent summary must be refused",
     )?;
     require(
         fs::read(&policy).map_err(|error| error.to_string())? == canary
@@ -229,17 +254,25 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
     // A supported in-root destination must still write both outputs.
     let valid = root.join("target/init-summary.json");
     let valid_text = valid.to_string_lossy().into_owned();
-    let success = run(&root, &[
-        "--command-summary-output", &valid_text,
-        "init", "--strict", "--force",
-    ])?;
-    require(
-        success.status.success(),
-        format!("valid init must work: {}", String::from_utf8_lossy(&success.stderr)),
+    let success = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &valid_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
     )?;
     require(
-        policy.exists() && valid.exists()
-            && policy.with_extension("toml.bak").exists(),
+        success.status.success(),
+        format!(
+            "valid init must work: {}",
+            String::from_utf8_lossy(&success.stderr)
+        ),
+    )?;
+    require(
+        policy.exists() && valid.exists() && policy.with_extension("toml.bak").exists(),
         "valid forced init must write policy, backed-up prior ledger and summary",
     )?;
     let summary = read_summary_json(&valid)?;
@@ -259,17 +292,26 @@ fn init_preflight_respects_cross_cwd_common_summary_resolution() -> Result<(), S
     let cwd = root.join("work");
     fs::create_dir_all(&cwd).map_err(|error| error.to_string())?;
     let root_text = root.to_string_lossy().into_owned();
-    let accepted = run_from(&cwd, &[
-        "--command-summary-output", "../target/cross-cwd.json",
-        "init", "--root", &root_text, "--strict",
-    ])?;
-    require(
-        accepted.status.success(),
-        format!("in-root cross-cwd summary should work: {}", String::from_utf8_lossy(&accepted.stderr)),
+    let accepted = run_from(
+        &cwd,
+        &[
+            "--command-summary-output",
+            "../target/cross-cwd.json",
+            "init",
+            "--root",
+            &root_text,
+            "--strict",
+        ],
     )?;
     require(
-        root.join("policy/allow.toml").exists()
-            && root.join("target/cross-cwd.json").exists(),
+        accepted.status.success(),
+        format!(
+            "in-root cross-cwd summary should work: {}",
+            String::from_utf8_lossy(&accepted.stderr)
+        ),
+    )?;
+    require(
+        root.join("policy/allow.toml").exists() && root.join("target/cross-cwd.json").exists(),
         "cross-cwd summary path should resolve from cwd and write inside source root",
     )?;
     remove_temp_root(root)
