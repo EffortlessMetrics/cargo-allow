@@ -67,7 +67,7 @@ fn serve_stub(
                 .split_whitespace();
             let method = parts.next().unwrap_or_default().to_string();
             let path = parts.next().unwrap_or_default().to_string();
-            let (payload, code) = if path.starts_with("/pulls/") {
+            let (payload, code) = if path.contains("/pulls/") {
                 (pulls.clone(), 200)
             } else if path.contains("/compare/") {
                 (compare.clone(), 200)
