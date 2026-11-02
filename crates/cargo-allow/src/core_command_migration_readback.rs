@@ -279,7 +279,7 @@ fn file_still_matches(
             && after.identity == named_snapshot.identity
             && stable_metadata(&after.metadata, &named_snapshot.metadata);
         drop(named_file);
-        return Ok(same);
+        Ok(same)
     }
     #[cfg(not(windows))]
     Ok(true)

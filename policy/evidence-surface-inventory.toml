@@ -734,3 +734,39 @@ last_reconciled_commit = "d8279e94b9b6676ebd98bf922c6e4a6a9be8006a"
 required_stronger_owner = "#3760 actual release execution and authorization remain separate"
 may_satisfy_release_gate = false
 claim_boundary = "The test exercises the stateless release-identity validator and its typed remediation rendering only. It does not prove release execution, tag minting, or any release authority; those remain with #3760."
+
+
+[[surfaces]]
+id = "campaign-issue-closeout-controls-v1"
+owner_issue = 3846
+semantic_authority = "campaign issue closeout guard end-to-end law: invalid closures reopen, accepted Complete closeouts publish nothing, non-denominator issues are no-ops"
+path = "crates/cargo-allow/tests/campaign_issue_closeout_controls.rs"
+subject = "scripts/verify-campaign-issue-closeout.py driven against a local GitHub API stub"
+producer = "integration test spawning the retained verifier with fixture issue events and a loopback API stub recording every request"
+consumer = "#3768 campaign closeout, #3845 verifier, #3842 evidence sufficiency"
+claimed_acceptance_row = "real-process reopen law: missing closeout reopens via PATCH state=open with the bounded rejection comment before pull-request evidence is consulted; a valid Complete closeout with a sufficient inventory surface verifies the declared merged PR and publishes nothing; non-denominator issues are stub no-ops"
+assertion_mechanism = "recorded stub request log assertions over real process exit, PATCH bodies, and consultation ordering"
+evidence_class = "TypedModelValidation"
+disposition = "end-to-end verifier law proven against a loopback stub; per-closure acceptance evidence remains the closeout payload's own obligation"
+required_stronger_owner = "#3845/#3842 for per-closure evidence strength"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Proves the retained verifier's reopen/accept/no-op law end to end on fixture events. It does not close issues, decide campaign priority, perform release operations, or certify any individual closure's acceptance evidence."
+
+[[surfaces]]
+id = "release-topology-publisher-controls-hosted"
+owner_issue = 3744
+semantic_authority = "release topology publisher control suite passes on the qualified hosted runner"
+path = "crates/cargo-allow/tests/release_topology_publisher_controls.rs"
+subject = "scripts/test-release-topology-publisher.py invoked on hosted CI"
+producer = "integration test running the structural control suite and asserting its pass marker"
+consumer = "#3744/#3760 release publication preparation, #2501 package-set role"
+claimed_acceptance_row = "the publisher's selected-invocation boundary, env-before-if ordering, pre-token boundary, dispatch contract, and checksum contract pass without credentials on the hosted runner"
+assertion_mechanism = "real process invocation asserting suite success and the selected-invocation pass marker"
+evidence_class = "StructuredShapeValidation"
+disposition = "hosted execution proof for the publisher's own structural contract suite"
+required_stronger_owner = "#2501/#2502 release execution"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Proves the publisher control suite passes on the runner. It does not authorize publication or certify any executed release run."
+
