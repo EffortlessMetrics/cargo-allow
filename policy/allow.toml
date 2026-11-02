@@ -25579,3 +25579,46 @@ glob = ".allow/revisions/4704-review-disposition.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1191"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/test-review-readiness-digest-stability.sh"
+owner = "core/release"
+classification = "review_readiness_adapter"
+reason = "Issue #3844 digest-recipe stability proof: real-Git fixture demonstrates ambient diff.algorithm/context/renames config changes the unpinned digest while the pinned sha256:v2 recipe is environment-invariant; no network, no GitHub writes, no receipt publication."
+created = "2026-11-02"
+review_after = "2027-01-31"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-review-readiness-digest-stability.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-review-readiness-digest-stability.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1192"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3844-digest-stability.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Authored revision note receipting the allow-1191 digest-stability fixture addition for #3844; existing policy entries and review, merge, and release authority are preserved."
+evidence = ["issue:3844"]
+created = "2026-11-02"
+review_after = "2027-01-31"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3844-digest-stability.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3844-digest-stability.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

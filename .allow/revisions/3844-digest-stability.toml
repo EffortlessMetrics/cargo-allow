@@ -1,0 +1,18 @@
+# Issue #3844: pinned review-readiness disposition digest recipe (sha256:v2).
+# The pinned recipe reproduces one digest per byte-identical base/head pair
+# across environments; historical sha256:v1 records verify only against their
+# own recompute and are never relabeled. This entry grants no review, merge,
+# or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1191"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b90484f07912c1aca2c94970b3de2541e73dc9d4caa4393d9088f83099e3ca32"
+reason = "Retain the real-Git digest-stability fixture proving ambient diff.algorithm/context/renames config changes the unpinned digest while the pinned sha256:v2 recipe is environment-invariant; no builds, network, GitHub writes, or receipt publication occur."
+
+[[records]]
+allow_ids = ["allow-1192"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cfea3f8ce6159cfd5c030359040daf3fc26029e3c3cd79fa9d23be0d4526c74b"
+reason = "Receipt this authored note for the allow-1191 digest-stability fixture addition; existing policy entries and review, merge, and release authority are preserved."
