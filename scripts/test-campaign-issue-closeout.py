@@ -279,7 +279,12 @@ class TestCampaignCloseoutRequestLaw(unittest.TestCase):
                 if not 0 <= length <= 8192:
                     self.send_error(413, "request body exceeds bounded fixture cap")
                     return
-                raw = self.rfile.read(length)
+                # A permitted body length is not a permitted infinite read.
+                self.connection.settimeout(5.0)
+                try:
+                    raw = self.rfile.read(length)
+                except (TimeoutError, OSError):
+                    return
                 try:
                     body = json.loads(raw) if raw else None
                 except json.JSONDecodeError:
