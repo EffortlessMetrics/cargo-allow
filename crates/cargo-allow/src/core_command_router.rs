@@ -206,6 +206,10 @@ pub(crate) fn reject_configured_summary_output_collision(
         return Ok(());
     };
     let validated = validate_summary_output_path(root, config)?;
+    // A later artifact write cannot succeed through an existing file parent
+    // or onto a directory. Catch those structural failures before mutation
+    // instead of changing live policy and only then returning E0007 (#4714).
+    preflight_summary_destination_structure(&validated.requested_path)?;
     for mutation_target in mutation_targets {
         let target = effortless_repo_edit::resolve_mutation_target(mutation_target, root)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
@@ -214,6 +218,57 @@ pub(crate) fn reject_configured_summary_output_collision(
                 CargoAllowErrorKind::Usage,
                 message,
             ));
+        }
+    }
+    Ok(())
+}
+
+/// Refuse deterministically impossible summary destinations without writes.
+/// A later disk/permission failure remains possible; the writer rechecks its
+/// canonical mutation target when actually publishing the sidecar (#4714).
+fn preflight_summary_destination_structure(path: &Path) -> CargoAllowResult<()> {
+    match std::fs::metadata(path) {
+        Ok(metadata) if !metadata.is_file() => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("--command-summary-output target {} is not a regular file", path.display()),
+            ));
+        }
+        Ok(_) => {}
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => {
+            return Err(CargoAllowError::with_kind(
+                CargoAllowErrorKind::Artifact,
+                format!("cannot inspect --command-summary-output target {}: {error}", path.display()),
+            ));
+        }
+    }
+
+    let mut ancestor = path.parent();
+    while let Some(candidate) = ancestor {
+        match std::fs::metadata(candidate) {
+            Ok(metadata) if metadata.is_dir() => return Ok(()),
+            Ok(_) => {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!(
+                        "--command-summary-output parent {} is not a directory",
+                        candidate.display(),
+                    ),
+                ));
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                ancestor = candidate.parent();
+            }
+            Err(error) => {
+                return Err(CargoAllowError::with_kind(
+                    CargoAllowErrorKind::Artifact,
+                    format!(
+                        "cannot inspect --command-summary-output parent {}: {error}",
+                        candidate.display(),
+                    ),
+                ));
+            }
         }
     }
     Ok(())

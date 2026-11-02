@@ -167,6 +167,114 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
     remove_temp_root(root)
 }
 
+
+/// #4714: a preflight rejection must not create or replace the live ledger.
+/// These cases execute the installed bin with real argv, root/cwd resolution,
+/// and filesystem effects; error-summary emission remains best effort.
+#[test]
+fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(), String> {
+    let root = temp_root("init-summary-preflight")?;
+    write_source(&root, "pub fn clean() {}\n")?;
+    git_commit_fixture(&root)?;
+    let policy = root.join("policy/allow.toml");
+    let outside = root.with_extension("outside-summary.json");
+    let outside_text = outside.to_string_lossy().into_owned();
+
+    let first = run(&root, &[
+        "--command-summary-output", &outside_text, "init", "--strict",
+    ])?;
+    require(!first.status.success(), "outside-root summary must be refused")?;
+    require(
+        !policy.exists() && !outside.exists(),
+        "outside-root refusal created policy or summary before returning",
+    )?;
+
+    fs::create_dir_all(root.join("policy"))
+        .map_err(|error| format!("create policy dir: {error}"))?;
+    let canary = b"policy = \"cargo-allow\"\n# original-policy-canary\n";
+    fs::write(&policy, canary).map_err(|error| format!("seed policy: {error}"))?;
+    let force = run(&root, &[
+        "--command-summary-output", &outside_text,
+        "init", "--strict", "--force",
+    ])?;
+    require(!force.status.success(), "force must refuse outside-root sidecar")?;
+    require(
+        fs::read(&policy).map_err(|error| error.to_string())? == canary,
+        "force mutated the original policy before sidecar refusal",
+    )?;
+    require(
+        !policy.with_extension("toml.bak").exists() && !outside.exists(),
+        "force left backup or summary after preflight refusal",
+    )?;
+
+    let blocked = root.join("parent-is-a-file");
+    fs::write(&blocked, "parent-canary")
+        .map_err(|error| format!("seed blocked parent: {error}"))?;
+    let invalid = blocked.join("summary.json");
+    let invalid_text = invalid.to_string_lossy().into_owned();
+    let impossible = run(&root, &[
+        "--command-summary-output", &invalid_text,
+        "init", "--strict", "--force",
+    ])?;
+    require(
+        !impossible.status.success(), "file-parent summary must be refused",
+    )?;
+    require(
+        fs::read(&policy).map_err(|error| error.to_string())? == canary
+            && !policy.with_extension("toml.bak").exists()
+            && fs::read_to_string(&blocked).map_err(|error| error.to_string())? == "parent-canary",
+        "file-parent refusal mutated policy, backup or blocker",
+    )?;
+
+    // A supported in-root destination must still write both outputs.
+    let valid = root.join("target/init-summary.json");
+    let valid_text = valid.to_string_lossy().into_owned();
+    let success = run(&root, &[
+        "--command-summary-output", &valid_text,
+        "init", "--strict", "--force",
+    ])?;
+    require(
+        success.status.success(),
+        format!("valid init must work: {}", String::from_utf8_lossy(&success.stderr)),
+    )?;
+    require(
+        policy.exists() && valid.exists()
+            && policy.with_extension("toml.bak").exists(),
+        "valid forced init must write policy, backed-up prior ledger and summary",
+    )?;
+    let summary = read_summary_json(&valid)?;
+    require(
+        field(&summary, &["operation"]) == Some(&Value::from("init")),
+        "valid initialization emitted a non-init summary",
+    )?;
+    remove_temp_root(root)
+}
+
+/// The common sidecar is relative to the *working directory*, not --root.
+#[test]
+fn init_preflight_respects_cross_cwd_common_summary_resolution() -> Result<(), String> {
+    let root = temp_root("init-summary-cross-cwd")?;
+    write_source(&root, "pub fn clean() {}\n")?;
+    git_commit_fixture(&root)?;
+    let cwd = root.join("work");
+    fs::create_dir_all(&cwd).map_err(|error| error.to_string())?;
+    let root_text = root.to_string_lossy().into_owned();
+    let accepted = run_from(&cwd, &[
+        "--command-summary-output", "../target/cross-cwd.json",
+        "init", "--root", &root_text, "--strict",
+    ])?;
+    require(
+        accepted.status.success(),
+        format!("in-root cross-cwd summary should work: {}", String::from_utf8_lossy(&accepted.stderr)),
+    )?;
+    require(
+        root.join("policy/allow.toml").exists()
+            && root.join("target/cross-cwd.json").exists(),
+        "cross-cwd summary path should resolve from cwd and write inside source root",
+    )?;
+    remove_temp_root(root)
+}
+
 #[test]
 fn core_command_summary_mutation_propose_preserves_candidate_boundary() -> Result<(), String> {
     let root = temp_root("summary-propose")?;
