@@ -25449,6 +25449,50 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-4708-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4708.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact-pair review disposition for the November 2 UTC fixture repair (#4707/#4708); binds actual review and CI evidence without waiving source validation, merge controls, or release authority."
+evidence = ["pr:4708", "issue:4707", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-02"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4708.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4708.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4708-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4708-review-disposition.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering change-control note for the exact-file review disposition allowance under #4707/#4708; no broad policy, CI, review, or release bypass."
+evidence = ["pr:4708", "issue:4707"]
+created = "2026-11-02"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4708-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4708-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4703-delta-input-tests"
 kind = "non_rust_file"
 family = "python_tool"

@@ -159,6 +159,8 @@ fn explain_projects_review_due_matched_entry_lifecycle_status() {
 
 #[test]
 fn explain_json_renderer_records_context_and_current_status() {
+    // This test checks evidence-missing rendering, not calendar review-due.
+    // A separate lifecycle test verifies the real review boundary.
     let entry = AllowEntry {
         id: "allow-explain-json".to_string(),
         kind: FindingKind::Unsafe,
@@ -173,7 +175,7 @@ fn explain_json_renderer_records_context_and_current_status() {
         occurrence_limit: None,
         lifecycle: Lifecycle {
             created: Some("2026-05-27".to_string()),
-            review_after: Some("2026-11-01".to_string()),
+            review_after: Some("2099-01-01".to_string()),
             expires: None,
         },
         selector: Selector {
@@ -290,7 +292,7 @@ fn explain_json_renderer_records_context_and_current_status() {
     "occurrence_limit": null,
     "lifecycle": {{
       "created": "2026-05-27",
-      "review_after": "2026-11-01"
+      "review_after": "2099-01-01"
     }},
     "selector": {{
       "ast_kind": "unsafe_block",
