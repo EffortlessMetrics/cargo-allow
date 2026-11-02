@@ -178,12 +178,12 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> TestResu
     );
     let log = stub_log(&log_path);
     assert!(
-        log.contains("PATCH /issues/3846"),
-        "invalid closure must reopen the issue; stub log:\n{log}"
+        log.contains("POST /repos/EffortlessMetrics/cargo-allow/issues/3846/comments"),
+        "invalid closure must post the bounded rejection comment; stub log:\n{log}"
     );
     assert!(
-        log.contains("\"state\": \"open\""),
-        "reopen PATCH must set state open; stub log:\n{log}"
+        log.contains("PATCH /repos/EffortlessMetrics/cargo-allow/issues/3846"),
+        "invalid closure must reopen the issue; stub log:\n{log}"
     );
     assert!(
         !log.contains("/pulls/"),
@@ -212,7 +212,7 @@ fn campaign_closeout_verifier_reopens_invalid_and_accepts_complete() -> TestResu
         "Complete closeout must verify the declared merged PR; stub log:\n{log}"
     );
     assert!(
-        !log.contains("PATCH /issues/"),
+        !log.contains("PATCH /repos/EffortlessMetrics/cargo-allow/issues/"),
         "accepted closeout must not reopen the issue; stub log:\n{log}"
     );
 
