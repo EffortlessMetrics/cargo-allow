@@ -1,0 +1,3 @@
+kind: Security
+body: Restrict ordinary CI, release preflight, and UB Review workflow tokens to the least privileges needed by their jobs.
+time: 2026-11-02T08:10:00Z

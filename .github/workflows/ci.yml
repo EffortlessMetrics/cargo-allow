@@ -7,6 +7,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Ordinary source proof is read-only; artifact upload uses the Actions runtime
+# token and needs no repository write privilege (#4344).
+permissions:
+  contents: read
+
 jobs:
   # Stage 1 pre-gate (#3836): one fast deterministic tier that rejects
   # cheap source-controlled defects before the expensive proof jobs are
