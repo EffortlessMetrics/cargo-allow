@@ -102,6 +102,7 @@ raise SystemExit(97)
     def test_dirty_lock_cannot_borrow_head_identity(self):
         self.put("Cargo.lock", 'version=4\n# uncommitted substitution\n')
         files = self.captured()["files"]
+        self.assertEqual(files["--base-lock"], 'version = 4\n# base\n')
         self.assertEqual(files["--head-lock"], 'version = 4\n# committed head\n')
 
     def test_dirty_member_cannot_borrow_head_identity(self):
@@ -173,6 +174,29 @@ raise SystemExit(97)
         result = self.run_script(self.base)
         self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
         self.assertIn("not applicable", result.stdout)
+        self.assertFalse(self.capture.exists())
+
+    def test_git_diff_instrument_failure_is_not_mistaken_for_no_change(self):
+        # Keep valid refs and only fail the router's Git diff invocation.
+        # All earlier Git initialization and future verification still work.
+        real_git = shutil.which("git", path=self.env["PATH"])
+        self.assertIsNotNone(real_git)
+        shim_dir = self.root / "git-shim"
+        shim_dir.mkdir()
+        shim = shim_dir / "git"
+        shim.write_text(
+            '#!/usr/bin/env python3\n'
+            'import os, sys\n'
+            'if sys.argv[1:2] == ["diff"]: raise SystemExit(128)\n'
+            f'os.execv({real_git!r}, ["git", *sys.argv[1:]])\n',
+            encoding="utf-8",
+        )
+        shim.chmod(0o755)
+        self.env["PATH"] = str(shim_dir) + os.pathsep + self.env["PATH"]
+        result = self.run_script(self.base)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("input routing failed (git diff exit 128)", result.stderr)
+        self.assertNotIn("not applicable", result.stdout)
         self.assertFalse(self.capture.exists())
 
     def test_malformed_committed_base_member_refuses(self):
