@@ -25622,3 +25622,47 @@ glob = ".allow/revisions/3844-digest-stability.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1193"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-fmt-relocation.sh"
+owner = "core/fmt"
+classification = "fmt_relocation_fixture"
+reason = "Issue #4222 relocation fixture: proves rustfmt's nearest-config-wins discovery law with a real toolchain — a config-less copy under a poisoned ancestor fails cargo fmt --all --check while the committed-config and --config-path copies pass; no files outside its temp directory are touched."
+evidence = ["issue:4222"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-fmt-relocation.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-fmt-relocation.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1194"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4222-fmt-boundary.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Authored revision note receipting the allow-1193 relocation fixture entry for #4222; existing policy entries and review, merge, and release authority are preserved."
+evidence = ["issue:4222"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4222-fmt-boundary.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4222-fmt-boundary.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

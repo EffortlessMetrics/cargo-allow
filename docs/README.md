@@ -176,6 +176,12 @@ governance profile model around it.
   candidate posture.
 - [0.2.0 GitHub Release body](release/github/v0.2.0.md): public notes for the
   `v0.2.0` candidate.
+- [0.2.0-rc.1 prerelease record](release/0.2.0-rc.1.md): latest published
+  prerelease, carrying the rc.1 incident lineage.
+- [Release operation authority v1](release/release-operation-authority-v1.md)
+- [Release operation child inventory v1](release/release-operation-child-inventory-v1.md)
+- [Release operation lease v1](release/release-operation-lease-v1.md)
+- [Authenticated release operation store v1](release/release-operation-store-v1.md)
 
 ## Reference
 

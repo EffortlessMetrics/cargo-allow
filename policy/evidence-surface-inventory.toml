@@ -770,3 +770,21 @@ may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Proves the publisher control suite passes on the runner. It does not authorize publication or certify any executed release run."
 
+
+[[surfaces]]
+id = "campaign-agent-context-contract-hosted"
+owner_issue = 3731
+semantic_authority = "agent context and operating surface contract: Gemini CLI settings, context wiring, ignore rules, and campaign view rows hold their checked shape"
+path = "crates/cargo-allow/tests/campaign_agent_context_controls.rs"
+subject = "scripts/test-agent-context-contract.py invoked on hosted CI"
+producer = "integration test running the structural contract suite and asserting its pass marker"
+consumer = "#3768 agent controls priority 0, #3770 readiness controls"
+claimed_acceptance_row = "the agent-context contract suite (settings keys, negative controls for forbidden keys, ignore rules, campaign view rows) passes without credentials on the hosted runner"
+assertion_mechanism = "real process invocation asserting suite success and the pass marker"
+evidence_class = "StructuredShapeValidation"
+disposition = "hosted execution proof for the delivered agent-context contract suite"
+required_stronger_owner = "#3770/#3768 readiness controls"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "Proves the agent-context contract suite passes on the runner. It does not certify model behavior, grant agent authority, or satisfy any release gate."
+

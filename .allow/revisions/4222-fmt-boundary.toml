@@ -1,0 +1,17 @@
+# Issue #4222: repository-owned rustfmt boundary and the relocation fixture.
+# The committed max_width = 100 config terminates rustfmt ancestor discovery
+# (nearest config wins, measured); the fixture proves the hazard, the shield,
+# and the --config-path pin. No review, merge, or release authority is granted.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1193"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:db51769ec19a6c54bd954eb03b5a5ed8a7c82024adfe96235d2dbe8d81219950"
+reason = "Retain the real-toolchain relocation fixture proving formatting evidence is independent of checkout location; no builds outside rustfmt parsing, no network, no publication."
+
+[[records]]
+allow_ids = ["allow-1194"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:afd4e701cd2046f8df801d4e48ad3459cac69f6bff7a88f452bd911d80586a77"
+reason = "Receipt this authored note for the allow-1193 relocation fixture entry; existing policy entries and review, merge, and release authority are preserved."
