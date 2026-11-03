@@ -281,8 +281,10 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         };
         store.flush_with_test_hooks(None, Some(&wait_hook), None)
     });
+    // 5s contention window: under parallel suite load the flush thread's
+    // scheduler delay can exceed a tighter bound (#4215 flake family).
     contention_rx
-        .recv_timeout(Duration::from_secs(2))
+        .recv_timeout(Duration::from_secs(5))
         .map_err(|e| e.to_string())?;
     child
         .child
