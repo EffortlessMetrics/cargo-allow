@@ -135,7 +135,22 @@ fn cargo_intent_bin_name() -> &'static str {
     }
 }
 
+/// Default delegation budget for delegate tests that finish quickly.
+const DELEGATION_TIMEOUT_SECS: u64 = 30;
+/// Named larger budget for the large-receipt drain test (#4242): under a
+/// loaded host, spawn + debug-build of the provider alone can exceed a 30s
+/// bound and kill a healthy child.
+const LARGE_DRAIN_DELEGATION_TIMEOUT_SECS: u64 = 120;
+
 fn write_delegation_config(root: &Path, executable: &Path) -> Result<(), String> {
+    write_delegation_config_with_budget(root, executable, DELEGATION_TIMEOUT_SECS)
+}
+
+fn write_delegation_config_with_budget(
+    root: &Path,
+    executable: &Path,
+    timeout_secs: u64,
+) -> Result<(), String> {
     let config_dir = root.join(".allow/compatibility");
     fs::create_dir_all(&config_dir).map_err(|error| error.to_string())?;
     let executable_text = executable
@@ -145,7 +160,7 @@ fn write_delegation_config(root: &Path, executable: &Path) -> Result<(), String>
         r#"schema_id = "cargo-allow.intent-delegation.v1"
 executable = {executable_text:?}
 delegate_staged_precommit = true
-timeout_secs = 30
+timeout_secs = {timeout_secs}
 "#
     );
     fs::write(config_dir.join("intent-delegation.toml"), config).map_err(|error| error.to_string())
@@ -259,7 +274,11 @@ fn delegated_staged_precommit_drains_large_analysis_receipt() -> Result<(), Stri
         }
     };
     let repo = FixtureRepo::new("large-delegated")?;
-    write_delegation_config(&repo.root, &provider)?;
+    write_delegation_config_with_budget(
+        &repo.root,
+        &provider,
+        LARGE_DRAIN_DELEGATION_TIMEOUT_SECS,
+    )?;
     repo.write("README.md", "base\n")?;
     repo.git(&["add", "--all"])?;
     repo.git(&["commit", "-qm", "base"])?;
