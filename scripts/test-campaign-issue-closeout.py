@@ -412,11 +412,15 @@ class TestCampaignCloseoutRequestLaw(unittest.TestCase):
 
     def test_unmerged_and_wrong_base_reject_without_compare(self) -> None:
         self.pr["merged_at"] = None
-        self.pr["state"] = "open"
+        self.pr["state"] = "closed"
         self.assert_reopen(
             self.execute(self.complete_body()), "pull_request_not_merged", [PR_PATH],
         )
         self.pr["merged_at"] = "2026-11-02T00:00:00Z"
+        self.pr["state"] = "open"
+        self.assert_reopen(
+            self.execute(self.complete_body()), "pull_request_not_merged", [PR_PATH],
+        )
         self.pr["state"] = "closed"
         self.pr["base"] = {"ref": "other"}
         self.assert_reopen(
