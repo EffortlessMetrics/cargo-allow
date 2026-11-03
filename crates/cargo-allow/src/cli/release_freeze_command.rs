@@ -1015,41 +1015,49 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
             // Subject binding (#4175): a same-version rehearsal from a
             // different source subject must not read as current. Each
             // documented subject field is required and compared exactly
-            // (digest payloads modulo the typed prefix spelling).
-            let commit_sha = value.pointer("/commit_sha").and_then(Json::as_str);
-            match commit_sha {
-                None => notes.push("fail:rehearsal receipt records no commit_sha".to_string()),
-                Some(sha) if sha != subject.commit => notes.push(format!(
+            // (digest payloads modulo the typed prefix spelling). A present
+            // but non-string value gets its own non-string diagnostic (#4249)
+            // instead of the misleading missing-field note.
+            let commit_record = value.pointer("/commit_sha");
+            let commit_sha = commit_record.and_then(Json::as_str);
+            match (commit_record, commit_sha) {
+                (None, _) => notes.push("fail:rehearsal receipt records no commit_sha".to_string()),
+                (Some(found), None) => notes.push(format!(
+                    "fail:rehearsal commit_sha {found:?} is not a string"
+                )),
+                (_, Some(sha)) if sha != subject.commit => notes.push(format!(
                     "fail:rehearsal commit {sha:?} is not the selected subject commit {:?}",
                     subject.commit
                 )),
-                _ => {}
+                (_, Some(_)) => {}
             }
-            for (label, recorded, selected) in [
+            for (label, field, selected) in [
                 (
                     "lockfile",
-                    value
-                        .pointer("/subject_lockfile_digest")
-                        .and_then(Json::as_str),
+                    "/subject_lockfile_digest",
                     subject.cargo_lock_digest.as_str(),
                 ),
                 (
                     "topology",
-                    value
-                        .pointer("/subject_topology_digest")
-                        .and_then(Json::as_str),
+                    "/subject_topology_digest",
                     subject.topology_digest.as_str(),
                 ),
             ] {
-                match (recorded, hex_payload(recorded.unwrap_or(""))) {
-                    (None, _) => notes.push(format!(
+                let record = value.pointer(field);
+                let recorded = record.and_then(Json::as_str);
+                match (record, recorded, hex_payload(recorded.unwrap_or(""))) {
+                    (None, _, _) => notes.push(format!(
                         "fail:rehearsal receipt records no subject_{label}_digest"
                     )),
-                    (_, None) => notes.push(format!(
+                    (Some(found), None, _) => notes.push(format!(
+                        "fail:rehearsal subject_{label}_digest {found:?} is not a string"
+                    )),
+                    (_, _, None) => notes.push(format!(
                         "fail:rehearsal subject_{label}_digest {recorded:?} is not a documented digest spelling"
                     )),
-                    (Some(_), Some(payload)) if payload == hex_payload(selected).unwrap_or(selected) => {}
-                    (Some(recorded_digest), _) => notes.push(format!(
+                    (_, Some(_), Some(payload))
+                        if payload == hex_payload(selected).unwrap_or(selected) => {}
+                    (_, Some(recorded_digest), _) => notes.push(format!(
                         "fail:rehearsal subject_{label}_digest {recorded_digest:?} is not the selected subject {selected:?}"
                     )),
                 }
@@ -2366,6 +2374,188 @@ mod tests {
                 .any(|note| note.contains("records no subject_topology_digest")),
             "a missing topology digest fails closed"
         );
+
+        // Per-field subject-binding completion (#4249): every required
+        // subject field must reject a non-string value with a diagnostic
+        // that names the non-string value, never the misleading
+        // missing-field note, and each rejection below must keep the
+        // required rehearsal node a Mismatch through the composed
+        // readiness aggregate.
+        for (field, replacement) in [
+            ("commit_sha", serde_json::json!(8675309)),
+            ("subject_lockfile_digest", serde_json::json!(false)),
+            (
+                "subject_topology_digest",
+                serde_json::json!([subject.commit]),
+            ),
+        ] {
+            let mut non_string = rehearsal_value_for(&subject, 8, "Incomplete");
+            non_string
+                .as_object_mut()
+                .ok_or("rehearsal fixture is not an object")?
+                .insert(field.to_string(), replacement);
+            require_rehearsal_rejection_readiness(&subject, &non_string, field, "is not a string")?;
+        }
+
+        // A removed lockfile digest (not merely a wrong or malformed
+        // value) fails closed under its exact missing-field note.
+        let mut removed_lock = rehearsal_value_for(&subject, 8, "Incomplete");
+        removed_lock
+            .as_object_mut()
+            .ok_or("rehearsal fixture is not an object")?
+            .remove("subject_lockfile_digest");
+        require_rehearsal_rejection_readiness(
+            &subject,
+            &removed_lock,
+            "subject_lockfile_digest",
+            "records no subject_lockfile_digest",
+        )?;
+
+        // The topology digest varied alone to a well-formed foreign value.
+        let mut foreign_topology = rehearsal_value_for(&subject, 8, "Incomplete");
+        foreign_topology
+            .as_object_mut()
+            .ok_or("rehearsal fixture is not an object")?
+            .insert(
+                "subject_topology_digest".to_string(),
+                serde_json::json!(
+                    "sha256:v1:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                ),
+            );
+        require_rehearsal_rejection_readiness(
+            &subject,
+            &foreign_topology,
+            "subject_topology_digest",
+            "is not the selected subject",
+        )?;
+
+        // A foreign topology with the commit held constant: the denial
+        // must come from the topology field itself, never the commit check.
+        let mut constant_commit = rehearsal_value_for(&subject, 8, "Incomplete");
+        {
+            let object = constant_commit
+                .as_object_mut()
+                .ok_or("rehearsal fixture is not an object")?;
+            object.insert(
+                "subject_topology_digest".to_string(),
+                serde_json::json!(
+                    "sha256:v1:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+                ),
+            );
+            object.insert(
+                "subject_lockfile_digest".to_string(),
+                serde_json::json!(
+                    "sha256:v1:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+                ),
+            );
+        }
+        let constant_notes =
+            bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &constant_commit);
+        if constant_notes
+            .iter()
+            .any(|note| note.contains("commit_sha") || note.contains("subject commit"))
+        {
+            return Err(format!(
+                "the commit-constant control must not fire the commit check: {constant_notes:?}"
+            )
+            .into());
+        }
+        require_rehearsal_rejection_readiness(
+            &subject,
+            &constant_commit,
+            "subject_topology_digest",
+            "is not the selected subject",
+        )?;
+        Ok(())
+    }
+
+    /// One rejected rehearsal subject field must retain its field-specific
+    /// `fail:` denial, keep the required rehearsal graph node a `Mismatch`,
+    /// and carry that exact result class into the composed readiness
+    /// aggregate and its blocking rows (#4249).
+    fn require_rehearsal_rejection_readiness(
+        subject: &SubjectIdentity,
+        receipt: &serde_json::Value,
+        field: &str,
+        note_part: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        use allow_report::{FinalReadinessRowKindV1, aggregate_final_readiness};
+
+        let binding_notes = bind_evidence(subject, FreezeEvidenceRole::Rehearsal, receipt);
+        let denial = binding_notes
+            .iter()
+            .find(|note| note.contains(field))
+            .ok_or_else(|| {
+                format!("{field} denial lost its field-specific note: {binding_notes:?}")
+            })?;
+        if !denial.starts_with("fail:") || !denial.contains(note_part) {
+            return Err(format!(
+                "{field} denial must be a fail note naming {note_part:?}: {denial:?}"
+            )
+            .into());
+        }
+        let rehearsal = super::EvidenceInput {
+            role: FreezeEvidenceRole::Rehearsal,
+            path: std::path::PathBuf::from("rehearsal.json"),
+            sha256: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+                .to_string(),
+            value: receipt.clone(),
+            binding_notes,
+        };
+        let package_set = super::EvidenceInput {
+            role: FreezeEvidenceRole::PackageSet,
+            path: std::path::PathBuf::from("receipt.json"),
+            sha256: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                .to_string(),
+            value: package_set_value("0.2.0", "Passed"),
+            binding_notes: Vec::new(),
+        };
+        let evidence = [package_set, rehearsal];
+        let registry = super::registry::reconcile(subject, &[], &evidence, None);
+        let graph = super::build_evidence_graph(
+            subject,
+            &selection(),
+            &evidence,
+            &Vec::new(),
+            Some("sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"),
+            (registry.0, &registry.2),
+        );
+        let node = graph
+            .nodes
+            .iter()
+            .find(|node| node.evidence_id == "release-rehearsal")
+            .ok_or("the required rehearsal node is missing")?;
+        if node.result != FinalEvidenceNodeResultV1::Mismatch {
+            return Err(format!(
+                "rejected {field} evidence must keep the required rehearsal node a Mismatch, got {:?}",
+                node.result
+            )
+            .into());
+        }
+        let readiness = aggregate_final_readiness(
+            &graph,
+            &readiness_decision_inputs(subject, &selection(), &evidence),
+        );
+        if !readiness.required_evidence.iter().any(|row| {
+            row.evidence_id == "release-rehearsal"
+                && row.result == FinalEvidenceNodeResultV1::Mismatch
+        }) {
+            return Err(format!(
+                "readiness lost the required {field} Mismatch rehearsal row: {:?}",
+                readiness.required_evidence
+            )
+            .into());
+        }
+        if !readiness.rows.iter().any(|row| {
+            row.kind == FinalReadinessRowKindV1::Mismatch
+                && row.evidence_id.as_deref() == Some("release-rehearsal")
+        }) {
+            return Err(format!(
+                "readiness lost the {field} blocking Mismatch row: {:?}",
+                readiness.rows
+            )
+            .into());
+        }
         Ok(())
     }
 
