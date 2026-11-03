@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4718,
+  "base_ref": "main",
+  "base_sha": "601d773a59ad249cedd897287f15ddb02ebc66b5",
+  "head_ref": "fix/4717-closeout-oracle-grip",
+  "head_sha": "2b581a448dd7b4270095940499b97e1b91a56bf0",
+  "merge_base": "601d773a59ad249cedd897287f15ddb02ebc66b5",
+  "reviewed_diff_digest": "sha256:v2:f65b0755bfc15298fe990e44f4d03fc1f70b02976e855856462a13a5da5e538b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT current-pair read-only source reviews #5750030427 and #5750178960 via the shared maintainer GitHub account. The same assistant authored the main integration and governance paths after the earlier review; this H1 re-review is same-maintainer evidence, not independent-human approval or a separate nonauthor model review.",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4718#pullrequestreview-5750030427",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4718#pullrequestreview-5750178960",
+    "The reviewed H1 has four effective paths: two unchanged test-only source paths, the exact two-entry policy append, and its self-covering .allow/revisions/4718-review-disposition.toml.",
+    "The two canonical allow-entry fingerprints were independently recalculated against the schema/serialization and matched a known-good prior ledger example; pre-existing allow entries are not rewritten.",
+    "Six real Python process/loopback cases and Rust Unix wrapper discriminate exact PATCH JSON, compare read, no-write accepted path, and three counterfactual verifier variants. Production verifier is unchanged.",
+    "Earlier H0 hosted CI 41542452507 succeeded 26/26 and Codecov reported all coverable modified lines; this historical run does not qualify merged-base/governance H1 or successor H2.",
+    "Current H1 review-readiness is neutral until this sole-disposition H1->H2 bootstrap; CodeRabbit and Gemini returned rate/quota-limited warnings, not clean independent review.",
+    "No inline review threads exist on this PR. Same-account author/reviewer limitations and nonpublishing claim boundary remain explicit.",
+    "H1-to-H2 must change only .allow/review-dispositions/pr-4718.json and then pass fresh native review-readiness and applicable hosted checks."
+  ],
+  "required_ci": {
+    "owner": "Final merge decision: require fresh exact H2 source/base readback, current review-readiness success proving sole-disposition bootstrap, applicable terminal native CI and UB Review green, Codecov acceptance, all threads resolved, guarded expected-head merge and resulting-main verification. No previous-head green substitutes.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4718",
+  "reviewed_at_utc": "2026-11-03T09:58:17.425Z"
+}
