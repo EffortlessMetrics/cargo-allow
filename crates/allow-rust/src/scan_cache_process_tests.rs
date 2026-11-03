@@ -516,7 +516,7 @@ fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), Stri
         "message: {message}"
     );
     assert!(
-        message.contains("terminated exited with"),
+        message.contains("final exited with"),
         "post-kill termination status must be described (platform-neutral); message: {message}"
     );
     assert!(message.contains("noise line"), "message: {message}");
