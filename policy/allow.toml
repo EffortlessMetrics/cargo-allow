@@ -25666,3 +25666,47 @@ glob = ".allow/revisions/4222-fmt-boundary.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4713-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4713.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Scoped workflow least privilege and release permission-proof review (#4344/#4713); does not authorize publication or provider-setting mutation."
+evidence = ["pr:4713", "issue:4344", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-03"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4713.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4713.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4713-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4713-review-disposition.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering exact-file review note for workflow-security PR #4713; no broad policy or CI bypass."
+evidence = ["pr:4713", "issue:4344"]
+created = "2026-11-03"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4713-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4713-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
