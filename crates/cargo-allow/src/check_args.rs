@@ -49,11 +49,17 @@ pub(crate) struct CheckArgs {
     #[arg(long, value_name = "FORMATS", requires = "artifact_dir")]
     pub(crate) emit: Option<String>,
     /// Check mode [possible values: no-new, audit, strict, release].
-    ///   no-new   Fail on new/expired/ambiguous/invalid_selector/
-    ///            missing_required_field/evidence_missing (CI gate)
+    ///   no-new   Fail on new/ambiguous/invalid_selector/
+    ///            missing_required_field/evidence_missing (CI gate).
+    ///            expired is annotation-only: exact/structural/
+    ///            occurrence-bounded matches stay authorized past lifecycle
+    ///            dates (#4238), and expired broad matchers re-raise their
+    ///            findings as new. `requirements.calendar_expiry_blocks_no_new`
+    ///            restores expiry-as-failure at the gate layer
     ///   audit    Report all advisory statuses without failing (informational)
     ///   strict   Fail on any non-matched status except location_drift
-    ///            (so stale/review_due/baseline_debt and the no-new set fail)
+    ///            (so stale/review_due/baseline_debt/expired and the no-new
+    ///            set fail)
     ///   release  Currently equivalent to strict; advisory escalation is
     ///            driven by --deny, not by this mode
     /// Can also be set via the CARGO_ALLOW_MODE environment variable (#3230).

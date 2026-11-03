@@ -1,0 +1,3 @@
+kind: Added
+body: Terminate rustfmt ancestor config discovery with a committed repository-owned rustfmt.toml, pin the ci.yml fmt surfaces to it via --config-path, and add the relocation fixture proving the hazard and the shield.
+time: 2026-11-03T01:00:00Z

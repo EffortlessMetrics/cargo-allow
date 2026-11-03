@@ -1,0 +1,13 @@
+# Repository-owned rustfmt configuration boundary (#4222).
+#
+# rustfmt skips config files that parse to an empty table, so this file
+# pins one key at its default value to make the boundary real: discovery
+# stops here instead of walking into ancestor directories of a checkout,
+# where a `rustfmt.toml` or `.rustfmt.toml` silently steers
+# `cargo fmt --all -- --check` and fabricates mass formatting failures
+# (the #4131 relocation reproduction). `max_width = 100` is the rustfmt
+# default — byte-neutral for the existing tree. Deliberately adopt
+# further keys only with the style contract in mind; every key here
+# becomes the pinned contract for every fmt surface (ci.yml pregate and
+# test lanes).
+max_width = 100
