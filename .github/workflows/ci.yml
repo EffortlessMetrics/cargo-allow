@@ -50,7 +50,10 @@ jobs:
           /tmp/actionlint -color -shellcheck=             -ignore 'label "macos-15-intel" is unknown'             -ignore 'label "macos-26" is unknown'             .github/workflows/ci.yml
       - name: Formatting
         id: fmt
-        run: cargo fmt --all -- --check
+        # #4222: the committed rustfmt.toml is the nearest config and
+        # terminates ancestor discovery; pin it explicitly so formatting
+        # evidence never depends on what sits above the checkout.
+        run: cargo fmt --all -- --check --config-path rustfmt.toml
       - name: Source-exception no-new guard
         id: no_new
         run: cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
@@ -711,7 +714,9 @@ jobs:
         run: |
           python3 scripts/test-verify-evidence-surface-inventory.py
           python3 scripts/verify-evidence-surface-inventory.py
-      - run: cargo fmt --all --check
+      # #4222: pin the repository-owned rustfmt config; see the pregate
+      # Formatting step for the merged-ancestor-discovery rationale.
+      - run: cargo fmt --all --check -- --config-path rustfmt.toml
       - name: cargo-allow release-set clippy (#3358)
         run: |
           cargo clippy --locked --all-targets \

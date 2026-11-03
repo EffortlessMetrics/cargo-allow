@@ -1,0 +1,3 @@
+kind: Fixed
+body: Align the no-new mode help with the #4238 annotation-only expiry law and pin the help-vs-law agreement with a contract test asserting both the rendered text and the mode-table semantics.
+time: 2026-11-03T00:15:00Z

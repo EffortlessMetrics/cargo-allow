@@ -227,57 +227,46 @@ pub(crate) fn reject_configured_summary_output_collision(
 /// A later disk/permission failure remains possible; the writer rechecks its
 /// canonical mutation target when actually publishing the sidecar (#4714).
 fn preflight_summary_destination_structure(path: &Path) -> CargoAllowResult<()> {
-    match std::fs::metadata(path) {
-        Ok(metadata) if !metadata.is_file() => {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!(
-                    "--command-summary-output target {} is not a regular file",
-                    path.display()
-                ),
-            ));
-        }
-        Ok(_) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-        Err(error) => {
-            return Err(CargoAllowError::with_kind(
-                CargoAllowErrorKind::Artifact,
-                format!(
-                    "cannot inspect --command-summary-output target {}: {error}",
-                    path.display()
-                ),
-            ));
-        }
-    }
-
-    let mut ancestor = path.parent();
-    while let Some(candidate) = ancestor {
+    let mut candidate = path;
+    loop {
         match std::fs::metadata(candidate) {
-            Ok(metadata) if metadata.is_dir() => return Ok(()),
-            Ok(_) => {
-                return Err(CargoAllowError::with_kind(
-                    CargoAllowErrorKind::Artifact,
-                    format!(
-                        "--command-summary-output parent {} is not a directory",
-                        candidate.display(),
-                    ),
-                ));
+            Ok(metadata) => {
+                let suitable = if candidate == path {
+                    metadata.is_file()
+                } else {
+                    metadata.is_dir()
+                };
+                if !suitable {
+                    return Err(CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Artifact,
+                        format!(
+                            "--command-summary-output {} is not a usable {}",
+                            candidate.display(),
+                            if candidate == path { "file target" } else { "parent directory" },
+                        ),
+                    ));
+                }
+                return Ok(());
             }
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                ancestor = candidate.parent();
+                candidate = candidate.parent().ok_or_else(|| {
+                    CargoAllowError::with_kind(
+                        CargoAllowErrorKind::Artifact,
+                        "no existing --command-summary-output parent directory",
+                    )
+                })?;
             }
             Err(error) => {
                 return Err(CargoAllowError::with_kind(
                     CargoAllowErrorKind::Artifact,
                     format!(
-                        "cannot inspect --command-summary-output parent {}: {error}",
-                        candidate.display(),
+                        "cannot inspect --command-summary-output {}: {error}",
+                        candidate.display()
                     ),
                 ));
             }
         }
     }
-    Ok(())
 }
 
 fn write_summary_artifact_with_config(

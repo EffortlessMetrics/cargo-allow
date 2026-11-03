@@ -250,6 +250,29 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
         "file-parent refusal mutated policy, backup or blocker",
     )?;
 
+    // Existing directories cannot be overwritten as JSON sidecars.
+    let directory_target = root.join("directory-summary-target");
+    fs::create_dir_all(&directory_target)
+        .map_err(|error| format!("create blocked summary directory: {error}"))?;
+    let directory_text = directory_target.to_string_lossy().into_owned();
+    let directory_refusal = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &directory_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        !directory_refusal.status.success()
+            && fs::read(&policy).map_err(|error| error.to_string())? == canary
+            && !policy.with_extension("toml.bak").exists()
+            && directory_target.is_dir(),
+        "directory-sidecar refusal must preserve original policy and backup absence",
+    )?;
+
     // A supported in-root destination must still write both outputs.
     let valid = root.join("target/init-summary.json");
     let valid_text = valid.to_string_lossy().into_owned();
@@ -278,6 +301,21 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
     require(
         field(&summary, &["operation"]) == Some(&Value::from("init")),
         "valid initialization emitted a non-init summary",
+    )?;
+    // Replacing an existing *regular-file* summary remains a supported path.
+    let reuse = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &valid_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        reuse.status.success() && read_summary_json(&valid).is_ok(),
+        "existing regular-file summary target must remain writable",
     )?;
     remove_temp_root(root)
 }

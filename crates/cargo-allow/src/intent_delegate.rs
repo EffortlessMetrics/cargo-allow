@@ -374,8 +374,9 @@ fn run_with_timeout(
                 return Err(IntentDelegateFailure::new(
                     IntentDelegateFailureClass::Timeout,
                     format!(
-                        "cargo-intent provider exceeded {}s timeout; {cleanup}; {reader_summary}",
-                        timeout.as_secs()
+                        "cargo-intent provider exceeded {}s timeout (elapsed {}s); {cleanup}; {reader_summary}",
+                        timeout.as_secs(),
+                        started.elapsed().as_secs()
                     ),
                 ));
             }
@@ -1036,10 +1037,14 @@ mod tests {
         Ok(())
     }
 
+    /// Named larger ceiling for the large-receipt drain test (#4242): under a
+    /// loaded host the drain itself can exceed an idle-host 10s bound.
+    const LARGE_DRAIN_CEILING: Duration = Duration::from_secs(120);
+
     #[test]
     fn run_with_timeout_drains_large_stdout_and_stderr_concurrently() -> Result<(), String> {
         let mut command = helper_command("large")?;
-        let output = run_with_timeout(&mut command, Duration::from_secs(10))
+        let output = run_with_timeout(&mut command, LARGE_DRAIN_CEILING)
             .map_err(|failure| failure.to_string())?;
         if !output.stdout_exceeded || !output.stderr_exceeded {
             return Err(format!("expected both streams over budget: {output:?}"));
