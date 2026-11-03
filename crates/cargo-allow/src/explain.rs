@@ -63,17 +63,23 @@ pub(crate) fn cmd_explain(args: &ExplainArgs) -> CargoAllowResult<()> {
         .find(|e| e.id == normalized_id)
         .ok_or_else(|| missing_allow_entry_error(&normalized_id))?;
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
-    let context = ExplainContext {
-        inventory: source_context.inventory(),
-    };
     let evidence_source_tree_files =
         current_evidence_source_tree_files(&root, args.include_untracked);
+    // One date per command (#4237): evaluation and every lifecycle projection
+    // in the detailed renderers plus the common summary read this snapshot,
+    // never a fresh clock sample, so a UTC-day rollover mid-command cannot
+    // split the surfaces' statuses.
+    let as_of = allow_core::SimpleDate::today_utc_approx();
+    let context = ExplainContext {
+        inventory: source_context.inventory(),
+        as_of,
+    };
     let style = if matches!(args.format, HumanJsonFormat::Human) && args.output.is_none() {
         crate::reporting::output_style()
     } else {
         allow_report::Style::PLAIN
     };
-    let (matching_findings, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let (matching_findings, outcomes) = explain_entry_state(&cfg, entry, &findings, as_of);
     // One report build serves both renderings and the summary projection, so
     // the evidence and traceability references are read exactly once.
     let (detail_json, detail_human, suggested_actions) = explain_render::render_explain_report(
@@ -284,6 +290,7 @@ fn explain_entry_text(
     cfg: &AllowConfig,
     entry: &AllowEntry,
     findings: &[Finding],
+    as_of: allow_core::SimpleDate,
 ) -> String {
     explain_entry_text_with_source_tree_files(
         root,
@@ -291,6 +298,7 @@ fn explain_entry_text(
         entry,
         findings,
         None,
+        as_of,
         allow_report::Style::PLAIN,
     )
 }
@@ -302,15 +310,17 @@ fn explain_entry_text_with_source_tree_files(
     entry: &AllowEntry,
     findings: &[Finding],
     evidence_source_tree_files: Option<&std::collections::BTreeSet<String>>,
+    as_of: allow_core::SimpleDate,
     style: allow_report::Style,
 ) -> String {
-    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
+    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings, as_of);
     render_explain_entry_styled(
         root,
         entry,
         &matching_findings,
         &outcomes,
         evidence_source_tree_files,
+        as_of,
         style,
     )
 }
@@ -335,7 +345,7 @@ fn explain_entry_json_with_source_tree_files(
     evidence_source_tree_files: Option<&std::collections::BTreeSet<String>>,
     context: ExplainContext<'_>,
 ) -> String {
-    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings);
+    let (matching_findings, outcomes) = explain_entry_state(cfg, entry, findings, context.as_of);
     render_explain_entry_json(
         root,
         entry,
@@ -350,33 +360,29 @@ fn explain_entry_state(
     cfg: &AllowConfig,
     entry: &AllowEntry,
     findings: &[Finding],
+    as_of: allow_core::SimpleDate,
 ) -> (Vec<Finding>, Vec<MatchOutcome>) {
     // Resolve competition and occurrence limits in the complete ledger before
     // projecting this entry. Evaluating it alone would turn tied candidates
     // into authorizing matches and discard stronger neighboring entries.
     let mut matching_findings = Vec::new();
-    let outcomes = evaluate(
-        cfg,
-        findings,
-        CheckMode::NoNew,
-        allow_core::SimpleDate::today_utc_approx(),
-    )
-    .into_iter()
-    .filter(|outcome| {
-        outcome.allow_id.as_deref() == Some(entry.id.as_str())
-            || (outcome.status == MatchStatus::Ambiguous
-                && outcome.candidate_ids.contains(&entry.id))
-    })
-    .map(|mut outcome| {
-        // Renderers index the entry-local finding list. Candidate IDs, status,
-        // score, and message remain the full-ledger evaluator's result.
-        if let Some(finding) = outcome.finding_index.and_then(|index| findings.get(index)) {
-            outcome.finding_index = Some(matching_findings.len());
-            matching_findings.push(finding.clone());
-        }
-        outcome
-    })
-    .collect();
+    let outcomes = evaluate(cfg, findings, CheckMode::NoNew, as_of)
+        .into_iter()
+        .filter(|outcome| {
+            outcome.allow_id.as_deref() == Some(entry.id.as_str())
+                || (outcome.status == MatchStatus::Ambiguous
+                    && outcome.candidate_ids.contains(&entry.id))
+        })
+        .map(|mut outcome| {
+            // Renderers index the entry-local finding list. Candidate IDs, status,
+            // score, and message remain the full-ledger evaluator's result.
+            if let Some(finding) = outcome.finding_index.and_then(|index| findings.get(index)) {
+                outcome.finding_index = Some(matching_findings.len());
+                matching_findings.push(finding.clone());
+            }
+            outcome
+        })
+        .collect();
     (matching_findings, outcomes)
 }
 
@@ -427,6 +433,7 @@ pub(crate) fn sample_explain_json_for_contract_test() -> String {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(47),
             ),
+            as_of: test_support::EXPLAIN_TEST_AS_OF,
         },
     )
 }

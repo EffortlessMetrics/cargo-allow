@@ -7,6 +7,8 @@ use crate::evidence_inventory::{
     policy_reference_diagnostics_for_source_tree,
 };
 use crate::evidence_render::evidence_reference_target_text;
+#[cfg(test)]
+use allow_core::SimpleDate;
 use allow_core::{AllowEntry, Finding, MatchOutcome, allow_entry_broad_scope};
 use allow_diff::selector_precision_score;
 use std::collections::BTreeSet;
@@ -19,6 +21,7 @@ pub(super) fn render_explain_entry_styled(
     findings: &[Finding],
     outcomes: &[MatchOutcome],
     evidence_source_tree_files: Option<&BTreeSet<String>>,
+    as_of: SimpleDate,
     style: allow_report::Style,
 ) -> String {
     render_explain_report(
@@ -27,7 +30,10 @@ pub(super) fn render_explain_entry_styled(
         findings,
         outcomes,
         evidence_source_tree_files,
-        ExplainContext::default(),
+        ExplainContext {
+            inventory: allow_report::InventoryContext::default(),
+            as_of,
+        },
         |report| allow_report::render_explain_human_styled(report, style),
     )
 }
@@ -58,6 +64,10 @@ pub(super) fn render_explain_entry_json(
 /// source tree, so a caller that needs both the detailed artifact and the
 /// common command summary must derive both from a single build rather than
 /// probing the repository twice.
+///
+/// `context.as_of` is the command-boundary date (#4237): the caller captures
+/// it once before evaluation and every renderer in this report projects the
+/// entry lifecycle from that same snapshot instead of re-reading the clock.
 pub(super) fn render_explain_report<R>(
     root: &Path,
     entry: &AllowEntry,
@@ -136,6 +146,7 @@ pub(super) fn render_explain_report<R>(
     render(allow_report::ExplainReport {
         inventory: context.inventory,
         entry,
+        as_of: context.as_of,
         selector_precision: selector_precision_score(entry),
         broad_scope: allow_entry_broad_scope(entry).is_some(),
         current_findings: findings,
@@ -169,6 +180,15 @@ mod tests {
     use super::*;
     use allow_core::{FindingKind, MatchOutcome, MatchStatus};
 
+    /// Fixed fixture as-of date so renderer projections never sample the wall
+    /// clock (#4237). Lifecycle boundaries used in these tests sit well before
+    /// or well after it.
+    const TEST_AS_OF: SimpleDate = SimpleDate {
+        year: 2026,
+        month: 7,
+        day: 14,
+    };
+
     #[test]
     fn render_explain_entry_json_uses_json_renderer_with_context() {
         let mut entry = test_entry("allow-json-render", FindingKind::NonRustFile);
@@ -185,6 +205,7 @@ mod tests {
                     Some("H:/Code/Rust/cargo-allow"),
                     Some(47),
                 ),
+                as_of: TEST_AS_OF,
             },
         );
 
@@ -215,7 +236,10 @@ mod tests {
             &[],
             &[],
             Some(&source_tree_files),
-            ExplainContext::default(),
+            ExplainContext {
+                inventory: allow_report::InventoryContext::default(),
+                as_of: TEST_AS_OF,
+            },
             capture_explain_report,
         );
 
@@ -291,7 +315,10 @@ mod tests {
             std::slice::from_ref(&finding),
             &outcomes,
             None,
-            ExplainContext::default(),
+            ExplainContext {
+                inventory: allow_report::InventoryContext::default(),
+                as_of: TEST_AS_OF,
+            },
             capture_explain_report,
         );
 

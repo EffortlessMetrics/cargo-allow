@@ -1,0 +1,11 @@
+kind: Fixed
+body: >-
+  Render the `explain` command's detailed human and JSON artifacts and its
+  common operator summary from one command-boundary as-of date. The report
+  crate's `explain_report_status` sampled `SimpleDate::today_utc_approx()`
+  internally, so the human `current_status`, the JSON `summary.current_status`,
+  and the common summary derived from that JSON could disagree when a UTC day
+  rolled over mid-command. The date captured before evaluation now threads
+  through `ExplainReport` to every lifecycle projection, which keeps the
+  ledger read model's status precedence and the artifact schema unchanged
+  (#4237).
