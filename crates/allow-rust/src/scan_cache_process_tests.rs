@@ -229,27 +229,21 @@ fn wait_ready_with_timeout(
                 tail.snapshot(),
             ))
         }
-        Err(mpsc::RecvTimeoutError::Timeout) => {
-            let exit = child.child.try_wait().ok().flatten();
+        Err(reason @ (mpsc::RecvTimeoutError::Timeout | mpsc::RecvTimeoutError::Disconnected)) => {
+            let exit_before = child.child.try_wait().ok().flatten();
             child
                 .kill_and_wait()
                 .map_err(|error| format!("{error}; during READY-timeout cleanup"))?;
+            // After the reap the status stays cached in the Child, so this
+            // describes the termination itself (signal on unix kills).
+            let exit_after = child.child.try_wait().ok().flatten();
             let _ = reader.join();
             Err(format!(
-                "READY handshake timed out after {:?} (exceeded the {}s timeout budget); child {}; stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
+                "READY handshake not completed after {:?} (exceeded the {}s timeout budget; child {} at deadline, terminated {}); reason: {reason}; stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
                 started.elapsed(),
                 timeout.as_secs(),
-                describe_exit(&exit),
-                tail.snapshot(),
-            ))
-        }
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            let exit = child.child.try_wait().ok().flatten();
-            let _ = reader.join();
-            Err(format!(
-                "READY reader ended without a signal after {:?} ({}); stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
-                started.elapsed(),
-                describe_exit(&exit),
+                describe_exit(&exit_before),
+                describe_exit(&exit_after),
                 tail.snapshot(),
             ))
         }
@@ -429,7 +423,7 @@ fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), Stri
         "timeout returned too early: {elapsed:?}"
     );
     assert!(
-        message.contains("READY handshake timed out"),
+        message.contains("READY handshake not completed"),
         "message: {message}"
     );
     assert!(
@@ -440,6 +434,10 @@ fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), Stri
         "message: {message}"
     );
     assert!(message.contains("still running"), "message: {message}");
+    assert!(
+        message.contains("noise line"),
+        "stdout tail must reach the diagnostics; message: {message}"
+    );
     // The tail may carry the child harness's own framing lines; its content
     // is diagnostic, not asserted here.
     // wait_ready killed and reaped the timed-out child; the guard's wait
@@ -514,8 +512,13 @@ fn child_helper() -> Result<(), String> {
     }
     if mode == "silent-hold" {
         // #4215: never prints READY — the READY-handshake timeout path's
-        // live-child diagnostic fixture. No lock: the diagnostic is about
-        // the handshake, not about file contention.
+        // live-child diagnostic fixture. Emits noise lines (never READY) so
+        // the timeout diagnostic's stdout tail has real content. No lock:
+        // the diagnostic is about the handshake, not file contention.
+        for index in 0..12 {
+            println!("noise line {index} (no READY)");
+            std::io::stdout().flush().map_err(|e| e.to_string())?;
+        }
         let mut input = [0_u8; 1];
         std::io::stdin()
             .read_exact(&mut input)
