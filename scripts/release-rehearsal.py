@@ -854,7 +854,34 @@ def _yaml_workflow_inventory(path: Path) -> dict[str, Any] | None:
     except ImportError:
         return None
     try:
-        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+        class UniqueKeySafeLoader(yaml.SafeLoader):
+            """Do not let duplicate YAML mapping keys hide privileged scopes."""
+
+            def construct_mapping(self, node, deep=False):
+                if not isinstance(node, yaml.MappingNode):
+                    raise yaml.constructor.ConstructorError(
+                        None, None, "expected YAML mapping", node.start_mark
+                    )
+                seen = set()
+                for key_node, _ in node.value:
+                    key = self.construct_object(key_node, deep=deep)
+                    try:
+                        if key in seen:
+                            raise yaml.constructor.ConstructorError(
+                                None, None, f"duplicate mapping key: {key!r}",
+                                key_node.start_mark,
+                            )
+                        seen.add(key)
+                    except TypeError as error:
+                        raise yaml.constructor.ConstructorError(
+                            None, None, f"unhashable mapping key: {key!r}",
+                            key_node.start_mark,
+                        ) from error
+                return super().construct_mapping(node, deep=deep)
+
+        parsed = yaml.load(
+            path.read_text(encoding="utf-8"), Loader=UniqueKeySafeLoader,
+        )
     except Exception as exc:
         return {"error": f"YAML parse error: {exc}"}
     if not isinstance(parsed, dict) or not isinstance(parsed.get("jobs"), dict):

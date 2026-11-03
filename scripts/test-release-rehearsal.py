@@ -1737,6 +1737,52 @@ class TestWorkflowGraphLeastPrivilege(unittest.TestCase):
         self.assertTrue(proof["github_release_scoped"])
         self.assertTrue(proof["non_publisher_jobs_read_only"])
 
+    def test_pyyaml_rejects_duplicate_permissions_mappings(self) -> None:
+        if importlib.util.find_spec("yaml") is None:
+            self.skipTest("PyYAML unavailable; strict stdlib fallback tested separately")
+        valid = (
+            "name: Release\n"
+            "permissions:\n  actions: read\n  contents: read\n"
+            "jobs:\n"
+            "  preflight:\n    runs-on: ubuntu-latest\n"
+            "  github-release:\n    permissions:\n"
+            "      contents: write\n"
+            "      attestations: write\n"
+            "      id-token: write\n"
+        )
+        controls = {
+            "duplicate_global_permissions": valid.replace(
+                "jobs:\n", "permissions:\n  actions: read\n  contents: read\njobs:\n", 1,
+            ),
+            "duplicate_job_permissions": valid + (
+                "    permissions:\n      contents: write\n"
+            ),
+            "duplicate_global_scope": valid.replace(
+                "  contents: read\n", "  contents: write\n  contents: read\n", 1,
+            ),
+            "duplicate_publisher_scope": valid.replace(
+                "      id-token: write\n",
+                "      id-token: read\n      id-token: write\n",
+                1,
+            ),
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "release.yml"
+            path.write_text(valid, encoding="utf-8")
+            accepted = REHEARSAL._yaml_workflow_inventory(path)
+            self.assertIsNotNone(accepted)
+            self.assertNotIn("error", accepted)
+            proof = REHEARSAL._least_privilege_workflow_graph_proof(accepted, True)
+            self.assertIsNotNone(proof)
+            self.assertTrue(proof["top_level_permissions_least_privilege"])
+            self.assertTrue(proof["github_release_scoped"])
+            for name, source in controls.items():
+                with self.subTest(name=name):
+                    path.write_text(source, encoding="utf-8")
+                    observed = REHEARSAL._yaml_workflow_inventory(path)
+                    self.assertIsInstance(observed, dict)
+                    self.assertIn("error", observed, f"{name} must fail closed")
+
     def test_strict_fallback_never_confuses_publisher_and_global_grants(self) -> None:
         base = (
             "name: Release\n"
