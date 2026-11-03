@@ -165,6 +165,13 @@ pub(super) fn reconcile(
             result = FinalEvidenceNodeResultV1::NotProven;
         }
         freshness = ObservationFreshnessV1::ProviderUnavailable;
+        // The evaluator reached a Current-freshness semantic result, so the
+        // provider transport answered. Name the real failure: the freshness
+        // label records missing independent authority here, not an outage,
+        // and both failures keep the observation non-Current.
+        detail.push_str(
+            "; freshness reads provider_unavailable because independent registry authority is unavailable, not because of a provider transport outage; both failures keep the observation non-Current",
+        );
     }
     reading(result, freshness, observed_at, detail)
 }
