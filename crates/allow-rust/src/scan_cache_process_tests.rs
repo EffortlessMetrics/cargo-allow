@@ -111,26 +111,55 @@ impl StdoutTail {
         Self(Arc::new(Mutex::new(Vec::new())))
     }
     fn record(&self, line: &str) {
-        if let Ok(mut buffer) = self.0.lock() {
-            buffer.push(line.to_string());
-            let length = buffer.len();
-            if length > STDOUT_TAIL_LINES {
-                buffer.drain(..length - STDOUT_TAIL_LINES);
-            }
+        // Recover from poison: the buffered lines are valid diagnostics even
+        // if another thread panicked while holding the guard (#4215).
+        let mut buffer = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        buffer.push(line.to_string());
+        let length = buffer.len();
+        if length > STDOUT_TAIL_LINES {
+            buffer.drain(..length - STDOUT_TAIL_LINES);
         }
     }
     fn snapshot(&self) -> String {
-        self.0
+        // Same poison recovery as record: the tail must survive to reach the
+        // failure message (#4215).
+        let buffer = self
+            .0
             .lock()
-            .map(|buffer| {
-                if buffer.is_empty() {
-                    "(no stdout lines)".to_string()
-                } else {
-                    buffer.join("\n")
-                }
-            })
-            .unwrap_or_else(|_| "(stdout tail unavailable)".to_string())
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if buffer.is_empty() {
+            "(no stdout lines)".to_string()
+        } else {
+            buffer.join("\n")
+        }
     }
+}
+
+#[test]
+fn stdout_tail_snapshot_tolerates_poisoned_mutex() -> Result<(), String> {
+    // Poison by panicking while the guard is alive; the snapshot must fall
+    // back to its unavailable marker instead of propagating the poison.
+    let tail = StdoutTail(Arc::new(Mutex::new(Vec::new())));
+    let poisoner = {
+        let tail = tail.clone();
+        std::thread::spawn(move || {
+            let _guard = tail.0.lock().expect("unpoisoned lock");
+            panic!("deliberate poison for the tolerance test");
+        })
+    };
+    if poisoner.join().is_ok() {
+        return Err("poisoner thread unexpectedly succeeded".to_string());
+    }
+    tail.record("after poison");
+    let snapshot = tail.snapshot();
+    assert!(
+        snapshot.contains("after poison"),
+        "recorded lines must survive poisoning; snapshot: {snapshot}"
+    );
+    Ok(())
 }
 
 fn describe_exit(status: &Option<ExitStatus>) -> String {
