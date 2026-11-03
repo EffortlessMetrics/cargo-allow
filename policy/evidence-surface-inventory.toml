@@ -788,3 +788,38 @@ may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Proves the agent-context contract suite passes on the runner. It does not certify model behavior, grant agent authority, or satisfy any release gate."
 
+
+[[surfaces]]
+id = "release-manifest-incidents-law"
+owner_issue = 3761
+semantic_authority = "release manifest incident/prepublication/Complete distinctness law"
+path = "crates/cargo-allow/tests/release_manifest_incidents.rs"
+subject = "ReleaseManifestEnvelopeV2 incident and checksum-law fixtures"
+producer = "Rust integration test"
+consumer = "release manifest validation"
+claimed_acceptance_row = "matching checksum cannot upgrade Missing/ProviderUnavailable; malformed precedence intact; incident lineage survives later passing evidence; wrong checksums fail closed"
+assertion_mechanism = "typed fixture construction and validation"
+evidence_class = "TypedModelValidation"
+disposition = "local typed-model validation"
+required_stronger_owner = "#3761"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "The typed fixtures prove validator distinctness law only; production generation and publication are not proven."
+
+[[surfaces]]
+id = "release-manifest-golden-law"
+owner_issue = 3761
+semantic_authority = "release manifest full-payload golden law for the final 0.2.0 candidate"
+path = "crates/cargo-allow/tests/release_manifest_golden.rs"
+subject = "ReleaseManifestPayloadV2 golden fixture"
+producer = "Rust integration test"
+consumer = "release manifest validation"
+claimed_acceptance_row = "the full final-candidate payload round-trips and validates with per-row expected/observed/authority/producer evidence intact"
+assertion_mechanism = "typed golden fixture construction and validation"
+evidence_class = "TypedModelValidation"
+disposition = "local typed-model validation"
+required_stronger_owner = "#3761"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "The golden fixture proves validator law only; production generation and publication are not proven."
+
