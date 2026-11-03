@@ -1,0 +1,7 @@
+kind: Fixed
+body: >-
+  Present missing independent registry authority and real registry provider
+  transport outages as distinct failures with the same non-Current outcome in
+  freeze readiness, replay, and the retained observation note (#4426). Neither
+  failure grants Current, and actual provider failures still read unavailable.
+time: 2026-11-03T18:51:00Z

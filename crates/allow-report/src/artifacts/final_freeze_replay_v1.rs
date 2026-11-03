@@ -912,7 +912,7 @@ fn replay_evidence_graph(
             rows,
             FinalFreezeReplayRowKindV1::ProviderUnavailable,
             Some(inputs.freeze_receipt.freeze_id.clone()),
-            "the retained evidence graph reports an unavailable provider",
+            "the retained evidence graph reports a provider transport failure, or provider evidence whose independent authority is unavailable",
         ),
         FinalEvidenceEvaluationResultV1::InstrumentFailure
         | FinalEvidenceEvaluationResultV1::MalformedGraph => push_row(
@@ -1573,7 +1573,7 @@ fn replay_observations(
                     rows,
                     FinalFreezeReplayRowKindV1::ProviderUnavailable,
                     Some(observation.observation_id.clone()),
-                    "the provider behind a required refreshable observation is unavailable",
+                    "a required refreshable observation is not current: the provider transport failed, or the independent authority that certifies it current is unavailable; the reading detail records which",
                 ),
                 ObservationFreshnessV1::InstrumentFailure => push_row(
                     rows,
