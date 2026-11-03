@@ -1,0 +1,15 @@
+# Exact-path review governance for #4717 / PR #4718.
+# Does not authorize a release, alter the verifier or override current-pair CI.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4718-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:008a98567d07a93087568cf705785dad5b24859e9576f133a55fdc2052b75c36"
+reason = "Retain a real current-source review for the closeout test oracle without granting broad source exceptions."
+
+[[records]]
+allow_ids = ["allow-4718-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c3555fffa0e7e851b57b2267bf719b42f70eaa2be93054664f57403660c855bb"
+reason = "Exact self-covering revision note for the PR #4718 review disposition admission."
