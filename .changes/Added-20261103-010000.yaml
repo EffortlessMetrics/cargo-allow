@@ -1,0 +1,3 @@
+kind: Added
+body: Terminate rustfmt ancestor config discovery with a committed repository-owned rustfmt.toml and add the relocation fixture proving formatting evidence is independent of checkout location.
+time: 2026-11-03T01:00:00Z
