@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4713,
+  "base_ref": "main",
+  "base_sha": "601d773a59ad249cedd897287f15ddb02ebc66b5",
+  "head_ref": "fix/4344-workflow-least-privilege",
+  "head_sha": "bcfd3ec61a134a3bcc44100471e19ea3f2b36b8d",
+  "merge_base": "601d773a59ad249cedd897287f15ddb02ebc66b5",
+  "reviewed_diff_digest": "sha256:v2:0f358eae285071eed7203a33a4cde2d131523020d9eae98990108484c437234b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT source-only review #5750347205 of integrated seven-file security candidate and source+governance current-pair review #5750411148 of nine-file H1. The reviewer shares the maintainer account and authored integration/governance commits; neither an independent human nor separate nonauthor-model review is claimed.",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4713#pullrequestreview-5750347205",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4713#pullrequestreview-5750411148",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4713#discussion_r4448554142",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4713#discussion_r4448554173",
+    "Both original CodeRabbit threads are resolved: documentation comment cosmetic/nonblocking; missing optional PyYAML handled by strict scoped stdlib parser with earlier macOS proof.",
+    "The source review checked ordinary read-only CI, scoped release publisher and UB reviewer job, source producer and native Python/Rust tests; seven paths are unchanged by H1 governance.",
+    "H1's added exact file selectors only cover .allow/review-dispositions/pr-4713.json and .allow/revisions/4713-review-disposition.toml. Historical policy prefix unchanged.",
+    "After_fingerprints were reproduced from allow-core's versioned canonical serializer and verified against known-good #4704 fingerprint.",
+    "New main source flow and workflow formatting changes were preserved during exact integration; H1 full-diff digest from live neutral v2 review-readiness.",
+    "Historical source head a2415eb passed 26/26 CI and 3/3 UB; cannot qualify new H1/H2, whose new checks and separate H2 Ready decision remain required.",
+    "Quota-limited newer bot review is not proof of independent review. This record is same-maintainer current-source process review only.",
+    "The only authorized next head movement is to add this one disposition file; project-review-readiness must prove the ledger-only bootstrap before Ready."
+  ],
+  "required_ci": {
+    "owner": "Final decision owner: re-read exact H2 base/head, live review-readiness successful ledger-only bootstrap, applicable native/platform/package/coverage and UB Review checks terminal, unresolved threads zero, provider mergeability and no-new; then separate expected-head merge and resulting-main readback. No earlier green is inherited.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4713",
+  "reviewed_at_utc": "2026-11-03T10:16:41.025Z"
+}
