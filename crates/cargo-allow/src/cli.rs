@@ -439,7 +439,13 @@ fn configure_summary_output(
             (SourceTreeRoot, args.config.clone()),
         ],
         CargoAllowCommand::Init(args) if args.profile.is_none() => {
-            vec![(SourceTreeRoot, Some(args.config.clone()))]
+            // Reserve recovery bytes even for previews and error summaries.
+            // Match write_file_no_overwrite's existing backup naming law;
+            // the router resolves both paths through canonical target identity.
+            vec![
+                (SourceTreeRoot, Some(args.config.clone())),
+                (SourceTreeRoot, Some(args.config.with_extension("toml.bak"))),
+            ]
         }
         CargoAllowCommand::Propose(args) => vec![
             (WorkingDirectory, args.write.clone()),
