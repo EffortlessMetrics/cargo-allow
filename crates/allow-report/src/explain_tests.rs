@@ -1,9 +1,18 @@
 use super::*;
 use allow_core::{
     AllowEntry, Finding, FindingKind, LastSeen, LedgerProvenance, Lifecycle, MatchOutcome,
-    MatchStatus, Selector, Span, StructuralIdentity,
+    MatchStatus, Selector, SimpleDate, Span, StructuralIdentity,
 };
 use std::path::PathBuf;
+
+/// Fixed fixture as-of date for renderer projections (#4237). Every lifecycle
+/// boundary used below sits well before or well after it, so no test depends
+/// on the wall clock.
+const EXPLAIN_AS_OF: SimpleDate = SimpleDate {
+    year: 2026,
+    month: 7,
+    day: 14,
+};
 
 #[test]
 fn explain_finding_json_omits_unavailable_metadata() {
@@ -90,6 +99,7 @@ fn explain_projects_expired_matched_entry_lifecycle_status() {
     let report = ExplainReport {
         inventory: InventoryContext::default(),
         entry: &entry,
+        as_of: EXPLAIN_AS_OF,
         selector_precision: 0,
         broad_scope: false,
         current_findings: &[],
@@ -140,6 +150,7 @@ fn explain_projects_review_due_matched_entry_lifecycle_status() {
     let report = ExplainReport {
         inventory: InventoryContext::default(),
         entry: &entry,
+        as_of: EXPLAIN_AS_OF,
         selector_precision: 0,
         broad_scope: false,
         current_findings: &[],
@@ -232,6 +243,7 @@ fn explain_json_renderer_records_context_and_current_status() {
             Some(76),
         ),
         entry: &entry,
+        as_of: EXPLAIN_AS_OF,
         selector_precision: 42,
         broad_scope: true,
         current_findings: &[finding],
@@ -449,6 +461,7 @@ fn explain_human_dedupes_identical_attention_lines_with_count() {
     let report = ExplainReport {
         inventory: InventoryContext::default(),
         entry: &entry,
+        as_of: EXPLAIN_AS_OF,
         selector_precision: 0,
         broad_scope: false,
         current_findings: &[],

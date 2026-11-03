@@ -1,4 +1,4 @@
-use super::test_support::{test_entry, test_finding};
+use super::test_support::{EXPLAIN_TEST_AS_OF, test_entry, test_finding};
 use super::*;
 use crate::artifact_contract_support::{assert_inventory_contract, parse_json_artifact};
 use allow_core::FindingKind;
@@ -34,6 +34,7 @@ fn explain_entry_json_records_context_and_live_status() {
                 Some("H:/Code/Rust/cargo-allow"),
                 Some(47),
             ),
+            as_of: EXPLAIN_TEST_AS_OF,
         },
     );
     let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
@@ -145,6 +146,7 @@ fn explain_entry_json_records_link_reference_diagnostics() {
                 Some("fixtures/source-snapshot"),
                 Some(1),
             ),
+            as_of: EXPLAIN_TEST_AS_OF,
         },
     );
     let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
@@ -200,6 +202,7 @@ fn explain_entry_json_records_link_reference_diagnostics() {
         &cfg,
         &entry,
         &[finding],
+        EXPLAIN_TEST_AS_OF,
     );
     assert!(text.contains("link diagnostics:"));
     assert!(text.contains("doc:docs/missing-link.md"));
@@ -232,6 +235,7 @@ fn explain_entry_json_records_allow_id_proof_command_for_attention_items() {
                 Some("fixtures/source-snapshot"),
                 Some(1),
             ),
+            as_of: EXPLAIN_TEST_AS_OF,
         },
     );
     let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
@@ -278,6 +282,7 @@ fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
                 Some("fixtures/source-snapshot"),
                 Some(1),
             ),
+            as_of: EXPLAIN_TEST_AS_OF,
         },
     );
     let value = parse_json_artifact("explain", &json, allow_report::EXPLAIN_SCHEMA_ID, "explain");
@@ -327,6 +332,7 @@ fn explain_entry_json_routes_broken_evidence_to_repair_queue() {
         &cfg,
         &entry,
         std::slice::from_ref(&finding),
+        EXPLAIN_TEST_AS_OF,
     );
     assert!(
         text.contains("proof: cargo-allow list --broken-evidence --format json"),

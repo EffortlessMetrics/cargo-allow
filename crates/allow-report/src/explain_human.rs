@@ -76,7 +76,7 @@ pub fn render_explain_human_styled(report: ExplainReport<'_>, style: Style) -> S
         report.selector_precision
     ));
     out.push_str(&format!("broad_scope: {}\n\n", report.broad_scope));
-    let current_status = explain_report_status(report.entry, report.match_outcomes);
+    let current_status = explain_report_status(report.entry, report.match_outcomes, report.as_of);
     out.push_str(&format!(
         "current_status: {}\n",
         style.status(current_status.as_str(), current_status.as_str())
@@ -301,7 +301,7 @@ fn outcome_summary_styled(outcomes: &[MatchOutcome], style: Style) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use allow_core::{FindingKind, Lifecycle, Selector};
+    use allow_core::{FindingKind, Lifecycle, Selector, SimpleDate};
     use std::path::PathBuf;
 
     #[test]
@@ -423,6 +423,11 @@ mod tests {
         let report = ExplainReport {
             inventory: crate::InventoryContext::default(),
             entry: &entry,
+            as_of: SimpleDate {
+                year: 2026,
+                month: 7,
+                day: 14,
+            },
             selector_precision: 0,
             broad_scope: false,
             current_findings: &[],

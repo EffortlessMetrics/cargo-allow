@@ -1,4 +1,4 @@
-use super::test_support::{test_entry, test_finding};
+use super::test_support::{EXPLAIN_TEST_AS_OF, test_entry, test_finding};
 use super::*;
 use crate::{CargoAllowCli, CargoAllowCommand, HumanJsonFormat, ProfileArg, RootArgs};
 use allow_core::FindingKind;
@@ -330,6 +330,7 @@ fn explain_summary_reuses_the_rendered_status() -> Result<(), String> {
         None,
         ExplainContext {
             inventory: source_context.inventory(),
+            as_of: EXPLAIN_TEST_AS_OF,
         },
         |report| {
             (
@@ -361,6 +362,118 @@ fn explain_summary_reuses_the_rendered_status() -> Result<(), String> {
         return Err(format!(
             "summary replaced the rendered entry status: {summary:?}"
         ));
+    }
+    Ok(())
+}
+
+/// #4237: the detailed human artifact, the detailed JSON artifact, and the
+/// common operator summary must each agree with the as-of snapshot the caller
+/// captured, never with a fresh clock read. Two fixed fixture dates straddle
+/// the entry's strict expiry boundary (`expires < as_of`), so the boundary
+/// day renders `matched` and the day after renders `expired`; nothing in this
+/// test depends on the wall clock.
+#[test]
+fn explain_surfaces_agree_with_their_own_as_of_snapshot() -> Result<(), String> {
+    let root = Path::new(".");
+    let inventory_facts =
+        crate::InventoryFacts::scanned(allow_inventory::InventorySource::GitTracked, 1)
+            .with_completeness(allow_inventory::InventoryCompleteness::Complete);
+    let source_context = SourceTreeReportContext::new(root, inventory_facts);
+    let mut entry = test_entry("allow-as-of-boundary", FindingKind::Panic);
+    entry.lifecycle.expires = Some("2026-06-15".to_string());
+    entry.lifecycle.review_after = None;
+    let finding = test_finding(
+        FindingKind::Panic,
+        Some("unwrap"),
+        "src/lib.rs",
+        "method_call",
+    );
+    let outcomes = vec![MatchOutcome {
+        status: MatchStatus::Matched,
+        allow_id: Some(entry.id.clone()),
+        candidate_ids: Vec::new(),
+        finding_index: Some(0),
+        message: "matched".to_string(),
+        score: 100,
+    }];
+
+    for (as_of, expected_status, expected_summary_reason) in [
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 14,
+            },
+            "matched",
+            "explain.entry_healthy",
+        ),
+        (
+            allow_core::SimpleDate {
+                year: 2026,
+                month: 6,
+                day: 16,
+            },
+            "expired",
+            "explain.expired",
+        ),
+    ] {
+        // One report build per snapshot renders both detailed artifacts, the
+        // same way `cmd_explain` renders them.
+        let (detail_json, detail_human, _suggested_actions) =
+            super::explain_render::render_explain_report(
+                root,
+                &entry,
+                std::slice::from_ref(&finding),
+                &outcomes,
+                None,
+                ExplainContext {
+                    inventory: source_context.inventory(),
+                    as_of,
+                },
+                |report| {
+                    (
+                        allow_report::render_explain_json(report),
+                        allow_report::render_explain_human(report),
+                        report.suggested_actions.to_vec(),
+                    )
+                },
+            );
+        // The common summary derives its status from the rendered detail
+        // JSON; empty next steps keep the projection on the entry status
+        // alone, so only the as_of snapshot can move the reason code.
+        let summary = super::explain_summary(
+            &detail_json,
+            root,
+            &source_context,
+            super::ExplainEntryFacts {
+                entry: &entry,
+                outcome_statuses: outcomes.iter().map(|outcome| outcome.status).collect(),
+                matching_finding_count: 1,
+                suggested_actions: Vec::new(),
+                inventory_facts,
+                calendar_expiry_blocks_no_new: false,
+            },
+        )
+        .map_err(|error| error.to_string())?;
+
+        let human_needle = format!("current_status: {expected_status}");
+        let json_needle = format!("\"current_status\": \"{expected_status}\"");
+        if !detail_human.contains(&human_needle) {
+            return Err(format!(
+                "human artifact for as_of {as_of:?} lost `{human_needle}`: {detail_human}"
+            ));
+        }
+        if !detail_json.contains(&json_needle) {
+            return Err(format!(
+                "json artifact for as_of {as_of:?} lost `{json_needle}`: {detail_json}"
+            ));
+        }
+        if summary.reason.code != expected_summary_reason {
+            return Err(format!(
+                "summary for as_of {as_of:?} reported `{}` instead of `{expected_summary_reason}`",
+                summary.reason.code
+            ));
+        }
     }
     Ok(())
 }
@@ -416,7 +529,7 @@ fn explain_entry_text_reports_live_match_status() {
     finding.identity.crate_name = Some("fixture-package".to_string());
     let findings = vec![finding];
 
-    let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings);
+    let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings, EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: matched"));
     assert!(text.contains("current_matches: 1"));
@@ -440,7 +553,7 @@ fn explain_entry_text_reports_empty_evidence_next_actions() {
         "tracked_file",
     );
 
-    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding]);
+    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: matched"));
     assert!(text.contains("evidence: none"));
@@ -464,7 +577,7 @@ fn explain_entry_text_reports_baseline_debt_next_actions() {
         "tracked_file",
     );
 
-    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding]);
+    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[finding], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: baseline_debt"));
     assert!(text.contains("baseline_debt and still needs human review"));
@@ -490,7 +603,7 @@ fn explain_entry_text_reports_evidence_reference_status() {
     ];
     cfg.allow.push(entry.clone());
 
-    let text = explain_entry_text(&root, &cfg, &entry, &[]);
+    let text = explain_entry_text(&root, &cfg, &entry, &[], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("evidence diagnostics:"));
     assert!(text.contains("doc:docs/safety.md"));
@@ -529,6 +642,7 @@ fn explain_entry_text_reports_local_evidence_outside_source_tree_inventory_as_mi
         &entry,
         &[finding],
         Some(&source_tree_files),
+        EXPLAIN_TEST_AS_OF,
         allow_report::Style::PLAIN,
     );
 
@@ -559,7 +673,7 @@ fn explain_entry_text_reports_weak_evidence_next_actions() {
         "tracked_file",
     );
 
-    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: matched"));
     assert!(text.contains("weak: spreadsheet:manual-review (status=unstructured"));
@@ -594,7 +708,7 @@ fn explain_entry_text_specializes_high_risk_policy_weak_evidence_actions() {
         "process_spawn",
     );
 
-    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: matched"));
     assert!(text.contains("weak: binary:cargo (status=unstructured"));
@@ -620,7 +734,7 @@ fn explain_entry_text_reports_weak_link_next_actions() {
         "tracked_file",
     );
 
-    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("link diagnostics:"));
     assert!(text.contains("weak: spreadsheet:manual-review (status=unstructured"));
@@ -648,7 +762,7 @@ fn explain_entry_text_specializes_high_risk_policy_weak_link_actions() {
         "network_destination",
     );
 
-    let text = explain_entry_text(&root, &cfg, &entry, &[finding]);
+    let text = explain_entry_text(&root, &cfg, &entry, &[finding], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: matched"));
     assert!(text.contains("weak: spreadsheet:manual-review (status=unstructured"));
@@ -666,7 +780,7 @@ fn explain_entry_text_reports_stale_entry() {
     let entry = test_entry("allow-file", FindingKind::NonRustFile);
     cfg.allow.push(entry.clone());
 
-    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[]);
+    let text = explain_entry_text(Path::new("."), &cfg, &entry, &[], EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("current_status: stale"));
     assert!(text.contains("current_matches: 0"));
@@ -691,7 +805,7 @@ fn explain_entry_text_reports_occurrence_limit_exceeded() {
     );
     let findings = vec![finding.clone(), finding];
 
-    let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings);
+    let text = explain_entry_text(Path::new("."), &cfg, &entry, &findings, EXPLAIN_TEST_AS_OF);
 
     assert!(text.contains("occurrence_limit: 1"));
     assert!(text.contains("current_status: new"));
@@ -720,7 +834,7 @@ fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Resu
         .into_iter()
         .map(|path| test_finding(FindingKind::NonRustFile, None, path, "tracked_file"))
         .collect::<Vec<_>>();
-    let (_, outcomes) = explain_entry_state(&cfg, entry, &findings);
+    let (_, outcomes) = explain_entry_state(&cfg, entry, &findings, EXPLAIN_TEST_AS_OF);
     let statuses = outcomes
         .iter()
         .map(|outcome| outcome.status)
@@ -744,7 +858,10 @@ fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Resu
         &cfg,
         entry,
         &findings,
-        ExplainContext::default(),
+        ExplainContext {
+            inventory: allow_report::InventoryContext::default(),
+            as_of: EXPLAIN_TEST_AS_OF,
+        },
     );
     let report: Value = serde_json::from_str(&json).map_err(|error| error.to_string())?;
     if report
@@ -760,7 +877,7 @@ fn explain_preserves_all_competitors_after_an_occurrence_limit_failure() -> Resu
             "mixed attention lost guidance or changed status: {json}"
         ));
     }
-    let text = explain_entry_text(Path::new("."), &cfg, entry, &findings);
+    let text = explain_entry_text(Path::new("."), &cfg, entry, &findings, EXPLAIN_TEST_AS_OF);
     if !text.contains(guidance)
         || !text.contains("current_status: new")
         || !text.contains("occurrence_limit exceeded")

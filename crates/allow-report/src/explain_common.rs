@@ -12,6 +12,10 @@ pub(crate) fn finding_location_text(finding: &Finding) -> String {
     }
 }
 
-pub(crate) fn explain_report_status(entry: &AllowEntry, outcomes: &[MatchOutcome]) -> MatchStatus {
-    crate::ledger_read_state_for_outcomes(entry, outcomes, SimpleDate::today_utc_approx()).status
+pub(crate) fn explain_report_status(
+    entry: &AllowEntry,
+    outcomes: &[MatchOutcome],
+    as_of: SimpleDate,
+) -> MatchStatus {
+    crate::ledger_read_state_for_outcomes(entry, outcomes, as_of).status
 }
