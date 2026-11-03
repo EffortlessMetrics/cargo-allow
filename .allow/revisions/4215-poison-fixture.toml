@@ -1,0 +1,24 @@
+# Issue #4215: poison-tolerance fixture for the diagnostic stdout tail.
+# The deliberate expect()/panic! poison the tail's mutex so the test can
+# prove record()/snapshot() recover via into_inner and the tail survives to
+# reach the timeout message. These entries grant no review, merge, or
+# release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1195"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:990b5565b9153d8a21e0039bb8d6ebdf8ca6c9a90bc64c90cb646fb6c9142dbb"
+reason = "Receipt the expect() that arms the lock guard before the deliberate poisoning panic in the #4215 poison-tolerance fixture."
+
+[[records]]
+allow_ids = ["allow-1196"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3f41101c881778a2b1bdc58d149a6ca07a0a8831d55bc4c5f4779c5d53a0ce91"
+reason = "Receipt the deliberate poisoning panic itself; the test then proves record()/snapshot() recover via into_inner."
+
+[[records]]
+allow_ids = ["allow-1197"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:34816286a9c8223a6da730dc5232f1018f3fdeac0a5605f582964b839b99db38"
+reason = "Receipt this authored note for the allow-1195/allow-1196 poison-fixture entries; existing policy entries and review, merge, and release authority are preserved."
