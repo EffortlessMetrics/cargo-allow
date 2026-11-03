@@ -25778,3 +25778,69 @@ glob = ".allow/revisions/4215-codecov-scope.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1200"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/decisions/README.md"
+owner = "core/docs"
+classification = "decision_record"
+reason = "Retain the lightweight decision-record index: lighter-than-ADR rule, lifecycle, graduation path to ADR supersession; retention is not ratification."
+evidence = ["issue:4342"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/decisions/README.md"
+target_fingerprint = "md"
+glob = "docs/decisions/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1201"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/decisions/DECISION-0001-default-sensor-profile.md"
+owner = "core/docs"
+classification = "decision_record"
+reason = "Retain the proposed default-sensor-profile decision record for gate 3884: five fixed sections, agent-draftable, maintainer-ratified only; cites the 3883 measured audit."
+evidence = ["issue:4342"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/decisions/DECISION-0001-default-sensor-profile.md"
+target_fingerprint = "md"
+glob = "docs/decisions/DECISION-0001-default-sensor-profile.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1202"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4342-decision-records.toml"
+owner = "core/docs"
+classification = "reviewed_exception"
+reason = "Self-covering governance revision note for the exact-path decision-record retention allowances under #4342; retention only, no ratification or policy broadening."
+evidence = ["issue:4342"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4342-decision-records.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4342-decision-records.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

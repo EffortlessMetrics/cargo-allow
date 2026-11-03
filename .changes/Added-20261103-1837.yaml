@@ -1,0 +1,3 @@
+kind: Added
+body: Add the lightweight decision-record flow under docs/decisions/ — an index stating the lighter-than-ADR rule and the graduation path to ADR supersession, plus proposed record DECISION-0001 drafting the #3884 default sensor profile posture as a closed per-family package against the #3883 measured audit, ratifiable only by the maintainer.
+time: 2026-11-03T18:37:00Z
