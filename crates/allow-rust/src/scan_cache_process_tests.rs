@@ -175,6 +175,56 @@ fn describe_exit(status: &Option<ExitStatus>) -> String {
     }
 }
 
+fn reason_str(reason: &mpsc::RecvTimeoutError) -> &'static str {
+    match reason {
+        mpsc::RecvTimeoutError::Timeout => "deadline exceeded",
+        mpsc::RecvTimeoutError::Disconnected => "reader ended without a signal",
+    }
+}
+
+#[derive(Clone, Copy)]
+enum FailureKind {
+    Timeout,
+    StdoutClosed,
+    Deadline { reason: &'static str },
+}
+
+/// Shared terminal path for every non-success READY handshake outcome: kill
+/// and reap the child (for clock-driven failures), join the reader, and
+/// emit the typed diagnostic with elapsed time, child state, and the
+/// bounded stdout tail (#4215).
+fn finish_failure(
+    child: &mut ChildGuard,
+    tail: &StdoutTail,
+    started: Instant,
+    timeout: Duration,
+    reason: &str,
+    kind: FailureKind,
+) -> String {
+    let exit_before = child.child.try_wait().ok().flatten();
+    if matches!(kind, FailureKind::Timeout | FailureKind::Deadline { .. })
+        && let Err(cleanup_error) = child.kill_and_wait()
+    {
+        eprintln!("READY-timeout cleanup failed: {cleanup_error}; continuing to the diagnostic");
+    }
+    let exit_after = child.child.try_wait().ok().flatten();
+    let phase = match kind {
+        FailureKind::Timeout => format!("exceeded the {}s timeout budget", timeout.as_secs()),
+        FailureKind::StdoutClosed => "stdout closed before READY".to_string(),
+        FailureKind::Deadline { reason } => format!(
+            "deadline pass ({reason}; exceeded the {}s timeout budget)",
+            timeout.as_secs()
+        ),
+    };
+    format!(
+        "READY handshake failed after {:?} ({phase}; child {} at failure, final {}); reason: {reason}; stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
+        started.elapsed(),
+        describe_exit(&exit_before),
+        describe_exit(&exit_after),
+        tail.snapshot(),
+    )
+}
+
 fn wait_ready(child: &mut ChildGuard, stdout: BufReader<ChildStdout>) -> Result<(), String> {
     wait_ready_with_timeout(child, stdout, READY_TIMEOUT)
 }
@@ -221,11 +271,13 @@ fn wait_ready_with_timeout(
     let remaining = deadline
         .checked_duration_since(Instant::now())
         .ok_or_else(|| {
-            format!(
-                "READY handshake timed out after {:?}; child {}; stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
-                started.elapsed(),
-                describe_exit(&child.child.try_wait().ok().flatten()),
-                tail.snapshot(),
+            finish_failure(
+                child,
+                &tail,
+                started,
+                timeout,
+                "READY deadline already passed at entry",
+                FailureKind::Timeout,
             )
         })?;
     match signal_rx.recv_timeout(remaining) {
@@ -239,41 +291,36 @@ fn wait_ready_with_timeout(
             // wait briefly so the diagnostic carries the exit status instead
             // of a misleading "still running".
             let mut waited = Duration::ZERO;
-            let exit = loop {
-                match child.child.try_wait() {
-                    Ok(Some(status)) => break Some(status),
-                    Ok(None) if waited >= Duration::from_secs(1) => break None,
-                    Ok(None) => {
+            loop {
+                match child.child.try_wait().ok().flatten() {
+                    Some(_) => break,
+                    None if waited >= Duration::from_secs(1) => break,
+                    None => {
                         thread::sleep(Duration::from_millis(10));
                         waited += Duration::from_millis(10);
                     }
-                    Err(_) => break None,
                 }
-            };
+            }
             let _ = reader.join();
-            Err(format!(
-                "child stdout closed before READY after {:?} ({}; reason: {reason}); stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
-                started.elapsed(),
-                describe_exit(&exit),
-                tail.snapshot(),
+            Err(finish_failure(
+                child,
+                &tail,
+                started,
+                timeout,
+                &reason,
+                FailureKind::StdoutClosed,
             ))
         }
         Err(reason @ (mpsc::RecvTimeoutError::Timeout | mpsc::RecvTimeoutError::Disconnected)) => {
-            let exit_before = child.child.try_wait().ok().flatten();
-            child
-                .kill_and_wait()
-                .map_err(|error| format!("{error}; during READY-timeout cleanup"))?;
-            // After the reap the status stays cached in the Child, so this
-            // describes the termination itself (signal on unix kills).
-            let exit_after = child.child.try_wait().ok().flatten();
-            let _ = reader.join();
-            Err(format!(
-                "READY handshake not completed after {:?} (exceeded the {}s timeout budget; child {} at deadline, terminated {}); reason: {reason}; stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
-                started.elapsed(),
-                timeout.as_secs(),
-                describe_exit(&exit_before),
-                describe_exit(&exit_after),
-                tail.snapshot(),
+            Err(finish_failure(
+                child,
+                &tail,
+                started,
+                timeout,
+                &reason.to_string(),
+                FailureKind::Deadline {
+                    reason: reason_str(&reason),
+                },
             ))
         }
     }
@@ -454,7 +501,7 @@ fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), Stri
         "timeout returned too early: {elapsed:?}"
     );
     assert!(
-        message.contains("READY handshake not completed"),
+        message.contains("READY handshake failed"),
         "message: {message}"
     );
     assert!(
@@ -464,7 +511,15 @@ fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), Stri
         )),
         "message: {message}"
     );
-    assert!(message.contains("still running"), "message: {message}");
+    assert!(
+        message.contains("child still running at failure"),
+        "message: {message}"
+    );
+    assert!(
+        message.contains("final exited with code 1"),
+        "message: {message}"
+    );
+    assert!(message.contains("noise line"), "message: {message}");
     assert!(
         message.contains("noise line"),
         "stdout tail must reach the diagnostics; message: {message}"
