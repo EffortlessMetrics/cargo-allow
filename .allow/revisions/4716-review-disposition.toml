@@ -1,0 +1,16 @@
+# Exact-path review-governance record for #4714 / PR #4716.
+# This note admits reviewed summary preflight source only; no CI waiver, policy
+# scope expansion, full multi-output transaction claim or release authorization.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4716-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:73a42ce6e55bd50fd445edf57966f4d77add0e2a6e8f3c961847f3ce06db46d6"
+reason = "Retain source-reviewed init common-summary destination preflight with exact disposition evidence."
+
+[[records]]
+allow_ids = ["allow-4716-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e52b88f2e409430bcd9cb362df4cb01c4c748af9217418513f6c9083dd1c0fe4"
+reason = "Self-cover the exact policy note for the bounded initialization preflight disposition."
