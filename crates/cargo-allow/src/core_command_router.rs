@@ -242,7 +242,11 @@ fn preflight_summary_destination_structure(path: &Path) -> CargoAllowResult<()> 
                         format!(
                             "--command-summary-output {} is not a usable {}",
                             candidate.display(),
-                            if candidate == path { "file target" } else { "parent directory" },
+                            if candidate == path {
+                                "file target"
+                            } else {
+                                "parent directory"
+                            },
                         ),
                     ));
                 }
