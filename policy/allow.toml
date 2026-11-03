@@ -25782,20 +25782,35 @@ column = 1
 [[allow]]
 id = "allow-1200"
 kind = "non_rust_file"
+<<<<<<< HEAD
 family = "documentation"
 path = "docs/decisions/README.md"
 owner = "core/docs"
 classification = "decision_record"
 reason = "Retain the lightweight decision-record index: lighter-than-ADR rule, lifecycle, graduation path to ADR supersession; retention is not ratification."
 evidence = ["issue:4342"]
+=======
+family = "release_script"
+path = "scripts/test-generate-release-manifest.sh"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Contract test pinning the typed ReleaseManifestV2 producer law (#3761): the generator must embed the typed envelope and refuse a package row version that is not the selected release identity; hosted CI supplies the bash/python execution proof."
+evidence = ["issue:3761", "doc:scripts/generate-release-manifest.sh"]
+>>>>>>> 842ff879 (chore(policy): receipt the manifest contract script and its revision note; refine indexing out of the incidents test (#3761))
 created = "2026-11-03"
 review_after = "2027-02-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
+<<<<<<< HEAD
 symbol = "docs/decisions/README.md"
 target_fingerprint = "md"
 glob = "docs/decisions/README.md"
+=======
+symbol = "scripts/test-generate-release-manifest.sh"
+target_fingerprint = "sh"
+glob = "scripts/test-generate-release-manifest.sh"
+>>>>>>> 842ff879 (chore(policy): receipt the manifest contract script and its revision note; refine indexing out of the incidents test (#3761))
 
 [allow.last_seen]
 line = 1
@@ -25804,6 +25819,7 @@ column = 1
 [[allow]]
 id = "allow-1201"
 kind = "non_rust_file"
+<<<<<<< HEAD
 family = "documentation"
 path = "docs/decisions/DECISION-0001-default-sensor-profile.md"
 owner = "core/docs"
@@ -25832,14 +25848,28 @@ owner = "core/docs"
 classification = "reviewed_exception"
 reason = "Self-covering governance revision note for the exact-path decision-record retention allowances under #4342; retention only, no ratification or policy broadening."
 evidence = ["issue:4342"]
+=======
+family = "configuration"
+path = ".allow/revisions/3761-release-manifest-proof-suites.toml"
+owner = "core/policy"
+classification = "revision_note"
+reason = "Self-receipt of this lane's revision note covering the #3761 proof-suite receipts, following the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
+evidence = ["issue:3761"]
+>>>>>>> 842ff879 (chore(policy): receipt the manifest contract script and its revision note; refine indexing out of the incidents test (#3761))
 created = "2026-11-03"
 review_after = "2027-02-01"
 
 [allow.selector]
 ast_kind = "tracked_file"
+<<<<<<< HEAD
 symbol = ".allow/revisions/4342-decision-records.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4342-decision-records.toml"
+=======
+symbol = ".allow/revisions/3761-release-manifest-proof-suites.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3761-release-manifest-proof-suites.toml"
+>>>>>>> 842ff879 (chore(policy): receipt the manifest contract script and its revision note; refine indexing out of the incidents test (#3761))
 
 [allow.last_seen]
 line = 1

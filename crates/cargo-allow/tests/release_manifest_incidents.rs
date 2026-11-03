@@ -190,14 +190,17 @@ fn result_vocabulary_keeps_incident_prepublication_and_complete_distinct() -> Re
 
     // Compile-time-exhaustive distinctness: three labels, three different
     // units, none collapsible into another.
-    let labels = [
+    let [complete_label, prepublication_label, incident_label] = [
         result_label(&ReleaseManifestResultV2::Complete),
         result_label(&ReleaseManifestResultV2::IncompletePrePublication),
         result_label(&ReleaseManifestResultV2::ReleaseIncident),
     ];
-    if labels[0] == labels[1] || labels[1] == labels[2] || labels[0] == labels[2] {
+    if complete_label == prepublication_label
+        || prepublication_label == incident_label
+        || complete_label == incident_label
+    {
         return Err(format!(
-            "result vocabulary collapsed distinct units: {labels:?}"
+            "result vocabulary collapsed distinct units: {complete_label}/{prepublication_label}/{incident_label}"
         ));
     }
     if incident_result == validation.result || partial_result == validation.result {

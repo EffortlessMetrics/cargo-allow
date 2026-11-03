@@ -1,0 +1,25 @@
+# Revision note: land the #3761 ReleaseManifestV2 proof suites.
+
+# This lane adds the missing test-only proof suites for the typed
+# ReleaseManifestV2 law: crates/cargo-allow/tests/release_manifest_incidents.rs
+# (incident/prepublication/Complete distinctness, fail-closed checksum laws,
+# equality-gated crate_digest projection, append-only incident lineage),
+# crates/cargo-allow/tests/release_manifest_golden.rs (full-payload final
+# 0.2.0 golden), and scripts/test-generate-release-manifest.sh (producer
+# contract test). The two new ledger entries below receipt the new
+# release-script contract test (the scanner counts it as a new
+# non_rust_file.release_script tracked file) and this note file itself;
+# the two new Rust test suites carry no panic-family findings and need no
+# entries.
+
+[[records]]
+allow_ids = ["allow-1200"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:06e7ed100f893f02190b192419140f9e79130ba74ee70a9f3dcb24690a804faf"
+reason = "Receipts the new executable contract test scripts/test-generate-release-manifest.sh, which pins the generator's typed-envelope embedding and its refusal of a package row version that is not the selected release identity (#3761). Owner core/release with the release-automation-script classification follows the existing release-script entries (for example allow-0509); the hosted CI bash/python run is the execution proof."
+
+[[records]]
+allow_ids = ["allow-1201"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bbd07f188508c6e305d9b03227f296ac2131b8cc1c9fb674ba90481b4a67a602"
+reason = "Self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
