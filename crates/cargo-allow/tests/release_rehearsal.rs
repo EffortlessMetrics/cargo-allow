@@ -53,8 +53,11 @@ struct WorkflowGraphPermissionsRecordV1 {
     release_jobs: Vec<String>,
     privileged_jobs: Vec<String>,
     top_level_read_scoped: bool,
+    top_level_contents_read_scoped: bool,
     top_level_write_scoped: bool,
+    top_level_permissions_least_privilege: bool,
     github_release_scoped: bool,
+    non_publisher_jobs_read_only: bool,
     authorized_namespace_mode: bool,
 }
 
@@ -563,8 +566,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     })?;
     require(
         workflow.top_level_read_scoped
-            && workflow.top_level_write_scoped
+            && workflow.top_level_contents_read_scoped
+            && !workflow.top_level_write_scoped
+            && workflow.top_level_permissions_least_privilege
             && workflow.github_release_scoped
+            && workflow.non_publisher_jobs_read_only
             && workflow.authorized_namespace_mode,
         "the recorded workflow graph proof must carry every least-privilege law",
     )?;

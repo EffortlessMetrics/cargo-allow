@@ -1,0 +1,15 @@
+# Exact-path source-review governance for workflow least privilege #4344 / PR #4713.
+# Source review only; no release authorization, provider-control mutation or CI waiver.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4713-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0d0832a5b39854e30fa090a03b37158a7658c732cb7e0115d4bc9c71f6a34170"
+reason = "Admit the exact current-pair security source review without broader exceptions."
+
+[[records]]
+allow_ids = ["allow-4713-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bca8048ed2046e94bf7ba6386f874aab3deec0459d18c7bf424ae45186e62355"
+reason = "Self-cover the reviewed security disposition revision note."

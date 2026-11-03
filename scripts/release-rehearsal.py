@@ -848,92 +848,254 @@ def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
 
 
 def _yaml_workflow_inventory(path: Path) -> dict[str, Any] | None:
-    """Parse one workflow manifest with PyYAML; None when unavailable."""
+    """Parse the release workflow without granting a text-search fallback authority."""
     try:
         import yaml
     except ImportError:
         return None
     try:
-        parsed = yaml.safe_load(path.read_text(encoding="utf-8"))
+        class UniqueKeySafeLoader(yaml.SafeLoader):
+            """Do not let duplicate YAML mapping keys hide privileged scopes."""
+
+            def construct_mapping(self, node, deep=False):
+                if not isinstance(node, yaml.MappingNode):
+                    raise yaml.constructor.ConstructorError(
+                        None, None, "expected YAML mapping", node.start_mark
+                    )
+                seen = set()
+                for key_node, _ in node.value:
+                    key = self.construct_object(key_node, deep=deep)
+                    try:
+                        if key in seen:
+                            raise yaml.constructor.ConstructorError(
+                                None, None, f"duplicate mapping key: {key!r}",
+                                key_node.start_mark,
+                            )
+                        seen.add(key)
+                    except TypeError as error:
+                        raise yaml.constructor.ConstructorError(
+                            None, None, f"unhashable mapping key: {key!r}",
+                            key_node.start_mark,
+                        ) from error
+                return super().construct_mapping(node, deep=deep)
+
+        parsed = yaml.load(
+            path.read_text(encoding="utf-8"), Loader=UniqueKeySafeLoader,
+        )
     except Exception as exc:
         return {"error": f"YAML parse error: {exc}"}
-    if not isinstance(parsed, dict) or "jobs" not in parsed:
-        return {"error": "workflow is not a mapping with jobs"}
-    jobs = {
-        job_name: {
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("jobs"), dict):
+        return {"error": "workflow must contain a mapping of jobs"}
+    jobs = {}
+    for job_name, job in parsed["jobs"].items():
+        if not isinstance(job_name, str) or not isinstance(job, dict):
+            return {"error": "workflow job must be a named mapping"}
+        jobs[job_name] = {
             "permissions": job.get("permissions"),
             "runs_on": job.get("runs-on"),
         }
-        for job_name, job in parsed["jobs"].items()
-        if isinstance(job, dict)
-    }
     return {"top_level_permissions": parsed.get("permissions"), "jobs": jobs}
 
 
-def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
-    """Bind the release workflow graph's permission surface (#3751 phase).
+def _scoped_text_workflow_inventory(text: str) -> dict[str, Any]:
+    """Parse only unambiguous release permission scopes with Python stdlib.
 
-    Enforces the least-privilege law — top-level ``actions: read`` and
-    ``contents: write``, with ``github-release`` as the write/OIDC-scoped
-    job and the authorized namespace workflow in namespace mode — and
-    records the proof. PyYAML is used when available; otherwise the same
-    law is checked on the pinned manifest strings.
+    This is not a YAML parser. It accepts the checked release file's literal
+    mapping style for top-level permissions and job permission maps. Any
+    unsupported shape, duplicate mapping, alias, or unknown indentation in
+    those maps fails closed; textual substring presence never proves a scope.
+    The separate actionlint workflow-syntax gate checks the full YAML.
+    """
+    def bad(reason: str) -> dict[str, Any]:
+        return {"error": f"unsupported scoped workflow syntax: {reason}"}
+
+    def mapping_entry(raw: str, indent: int) -> tuple[str, str] | None:
+        key, separator, value = raw[indent:].partition(":")
+        if not separator or not key or any(
+            not (char.isascii() and (char.isalnum() or char in "_-"))
+            for char in key
+        ):
+            return None
+        value = value.strip()
+        if value.startswith("#"):
+            value = ""
+        elif " #" in value:
+            value = value.split(" #", 1)[0].rstrip()
+        return key, value
+
+    top_permissions: dict[str, str] = {}
+    jobs: dict[str, dict[str, Any]] = {}
+    seen_sections: set[str] = set()
+    current_section: str | None = None
+    current_job: str | None = None
+    in_job_permissions = False
+
+    for number, raw in enumerate(text.splitlines(), 1):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        prefix = raw[:len(raw) - len(raw.lstrip())]
+        if "\t" in prefix:
+            return bad(f"tab indentation at line {number}")
+        indent = len(raw) - len(raw.lstrip(" "))
+        if indent == 0:
+            entry = mapping_entry(raw, indent)
+            if entry is None:
+                return bad(f"top-level declaration at line {number}")
+            key, value = entry
+            if key in {"permissions", "jobs"}:
+                if key in seen_sections or value:
+                    return bad(f"duplicate or nonliteral {key} at line {number}")
+                seen_sections.add(key)
+                current_section = key
+            else:
+                current_section = None
+            current_job = None
+            in_job_permissions = False
+            continue
+        if current_section == "permissions":
+            if indent != 2:
+                return bad(f"top-level permissions indentation at line {number}")
+            entry = mapping_entry(raw, indent)
+            if entry is None:
+                return bad(f"top-level permissions entry at line {number}")
+            key, level = entry
+            if key in top_permissions or level not in {"read", "write", "none"}:
+                return bad(f"duplicate or unsupported top-level scope at line {number}")
+            top_permissions[key] = level
+        elif current_section == "jobs":
+            if indent == 2:
+                entry = mapping_entry(raw, indent)
+                if entry is None:
+                    return bad(f"job declaration at line {number}")
+                key, value = entry
+                if value or key in jobs:
+                    return bad(f"duplicate or nonliteral job at line {number}")
+                jobs[key] = {"permissions": None}
+                current_job = key
+                in_job_permissions = False
+            elif current_job is None:
+                return bad(f"unnamed job body at line {number}")
+            elif indent == 4:
+                entry = mapping_entry(raw, indent)
+                if entry is None:
+                    return bad(f"job property at line {number}")
+                key, value = entry
+                if key == "permissions":
+                    if value or jobs[current_job]["permissions"] is not None:
+                        return bad(f"duplicate or nonliteral job permissions at line {number}")
+                    jobs[current_job]["permissions"] = {}
+                    in_job_permissions = True
+                elif key == "<<" or key.startswith("permissions"):
+                    return bad(f"unsupported job permission merge at line {number}")
+                else:
+                    in_job_permissions = False
+            elif indent == 6 and in_job_permissions:
+                entry = mapping_entry(raw, indent)
+                if entry is None:
+                    return bad(f"job permissions entry at line {number}")
+                key, level = entry
+                permissions = jobs[current_job]["permissions"]
+                if key in permissions or level not in {"read", "write", "none"}:
+                    return bad(f"duplicate or unsupported job scope at line {number}")
+                permissions[key] = level
+            elif in_job_permissions or indent in {3, 5}:
+                return bad(f"unsupported job permissions indentation at line {number}")
+
+    if seen_sections != {"permissions", "jobs"} or not jobs:
+        return bad("release workflow lacks literal permissions or job map")
+    return {
+        "mode": "scoped_text",
+        "top_level_permissions": top_permissions,
+        "jobs": jobs,
+    }
+
+
+def _valid_permission_map(value: Any) -> bool:
+    """Reject shorthand, malformed and unevaluated permission declarations."""
+    return isinstance(value, dict) and all(
+        isinstance(scope, str)
+        and isinstance(level, str)
+        and level in {"read", "write", "none"}
+        for scope, level in value.items()
+    )
+
+
+def _least_privilege_workflow_graph_proof(
+    parsed: dict[str, Any], authorized_namespace_mode: bool,
+) -> dict[str, Any] | None:
+    """Project actual YAML permission scopes, never substring matches."""
+    top = parsed.get("top_level_permissions")
+    jobs = parsed.get("jobs")
+    if not _valid_permission_map(top) or not isinstance(jobs, dict) or not jobs:
+        return None
+    if "github-release" not in jobs:
+        return None
+    for name, job in jobs.items():
+        if not isinstance(name, str) or not isinstance(job, dict):
+            return None
+        permissions = job.get("permissions")
+        if permissions is not None and not _valid_permission_map(permissions):
+            return None
+
+    publisher = jobs["github-release"]["permissions"]
+    privileged = sorted(
+        name for name, job in jobs.items()
+        if job["permissions"] is not None
+        and any(level == "write" for level in job["permissions"].values())
+    )
+    return {
+        "mode": parsed.get("mode", "yaml"),
+        "release_jobs": sorted(jobs),
+        "privileged_jobs": privileged,
+        "top_level_read_scoped": top.get("actions") == "read",
+        "top_level_contents_read_scoped": top.get("contents") == "read",
+        "top_level_write_scoped": top.get("contents") == "write",
+        "top_level_permissions_least_privilege": top == {
+            "actions": "read", "contents": "read",
+        },
+        "github_release_scoped": publisher == {
+            "contents": "write",
+            "attestations": "write",
+            "id-token": "write",
+        },
+        "non_publisher_jobs_read_only": privileged == ["github-release"],
+        "authorized_namespace_mode": authorized_namespace_mode,
+    }
+
+
+def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
+    """Prove read-default release permissions and one job-scoped publisher.
+
+    Without PyYAML, only a strict literal mapping parser may certify the
+    known permission subsections; malformed/aliased maps are not promoted.
     """
     release_path = ROOT / ".github/workflows/release.yml"
     authorized_path = ROOT / ".github/workflows/release-authorized.yml"
     try:
-        release_text = release_path.read_text(encoding="utf-8")
         authorized_text = authorized_path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return PHASE_MISMATCH
-
     parsed = _yaml_workflow_inventory(release_path)
-    if parsed is not None and "error" in parsed:
-        return PHASE_MISMATCH
-
-    authorized_namespace_mode = "--mode namespace" in authorized_text
     if parsed is None:
-        proof = {
-            "mode": "text",
-            "release_jobs": [],
-            "privileged_jobs": [],
-            "top_level_read_scoped": "actions: read" in release_text,
-            "top_level_write_scoped": "contents: write" in release_text,
-            "github_release_scoped": "id-token: write" in release_text,
-            "authorized_namespace_mode": authorized_namespace_mode,
-        }
-    else:
-        jobs = parsed["jobs"]
-        if not isinstance(jobs, dict) or not jobs:
+        try:
+            release_text = release_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
             return PHASE_MISMATCH
-        privileged = sorted(
-            job_name
-            for job_name, job in jobs.items()
-            if isinstance(job.get("permissions"), dict)
-        )
-        proof = {
-            "mode": "yaml",
-            "release_jobs": sorted(jobs),
-            "privileged_jobs": privileged,
-            "top_level_read_scoped": parsed.get("top_level_permissions", {}).get(
-                "actions"
-            )
-            == "read",
-            "top_level_write_scoped": parsed.get("top_level_permissions", {}).get(
-                "contents"
-            )
-            == "write",
-            "github_release_scoped": jobs.get("github-release", {}).get(
-                "permissions", {}
-            ).get("id-token")
-            == "write",
-            "authorized_namespace_mode": authorized_namespace_mode,
-        }
-
+        parsed = _scoped_text_workflow_inventory(release_text)
+    if "error" in parsed:
+        return PHASE_MISMATCH
+    proof = _least_privilege_workflow_graph_proof(
+        parsed, "--mode namespace" in authorized_text,
+    )
+    if proof is None:
+        return PHASE_MISMATCH
     if not (
         proof["top_level_read_scoped"]
-        and proof["top_level_write_scoped"]
+        and proof["top_level_contents_read_scoped"]
+        and not proof["top_level_write_scoped"]
+        and proof["top_level_permissions_least_privilege"]
         and proof["github_release_scoped"]
+        and proof["non_publisher_jobs_read_only"]
         and proof["authorized_namespace_mode"]
     ):
         return PHASE_MISMATCH
