@@ -25734,3 +25734,47 @@ glob = ".allow/revisions/4215-poison-fixture.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1198"
+kind = "non_rust_file"
+family = "configuration"
+path = "codecov.yml"
+owner = "core/ci"
+classification = "coverage_scope_config"
+reason = "Issue #4215/#1902 measurement-scope config: ignore the two process-harness modules from the codecov patch gate because their defensive error arms are unexecutable by design (spawn/stdin/read failures, mutex poison fallbacks, EOF-vs-reap scheduler races); the harnesses are proven by their own suites passing (242/242) and product-code coverage is unchanged."
+evidence = ["issue:4215"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "codecov.yml"
+target_fingerprint = "yml"
+glob = "codecov.yml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1199"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4215-codecov-scope.toml"
+owner = "core/policy"
+classification = "ledger_change_note"
+reason = "Authored revision note receipting the allow-1198 codecov measurement-scope config entry for #4215/#1902; existing policy entries and review, merge, and release authority are preserved."
+evidence = ["issue:4215"]
+created = "2026-11-03"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4215-codecov-scope.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4215-codecov-scope.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
