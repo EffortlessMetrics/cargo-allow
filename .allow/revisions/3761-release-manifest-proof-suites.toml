@@ -13,13 +13,13 @@
 # entries.
 
 [[records]]
-allow_ids = ["allow-1200"]
+allow_ids = ["allow-1203"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:06e7ed100f893f02190b192419140f9e79130ba74ee70a9f3dcb24690a804faf"
+after_fingerprint = "sha256:v1:234e444eaf11a96d940d0de37e5c9091a3f85d11891973d0ea959df72c7acc34"
 reason = "Receipts the new executable contract test scripts/test-generate-release-manifest.sh, which pins the generator's typed-envelope embedding and its refusal of a package row version that is not the selected release identity (#3761). Owner core/release with the release-automation-script classification follows the existing release-script entries (for example allow-0509); the hosted CI bash/python run is the execution proof."
 
 [[records]]
-allow_ids = ["allow-1201"]
+allow_ids = ["allow-1204"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:bbd07f188508c6e305d9b03227f296ac2131b8cc1c9fb674ba90481b4a67a602"
+after_fingerprint = "sha256:v1:8b2f8d90f8691eac66c5b7c27f335032335287ca7a9562d6fe5a299336106b6a"
 reason = "Self-receipt for this revision note file, matching the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
