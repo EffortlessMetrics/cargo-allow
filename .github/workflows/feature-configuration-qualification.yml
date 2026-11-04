@@ -1,15 +1,10 @@
 name: Feature configuration qualification
 
-# #3905 PR D: weekly backstop proving the FULL selected feature-configuration
-# union (every harness-provable matrix row) plus the no-new source-tree
-# guard. The PR-routed feature-configuration-proof job in ci.yml proves only
-# the rows derived from changed files; this scheduled lane is the drift
-# backstop for rows no pull request touched, and it proves the workspace
-# still qualifies as a whole.
+# #3905 full selected feature union for an explicit deep qualification.
+# Ordinary changes use the affected-row producer on actual G in ci.yml.
+# No periodic main replay is scheduled (#4602).
 
 on:
-  schedule:
-    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:

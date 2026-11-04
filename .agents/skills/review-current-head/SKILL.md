@@ -154,8 +154,9 @@ CI is evidence, not the review authority.
 - Bind every check, receipt, and external result to the exact reviewed
   base/head pair and relevant tool/configuration identity.
 - When a provider evaluates a synthetic merge or queue commit, record that
-  commit and verify its parents correspond to the reviewed base/head pair. Do
-  not present synthetic-merge evidence as bare-head evidence.
+  actual G, its base, tree and ordered queue composition. Queue predecessors
+  may make this broader than one reviewed base/head pair. Do not present G
+  evidence as bare-H evidence or assume a two-parent shape proves membership.
 - Distinguish `failed`, `pending`, `cancelled`, `skipped`, `not applicable`,
   `stale`, `malformed`, `not proven`, and `action required`.
 - Classify failures as product, test/oracle, policy, instrument, infrastructure,
@@ -249,7 +250,10 @@ In a solo-maintainer workflow, same-account review comments do not trigger GitHu
 
 When `review-current-head` identifies a merge-blocking defect:
 - submit the review findings with exact base/head and merge-base identities;
-- **convert the PR to draft immediately in the same review pass** (`gh pr ready --undo`);
+- if enqueued, withdraw the native queue entry and read back its outcome; a
+  separate read/remove is not atomic, so record actual M if landing won;
+- **convert the PR to draft in the same review pass** (`gh pr ready --undo`);
+  Draft alone is not proof that an in-flight entry was withdrawn;
 - post the smallest actionable repair packet for the author/writer;
 - do not mark the PR ready merely because CI turns green or the author claims the defect is resolved;
 - any subsequent author commit or base movement invalidates the prior review;
@@ -259,27 +263,27 @@ A blocking review retains real control authority through draft state even when A
 
 ## Merge Readiness
 
-A PR is merge-ready only when all applicable statements are true:
+For the queue-only lifecycle, the H review establishes whether the selected
+source may receive conditional landing authority. Before enqueue, verify:
 
-- the reviewed head, base SHA/ref, and effective merge base still match the live
-  PR state used for the verdict;
-- the PR is non-draft and mergeable against the intended base;
-- every substantive inline thread and top-level review conversation is resolved
-  with current-pair evidence;
-- all required checks are terminal and green, or explicitly accepted as not
-  applicable under repository policy;
-- pending, cancelled, stale, malformed, action-required, and silently skipped
-  evidence are not treated as green;
-- claimed tests and receipts belong to the exact base/head pair;
-- no author commit or material base change landed after the final current-pair
-  review;
-- source-exception, schema, documentation, changelog, package, support, and
-  release impacts are reconciled where applicable;
-- the merge is head-pinned where the platform permits;
-- post-merge main verification and issue/branch/worktree reconciliation remain
-  scheduled.
+- exact current H, base/ref and effective merge base, with every affected
+  review dimension refreshed and unaffected evidence retaining its identity;
+- non-draft source, current product/scope fit and disposition of substantive
+  inline/outdated threads and Conversation findings;
+- applicable in-session proof and a supported, observed protected admission
+  operation for the exact H; no fake check or future G result is needed;
+- explicit conditional authority for native landing if the actual G qualifies.
 
-Green CI alone is not merge readiness. Merge is not closeout.
+G is created after enqueue from the queue's actual base and predecessors. Its
+required proof is a separate obligation. A green G may land without another
+manual review pause. New blocking findings at unchanged H revoke authority and
+require withdrawal/readback; report any landing race honestly. Missing, stale,
+failed, cancelled, malformed or silently skipped evidence is not green.
+
+Review readiness is not queue admission; admission is not a qualification result;
+merge is not objective closeout. The owner reads back M and reconciles evidence,
+acceptance and residual work without routine main replay. Follow
+`docs/ci/merge-queue-cutover.md`; source changes alone do not activate the route.
 
 ## Failure Conditions
 

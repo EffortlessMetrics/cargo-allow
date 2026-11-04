@@ -39,6 +39,14 @@ scan should remain usable even when the checked-out repository does not build.
 
 ## Repository CI
 
+Ordinary repository qualification runs only for the native merge queue's actual
+G. Development checks and H review/authorization run in the owning session;
+Draft, Ready and other PR activity launch no Actions. See the
+[queue source/settings cutover](ci/merge-queue-cutover.md) for required-context
+mapping, activation holds, proof identity and protected landing readback. The
+copyable product-adoption examples below retain their separate consumer purpose.
+
+
 cargo-allow's own GitHub Actions workflow is split into product-scoped lanes
 (#3358) so one product's experimental failure cannot block an unrelated
 cargo-allow patch or release lane. The checked authority for the topology and
@@ -253,9 +261,9 @@ full-boundary runs; `test` and `cargo-deny` also stay on a narrow plan, and
   the checked-in projection
   `docs/assets/feature-configuration-matrix-v1.json`, then proves exactly
   those rows through `allow-report`'s `#[ignore]`d recursive cargo proof
-  suite; docs-only changes select no rows. The weekly scheduled
-  **`feature-configuration-qualification`** workflow is the full selected
-  union backstop.
+  suite; docs-only changes select no rows. The explicitly requested
+  **`feature-configuration-qualification`** workflow proves the full selected
+  union for a separately admitted deep qualification.
 - **`test-core-platforms`**: complete release-set suite on Linux, Windows,
   Apple Silicon macOS, and Intel macOS, including allow-rust's persistent
   scan-cache tests (#3915 PR C); a contract test drift-guards the rows

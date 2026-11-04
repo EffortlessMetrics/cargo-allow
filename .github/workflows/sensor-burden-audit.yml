@@ -1,11 +1,11 @@
 name: Sensor burden audit
 
-# #3883 follow-up: weekly scheduled run of the #4325 default sensor and
+# #3883 follow-up: explicitly requested #4325 default sensor and
 # policy burden audit harness (scripts/audit-default-sensor-burden.sh).
 # The harness is read-only, generates labeled synthetic fixtures at
 # runtime, and emits
 # target/sensor-burden/default-sensor-burden.receipt.json
-# (cargo-allow.default-sensor-burden-audit.v1). Running it in CI keeps
+# (cargo-allow.default-sensor-burden-audit.v1). An explicit audit keeps
 # docs/audits/default-sensor-burden-2026-09.md measurable instead of
 # silently rotting. The harness exits non-zero when a recorded invariant
 # fails; that failure IS the signal, so the job is advisory in spirit but
@@ -13,8 +13,6 @@ name: Sensor burden audit
 # read-only permissions.
 
 on:
-  schedule:
-    - cron: '0 9 * * 1'
   workflow_dispatch:
 
 permissions:
