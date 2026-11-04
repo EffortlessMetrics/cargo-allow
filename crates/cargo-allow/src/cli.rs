@@ -393,7 +393,9 @@ fn configure_summary_output(
     let Some(path) = summary_output else {
         return Ok(());
     };
-    use crate::core_command_router::ConflictBase::{SourceTreeRoot, WorkingDirectory};
+    use crate::core_command_router::ConflictBase::{
+        SourceTreeRoot, SourceTreeTargetBackup, WorkingDirectory,
+    };
     // `--config` is discovered under the source-tree root for every command, and
     // `adopt` resolves `--output` under the root as well. The rest write through
     // `emit_text`/`write_file`, which are relative to the working directory.
@@ -439,7 +441,15 @@ fn configure_summary_output(
             (SourceTreeRoot, args.config.clone()),
         ],
         CargoAllowCommand::Init(args) if args.profile.is_none() => {
-            vec![(SourceTreeRoot, Some(args.config.clone()))]
+            // Reserve recovery bytes even for previews and error summaries.
+            // Match write_file_no_overwrite's existing backup naming law;
+            // the router resolves the policy before deriving its actual backup
+            // on every validation, including preview and error emission.
+            vec![
+                (SourceTreeRoot, Some(args.config.clone())),
+                (SourceTreeRoot, Some(args.config.with_extension("toml.bak"))),
+                (SourceTreeTargetBackup, Some(args.config.clone())),
+            ]
         }
         CargoAllowCommand::Propose(args) => vec![
             (WorkingDirectory, args.write.clone()),

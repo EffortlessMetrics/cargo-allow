@@ -167,6 +167,203 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
     remove_temp_root(root)
 }
 
+struct InitSummaryRootCleanup(PathBuf);
+
+impl Drop for InitSummaryRootCleanup {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+/// #4714: a preflight rejection must not create or replace the live ledger.
+/// These cases execute the installed bin with real argv, root/cwd resolution,
+/// and filesystem effects; error-summary emission remains best effort.
+#[test]
+fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(), String> {
+    let root = temp_root("init-summary-preflight")?;
+    let _cleanup = InitSummaryRootCleanup(root.clone());
+    write_source(&root, "pub fn clean() {}\n")?;
+    git_commit_fixture(&root)?;
+    let policy = root.join("policy/allow.toml");
+    let outside = root.with_extension("outside-summary.json");
+    let outside_text = outside.to_string_lossy().into_owned();
+
+    let first = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &outside_text,
+            "init",
+            "--strict",
+        ],
+    )?;
+    require(
+        !first.status.success(),
+        "outside-root summary must be refused",
+    )?;
+    require(
+        !policy.exists() && !outside.exists(),
+        "outside-root refusal created policy or summary before returning",
+    )?;
+
+    fs::create_dir_all(root.join("policy"))
+        .map_err(|error| format!("create policy dir: {error}"))?;
+    let canary = b"policy = \"cargo-allow\"\n# original-policy-canary\n";
+    fs::write(&policy, canary).map_err(|error| format!("seed policy: {error}"))?;
+    let force = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &outside_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        !force.status.success(),
+        "force must refuse outside-root sidecar",
+    )?;
+    require(
+        fs::read(&policy).map_err(|error| error.to_string())? == canary,
+        "force mutated the original policy before sidecar refusal",
+    )?;
+    require(
+        !policy.with_extension("toml.bak").exists() && !outside.exists(),
+        "force left backup or summary after preflight refusal",
+    )?;
+
+    let blocked = root.join("parent-is-a-file");
+    fs::write(&blocked, "parent-canary")
+        .map_err(|error| format!("seed blocked parent: {error}"))?;
+    let invalid = blocked.join("summary.json");
+    let invalid_text = invalid.to_string_lossy().into_owned();
+    let impossible = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &invalid_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        !impossible.status.success(),
+        "file-parent summary must be refused",
+    )?;
+    require(
+        fs::read(&policy).map_err(|error| error.to_string())? == canary
+            && !policy.with_extension("toml.bak").exists()
+            && fs::read_to_string(&blocked).map_err(|error| error.to_string())? == "parent-canary",
+        "file-parent refusal mutated policy, backup or blocker",
+    )?;
+
+    // Existing directories cannot be overwritten as JSON sidecars.
+    let directory_target = root.join("directory-summary-target");
+    fs::create_dir_all(&directory_target)
+        .map_err(|error| format!("create blocked summary directory: {error}"))?;
+    let directory_text = directory_target.to_string_lossy().into_owned();
+    let directory_refusal = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &directory_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        !directory_refusal.status.success()
+            && fs::read(&policy).map_err(|error| error.to_string())? == canary
+            && !policy.with_extension("toml.bak").exists()
+            && directory_target.is_dir(),
+        "directory-sidecar refusal must preserve original policy and backup absence",
+    )?;
+
+    // A supported in-root destination must still write both outputs.
+    let valid = root.join("target/init-summary.json");
+    let valid_text = valid.to_string_lossy().into_owned();
+    let success = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &valid_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        success.status.success(),
+        format!(
+            "valid init must work: {}",
+            String::from_utf8_lossy(&success.stderr)
+        ),
+    )?;
+    require(
+        policy.exists() && valid.exists() && policy.with_extension("toml.bak").exists(),
+        "valid forced init must write policy, backed-up prior ledger and summary",
+    )?;
+    let summary = read_summary_json(&valid)?;
+    require(
+        field(&summary, &["operation"]) == Some(&Value::from("init")),
+        "valid initialization emitted a non-init summary",
+    )?;
+    // Replacing an existing *regular-file* summary remains a supported path.
+    let reuse = run(
+        &root,
+        &[
+            "--command-summary-output",
+            &valid_text,
+            "init",
+            "--strict",
+            "--force",
+        ],
+    )?;
+    require(
+        reuse.status.success() && read_summary_json(&valid).is_ok(),
+        "existing regular-file summary target must remain writable",
+    )?;
+    remove_temp_root(root)
+}
+
+/// The common sidecar is relative to the *working directory*, not --root.
+#[test]
+fn init_preflight_respects_cross_cwd_common_summary_resolution() -> Result<(), String> {
+    let root = temp_root("init-summary-cross-cwd")?;
+    let _cleanup = InitSummaryRootCleanup(root.clone());
+    write_source(&root, "pub fn clean() {}\n")?;
+    git_commit_fixture(&root)?;
+    let cwd = root.join("work");
+    fs::create_dir_all(&cwd).map_err(|error| error.to_string())?;
+    let root_text = root.to_string_lossy().into_owned();
+    let accepted = run_from(
+        &cwd,
+        &[
+            "--command-summary-output",
+            "../target/cross-cwd.json",
+            "init",
+            "--root",
+            &root_text,
+            "--strict",
+        ],
+    )?;
+    require(
+        accepted.status.success(),
+        format!(
+            "in-root cross-cwd summary should work: {}",
+            String::from_utf8_lossy(&accepted.stderr)
+        ),
+    )?;
+    require(
+        root.join("policy/allow.toml").exists() && root.join("target/cross-cwd.json").exists(),
+        "cross-cwd summary path should resolve from cwd and write inside source root",
+    )?;
+    remove_temp_root(root)
+}
+
 #[test]
 fn core_command_summary_mutation_propose_preserves_candidate_boundary() -> Result<(), String> {
     let root = temp_root("summary-propose")?;
@@ -1587,20 +1784,30 @@ fn a_relative_summary_path_from_outside_the_root_never_writes_into_the_repo() ->
         .to_string_lossy()
         .to_string();
 
-    // `init` goes first: its own policy write precedes the summary stage, so
-    // the refusal must leave the policy in place while the sidecar lands
-    // nowhere. The commit it enables is what lets `diff --base HEAD` below
-    // reach its own summary stage.
+    // #4714: the same outside-root summary refusal must now precede even
+    // init's policy mutation. A prior characterization expected the old
+    // partial-write defect; do not preserve that false-positive behavior.
     let init_output = run_summary_from_outside(&parent, &name, "init", &["init"])?;
     require(
-        root.join("policy/allow.toml").is_file(),
+        !root.join("policy/allow.toml").exists(),
         format!(
-            "init's own policy write must survive the sidecar refusal, got {:?} / {}",
+            "init must preserve policy absence on sidecar refusal, got {:?} / {}",
             init_output.status,
             String::from_utf8_lossy(&init_output.stderr)
         ),
     )?;
     require_summary_refused("init", &init_output, &root, &parent)?;
+
+    // Create a policy through the normal, valid route so later
+    // `diff --base HEAD` checks have the same committed fixture as before.
+    let valid_init = run(&root, &["init"])?;
+    require(
+        valid_init.status.success() && root.join("policy/allow.toml").is_file(),
+        format!(
+            "normal init must succeed after refusal: {}",
+            String::from_utf8_lossy(&valid_init.stderr)
+        ),
+    )?;
     git_commit_fixture(&root)?;
 
     let commands: [(&str, &[&str]); 8] = [

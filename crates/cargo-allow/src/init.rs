@@ -112,6 +112,14 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             ),
         ));
     }
+    // #4714: Reject a known-invalid common summary destination before the
+    // first policy or backup write. Retain the writer's final validation;
+    // this is a preflight, not a promise of two-file atomicity.
+    crate::core_command_router::reject_configured_summary_output_collision(
+        &root,
+        &[&path],
+        "--command-summary-output must differ from the initialized policy",
+    )?;
     // Derive the receipt path from the validated write target, not the raw
     // `--config` spelling: an absolute in-root path would otherwise be stored
     // verbatim, and the tracked-file inventory reports the repo-relative path,
