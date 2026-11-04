@@ -647,9 +647,13 @@ pub fn select_authorization_for_run_v1(
 }
 
 /// Select an authorization bound to one canonical #3940 release operation.
-/// The operation's authorization digest must equal the custody record's:
-/// the `AuthorizationSelected` event and this selection name the same
-/// immutable authorization, never a foreign one.
+/// The operation's authorization digest must equal the custody record's, and
+/// the record's retained freeze, replay and candidate-custody evidence must
+/// equal the identity's authority digests: the `AuthorizationSelected` event
+/// and this selection name the same immutable authorization and the same
+/// frozen evidence, never a foreign one. Authority retained for one frozen
+/// operation cannot be attached to another operation that merely shares the
+/// authorization digest.
 pub fn select_authorization_for_operation_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
     record: &mut CargoAllowReleaseAuthorizationCustodyV1,
@@ -663,8 +667,14 @@ pub fn select_authorization_for_operation_v1(
     if identity.operation_class != CargoAllowReleaseOperationClassV1::CleanFinalPublication {
         return Err("custody selection belongs only to the clean final operation");
     }
-    if identity.authorization_digest != record.authorization_digest {
-        return Err("selection requires the operation authorization");
+    if identity.authorization_digest != record.authorization_digest
+        || identity.freeze_digest != record.mint.freeze_receipt_digest
+        || identity.replay_digest != record.mint.replay_digest
+        || identity.custody_digest != record.mint.candidate_custody_digest
+    {
+        return Err(
+            "selection requires the operation authorization and its exact freeze, replay and custody evidence",
+        );
     }
     let identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;

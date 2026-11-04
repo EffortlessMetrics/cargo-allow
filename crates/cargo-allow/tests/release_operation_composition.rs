@@ -124,9 +124,15 @@ fn canonical_identity(nonce: &str) -> Result<CargoAllowReleaseOperationIdentityV
     )
 }
 
-fn canonical_head(
+fn canonical_history(
     identity: &CargoAllowReleaseOperationIdentityV1,
-) -> Result<allow_report::CargoAllowReleaseOperationHeadV1, Box<dyn Error>> {
+) -> Result<
+    (
+        Vec<CargoAllowReleaseOperationEventV1>,
+        allow_report::CargoAllowReleaseOperationHeadV1,
+    ),
+    Box<dyn Error>,
+> {
     let producer = allow_report::CargoAllowReleaseOperationProducerV1 {
         tool: "cargo-allow".to_string(),
         schema: "cargo-allow.release-operation-producer.v1".to_string(),
@@ -175,10 +181,9 @@ fn canonical_head(
             .map_err(io::Error::other)?;
         events.push(event);
     }
-    Ok(
-        compile_release_operation_head_v1(identity, &events, EVALUATED_AT)
-            .map_err(io::Error::other)?,
-    )
+    let head = compile_release_operation_head_v1(identity, &events, EVALUATED_AT)
+        .map_err(io::Error::other)?;
+    Ok((events, head))
 }
 
 fn journal_row() -> PublicationJournalRowV1 {
@@ -286,7 +291,7 @@ fn store_checkpoint(
 #[test]
 fn one_canonical_operation_across_journal_checkpoint_lease_and_tag() -> Result<(), Box<dyn Error>> {
     let identity = canonical_identity("composition-0001")?;
-    let head = canonical_head(&identity)?;
+    let (canonical_events, head) = canonical_history(&identity)?;
     let identity_digest =
         release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?;
     let head_digest = release_operation_head_digest_v1(&head).map_err(io::Error::other)?;
@@ -306,6 +311,7 @@ fn one_canonical_operation_across_journal_checkpoint_lease_and_tag() -> Result<(
     // back Complete against the live journal.
     let mut checkpoint = begin_publication_checkpoint_for_operation_v1(
         &identity,
+        &canonical_events,
         &head,
         allow_report::PublicationCheckpointInitV1 {
             checkpoint_id: "checkpoint-0-2-0-001".to_string(),
@@ -485,7 +491,7 @@ fn foreign_operation_breaks_composition() -> Result<(), Box<dyn Error>> {
 
     // A checkpoint for another operation cannot gate this journal: the
     // journal cross-check pins the canonical identity digest.
-    let foreign_head = canonical_head(&foreign)?;
+    let (foreign_events, foreign_head) = canonical_history(&foreign)?;
     let journal_head = journal
         .entries
         .last()
@@ -495,6 +501,7 @@ fn foreign_operation_breaks_composition() -> Result<(), Box<dyn Error>> {
     // authorization and head) distinguishes the foreign checkpoint.
     let mut foreign_checkpoint = begin_publication_checkpoint_for_operation_v1(
         &foreign,
+        &foreign_events,
         &foreign_head,
         allow_report::PublicationCheckpointInitV1 {
             checkpoint_id: "checkpoint-foreign-001".to_string(),
@@ -559,7 +566,7 @@ fn foreign_operation_breaks_composition() -> Result<(), Box<dyn Error>> {
 #[test]
 fn composition_renderings_validate_against_schemas() -> Result<(), Box<dyn Error>> {
     let identity = canonical_identity("composition-0001")?;
-    let head = canonical_head(&identity)?;
+    let (canonical_events, head) = canonical_history(&identity)?;
     let journal = settled_journal(&identity)?;
     let journal_head = journal
         .entries
@@ -567,6 +574,7 @@ fn composition_renderings_validate_against_schemas() -> Result<(), Box<dyn Error
         .ok_or_else(|| io::Error::other("settled journal must have a head"))?;
     let checkpoint = begin_publication_checkpoint_for_operation_v1(
         &identity,
+        &canonical_events,
         &head,
         allow_report::PublicationCheckpointInitV1 {
             checkpoint_id: "checkpoint-0-2-0-001".to_string(),
@@ -1040,6 +1048,7 @@ fn zero_mutation_rehearsal_reaches_terminal_settlement() -> Result<(), Box<dyn E
         .map_err(io::Error::other)?;
     let mut checkpoint = begin_publication_checkpoint_for_operation_v1(
         &identity,
+        &events,
         &head,
         allow_report::PublicationCheckpointInitV1 {
             checkpoint_id: "checkpoint-0-2-0-001".to_string(),
