@@ -10,3 +10,9 @@ allow_ids = ["allow-1205"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:6b561095cd8efa115dd64a90c96e5db96acad9e4c099bac3c7b08546284d2f42"
 reason = "Retain the read-only advisory agreement instrument scripts/check-ub-review-post-agreement.sh (#4255): it fails the advisory UB Review wrapper step when a retained publication_result=posted claim has no acknowledged post-result receipt or contradicts the retained post-error record, with fixture self-test coverage for missing-token, rejected-post, success, artifact-only, and edge cases."
+
+[[records]]
+allow_ids = ["allow-1206"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:19467199d741f72afb4db48a577072736f0d33bb303574e5b3275804fb201cc5"
+reason = "Self-covering governance revision admission for the exact-path posted-claim agreement revision note; retention metadata only, no ratification, CI, review, merge, or release bypass."
