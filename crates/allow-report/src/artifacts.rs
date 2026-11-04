@@ -52,6 +52,7 @@ mod release_authorization_custody_v1;
 mod release_authorization_v1;
 mod release_experience_v1;
 mod release_identity_v1;
+mod release_impact_v1;
 mod release_manifest_v2;
 mod release_operation_authority_v1;
 mod release_operation_lease_v1;
@@ -513,6 +514,23 @@ pub use release_experience_v1::{
 };
 pub use release_identity_v1::{
     ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,
+};
+pub use release_impact_v1::{
+    CargoAllowReleaseImpactReceiptV1, CargoAllowReleaseRehearsalRequiredResultV1,
+    RELEASE_IMPACT_SCHEMA_ID, RELEASE_IMPACT_SCHEMA_VERSION,
+    RELEASE_REHEARSAL_OBSERVATION_SCHEMA_ID, RELEASE_REHEARSAL_OBSERVATION_SCHEMA_VERSION,
+    RELEASE_REHEARSAL_REQUIRED_SCHEMA_ID, RELEASE_REHEARSAL_REQUIRED_SCHEMA_VERSION,
+    RELEASE_SENSITIVE_PATH_RULES_V1, RELEASE_UNRELATED_PATH_RULES_V1,
+    RELEASE_UNRESOLVED_GOVERNANCE_RULES_V1, ReleaseImpactClassifierInputV1,
+    ReleaseImpactDecisionV1, ReleaseImpactDenominatorBindingV1, ReleaseImpactDenominatorV1,
+    ReleaseImpactPathDecisionV1, ReleaseImpactPathMatchV1, ReleaseImpactPathRuleV1,
+    ReleaseImpactSubjectV1, ReleaseRehearsalObservationOutcomeV1, ReleaseRehearsalObservationV1,
+    ReleaseRehearsalRequiredAggregateV1, classify_release_impact_v1,
+    evaluate_release_rehearsal_required_v1, is_git_object_name, observe_release_rehearsal_v1,
+    release_impact_denominator, render_release_impact_receipt_human,
+    render_release_impact_receipt_json, render_release_rehearsal_observation_human,
+    render_release_rehearsal_observation_json, render_release_rehearsal_required_human,
+    render_release_rehearsal_required_json, validate_release_impact_receipt_v1,
 };
 pub use release_manifest_v2::{
     RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,

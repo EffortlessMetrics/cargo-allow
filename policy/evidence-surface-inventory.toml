@@ -260,6 +260,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The classifier's local cases are checked; a real rehearsal is not observed."
 
 [[surfaces]]
+id = "release-impact-routing"
+owner_issue = 3794
+semantic_authority = "release-impact rehearsal routing"
+path = "crates/cargo-allow/tests/release_impact_routing.rs"
+subject = "allow_report release_impact_v1 classifier, observation, and terminal aggregate over the live checked denominator"
+producer = "Rust integration test"
+consumer = "ci.yml release-impact routing graph"
+claimed_acceptance_row = "production impact classification and routing-law acceptance"
+assertion_mechanism = "typed classifier fixtures, jsonschema binding, live CLI invocation, and workflow-source assertions"
+evidence_class = "TypedModelValidation"
+disposition = "typed contract validation"
+required_stronger_owner = "#3792 (rehearsal discriminating status) and #2283/#2284 (required-check selection)"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The ten packet fixtures, the schema binding, the live denominator load, and the workflow-source fragments are checked against the live tree; a hosted rehearsal execution and a live required-check readback are not observed here."
+
+[[surfaces]]
 id = "release-rehearsal-incident-corpus"
 owner_issue = 3751
 semantic_authority = "release rehearsal incident corpus"

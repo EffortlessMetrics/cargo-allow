@@ -62,6 +62,23 @@ The [release experience](cargo-allow.release-experience.v1.schema.json)
 See the [producer and consumer contract](../release/release-experience-v1.md).
 It is a pure evaluation component; it installs nothing and executes no candidate.
 
+The [release impact receipt](cargo-allow.release-impact.v1.schema.json)
+(`cargo-allow.release-impact.v1`) is produced by
+`allow_report::classify_release_impact_v1` and its canonical renderer, consumed
+by the ci.yml release-impact routing graph (#3794). It is the typed
+release-sensitive routing decision for one exact base/head/merge-base subject,
+compiled from checked repository inventories: the checked path rules, the #3786
+semantic-owner inventory, and the generation-2 package topology
+include/file-list authority. An unmatched path or unresolved semantic owner
+classifies as `unknown` and requires the rehearsal. It is a pure routing
+component; it selects proof only, grants no release authority, invokes no Cargo
+metadata, rustc, network, or repository code, and never carries token context.
+The companion rehearsal observation (`cargo-allow.release-rehearsal-observation.v1`)
+and terminal aggregate (`cargo-allow.release-rehearsal-required.v1`) are typed
+in `allow_report::artifacts::release_impact_v1` and validated by their Rust
+contracts; their routing laws fail closed on missing, skipped, cancelled,
+stale, or contradictory evidence.
+
 | Component | Schema ID | Producer |
 |---|---|---|
 | [Resolved source-exception configuration](resolved-cargo-allow-config-v1.schema.json) | `cargo-allow.resolved-config.v1` | `allow_policy::resolve_cargo_allow_config_v1`, rendered by `allow_report::render_resolved_cargo_allow_config_json` |
