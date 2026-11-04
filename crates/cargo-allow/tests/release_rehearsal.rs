@@ -500,7 +500,7 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     })?;
     require(
         packages.rows.len() == 10,
-        "the candidate set must package exactly ten rows",
+        &candidate_package_failure_context(&receipt, &diagnostic),
     )?;
     let identity_version = &identity.version;
     for row in &packages.rows {
@@ -623,6 +623,117 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     }
 
     root.cleanup()?;
+    Ok(())
+}
+
+/// Keep the original package failure identifiable without echoing captured
+/// child output. The producer's diagnostic fields are projected through closed
+/// vocabularies; unknown text, paths and stream contents are never forwarded.
+fn candidate_package_failure_context(receipt: &ReleaseRehearsalReceiptV1, stderr: &str) -> String {
+    let phase = match receipt
+        .phases
+        .get("candidate_package_set")
+        .map(String::as_str)
+    {
+        Some("Complete") => "Complete",
+        Some("Mismatch") => "Mismatch",
+        Some("InstrumentFailure") => "InstrumentFailure",
+        Some(_) => "other",
+        None => "missing",
+    };
+    let count = receipt
+        .candidate_package_set
+        .as_ref()
+        .map(|set| set.rows.len());
+    let mut context = format!(
+        "the candidate set must package exactly ten rows; phase={phase}; observed_rows={count:?}"
+    );
+    for line in stderr
+        .lines()
+        .filter_map(|line| line.strip_prefix("candidate_package_set: "))
+        .take(3)
+    {
+        if line.len() > 2048 {
+            continue;
+        }
+        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
+            continue;
+        };
+        let reason = match value.get("reason").and_then(serde_json::Value::as_str) {
+            Some("publisher-failed") => "publisher-failed",
+            Some("publisher-timeout") => "publisher-timeout",
+            Some("publisher-unavailable") => "publisher-unavailable",
+            Some("receipt-unavailable") => "receipt-unavailable",
+            Some("candidate-rows-mismatch") => "candidate-rows-mismatch",
+            _ => "unrecognized",
+        };
+        let stage = match value
+            .get("publisher_stage")
+            .and_then(serde_json::Value::as_str)
+        {
+            Some("cargo-package") => "cargo-package",
+            Some("cargo-metadata") => "cargo-metadata",
+            _ => "unknown",
+        };
+        let exit = value
+            .get("publisher_exit")
+            .and_then(serde_json::Value::as_i64);
+        context.push_str(&format!("; reason={reason}, stage={stage}, exit={exit:?}"));
+    }
+    let stderr_digest: String = Sha256::digest(stderr.as_bytes())
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    context.push_str(&format!("; producer_stderr_sha256={stderr_digest}"));
+    context
+}
+
+#[test]
+fn candidate_package_failure_context_is_specific_and_redacted() -> Result<(), Box<dyn Error>> {
+    let mut phases = std::collections::BTreeMap::new();
+    phases.insert("candidate_package_set".to_string(), "Mismatch".to_string());
+    // Deserialize a minimal receipt through the same existing consumer shape.
+    let receipt: ReleaseRehearsalReceiptV1 = serde_json::from_value(serde_json::json!({
+        "schema_version": "1.0", "receipt_id": "fixture", "commit_sha": "fixture",
+        "subject_lockfile_digest": "fixture", "subject_topology_digest": "fixture",
+        "zero_mutation_proof": {
+            "tag_mutation_prevented": false, "token_read_prevented": false,
+            "cargo_publish_prevented": false, "registry_mutation_prevented": false,
+            "github_release_mutation_prevented": false, "live_setting_mutation_prevented": false,
+            "external_repository_mutation_prevented": false
+        },
+        "phases": phases, "candidate_package_set": {"rows": []},
+        "aggregate_status": "Mismatch", "claim_boundary": "test fixture only"
+    }))?;
+    let stderr = concat!(
+        "private-child-canary\n",
+        "candidate_package_set: {\"reason\":\"publisher-failed\",",
+        "\"publisher_stage\":\"cargo-package\",\"publisher_exit\":101,",
+        "\"private\":\"private-field-canary\"}\n",
+        "candidate_package_set: {\"reason\":\"private-reason-canary\",",
+        "\"publisher_stage\":\"private-stage-canary\",\"publisher_exit\":\"private-exit-canary\"}\n"
+    );
+    let context = candidate_package_failure_context(&receipt, stderr);
+    for expected in [
+        "phase=Mismatch",
+        "observed_rows=Some(0)",
+        "reason=publisher-failed",
+        "stage=cargo-package",
+        "exit=Some(101)",
+        "reason=unrecognized",
+        "stage=unknown",
+        "producer_stderr_sha256=",
+    ] {
+        require(
+            context.contains(expected),
+            "failure context omitted a classified observation",
+        )?;
+    }
+    require(
+        !context.contains("private-"),
+        "failure context leaked untrusted child text",
+    )?;
+    require(context.len() < 1024, "failure context must remain bounded")?;
     Ok(())
 }
 

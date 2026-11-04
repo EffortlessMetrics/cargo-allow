@@ -1,0 +1,3 @@
+kind: Fixed
+body: Retain bounded redacted package-phase failure context in release rehearsal diagnostics instead of reporting only a package-count mismatch.
+time: 2026-11-04T09:00:00Z
