@@ -16,14 +16,15 @@
 //!   and `Complete` distinct.
 
 use allow_report::{
-    ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
-    ObservationCompletenessV1, PackageRowClassV1, PublicationClassificationV1, PublicationStateV1,
+    ArtifactInnerFileV1, AttemptArtifactObservationV1, AttemptJobObservationV1, ChannelPostureV1,
+    FinalCandidateEligibilityV1, GitHubReleaseObservationV1, ObservationCompletenessV1,
+    PackageRowClassV1, PublicationClassificationV1, PublicationStateV1,
     RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1, ReconciledPackagePublicationV1,
-    RegistryObservationV1, ReleaseAttemptV1, ReleaseManifestAuthenticationV2,
-    ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2, ReleaseManifestPackageRowV2,
-    ReleaseManifestPayloadV2, ReleaseManifestPublicationPostureV2, ReleaseManifestResultV2,
-    ReleaseManifestSupportPostureV2, RowReconciliationV1, TagObservationV1,
-    manifest_rows_from_reconciled, validate_release_manifest_v2,
+    RegistryObservationV1, ReleaseAssetObservationV1, ReleaseAttemptV1,
+    ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
+    ReleaseManifestPackageRowV2, ReleaseManifestPayloadV2, ReleaseManifestPublicationPostureV2,
+    ReleaseManifestResultV2, ReleaseManifestSupportPostureV2, RowReconciliationV1,
+    TagObservationV1, manifest_rows_from_reconciled, validate_release_manifest_v2,
 };
 
 /// Retained rc.1 candidate-local checksum for `cargo-allow` (run 326898).
@@ -589,19 +590,59 @@ fn later_green_evidence_does_not_erase_incident_lineage() -> Result<(), String> 
     let attempts = vec![
         ReleaseAttemptV1 {
             run_id: 32688128233,
+            run_attempt: 1,
             commit: RUN1_COMMIT.to_string(),
             tree: RUN1_TREE.to_string(),
             conclusion: "failure".to_string(),
             result_class: "partial".to_string(),
-            retained_publish_receipt_artifact_id: 9506518765,
+            retained_publish_receipt_artifact_id: Some(9506518765),
+            jobs: vec![AttemptJobObservationV1 {
+                name: "publish".to_string(),
+                conclusion: "failure".to_string(),
+                first_failing_step: Some("Publish cargo-allow topology rows".to_string()),
+            }],
+            artifacts: vec![AttemptArtifactObservationV1 {
+                artifact_id: 9506518765,
+                name: "release-publish-receipt".to_string(),
+                size_in_bytes: 2982,
+                expired: false,
+                expires_at: "2026-11-22T03:55:23Z".to_string(),
+                inner_files: vec![ArtifactInnerFileV1 {
+                    name: "topology-publish.receipt.json".to_string(),
+                    size_in_bytes: 6001,
+                    sha256: CANDIDATE.to_string(),
+                }],
+                observation_note: None,
+            }],
+            observation_limit: None,
         },
         ReleaseAttemptV1 {
             run_id: 32698363934,
+            run_attempt: 1,
             commit: CLOSEOUT_COMMIT.to_string(),
             tree: CLOSEOUT_TREE.to_string(),
             conclusion: "success".to_string(),
             result_class: "complete".to_string(),
-            retained_publish_receipt_artifact_id: 9506518765,
+            retained_publish_receipt_artifact_id: Some(9506518765),
+            jobs: vec![AttemptJobObservationV1 {
+                name: "github-release".to_string(),
+                conclusion: "success".to_string(),
+                first_failing_step: None,
+            }],
+            artifacts: vec![AttemptArtifactObservationV1 {
+                artifact_id: 9506518765,
+                name: "release-publish-receipt".to_string(),
+                size_in_bytes: 3350,
+                expired: false,
+                expires_at: "2026-11-22T06:41:40Z".to_string(),
+                inner_files: vec![ArtifactInnerFileV1 {
+                    name: "topology-publish.receipt.json".to_string(),
+                    size_in_bytes: 6513,
+                    sha256: CANDIDATE.to_string(),
+                }],
+                observation_note: None,
+            }],
+            observation_limit: None,
         },
     ];
     let rows: Vec<RowReconciliationV1> = [
@@ -643,12 +684,22 @@ fn later_green_evidence_does_not_erase_incident_lineage() -> Result<(), String> 
         },
         row_reconciliations: rows,
         github_release: GitHubReleaseObservationV1 {
+            release_id: 375500943,
             name: "cargo-allow v0.2.0-rc.1".to_string(),
             draft: false,
             prerelease: false,
-            asset_count: 3,
+            target_commitish: "main".to_string(),
+            asset_count: 1,
+            assets: vec![ReleaseAssetObservationV1 {
+                asset_id: 527214043,
+                name: "release-manifest-v2.json".to_string(),
+                size_in_bytes: 4315,
+                digest: CANDIDATE.to_string(),
+                state: "uploaded".to_string(),
+            }],
             observed_note: "the RC shipped with prerelease=false; deviation retained".to_string(),
         },
+        install_observations: Vec::new(),
         registry_observation: RegistryObservationV1 {
             observed_at: "2026-08-24T18:00:00Z".to_string(),
             rows_present: 10,
