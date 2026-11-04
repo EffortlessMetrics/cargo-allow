@@ -1,0 +1,43 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4716,
+  "base_ref": "main",
+  "base_sha": "4ee9723fb9fcabfcda880fc07db7bb75416c2412",
+  "head_ref": "fix/4714-init-summary-preflight",
+  "head_sha": "7641b2936c4a37d1976ebc1420bb5fa5cb50685e",
+  "merge_base": "4ee9723fb9fcabfcda880fc07db7bb75416c2412",
+  "reviewed_diff_digest": "sha256:v2:e20a8e49be79b8f92e8e82378523c54ff42c5f144b591a3022b2c9dc829a6154",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT author/same-maintainer fresh exact-pair readback; source review 5763273238 and subsequent artifact/native-result reconciliation. No independent-human approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "UB Review run 41772868973, original artifact 13296012329, sha256:6b51fdb0fc541573001a4bbac383ecfb8c83b7dd8fdbf156e860b22333c691aa: ten usable nonauthor model lanes on synthetic 2591815f, with bounded source review and no validated blocking finding. The archive retains gate_result=not_proven for deferred local proof; external proof reconciliation is documented below, not rewritten as an in-run pass. CodeRabbit also independently checked canonical-backup source and native run identities in discussion_r4463561974."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4716#pullrequestreview-5763273238",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4716#discussion_r4463006845",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4716#discussion_r4463006851",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4716#discussion_r4463006861",
+    "All three inline threads were read back resolved. Earlier 8dfebdbc clean-source assessments are superseded by actual alias/ancestry fixes and current replay; previous source findings are not omitted.",
+    "Native CI 41772869235: all 26 returned jobs terminal success on the current synthetic 2591815f; four platform jobs, MSRV, package/isolated-install/journeys, coverage and broad test proof included. Codecov check 126394636925 is success: 93.02% against 84.99% target; the comment about three uncovered lines is not a failed check or a 100% claim.",
+    "UB archive review/review.md, gate_outcome and planner portfolio inspected. The tests-oracle suggestion that canonical config-link backup tests are absent is refuted by init_config_symlink_reserves_canonical_backup_on_every_route and its noncolliding control in the actual changed test module, executed in focused and ordinary CI.",
+    "UB deferred red-green tasks proof-red-green-0bc6247b22e1 and proof-red-green-28b7efbde776 have no in-run receipts. Separate original artifacts 13295680192/13294549613 retain 65 native tests and exact runtime/build byte-identity integration; original old/new probes discriminate six reported failures, and six additional bounded repaired-binary executions were repeated during this readback. No claim is made that every assertion was independently mutation-tested or that UB executed those external proofs.",
+    "UB optional sensor failures remain failed observations owned by #4252 (ambient scanner, RIPR resource refusal, foreign verifier). One degraded model lane is not counted as independent complete approval. Sought-but-quota-skipped Gemini/other bot attempts are not counted; the separately completed nonauthor UB lanes are the retained independent source evidence.",
+    "Inspected complete eight-path source/governance diff and unchanged target resolver, atomic writer, init error/preview dispatch, configured file-target callers and positive controls. No new product/schema/dependency/workflow change or policy widening. Arbitrary races/universal platform aliases remain outside the bounded guarantee.",
+    "Inherited posting-verifier null/absence defect remains separately tracked by #4739; publication agreement is not review approval and no release authority follows from this disposition.",
+    "This disposition is the sole successor file; the native bootstrap must verify the complete head delta contains only .allow/review-dispositions/pr-4716.json. The final head still requires its actual applicable checks and fresh final merge judgment."
+  ],
+  "required_ci": {
+    "owner": "Current PR integration owner: verify actual ledger-only bootstrap, terminal applicable successor-head checks, current findings/pair, then protected expected-head merge and resulting-main readback. No override, auto-merge or release operation.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/41772869235"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4716",
+  "reviewed_at_utc": "2026-11-04T05:00:35Z"
+}
