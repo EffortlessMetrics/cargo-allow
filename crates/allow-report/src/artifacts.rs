@@ -403,9 +403,11 @@ pub use publication_recovery_v1::{
 };
 
 pub use rc_publication_incident_v1::{
-    ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
+    ArtifactInnerFileV1, AttemptArtifactObservationV1, AttemptJobObservationV1, ChannelPostureV1,
+    FinalCandidateEligibilityV1, GitHubReleaseObservationV1, InstallObservationV1,
     ObservationCompletenessV1, RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1,
-    RegistryObservationV1, ReleaseAttemptV1, RowReconciliationV1, TagObservationV1,
+    RegistryObservationV1, ReleaseAssetObservationV1, ReleaseAttemptV1, RowReconciliationV1,
+    TagObservationV1,
 };
 
 pub use publication_checkpoint_v1::{
