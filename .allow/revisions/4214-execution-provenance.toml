@@ -6,10 +6,10 @@
 # evaluator laws, the producer wiring in scripts/proof-direct-floors.sh,
 # and focused fixture/drift/selection tests. The new digest tests follow
 # the same invariant-guard pattern the #3903 reviewed exceptions already
-# cover in the same two modules, so the two occurrence limits are
+# cover in the same two modules, so the occurrence limits are
 # loosened to the exact new headroom instead of splitting or narrowing
 # the reviewed classes; no selector, reason, owner, or classification
-# changes. The third record self-covers this note file, matching the
+# changes. The final record self-covers this note file, matching the
 # #4342 and #3792 precedents.
 
 [[records]]
@@ -27,14 +27,15 @@ before_fingerprint = "sha256:v1:250b3a85f0a2b35b358bd38e88336df6a094a772d4d524f7
 after_fingerprint = "sha256:v1:c62fede3229fadb30fc5dbbb797d08ff7c52c786cbb1c61af3cf2d12e082c4a8"
 
 [[records]]
-allow_ids = ["allow-11371"]
-reason = "Self-covering revision note for the #4214 occurrence-limit loosening and the new note file itself, matching the #4342 and #3792 precedents; note retention only, no new scanned surface beyond this file."
-change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:90e66a6805b95fb1c6db794b25709f011218728b4b666aa380cb29d9a5163199"
-
+allow_ids = ["allow-11242"]
+reason = "The #4214 digest tests add two invariant-guarded expects to the same #3903-reviewed fixture module: one guards the provenance-carrying receipt parse and one guards the execution-provenance section lookup, whose success is the property under test. Headroom moves 7 to 9, the exact counted total after the rebase reconciliation; selector, owner, classification, and reason class stay unchanged."
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:c1e1cd3b86092dc8475f75de3eb1d835fb3429460b38cef7dab3be6bbc9b58cd"
+after_fingerprint = "sha256:v1:8610721a9111f710fa8c454038202ada0b01edff04d678b911ecd9000f58951a"
 
 [[records]]
 allow_ids = ["allow-11370"]
+reason = "Self-covering revision note receipting this note file and the occurrence-limit loosening records above, matching the #4342 and #3792 precedents; the rebase reconciliation restored the lane's original self-assigned allow-11370 id after a needless conflict-resolution rename had split it into a duplicate pair; note retention only, no new scanned surface beyond this file."
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:8f0af7175809287631695b50ee09d164fb832f52f8cddc40ae82433b77003833"
-reason = "Receipt main's allow-11370 init-preflight receipt entry (landed via the #4716 merge after this branch was cut); the rename to allow-11371 in this lane's tail requires the paired record so the gate sees both sides of the rebase reconciliation."
+after_fingerprint = "sha256:v1:6cf3713c8bb32ec33f092750cbc939dcd3098b7c546786ed46ac1469f9c1e7c3"
+
