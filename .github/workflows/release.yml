@@ -293,8 +293,195 @@ jobs:
           name: release-operation-identity
           path: target/cargo-allow/release-operation-identity.json
 
+  # #2267 pre-publication cross-platform SourceCandidateSmoke matrix. Every
+  # required row reuses the landed #2256 Stage A packaging harness
+  # (scripts/package-candidate-smoke.sh) and the #2266 installed first-hour
+  # journey (scripts/source-candidate-smoke.sh) against the exact release
+  # identity: the same commit/tree the preflight validated (the recovery tag
+  # checkout on the publish_recovery path, so recovery can never prove a
+  # different source candidate). Rows are read-only candidate proof: no
+  # secret is read, nothing is published, no tag is touched. The selected
+  # matrix follows #3737 — Linux and Windows x86_64 on Rust 1.95 are
+  # required rows; macOS and the Rust 1.85 rollback-guidance lane are
+  # explicitly NotIncluded (that classification is declared in the gate
+  # script, never inferred from absent YAML). One auditable publication path
+  # keeps its single workflow; this stage only adds proof before publish.
+  source-candidate-smoke:
+    needs: preflight
+    strategy:
+      # A failed or cancelled row must surface as itself; cancelling the
+      # sibling row would hide a required result behind another failure.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            toolchain: "1.95.0"
+          - platform: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            toolchain: "1.95.0"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.recovery == 'true' && format('refs/tags/{0}', needs.preflight.outputs.tag) || github.sha }}
+          # The smoke journeys run local git only (archive/worktree/rev-parse);
+          # the checkout must not retain the runner token.
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          # #3737 selects Rust 1.95 for every candidate row.
+          toolchain: "1.95.0"
+      - name: Package the exact candidate and smoke the install (Stage A)
+        shell: bash
+        run: bash scripts/package-candidate-smoke.sh
+      - name: Run the installed first-hour source-candidate journey (#2266)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="${PWD}/target/package-candidate-smoke/install/bin/cargo-allow"
+          [[ -x "${bin}" ]] || bin="${bin}.exe"
+          CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
+      - name: Record the platform smoke receipt
+        if: always()
+        shell: bash
+        env:
+          ROW_PLATFORM: ${{ matrix.platform }}
+          ROW_TARGET: ${{ matrix.target }}
+          ROW_TOOLCHAIN: ${{ matrix.toolchain }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_TAG: ${{ needs.preflight.outputs.tag }}
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+          EXPECTED_COMMIT: ${{ needs.preflight.outputs.commit }}
+          EXPECTED_TREE: ${{ needs.preflight.outputs.tree }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p target/cargo-allow
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          platform = os.environ["ROW_PLATFORM"]
+          harness_path = Path("target/source-candidate-smoke/source-candidate-smoke.receipt.json")
+          packaged_path = Path("target/package-candidate-smoke/package-candidate-smoke.receipt.txt")
+          harness = None
+          if harness_path.is_file():
+              try:
+                  harness = json.loads(harness_path.read_text(encoding="utf-8"))
+              except json.JSONDecodeError:
+                  harness = None
+          packaged = []
+          if packaged_path.is_file():
+              for line in packaged_path.read_text(encoding="utf-8").splitlines():
+                  if line.startswith("packaged="):
+                      packaged.append(line[len("packaged="):].split("-", 1)[0])
+          row = {
+              "repository": os.environ["EXPECTED_REPOSITORY"],
+              "ref": os.environ["EXPECTED_REF"],
+              "candidate_commit": os.environ["EXPECTED_COMMIT"],
+              "candidate_tree": os.environ["EXPECTED_TREE"],
+              "candidate_version": os.environ["EXPECTED_VERSION"],
+              "tag": os.environ["EXPECTED_TAG"],
+              "platform": platform,
+              "target": os.environ["ROW_TARGET"],
+              "toolchain": os.environ["ROW_TOOLCHAIN"],
+              "required": True,
+              "result": (harness or {}).get("result", "NotProven"),
+              "packaged_crates": packaged,
+              "harness_receipt_sha256": (
+                  "sha256:" + hashlib.sha256(harness_path.read_bytes()).hexdigest()
+                  if harness_path.is_file() else ""
+              ),
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+          }
+          out = Path(f"target/cargo-allow/release-source-candidate-smoke-{platform}.receipt.json")
+          out.write_bytes((json.dumps(row, indent=2) + "\n").encode("utf-8"))
+          print(f"platform smoke receipt: {out} result={row['result']}")
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: source-candidate-smoke-receipt-${{ matrix.platform }}
+          path: |
+            target/cargo-allow/release-source-candidate-smoke-${{ matrix.platform }}.receipt.json
+            target/source-candidate-smoke/source-candidate-smoke.receipt.json
+            target/package-candidate-smoke/package-candidate-smoke.receipt.txt
+          if-no-files-found: error
+
+  # #2267 aggregate gate: publication may start only when every required
+  # #3737 platform receipt is current, claimed, and Passed for this exact
+  # run. The gate script refuses missing, skipped, cancelled, timed-out,
+  # stale, partial-graph, unclaimed, and unexpected rows; NotApplicable is
+  # valid only for the explicitly NotIncluded classifications it declares.
+  # The job runs under !cancelled() (never always()) so a failed or skipped
+  # matrix still produces a red gate instead of a silently skipped one, and
+  # publication stays blocked through the publish job's needs below.
+  source-candidate-smoke-aggregate:
+    needs: [preflight, source-candidate-smoke]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the Linux smoke row
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-candidate-smoke-receipt-linux
+          path: target/cargo-allow/source-candidate-smoke-rows/linux
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Download the Windows smoke row
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-candidate-smoke-receipt-windows
+          path: target/cargo-allow/source-candidate-smoke-rows/windows
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Aggregate the platform smoke receipts
+        env:
+          SMOKE_NEEDS_RESULT: ${{ needs.source-candidate-smoke.result }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_TAG: ${{ needs.preflight.outputs.tag }}
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+          EXPECTED_COMMIT: ${{ needs.preflight.outputs.commit }}
+          EXPECTED_TREE: ${{ needs.preflight.outputs.tree }}
+          EXPECTED_RUN_ID: ${{ github.run_id }}
+          EXPECTED_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release-source-candidate-smoke-gate.py aggregate \
+            --rows-dir target/cargo-allow/source-candidate-smoke-rows \
+            --fixture docs/dogfood/fixtures/release/candidate-crate-set.toml \
+            --needs-result "${SMOKE_NEEDS_RESULT}" \
+            --expected-repository "${EXPECTED_REPOSITORY}" \
+            --expected-ref "${EXPECTED_REF}" \
+            --expected-commit "${EXPECTED_COMMIT}" \
+            --expected-tree "${EXPECTED_TREE}" \
+            --expected-version "${EXPECTED_VERSION}" \
+            --expected-tag "${EXPECTED_TAG}" \
+            --expected-run-id "${EXPECTED_RUN_ID}" \
+            --expected-run-attempt "${EXPECTED_RUN_ATTEMPT}" \
+            --output target/cargo-allow/source-candidate-smoke-aggregate.receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: source-candidate-smoke-aggregate
+          path: target/cargo-allow/source-candidate-smoke-aggregate.receipt.json
+          if-no-files-found: error
+
   publish:
-    needs: [preflight, authorize]
+    needs: [preflight, authorize, source-candidate-smoke-aggregate]
     runs-on: ubuntu-latest
     outputs:
       auth_source: ${{ steps.registry_token.outputs.source }}
@@ -324,6 +511,40 @@ jobs:
           path: target/cargo-allow/operation-identity
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+      # #2267: the publication path consumes the smoke aggregate as evidence
+      # and re-verifies its identity binding inside this job, so a stale,
+      # foreign-run, or non-Passed gate receipt can never reach the upload
+      # steps even if a needs edge were later edited.
+      - name: Download the source-candidate smoke aggregate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-candidate-smoke-aggregate
+          path: target/cargo-allow/smoke-aggregate
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Refuse publication without a current cross-platform smoke aggregate
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_TAG: ${{ needs.preflight.outputs.tag }}
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+          EXPECTED_COMMIT: ${{ needs.preflight.outputs.commit }}
+          EXPECTED_TREE: ${{ needs.preflight.outputs.tree }}
+          EXPECTED_RUN_ID: ${{ github.run_id }}
+          EXPECTED_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release-source-candidate-smoke-gate.py verify \
+            --aggregate target/cargo-allow/smoke-aggregate/source-candidate-smoke-aggregate.receipt.json \
+            --expected-repository "${EXPECTED_REPOSITORY}" \
+            --expected-ref "${EXPECTED_REF}" \
+            --expected-commit "${EXPECTED_COMMIT}" \
+            --expected-tree "${EXPECTED_TREE}" \
+            --expected-version "${EXPECTED_VERSION}" \
+            --expected-tag "${EXPECTED_TAG}" \
+            --expected-run-id "${EXPECTED_RUN_ID}" \
+            --expected-run-attempt "${EXPECTED_RUN_ATTEMPT}" \
+            --output target/cargo-allow/source-candidate-smoke-verify.receipt.json
       - name: Release version and artifact preflight
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
@@ -1183,6 +1404,7 @@ jobs:
             target/cargo-allow/release-publish.receipt.json
             target/cargo-allow/topology-publish.receipt.json
             target/cargo-allow/shared-registry-preflight.receipt.json
+            target/cargo-allow/source-candidate-smoke-verify.receipt.json
       - name: Retain publication checkpoint evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

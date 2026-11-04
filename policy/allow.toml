@@ -26175,3 +26175,69 @@ glob = ".allow/revisions/2496-2496-typed-release-records.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11376"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release-source-candidate-smoke-gate.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Fail-closed #2267 publication-gate checker: aggregates release.yml source-candidate smoke platform receipts, verifies exact release-identity binding (repository/ref/commit/tree/version/run), the Passed harness receipt with complete journey and negative controls, the exact packaged crate graph, and the declared #3737 NotIncluded classifications; parses receipts only with zero network, zero upload, and no project-code execution."
+evidence = ["issue:2267", "test:scripts/test-release-source-candidate-smoke-gate.py"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release-source-candidate-smoke-gate.py"
+target_fingerprint = "py"
+glob = "scripts/release-source-candidate-smoke-gate.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11377"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-source-candidate-smoke-gate.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Offline characterization for the #2267 publication-gate checker: synthesizes green and faulted receipt directories (missing, skipped, cancelled, timed-out, stale, partial-graph, unclaimed, and unexpected rows) and asserts every refusal plus one exact green aggregate and verify composition; zero network, zero upload, and no toolchain."
+evidence = ["issue:2267"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-source-candidate-smoke-gate.py"
+target_fingerprint = "py"
+glob = "scripts/test-release-source-candidate-smoke-gate.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11378"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #2267 publication smoke-gate lane's added allow-11375 through allow-11378 receipts; note retention only, no new scanned surface beyond this file."
+evidence = ["issue:2267"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
