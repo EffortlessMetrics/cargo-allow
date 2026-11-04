@@ -1,0 +1,309 @@
+diff --git a/.changes/Fixed-20261104-4742.yaml b/.changes/Fixed-20261104-4742.yaml
+new file mode 100644
+index 00000000..be8e1905
+--- /dev/null
++++ b/.changes/Fixed-20261104-4742.yaml
+@@ -0,0 +1,3 @@
++kind: Fixed
++body: Retain bounded redacted package-phase failure context in release rehearsal diagnostics instead of reporting only a package-count mismatch.
++time: 2026-11-04T09:00:00Z
+diff --git a/crates/cargo-allow/tests/release_rehearsal.rs b/crates/cargo-allow/tests/release_rehearsal.rs
+index b4177ea9..dfc4d2dd 100644
+--- a/crates/cargo-allow/tests/release_rehearsal.rs
++++ b/crates/cargo-allow/tests/release_rehearsal.rs
+@@ -500,7 +500,7 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
+     })?;
+     require(
+         packages.rows.len() == 10,
+-        "the candidate set must package exactly ten rows",
++        &candidate_package_failure_context(&receipt, &diagnostic),
+     )?;
+     let identity_version = &identity.version;
+     for row in &packages.rows {
+@@ -626,6 +626,87 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
+     Ok(())
+ }
+ 
++/// Keep the original package failure identifiable without echoing captured
++/// child output. The producer's diagnostic fields are projected through closed
++/// vocabularies; unknown text, paths and stream contents are never forwarded.
++fn candidate_package_failure_context(
++    receipt: &ReleaseRehearsalReceiptV1,
++    stderr: &str,
++) -> String {
++    let phase = match receipt.phases.get("candidate_package_set").map(String::as_str) {
++        Some("Complete") => "Complete",
++        Some("Mismatch") => "Mismatch",
++        Some("InstrumentFailure") => "InstrumentFailure",
++        Some(_) => "other",
++        None => "missing",
++    };
++    let count = receipt.candidate_package_set.as_ref().map(|set| set.rows.len());
++    let mut context = format!(
++        "the candidate set must package exactly ten rows; phase={phase}; observed_rows={count:?}"
++    );
++    for line in stderr.lines().filter_map(|line| line.strip_prefix("candidate_package_set: ")).take(3) {
++        if line.len() > 2048 {
++            continue;
++        }
++        let Ok(value) = serde_json::from_str::<serde_json::Value>(line) else {
++            continue;
++        };
++        let reason = match value.get("reason").and_then(serde_json::Value::as_str) {
++            Some("publisher-failed") => "publisher-failed",
++            Some("publisher-timeout") => "publisher-timeout",
++            Some("publisher-unavailable") => "publisher-unavailable",
++            Some("receipt-unavailable") => "receipt-unavailable",
++            Some("candidate-rows-mismatch") => "candidate-rows-mismatch",
++            _ => "unrecognized",
++        };
++        let stage = match value.get("publisher_stage").and_then(serde_json::Value::as_str) {
++            Some("cargo-package") => "cargo-package",
++            Some("cargo-metadata") => "cargo-metadata",
++            _ => "unknown",
++        };
++        let exit = value.get("publisher_exit").and_then(serde_json::Value::as_i64);
++        context.push_str(&format!("; reason={reason}, stage={stage}, exit={exit:?}"));
++    }
++    let stderr_digest: String = Sha256::digest(stderr.as_bytes())
++        .iter().map(|byte| format!("{byte:02x}")).collect();
++    context.push_str(&format!("; producer_stderr_sha256={stderr_digest}"));
++    context
++}
++
++#[test]
++fn candidate_package_failure_context_is_specific_and_redacted() -> Result<(), Box<dyn Error>> {
++    let mut phases = std::collections::BTreeMap::new();
++    phases.insert("candidate_package_set".to_string(), "Mismatch".to_string());
++    // Deserialize a minimal receipt through the same existing consumer shape.
++    let receipt: ReleaseRehearsalReceiptV1 = serde_json::from_value(serde_json::json!({
++        "schema_version": "1.0", "receipt_id": "fixture", "commit_sha": "fixture",
++        "subject_lockfile_digest": "fixture", "subject_topology_digest": "fixture",
++        "zero_mutation_proof": {
++            "tag_mutation_prevented": false, "token_read_prevented": false,
++            "cargo_publish_prevented": false, "registry_mutation_prevented": false,
++            "github_release_mutation_prevented": false, "live_setting_mutation_prevented": false,
++            "external_repository_mutation_prevented": false
++        },
++        "phases": phases, "candidate_package_set": {"rows": []},
++        "aggregate_status": "Mismatch", "claim_boundary": "test fixture only"
++    }))?;
++    let stderr = concat!(
++        "private-child-canary\n",
++        "candidate_package_set: {\"reason\":\"publisher-failed\",",
++        "\"publisher_stage\":\"cargo-package\",\"publisher_exit\":101,",
++        "\"private\":\"private-field-canary\"}\n",
++        "candidate_package_set: {\"reason\":\"private-reason-canary\",",
++        "\"publisher_stage\":\"private-stage-canary\",\"publisher_exit\":\"private-exit-canary\"}\n"
++    );
++    let context = candidate_package_failure_context(&receipt, stderr);
++    for expected in ["phase=Mismatch", "observed_rows=Some(0)", "reason=publisher-failed", "stage=cargo-package", "exit=Some(101)", "reason=unrecognized", "stage=unknown", "producer_stderr_sha256="] {
++        require(context.contains(expected), "failure context omitted a classified observation")?;
++    }
++    require(!context.contains("private-"), "failure context leaked untrusted child text")?;
++    require(context.len() < 1024, "failure context must remain bounded")?;
++    Ok(())
++}
++
+ /// One committed fixture-repository rehearsal run. Returns the parsed
+ /// receipt, the stderr text, and the exit code.
+ fn run_rehearsal_in_fixture(
+diff --git a/scripts/release-rehearsal.py b/scripts/release-rehearsal.py
+index 8348c71b..27ea0064 100644
+--- a/scripts/release-rehearsal.py
++++ b/scripts/release-rehearsal.py
+@@ -554,12 +554,44 @@ def run_phase_release_identity(
+     return PHASE_COMPLETE
+ 
+ 
++def _candidate_package_diagnostic(
++    reason: str, *, process: Any = None, observed_rows: int | None = None,
++) -> None:
++    """Retain bounded failure facts, never nested output or environment values.
++
++    The command-stage hint describes an observed publisher failure marker, not
++    its root cause and never admission authority. Stream digests bind the
++    suppressed observations without forwarding paths, credentials or prose.
++    """
++    record: dict[str, Any] = {"reason": reason, "observed_rows": observed_rows}
++    if process is not None:
++        record["publisher_exit"] = getattr(process, "returncode", None)
++        stderr = getattr(process, "stderr", None) or ""
++        stage = "unknown"
++        if isinstance(stderr, str):
++            for line in stderr.splitlines():
++                if line.startswith("release-topology-publisher: error: command failed ("):
++                    if "): cargo package --workspace --locked --no-verify" in line:
++                        stage = "cargo-package"
++                    elif "): cargo metadata --format-version 1 --no-deps --locked" in line:
++                        stage = "cargo-metadata"
++        record["publisher_stage"] = stage
++        for stream in ("stdout", "stderr"):
++            content = getattr(process, stream, None) or b""
++            if isinstance(content, str):
++                content = content.encode("utf-8", errors="replace")
++            record[stream + "_bytes"] = len(content)
++            record[stream + "_sha256"] = hashlib.sha256(content).hexdigest()
++    print("candidate_package_set: " + json.dumps(record, sort_keys=True), file=sys.stderr)
++
++
+ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
+     """Package the ten cargo-allow candidate rows from the committed subject.
+ 
+     The publisher's --package-only mode validates exact release-coupled
+-    internal requirements and packages the selected rows offline (no registry
+-    reads, no compilation); this phase records each row's name, version,
++    internal requirements and packages the selected rows without compilation
++    or upload. Cargo may still resolve registry inputs; this is not an offline
++    guarantee. This phase records each row's name, version,
+     release order, SHA-256, and archive size without any upload path.
+     """
+     preflight_path = ROOT / "target/cargo-allow/rehearsal-candidate-package-set.json"
+@@ -581,13 +613,16 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
+             timeout=300,
+             check=False,
+         )
+-    except (OSError, subprocess.SubprocessError):
++    except (OSError, subprocess.SubprocessError) as error:
++        reason = "publisher-timeout" if isinstance(error, subprocess.TimeoutExpired) else "publisher-unavailable"
++        _candidate_package_diagnostic(reason, process=error)
+         return PHASE_INSTRUMENT_FAILURE
+     rows: list[dict[str, Any]] = []
+     try:
+         packaged = json.loads(preflight_path.read_text(encoding="utf-8"))
+         rows = packaged.get("rows", [])
+     except (OSError, json.JSONDecodeError):
++        _candidate_package_diagnostic("receipt-unavailable", process=result)
+         if result.returncode == 0:
+             return PHASE_INSTRUMENT_FAILURE
+     recorded = []
+@@ -610,6 +645,7 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
+         )
+     receipt["candidate_package_set"] = {"rows": recorded}
+     if result.returncode != 0:
++        _candidate_package_diagnostic("publisher-failed", process=result, observed_rows=len(recorded))
+         return PHASE_MISMATCH
+     expected_version = (receipt.get("release_identity") or {}).get("version")
+     if (
+@@ -618,6 +654,7 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
+         or any(row.get("version") != expected_version for row in recorded)
+         or any(row.get("size_bytes") is None or row["size_bytes"] <= 0 for row in recorded)
+     ):
++        _candidate_package_diagnostic("candidate-rows-mismatch", process=result, observed_rows=len(recorded))
+         return PHASE_MISMATCH
+     return PHASE_COMPLETE
+ 
+diff --git a/scripts/test-release-rehearsal.py b/scripts/test-release-rehearsal.py
+index 9c450eae..c7515a58 100644
+--- a/scripts/test-release-rehearsal.py
++++ b/scripts/test-release-rehearsal.py
+@@ -687,6 +687,109 @@ class TestCandidateIdentity(unittest.TestCase):
+         self.assertEqual(run.call_args.args[0][:2], ["cargo", "run"])
+ 
+ 
++class TestCandidatePackageDiagnostics(unittest.TestCase):
++    """Use the real phase with controlled process/receipt failures, not Cargo."""
++
++    def setUp(self) -> None:
++        directory = tempfile.TemporaryDirectory()
++        self.addCleanup(directory.cleanup)
++        self.root = Path(directory.name)
++        patcher = mock.patch.object(REHEARSAL, "ROOT", self.root)
++        patcher.start()
++        self.addCleanup(patcher.stop)
++        self.path = self.root / "target/cargo-allow/rehearsal-candidate-package-set.json"
++        self.path.parent.mkdir(parents=True)
++
++    def packaged(self, count: int = 10, *, version: str = "0.2.0") -> None:
++        archive = self.root / "selected.crate"
++        archive.write_bytes(b"controlled package bytes")
++        self.path.write_text(json.dumps({"rows": [
++            {"name": "fixture-" + str(index), "version": version,
++             "release_order": index, "crate": "selected.crate", "local_checksum": "sha256:" + "a" * 64}
++            for index in range(count)
++        ]}), encoding="utf-8")
++
++    def invoke(self, *, code: int = 0, stderr: str = "", error: Exception | None = None):
++        receipt = {"release_identity": {"version": "0.2.0"}}
++        diagnostics = io.StringIO()
++        process = subprocess.CompletedProcess([], code, "private-stdout-canary", stderr)
++        with mock.patch.object(REHEARSAL, "_run_process", return_value=process, side_effect=error), contextlib.redirect_stderr(diagnostics):
++            state = REHEARSAL.run_phase_candidate_package_set(receipt)
++        text = diagnostics.getvalue()
++        self.assertNotIn("private-", text)
++        self.assertLess(len(text), 2048)
++        rows = [json.loads(line.removeprefix("candidate_package_set: ")) for line in text.splitlines()]
++        return state, receipt, rows
++
++    def test_complete_control_remains_quiet(self) -> None:
++        self.packaged()
++        state, receipt, diagnostics = self.invoke()
++        self.assertEqual(state, "Complete")
++        self.assertEqual(len(receipt["candidate_package_set"]["rows"]), 10)
++        self.assertEqual(diagnostics, [])
++
++    def test_failed_publisher_preserves_exit_and_stage_without_child_text(self) -> None:
++        for stage, command in [
++            ("cargo-package", "cargo package --workspace --locked --no-verify --target-dir /private-path"),
++            ("cargo-metadata", "cargo metadata --format-version 1 --no-deps --locked"),
++            ("unknown", "other tool"),
++        ]:
++            with self.subTest(stage=stage):
++                stderr = "private-stderr-canary\nrelease-topology-publisher: error: command failed (101): " + command
++                state, receipt, diagnostics = self.invoke(code=1, stderr=stderr)
++                self.assertEqual(state, "Mismatch")
++                self.assertEqual(receipt["candidate_package_set"], {"rows": []})
++                self.assertEqual([row["reason"] for row in diagnostics], ["receipt-unavailable", "publisher-failed"])
++                last = diagnostics[-1]
++                self.assertEqual(last["publisher_exit"], 1)
++                self.assertEqual(last["publisher_stage"], stage)
++                self.assertEqual(last["observed_rows"], 0)
++                self.assertEqual(last["stderr_bytes"], len(stderr.encode()))
++                self.assertEqual(last["stderr_sha256"], REHEARSAL.hashlib.sha256(stderr.encode()).hexdigest())
++
++    def test_nonzero_exit_cannot_be_hidden_by_ten_rows(self) -> None:
++        self.packaged()
++        state, _, diagnostics = self.invoke(code=1)
++        self.assertEqual(state, "Mismatch")
++        self.assertEqual(diagnostics[-1]["reason"], "publisher-failed")
++        self.assertEqual(diagnostics[-1]["observed_rows"], 10)
++
++    def test_success_without_usable_receipt_is_instrument_failure(self) -> None:
++        for malformed in [False, True]:
++            with self.subTest(malformed=malformed):
++                if malformed:
++                    self.path.write_text("private-malformed-canary", encoding="utf-8")
++                state, _, diagnostics = self.invoke()
++                self.assertEqual(state, "InstrumentFailure")
++                self.assertEqual(diagnostics[-1]["reason"], "receipt-unavailable")
++                self.assertEqual(diagnostics[-1]["publisher_exit"], 0)
++
++    def test_missing_wrong_version_and_missing_archive_remain_mismatch(self) -> None:
++        for count, version, missing_archive in [(9, "0.2.0", False), (10, "0.3.0", False), (10, "0.2.0", True)]:
++            with self.subTest(count=count, version=version, missing_archive=missing_archive):
++                self.packaged(count, version=version)
++                if missing_archive:
++                    (self.root / "selected.crate").unlink()
++                state, _, diagnostics = self.invoke()
++                self.assertEqual(state, "Mismatch")
++                self.assertEqual(diagnostics[-1]["reason"], "candidate-rows-mismatch")
++                self.assertEqual(diagnostics[-1]["observed_rows"], count)
++
++    def test_timeout_retains_only_bounded_category_and_stream_digests(self) -> None:
++        error = subprocess.TimeoutExpired(["private-command-canary"], 300,
++                                          output=b"private-output-canary", stderr=b"private-error-canary")
++        state, _, diagnostics = self.invoke(error=error)
++        self.assertEqual(state, "InstrumentFailure")
++        self.assertEqual(diagnostics[-1]["reason"], "publisher-timeout")
++        self.assertEqual(diagnostics[-1]["publisher_exit"], None)
++        self.assertEqual(diagnostics[-1]["stdout_sha256"], REHEARSAL.hashlib.sha256(error.output).hexdigest())
++
++    def test_unavailable_process_never_leaks_exception_path(self) -> None:
++        state, _, diagnostics = self.invoke(error=OSError("private-path-canary"))
++        self.assertEqual(state, "InstrumentFailure")
++        self.assertEqual(diagnostics[-1]["reason"], "publisher-unavailable")
++
++
+ class TestReleaseRehearsal(unittest.TestCase):
+     def test_characterization_cannot_report_complete(self) -> None:
+         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
