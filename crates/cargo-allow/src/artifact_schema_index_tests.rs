@@ -177,6 +177,13 @@ fn schema_contract_registry_covers_every_documented_artifact_schema() {
                 && name != "exact-candidate-receipt-v2"
                 && name != "github-pr-check-v1"
                 && name != "rc-publication-incident-v1"
+                // #2496 retained release-evidence contracts: typed
+                // `allow-report` receipt families with Rust-side validators
+                // (like rc-publication-incident-v1 above), catalogued in the
+                // schema README, not CLI artifact renderers.
+                && name != "cargo-allow.crates-io-trusted-publishing-receipt.v1"
+                && name != "cargo-allow.crates-io-first-publication-bootstrap-receipt.v1"
+                && name != "cargo-allow.crates-io-registry-install-journey-receipt.v1"
                 && name != "candidate-preparation-plan-v1"
                 && name != "candidate-preparation-receipt-v1"
                 && name != "final-package-docs.v1"

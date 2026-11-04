@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.crates-io-trusted-publishing-receipt.v1.schema.json",
+  "title": "cargo-allow CratesIoTrustedPublishingReceiptV1",
+  "description": "Typed crates.io publication authentication posture for one producing run (#2282): the supported authentication class, the OIDC trusted-publishing posture with a SHA-pinned action, or the API-token class bound to retained authorization evidence. Credential material must never appear in the record; unsupported classes, missing provenance, and embedded secrets are named rejections. The record proves posture only; it grants no publication authority and performs no release work.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "repository",
+    "workflow_name",
+    "workflow_run_id",
+    "workflow_attempt",
+    "producer_step",
+    "source_commit",
+    "source_tree",
+    "git_ref",
+    "auth_class",
+    "observed_at",
+    "limitations",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.crates-io-trusted-publishing-receipt.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflow_attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "producer_step": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40,64}$"
+    },
+    "source_tree": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40,64}$"
+    },
+    "git_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "auth_class": {
+      "oneOf": [
+        {
+          "const": "trusted_publishing_oidc"
+        },
+        {
+          "const": "crates_io_api_token"
+        },
+        {
+          "const": "missing"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unsupported"
+          ],
+          "properties": {
+            "unsupported": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "oidc": {
+      "$ref": "#/$defs/oidcPosture"
+    },
+    "authorization_evidence_digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-fA-F]{64}$"
+    },
+    "observed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "oidcPosture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action_repository",
+        "action_ref_sha",
+        "audience"
+      ],
+      "properties": {
+        "action_repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action_ref_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{40}$"
+        },
+        "audience": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

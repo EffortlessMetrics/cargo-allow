@@ -280,6 +280,9 @@ runtime, reachability, or semantic analysis.
 | [Publication journal](cargo-allow.publication-journal.v1.schema.json) | `cargo-allow.publication-journal.v1` | typed `allow-report` append-only publication journal model and canonical renderer (#3921) |
 | [Publication checkpoint](cargo-allow.publication-checkpoint.v1.schema.json) | `cargo-allow.publication-checkpoint.v1` | typed `allow-report` remote publication checkpoint model and readback classifier (#3922) |
 | [Publication recovery](cargo-allow.publication-recovery.v1.schema.json) | `cargo-allow.publication-recovery.v1` | typed `allow-report` unknown-upload recovery decision model and renderer (#3924) |
+| [Crates.io trusted publishing receipt](cargo-allow.crates-io-trusted-publishing-receipt.v1.schema.json) | `cargo-allow.crates-io-trusted-publishing-receipt.v1` | typed `allow-report` publication authentication posture contract (#2282, #2496) |
+| [Crates.io first-publication bootstrap receipt](cargo-allow.crates-io-first-publication-bootstrap-receipt.v1.schema.json) | `cargo-allow.crates-io-first-publication-bootstrap-receipt.v1` | typed `allow-report` shared-substrate bootstrap evidence contract (#3145, #2496) |
+| [Crates.io registry install journey receipt](cargo-allow.crates-io-registry-install-journey-receipt.v1.schema.json) | `cargo-allow.crates-io-registry-install-journey-receipt.v1` | typed `allow-report` registry-installed journey contract (#2496) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
 OIDC authentication) was retired with its schema: no release ever attached a V1

@@ -9,6 +9,9 @@ mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
 mod ci_performance_receipt_v1;
 mod ci_pregate_result_v1;
+mod crates_io_first_publication_bootstrap_receipt_v1;
+mod crates_io_registry_install_journey_receipt_v1;
+mod crates_io_trusted_publishing_receipt_v1;
 mod dependency_graph_delta_compiler;
 mod dependency_graph_delta_v1;
 mod dependency_graph_evidence_v1;
@@ -127,6 +130,34 @@ pub use ci_pregate_result_v1::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
     CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
     evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
+};
+pub use crates_io_first_publication_bootstrap_receipt_v1::{
+    BootstrapPackageRowV1, BootstrapPromotionV1, BootstrapRowFamilyV1,
+    CRATES_IO_FIRST_PUBLICATION_BOOTSTRAP_RECEIPT_SCHEMA_ID,
+    CRATES_IO_FIRST_PUBLICATION_BOOTSTRAP_RECEIPT_SCHEMA_VERSION,
+    CratesIoFirstPublicationBootstrapReceiptV1, CratesIoFirstPublicationBootstrapResultV1,
+    CratesIoFirstPublicationBootstrapValidationV1,
+    render_crates_io_first_publication_bootstrap_receipt_v1,
+    render_crates_io_first_publication_bootstrap_receipt_v1_bytes,
+    validate_crates_io_first_publication_bootstrap_receipt_v1,
+};
+pub use crates_io_registry_install_journey_receipt_v1::{
+    CRATES_IO_REGISTRY_INSTALL_JOURNEY_RECEIPT_SCHEMA_ID,
+    CRATES_IO_REGISTRY_INSTALL_JOURNEY_RECEIPT_SCHEMA_VERSION,
+    CratesIoRegistryInstallJourneyReceiptV1, CratesIoRegistryInstallJourneyResultV1,
+    CratesIoRegistryInstallJourneyValidationV1, RegistryInstallChannelV1, RegistryJourneyStepV1,
+    RegistryResolvedRowV1, render_crates_io_registry_install_journey_receipt_v1,
+    render_crates_io_registry_install_journey_receipt_v1_bytes,
+    validate_crates_io_registry_install_journey_receipt_v1,
+};
+pub use crates_io_trusted_publishing_receipt_v1::{
+    CRATES_IO_TRUSTED_PUBLISHING_RECEIPT_SCHEMA_ID,
+    CRATES_IO_TRUSTED_PUBLISHING_RECEIPT_SCHEMA_VERSION, CratesIoAuthClassV1,
+    CratesIoTrustedPublishingReceiptV1, CratesIoTrustedPublishingResultV1,
+    CratesIoTrustedPublishingValidationV1, OidcPostureV1,
+    render_crates_io_trusted_publishing_receipt_v1,
+    render_crates_io_trusted_publishing_receipt_v1_bytes,
+    validate_crates_io_trusted_publishing_receipt_v1,
 };
 #[cfg(test)]
 pub(crate) use dependency_graph_delta_compiler::{
