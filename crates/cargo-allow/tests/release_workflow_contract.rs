@@ -303,106 +303,109 @@ fn test_release_workflow_canonical_operation_identity_transport() -> Result<(), 
 #[test]
 fn test_release_workflow_gates_publication_on_source_candidate_smoke() -> Result<(), Box<dyn Error>>
 {
-/// #2497: the release manifest's semantic authority is the typed Rust
-/// command. The shell script is gone from the authoritative path, generation
-/// requires the typed Complete result, the exact bytes are re-validated
-/// immediately before attestation, and attestation plus every release step
-/// are gated on the typed result output.
-#[test]
-fn test_release_workflow_manifest_is_typed_and_complete_gated() -> Result<(), Box<dyn Error>> {
-    let root = repo_root()?;
-    let release_wf_path = root.join(".github/workflows/release.yml");
-    if !release_wf_path.exists() {
-        return Ok(());
-    }
-    let content = fs::read_to_string(release_wf_path)?;
+    /// #2497: the release manifest's semantic authority is the typed Rust
+    /// command. The shell script is gone from the authoritative path, generation
+    /// requires the typed Complete result, the exact bytes are re-validated
+    /// immediately before attestation, and attestation plus every release step
+    /// are gated on the typed result output.
+    #[test]
+    fn test_release_workflow_manifest_is_typed_and_complete_gated() -> Result<(), Box<dyn Error>> {
+        let root = repo_root()?;
+        let release_wf_path = root.join(".github/workflows/release.yml");
+        if !release_wf_path.exists() {
+            return Ok(());
+        }
+        let content = fs::read_to_string(release_wf_path)?;
 
-    let smoke = job_block(&content, "source-candidate-smoke").ok_or_else(|| {
-        io::Error::other("release.yml must define the source-candidate-smoke matrix job")
-    })?;
-    let aggregate = job_block(&content, "source-candidate-smoke-aggregate").ok_or_else(|| {
-        io::Error::other("release.yml must define the source-candidate-smoke-aggregate gate job")
-    })?;
-    let publish = job_block(&content, "publish")
-        .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
+        let smoke = job_block(&content, "source-candidate-smoke").ok_or_else(|| {
+            io::Error::other("release.yml must define the source-candidate-smoke matrix job")
+        })?;
+        let aggregate =
+            job_block(&content, "source-candidate-smoke-aggregate").ok_or_else(|| {
+                io::Error::other(
+                    "release.yml must define the source-candidate-smoke-aggregate gate job",
+                )
+            })?;
+        let publish = job_block(&content, "publish")
+            .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
 
-    // Every required platform row is separately encoded on Rust 1.95 and
-    // one row's failure must not cancel its sibling.
-    for required in [
-        "platform: linux",
-        "platform: windows",
-        "toolchain: \"1.95.0\"",
-        "fail-fast: false",
-    ] {
+        // Every required platform row is separately encoded on Rust 1.95 and
+        // one row's failure must not cancel its sibling.
+        for required in [
+            "platform: linux",
+            "platform: windows",
+            "toolchain: \"1.95.0\"",
+            "fail-fast: false",
+        ] {
+            require(
+                smoke.contains(required),
+                &format!("the source-candidate-smoke matrix must encode {required}"),
+            )?;
+        }
+        // The rows reuse the landed harnesses; no forked smoke implementation.
+        for required in [
+            "scripts/package-candidate-smoke.sh",
+            "scripts/source-candidate-smoke.sh",
+        ] {
+            require(
+                smoke.contains(required),
+                &format!("smoke rows must reuse the landed harness {required}"),
+            )?;
+        }
+        // The gate law lives in one fail-closed script, never in scattered YAML.
+        for required in [
+            "release-source-candidate-smoke-gate.py aggregate",
+            "release-source-candidate-smoke-gate.py verify",
+        ] {
+            require(
+                content.contains(required),
+                &format!("release.yml must invoke the gate script: {required}"),
+            )?;
+        }
+        // No aggregation shortcut may report green after a required failure.
+        for banned in ["continue-on-error", "|| true"] {
+            require(
+                !smoke.contains(banned) && !aggregate.contains(banned),
+                &format!("the smoke gate must not use {banned}"),
+            )?;
+        }
+        // The job itself runs under !cancelled() — never always() — so a failed
+        // or skipped matrix yields a red gate, while artifact retention may
+        // still run under always() (#2267 aggregate law).
         require(
-            smoke.contains(required),
-            &format!("the source-candidate-smoke matrix must encode {required}"),
-        )?;
-    }
-    // The rows reuse the landed harnesses; no forked smoke implementation.
-    for required in [
-        "scripts/package-candidate-smoke.sh",
-        "scripts/source-candidate-smoke.sh",
-    ] {
-        require(
-            smoke.contains(required),
-            &format!("smoke rows must reuse the landed harness {required}"),
-        )?;
-    }
-    // The gate law lives in one fail-closed script, never in scattered YAML.
-    for required in [
-        "release-source-candidate-smoke-gate.py aggregate",
-        "release-source-candidate-smoke-gate.py verify",
-    ] {
-        require(
-            content.contains(required),
-            &format!("release.yml must invoke the gate script: {required}"),
-        )?;
-    }
-    // No aggregation shortcut may report green after a required failure.
-    for banned in ["continue-on-error", "|| true"] {
-        require(
-            !smoke.contains(banned) && !aggregate.contains(banned),
-            &format!("the smoke gate must not use {banned}"),
-        )?;
-    }
-    // The job itself runs under !cancelled() — never always() — so a failed
-    // or skipped matrix yields a red gate, while artifact retention may
-    // still run under always() (#2267 aggregate law).
-    require(
-        aggregate.contains("if: ${{ !cancelled() }}"),
-        "the aggregate job must run under !cancelled() so a failed or \
+            aggregate.contains("if: ${{ !cancelled() }}"),
+            "the aggregate job must run under !cancelled() so a failed or \
          skipped matrix fails the gate instead of silently skipping it",
-    )?;
-    require(
-        aggregate.contains("needs: [preflight, source-candidate-smoke]")
-            && aggregate.contains("needs.source-candidate-smoke.result"),
-        "the aggregate must consume the raw matrix needs result and refuse \
-         missing, failed, cancelled, timed-out, or skipped rows",
-    )?;
-    // Publication depends on the aggregate and re-verifies its binding.
-    require(
-        publish.contains("needs: [preflight, authorize, source-candidate-smoke-aggregate]"),
-        "publish must need the source-candidate smoke aggregate",
-    )?;
-    for required in [
-        "Download the source-candidate smoke aggregate",
-        "source-candidate-smoke-aggregate.receipt.json",
-        "source-candidate-smoke-verify.receipt.json",
-    ] {
-        require(
-            publish.contains(required),
-            &format!("publish must re-verify the smoke aggregate: {required}"),
         )?;
-    }
-    // The explicit NotIncluded classification is declared, not inferred.
-    require(
-        content.contains("NotIncluded"),
-        "release.yml must record the explicit NotIncluded platform \
+        require(
+            aggregate.contains("needs: [preflight, source-candidate-smoke]")
+                && aggregate.contains("needs.source-candidate-smoke.result"),
+            "the aggregate must consume the raw matrix needs result and refuse \
+         missing, failed, cancelled, timed-out, or skipped rows",
+        )?;
+        // Publication depends on the aggregate and re-verifies its binding.
+        require(
+            publish.contains("needs: [preflight, authorize, source-candidate-smoke-aggregate]"),
+            "publish must need the source-candidate smoke aggregate",
+        )?;
+        for required in [
+            "Download the source-candidate smoke aggregate",
+            "source-candidate-smoke-aggregate.receipt.json",
+            "source-candidate-smoke-verify.receipt.json",
+        ] {
+            require(
+                publish.contains(required),
+                &format!("publish must re-verify the smoke aggregate: {required}"),
+            )?;
+        }
+        // The explicit NotIncluded classification is declared, not inferred.
+        require(
+            content.contains("NotIncluded"),
+            "release.yml must record the explicit NotIncluded platform \
          classification (#3737) instead of inferring it from absent rows",
-    )?;
-    Ok(())
-}
+        )?;
+        Ok(())
+    }
 
     let release = job_block(&content, "github-release")
         .ok_or_else(|| io::Error::other("release.yml must define the github-release job"))?;
