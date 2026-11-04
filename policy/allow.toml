@@ -25995,7 +25995,7 @@ glob = ".allow/revisions/4214-execution-provenance.toml"
 
 
 [[allow]]
-id = "allow-11370"
+id = "allow-11371"
 kind = "non_rust_file"
 family = "configuration"
 path = ".allow/revisions/4214-execution-provenance.toml"
