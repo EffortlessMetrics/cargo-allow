@@ -197,6 +197,81 @@ jobs:
             dependency-graph-evidence-summary.md
           if-no-files-found: warn
 
+  msrv:
+    needs: pregate
+    runs-on: ubuntu-latest
+    # `rust-toolchain.toml` pins the floating `stable` channel for local
+    # development. rustup ranks that file ABOVE `rustup default`, and `rustup
+    # default` is how `dtolnay/rust-toolchain` selects its toolchain, so the
+    # action tag below is inert on its own: cargo would resolve the runner's
+    # stable and this lane would prove a Rust version the workspace does not
+    # claim. `RUSTUP_TOOLCHAIN` outranks the toolchain file, so it is what
+    # actually pins the lane. Removing it silently unpins the MSRV proof;
+    # `scripts/check-msrv-consistency.sh` fails closed if it goes missing.
+    env:
+      RUSTUP_TOOLCHAIN: "1.95.0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Runs before the toolchain so drift fails in seconds. `rust-version` in
+      # Cargo.toml is the source of truth; this proves the toolchain pin, the
+      # cache key, and the attested release-manifest MSRV all still match it.
+      - name: MSRV consistency
+        run: bash scripts/check-msrv-consistency.sh
+      # Keep installation profile and required components explicit before
+      # rustup resolves the toolchain.
+      - name: Toolchain installation profile
+        run: bash scripts/check-toolchain-profile.sh
+      # Proves the guard above still fails closed on each drift site, so it
+      # cannot be weakened into a no-op without CI noticing. No toolchain, no
+      # cargo: runs in about a second.
+      - name: MSRV consistency guard characterization
+        run: bash scripts/test-check-msrv-consistency.sh
+      - name: Toolchain profile characterization
+        run: bash scripts/test-check-toolchain-profile.sh
+      # Drives the resolved-toolchain guard with stub compilers, so its
+      # fail-closed behaviour is proven without installing real toolchains.
+      - name: MSRV resolved toolchain guard characterization
+        run: bash scripts/test-check-msrv-resolved.sh
+      # Proves the direct-floor proof lane's shell contracts (product
+      # registry, advisory pinning, meta-test skips, digest recipe) and
+      # its fail-closed posture without installing any toolchain.
+      - name: Direct-floor proof script characterization
+        run: bash scripts/test-proof-direct-floors.sh
+      # The action tag IS the proven toolchain, not a dependency version: it
+      # must equal Cargo.toml `rust-version`. Dependabot is configured to leave
+      # this action alone (.github/dependabot.yml); bumping it would keep CI
+      # green while proving a Rust version the workspace does not claim.
+      - uses: dtolnay/rust-toolchain@1.95.0
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: msrv
+          toolchain: 1.95.0
+      # The pin above is configuration; this is the evidence. Asks the resolved
+      # compiler what it is and fails closed unless it matches the declared
+      # `rust-version`, so no future toolchain-selection change can leave this
+      # lane green while proving a different Rust version.
+      - name: MSRV resolved toolchain
+        run: bash scripts/check-msrv-resolved.sh
+      - name: MSRV workspace check
+        # cargo-allow-scoped by policy (#3358): intent and proof claim
+        # no toolchain yet; their lanes run stable checks only.
+        run: |
+          cargo check --locked --all-targets \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy \
+            -p allow-inventory -p allow-files -p allow-rust -p allow-match \
+            -p allow-report -p allow-diff \
+            -p effortless-repo-protocol -p effortless-repo-snapshot \
+            -p effortless-repo-edit
+
+      - name: MSRV fast cargo-allow package proof
+        run: cargo test -p cargo-allow --bins --locked
+
+  # Pre-publication SourceCandidateSmoke (#2256 Stage A): prove the exact
+  # reviewed source candidate packages, has no path dependencies, installs
+  # from the workspace path, and passes first-hour CLI checks. Uploads a
+  # hosted receipt artifact so the readiness claim rests on CI evidence, not
+  # a local run. Linux only for the narrow claim; the msrv lane above
+  # separately proves Rust 1.95.
   # Release-impact routing (#3794), job 1 of 3: one always-run, no-secret
   # classifier that decides the exact base/head/merge-base subject into the
   # typed ReleaseImpactReceiptV1 (cargo-allow.release-impact.v1). The
@@ -472,81 +547,6 @@ jobs:
   # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
-  msrv:
-    needs: pregate
-    runs-on: ubuntu-latest
-    # `rust-toolchain.toml` pins the floating `stable` channel for local
-    # development. rustup ranks that file ABOVE `rustup default`, and `rustup
-    # default` is how `dtolnay/rust-toolchain` selects its toolchain, so the
-    # action tag below is inert on its own: cargo would resolve the runner's
-    # stable and this lane would prove a Rust version the workspace does not
-    # claim. `RUSTUP_TOOLCHAIN` outranks the toolchain file, so it is what
-    # actually pins the lane. Removing it silently unpins the MSRV proof;
-    # `scripts/check-msrv-consistency.sh` fails closed if it goes missing.
-    env:
-      RUSTUP_TOOLCHAIN: "1.95.0"
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Runs before the toolchain so drift fails in seconds. `rust-version` in
-      # Cargo.toml is the source of truth; this proves the toolchain pin, the
-      # cache key, and the attested release-manifest MSRV all still match it.
-      - name: MSRV consistency
-        run: bash scripts/check-msrv-consistency.sh
-      # Keep installation profile and required components explicit before
-      # rustup resolves the toolchain.
-      - name: Toolchain installation profile
-        run: bash scripts/check-toolchain-profile.sh
-      # Proves the guard above still fails closed on each drift site, so it
-      # cannot be weakened into a no-op without CI noticing. No toolchain, no
-      # cargo: runs in about a second.
-      - name: MSRV consistency guard characterization
-        run: bash scripts/test-check-msrv-consistency.sh
-      - name: Toolchain profile characterization
-        run: bash scripts/test-check-toolchain-profile.sh
-      # Drives the resolved-toolchain guard with stub compilers, so its
-      # fail-closed behaviour is proven without installing real toolchains.
-      - name: MSRV resolved toolchain guard characterization
-        run: bash scripts/test-check-msrv-resolved.sh
-      # Proves the direct-floor proof lane's shell contracts (product
-      # registry, advisory pinning, meta-test skips, digest recipe) and
-      # its fail-closed posture without installing any toolchain.
-      - name: Direct-floor proof script characterization
-        run: bash scripts/test-proof-direct-floors.sh
-      # The action tag IS the proven toolchain, not a dependency version: it
-      # must equal Cargo.toml `rust-version`. Dependabot is configured to leave
-      # this action alone (.github/dependabot.yml); bumping it would keep CI
-      # green while proving a Rust version the workspace does not claim.
-      - uses: dtolnay/rust-toolchain@1.95.0
-      - uses: ./.github/actions/rust-cache
-        with:
-          lane: msrv
-          toolchain: 1.95.0
-      # The pin above is configuration; this is the evidence. Asks the resolved
-      # compiler what it is and fails closed unless it matches the declared
-      # `rust-version`, so no future toolchain-selection change can leave this
-      # lane green while proving a different Rust version.
-      - name: MSRV resolved toolchain
-        run: bash scripts/check-msrv-resolved.sh
-      - name: MSRV workspace check
-        # cargo-allow-scoped by policy (#3358): intent and proof claim
-        # no toolchain yet; their lanes run stable checks only.
-        run: |
-          cargo check --locked --all-targets \
-            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy \
-            -p allow-inventory -p allow-files -p allow-rust -p allow-match \
-            -p allow-report -p allow-diff \
-            -p effortless-repo-protocol -p effortless-repo-snapshot \
-            -p effortless-repo-edit
-
-      - name: MSRV fast cargo-allow package proof
-        run: cargo test -p cargo-allow --bins --locked
-
-  # Pre-publication SourceCandidateSmoke (#2256 Stage A): prove the exact
-  # reviewed source candidate packages, has no path dependencies, installs
-  # from the workspace path, and passes first-hour CLI checks. Uploads a
-  # hosted receipt artifact so the readiness claim rests on CI evidence, not
-  # a local run. Linux only for the narrow claim; the msrv lane above
-  # separately proves Rust 1.95.
   package-smoke:
     needs: pregate
     # The linked candidate must not inherit ubuntu-latest's libc upgrades.
