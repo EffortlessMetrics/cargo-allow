@@ -974,14 +974,14 @@ mod tests {
         );
 
         let mut record = base.clone();
-        record.row_reconciliations[8] = across_candidate_row("allow-0");
+        *row_mut(&mut record, 8) = across_candidate_row("allow-0");
         assert!(
             record.validate().is_err(),
             "duplicate package rows must be rejected"
         );
 
         let mut record = base.clone();
-        record.row_reconciliations[0] = RowReconciliationV1::PublishedExactCandidate {
+        *row_mut(&mut record, 0) = RowReconciliationV1::PublishedExactCandidate {
             package: "allow-0".to_string(),
             version: "0.2.0-rc.1".to_string(),
             candidate_commit: "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace".to_string(),
@@ -1008,14 +1008,14 @@ mod tests {
             note: "registry matches a retained candidate".to_string(),
         };
         let mut record = base.clone();
-        record.row_reconciliations[8] = bad_across.clone();
+        *row_mut(&mut record, 8) = bad_across.clone();
         assert!(
             record.validate().is_err(),
             "across-candidate rows whose registry bytes match a retained candidate must be rejected"
         );
 
         let mut record = base.clone();
-        record.row_reconciliations[8] = RowReconciliationV1::PublishedAcrossCandidateHistory {
+        *row_mut(&mut record, 8) = RowReconciliationV1::PublishedAcrossCandidateHistory {
             package: "allow-diff".to_string(),
             version: "0.2.0-rc.1".to_string(),
             registry_checksum:
@@ -1030,7 +1030,7 @@ mod tests {
         );
 
         let mut record = base.clone();
-        record.row_reconciliations[8] = RowReconciliationV1::PublishedAcrossCandidateHistory {
+        *row_mut(&mut record, 8) = RowReconciliationV1::PublishedAcrossCandidateHistory {
             package: "allow-diff".to_string(),
             version: "0.2.0-rc.1".to_string(),
             registry_checksum:
@@ -1244,5 +1244,404 @@ mod tests {
                 .to_string(),
         }];
         assert_eq!(record.validate(), Ok(()));
+    }
+
+    /// Every rejection arm of the reconciliation law is reachable from a
+    /// unit test: each mutated clone must fail with the arm's own wording,
+    /// so a law that silently stops firing cannot pass this table.
+    fn attempt_mut(record: &mut RcPublicationIncidentV1) -> &mut ReleaseAttemptV1 {
+        record
+            .attempts
+            .first_mut()
+            .unwrap_or_else(|| std::panic::panic_any("fixture attempt missing"))
+    }
+    fn job_mut(record: &mut RcPublicationIncidentV1) -> &mut AttemptJobObservationV1 {
+        attempt_mut(record)
+            .jobs
+            .first_mut()
+            .unwrap_or_else(|| std::panic::panic_any("fixture job missing"))
+    }
+    fn artifact_mut(record: &mut RcPublicationIncidentV1) -> &mut AttemptArtifactObservationV1 {
+        attempt_mut(record)
+            .artifacts
+            .first_mut()
+            .unwrap_or_else(|| std::panic::panic_any("fixture artifact missing"))
+    }
+    fn inner_file_mut(record: &mut RcPublicationIncidentV1) -> &mut ArtifactInnerFileV1 {
+        artifact_mut(record)
+            .inner_files
+            .first_mut()
+            .unwrap_or_else(|| std::panic::panic_any("fixture inner file missing"))
+    }
+    fn row_mut(record: &mut RcPublicationIncidentV1, index: usize) -> &mut RowReconciliationV1 {
+        record
+            .row_reconciliations
+            .get_mut(index)
+            .unwrap_or_else(|| std::panic::panic_any("fixture row missing"))
+    }
+    fn asset_mut(record: &mut RcPublicationIncidentV1) -> &mut ReleaseAssetObservationV1 {
+        record
+            .github_release
+            .assets
+            .first_mut()
+            .unwrap_or_else(|| std::panic::panic_any("fixture asset missing"))
+    }
+
+    #[test]
+    fn every_rejection_arm_is_reachable() {
+        let rows: Vec<RowReconciliationV1> = (0..8)
+            .map(|index| exact_candidate_row(&format!("allow-{index}")))
+            .chain([
+                across_candidate_row("allow-diff"),
+                across_candidate_row("cargo-allow"),
+            ])
+            .collect();
+        let base = incident(rows);
+
+        let expect_err = |record: &RcPublicationIncidentV1, fragment: &str, label: &str| {
+            let outcome = record.validate();
+            assert!(
+                matches!(&outcome, Err(message) if message.contains(fragment)),
+                "{label}: expected an error containing `{fragment}`, got {outcome:?}"
+            );
+        };
+
+        let mut record = base.clone();
+        record.incident_id = String::new();
+        expect_err(
+            &record,
+            "incident_id must be non-empty",
+            "empty incident id",
+        );
+
+        let mut record = base.clone();
+        attempt_mut(&mut record).tree = "not-hex".to_string();
+        expect_err(&record, "attempt tree", "malformed attempt tree");
+
+        let mut record = base.clone();
+        attempt_mut(&mut record).conclusion = String::new();
+        expect_err(
+            &record,
+            "must carry conclusion and result class",
+            "empty attempt conclusion",
+        );
+
+        let mut record = base.clone();
+        attempt_mut(&mut record).run_attempt = 0;
+        expect_err(&record, "nonzero provider run attempt", "zero run attempt");
+
+        let mut record = base.clone();
+        attempt_mut(&mut record).jobs.clear();
+        expect_err(
+            &record,
+            "must carry its provider job observations",
+            "no attempt jobs",
+        );
+
+        let mut record = base.clone();
+        job_mut(&mut record).name = String::new();
+        expect_err(&record, "without name or conclusion", "job without name");
+
+        let mut record = base.clone();
+        let job = job_mut(&mut record).clone();
+        attempt_mut(&mut record).jobs.push(job);
+        expect_err(&record, "more than once", "duplicate job name");
+
+        let mut record = base.clone();
+        job_mut(&mut record).first_failing_step = None;
+        expect_err(
+            &record,
+            "failed without naming its first failing step",
+            "failed job without step",
+        );
+
+        let mut record = base.clone();
+        job_mut(&mut record).first_failing_step = Some(String::new());
+        expect_err(
+            &record,
+            "failed without naming its first failing step",
+            "failed job with empty step",
+        );
+
+        let mut record = base.clone();
+        job_mut(&mut record).conclusion = "success".to_string();
+        expect_err(
+            &record,
+            "names a failing step",
+            "successful job naming a step",
+        );
+
+        let mut record = base.clone();
+        artifact_mut(&mut record).name = String::new();
+        expect_err(
+            &record,
+            "without a provider name",
+            "artifact without provider name",
+        );
+
+        let mut record = base.clone();
+        let artifact = artifact_mut(&mut record).clone();
+        attempt_mut(&mut record).artifacts.push(artifact);
+        expect_err(&record, "more than once", "duplicate artifact id");
+
+        let mut record = base.clone();
+        artifact_mut(&mut record).expires_at = String::new();
+        expect_err(&record, "provider expiry", "artifact without expiry");
+
+        let mut record = base.clone();
+        artifact_mut(&mut record).inner_files.clear();
+        expect_err(
+            &record,
+            "listed without inner observation",
+            "artifact without inner observation",
+        );
+
+        let mut record = base.clone();
+        inner_file_mut(&mut record).name = String::new();
+        expect_err(&record, "without a name", "inner file without name");
+
+        let mut record = base.clone();
+        inner_file_mut(&mut record).sha256 = "sha256:short".to_string();
+        expect_err(
+            &record,
+            "is not a sha256 digest",
+            "inner file with malformed digest",
+        );
+
+        let mut record = base.clone();
+        attempt_mut(&mut record).retained_publish_receipt_artifact_id = Some(1);
+        expect_err(
+            &record,
+            "outside its observed artifact set",
+            "receipt id outside observed set",
+        );
+
+        let mut record = base.clone();
+        attempt_mut(&mut record).retained_publish_receipt_artifact_id = None;
+        attempt_mut(&mut record).observation_limit = None;
+        expect_err(
+            &record,
+            "without a publish receipt must carry an explicit observation limit",
+            "receipt-less attempt without limit",
+        );
+
+        // The artifact-less state always fails closed at the earlier
+        // receipt arm (a receipt-less attempt must carry its limit; a
+        // pinned receipt must sit inside the observed set), so the later
+        // artifact-less arm is defense-in-depth and unreachable from a
+        // mutated value.
+
+        let mut record = base.clone();
+        record.row_reconciliations.truncate(9);
+        expect_err(
+            &record,
+            "candidate denominator is 10 rows",
+            "short row denominator",
+        );
+
+        let mut record = base.clone();
+        *row_mut(&mut record, 0) = RowReconciliationV1::PublishedExactCandidate {
+            package: "allow-0".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            candidate_commit: "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace".to_string(),
+            candidate_tree: "73e98378d9053445cde2adfbc806c11a6cad6a67".to_string(),
+            candidate_receipt_artifact_id: 9506518765,
+            expected_checksum:
+                "sha256:a3f6c99da45120b96968349bc51c83ddf81e6d7a2c49e06e8727d3ab4195a3b2"
+                    .to_string(),
+            observed_checksum:
+                "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                    .to_string(),
+        };
+        expect_err(
+            &record,
+            "use checksum_conflict instead",
+            "exact-candidate with moved checksum",
+        );
+
+        let mut record = base.clone();
+        *row_mut(&mut record, 9) = RowReconciliationV1::PublishedButCandidateEvidenceUnavailable {
+            package: "cargo-allow".to_string(),
+            version: "0.2.0-rc.1".to_string(),
+            registry_checksum:
+                "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488"
+                    .to_string(),
+            note: String::new(),
+        };
+        expect_err(
+            &record,
+            "unavailable-evidence rows must describe the gap",
+            "unavailable-evidence without note",
+        );
+
+        let mut record = base.clone();
+        *row_mut(&mut record, 9) = RowReconciliationV1::InstrumentFailure {
+            package: "cargo-allow".to_string(),
+            note: String::new(),
+        };
+        expect_err(
+            &record,
+            "instrument-failure rows must describe the failure",
+            "instrument failure without note",
+        );
+
+        let mut record = base.clone();
+        record.github_release.asset_count = 2;
+        expect_err(
+            &record,
+            "pins 1 assets but declares asset_count 2",
+            "asset count mismatch",
+        );
+
+        let mut record = base.clone();
+        let asset = asset_mut(&mut record).clone();
+        record.github_release.assets.push(asset);
+        record.github_release.asset_count = 2;
+        expect_err(&record, "duplicate release asset id", "duplicate asset id");
+
+        let mut record = base.clone();
+        asset_mut(&mut record).state = String::new();
+        expect_err(
+            &record,
+            "must carry a provider name and state",
+            "asset without state",
+        );
+
+        let mut record = base.clone();
+        asset_mut(&mut record).digest = "sha256:short".to_string();
+        expect_err(&record, "asset", "asset with malformed digest");
+
+        let mut record = base.clone();
+        record.install_observations = vec![InstallObservationV1 {
+            run_id: attempt_mut(&mut record).run_id,
+            receipt_artifact_id: 9506518765,
+            receipt_inner_sha256:
+                "sha256:7330c08b2cf2c3735dddefd967f37e8bfadd68891a23df923ad3675b98ce6f59"
+                    .to_string(),
+            platform: String::new(),
+            observed_note: "receipt carries identity fields only".to_string(),
+        }];
+        expect_err(
+            &record,
+            "must carry platform and note",
+            "install without platform",
+        );
+
+        let mut record = base.clone();
+        let install = InstallObservationV1 {
+            run_id: attempt_mut(&mut record).run_id,
+            receipt_artifact_id: 9506518765,
+            receipt_inner_sha256:
+                "sha256:7330c08b2cf2c3735dddefd967f37e8bfadd68891a23df923ad3675b98ce6f59"
+                    .to_string(),
+            platform: "x86_64-pc-windows-msvc".to_string(),
+            observed_note: "receipt carries identity fields only".to_string(),
+        };
+        record.install_observations = vec![install.clone(), install];
+        expect_err(
+            &record,
+            "duplicate install observation",
+            "duplicate install row",
+        );
+
+        let mut record = base.clone();
+        record.install_observations = vec![InstallObservationV1 {
+            platform: "x86_64-pc-windows-msvc".to_string(),
+            run_id: 32688128233,
+            receipt_artifact_id: 9506518765,
+            receipt_inner_sha256: "sha256:short".to_string(),
+            observed_note: "identity fields only".to_string(),
+        }];
+        expect_err(
+            &record,
+            "install receipt",
+            "install with malformed receipt digest",
+        );
+
+        let mut record = base.clone();
+        record.install_observations = vec![InstallObservationV1 {
+            platform: "x86_64-pc-windows-msvc".to_string(),
+            run_id: 999,
+            receipt_artifact_id: 9506518765,
+            receipt_inner_sha256:
+                "sha256:7330c08b2cf2c3735dddefd967f37e8bfadd68891a23df923ad3675b98ce6f59"
+                    .to_string(),
+            observed_note: "identity fields only".to_string(),
+        }];
+        expect_err(
+            &record,
+            "references unobserved run",
+            "install on unobserved run",
+        );
+
+        let mut record = base.clone();
+        record.install_observations = vec![InstallObservationV1 {
+            platform: "x86_64-pc-windows-msvc".to_string(),
+            run_id: 32688128233,
+            receipt_artifact_id: 424242,
+            receipt_inner_sha256:
+                "sha256:7330c08b2cf2c3735dddefd967f37e8bfadd68891a23df923ad3675b98ce6f59"
+                    .to_string(),
+            observed_note: "identity fields only".to_string(),
+        }];
+        expect_err(
+            &record,
+            "outside run",
+            "install artifact outside the run's set",
+        );
+
+        let mut record = base.clone();
+        record.install_observations = vec![InstallObservationV1 {
+            platform: "x86_64-pc-windows-msvc".to_string(),
+            run_id: 32688128233,
+            receipt_artifact_id: 9506518765,
+            receipt_inner_sha256:
+                "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+                    .to_string(),
+            observed_note: "identity fields only".to_string(),
+        }];
+        expect_err(
+            &record,
+            "does not match any observed inner file",
+            "install digest matching no inner file",
+        );
+
+        let mut record = base.clone();
+        record.observation_limits.clear();
+        expect_err(
+            &record,
+            "partial observation must carry at least one explicit observation limit",
+            "partial observation without limits",
+        );
+
+        let mut record = base.clone();
+        record.observation_completeness = ObservationCompletenessV1::CompleteObservation;
+        expect_err(
+            &record,
+            "complete observation must not carry observation limits",
+            "complete observation with limits",
+        );
+
+        let mut record = base.clone();
+        record.observation_completeness = ObservationCompletenessV1::CompleteObservation;
+        record.observation_limits.clear();
+        *row_mut(&mut record, 8) = across_candidate_row("allow-diff");
+        expect_err(
+            &record,
+            "complete observation cannot carry rows without retained candidate provenance",
+            "complete observation with provenance-gap rows",
+        );
+
+        // The channel-posture and final-candidate-eligibility rulings are
+        // single-variant enums, so their defensive validator arms cannot be
+        // reached by a mutated value; they fail closed for future enum
+        // growth and stay uncovered by design.
+        let mut record = base.clone();
+        record.claim_boundary = String::new();
+        expect_err(
+            &record,
+            "claim_boundary must be non-empty",
+            "empty claim boundary",
+        );
     }
 }
