@@ -1,0 +1,14 @@
+kind: Added
+body: >-
+  Wire the #4302 publication checkpoint contract into both release
+  workflows (#3922): release.yml and release-authorized.yml now write a
+  schema-valid CargoAllowPublicationCheckpointV1 pre-intent checkpoint from
+  settled workflow evidence before the package upload begins, and a
+  post-observation checkpoint linked to the exact stored pre-intent bytes
+  after the publication receipt settles, each stored on the selected GitHub
+  Actions artifact surface with 90-day retention, fetched back, and verified
+  by exact-byte independent readback that fails closed before the upload or
+  any dependant continues. Evidence only: no token access, no tag, no
+  publication, and every existing authorization gate stays byte-identical;
+  provider completion and canonical model-minted authority remain #3922 open
+  work.

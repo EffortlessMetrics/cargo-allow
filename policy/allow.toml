@@ -25889,3 +25889,91 @@ glob = ".allow/revisions/3761-release-manifest-proof-suites.toml"
 line = 1
 column = 1
 
+
+[[allow]]
+id = "allow-1205"
+kind = "non_rust_file"
+family = "shell_script"
+path = "scripts/check-ub-review-post-agreement.sh"
+owner = "core/release"
+classification = "review_readiness_adapter"
+reason = "Read-only advisory agreement instrument for the UB Review workflow (#4255): checks the retained publication record pair so a publication_result=posted claim cannot silently coexist with a retained post-error record, with fixture self-test coverage; the upstream truthful-posted serializer fix stays owned by EffortlessMetrics/ub-review#959."
+evidence = ["issue:4255"]
+created = "2026-11-04"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-ub-review-post-agreement.sh"
+target_fingerprint = "sh"
+glob = "scripts/check-ub-review-post-agreement.sh"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1206"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4255-review-posting-truth.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering governance revision note for the exact-path posted-claim agreement instrument retention allowance under #4255; ledger-change metadata only, no policy broadening or CI waiver."
+evidence = ["issue:4255"]
+created = "2026-11-04"
+review_after = "2027-02-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4255-review-posting-truth.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4255-review-posting-truth.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4716-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4716.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact-current-pair disposition for init common-summary preflight safety (#4714/#4716); no general transaction guarantee or CI/release waiver."
+evidence = ["pr:4716", "issue:4714", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-03"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4716.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4716.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4716-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4716-review-disposition.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-covering revision for the reviewed #4716 preflight disposition; no broad source exception or safety bypass."
+evidence = ["pr:4716", "issue:4714"]
+created = "2026-11-03"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4716-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4716-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

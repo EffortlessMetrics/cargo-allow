@@ -545,9 +545,11 @@ fn release_workflow_projects_typed_prerelease_posture() {
         ),
         "{RELEASE_WORKFLOW} preflight should capture the typed release-identity projection"
     );
+    // #3786 cutover: the tag-strip derivation is gone — the version comes
+    // from the validated typed release-identity projection instead.
     assert!(
-        workflow.matches("version=\"${GITHUB_REF_NAME#v}\"").count() == 1,
-        "{RELEASE_WORKFLOW} only the tag-channel source derivation may strip the tag; downstream jobs must consume RELEASE_VERSION"
+        !workflow.contains("version=\"${GITHUB_REF_NAME#v}\""),
+        "{RELEASE_WORKFLOW} must not strip the tag from GITHUB_REF_NAME; downstream jobs consume the typed release-identity projection"
     );
     assert!(
         preflight.contains("RELEASE_IDENTITY_PROJECTION_FILE"),
