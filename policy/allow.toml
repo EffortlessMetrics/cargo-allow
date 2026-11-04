@@ -26241,3 +26241,71 @@ glob = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11375"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/exact-candidate-staged-packaging.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Staged outside-workspace packaging producer for the #2886 topology-selected mixed-version candidate: stages the selected closure, packages one row per release_order entry offline against a staged local registry, and verifies packaged bytes, manifests, registry rows, and lock membership fail-closed. Never uploads, tags, or contacts crates.io."
+evidence = ["issue:2886"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/exact-candidate-staged-packaging.py"
+target_fingerprint = "py"
+glob = "scripts/exact-candidate-staged-packaging.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11379"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-exact-candidate-staged-packaging.py"
+owner = "core/release"
+classification = "release_packaging_test"
+reason = "Characterization suite for the #2886 staged packaging producer: a two-version fixture proves the mixed-version candidate law offline through the verification-build ceiling with an isolated CARGO_HOME, and negative controls prove digest, missing-package, membership, packaged-manifest, registry-checksum, and lockfile drift fail closed. No upload and no crates.io lookup is reachable."
+evidence = ["issue:2886"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-exact-candidate-staged-packaging.py"
+target_fingerprint = "py"
+glob = "scripts/test-exact-candidate-staged-packaging.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11380"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #2886 staged packaging lane's added allow-11375 and allow-11376 receipts; note retention only, no new scanned surface beyond this file."
+evidence = ["issue:2886"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

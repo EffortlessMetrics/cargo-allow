@@ -239,6 +239,24 @@ sites = ["read_workspace_version()"]
 claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
 
 [[consumers]]
+id = "exact-candidate-staged-packaging"
+path = "scripts/exact-candidate-staged-packaging.py"
+role = "staged outside-workspace mixed-version packaging producer (#2886)"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["resolve_inherited_package_table("]
+claim_boundary = "Resolves workspace inheritance to exact values so the staged closure packages standalone; the package version authority is the V2 topology row comparison, never a parsed workspace version, and there is no channel inference or upload."
+
+[[consumers]]
+id = "exact-candidate-staged-packaging-fixture"
+path = "scripts/test-exact-candidate-staged-packaging.py"
+role = "two-version fixture characterization for the staged packaging producer (#2886)"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["FIXTURE_WORKSPACE_MANIFEST"]
+claim_boundary = "The fixture workspace manifests carry workspace inheritance only so the producer's standalone rewrite is exercised; packaged versions come from the fixture topology rows, with no channel inference."
+
+[[consumers]]
 id = "exact-candidate-package-set"
 path = "scripts/exact-candidate-package-set.sh"
 role = "13-crate candidate package set harness"
