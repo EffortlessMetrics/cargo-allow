@@ -52,15 +52,14 @@ fn workflow_construction_inventory_covers_the_live_denominator() {
         .collect();
     assert_eq!(
         workflows.len(),
-        11,
-        "eleven current workflows: {workflows:?}"
+        10,
+        "ten current workflows after retiring the PR readiness wrapper: {workflows:?}"
     );
     for expected in [
         ".github/workflows/ci.yml",
         ".github/workflows/floor-receipt-regeneration.yml",
         ".github/workflows/release.yml",
         ".github/workflows/release-authorized.yml",
-        ".github/workflows/review-readiness.yml",
         ".github/workflows/ub-review.yml",
         ".github/workflows/sentinel.yml",
         ".github/workflows/frozen-subject-lock.yml",

@@ -1,0 +1,3 @@
+kind: Changed
+body: Qualify ordinary repository changes on the native merge group's actual composition, with development checks and review retained in the owning session. Remove PR-event wrappers and routine main replay; coordinated admission and protection activation remains required.
+time: 2026-11-04T08:52:39Z

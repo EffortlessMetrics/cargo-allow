@@ -113,14 +113,14 @@ cases, and reconcile exact-pair CI and receipts again. A base or merge-base
 change can alter the effective diff even with an unchanged head and invalidates
 the affected review dimensions. Green CI alone is not merge readiness.
 
-Merge readiness requires the reviewed head, base SHA/ref, and effective merge
-base to remain current, the PR to be non-draft and mergeable, substantive
-conversations to be resolved with current-pair evidence, required checks to be
-terminal and green or explicitly not applicable, and no unreviewed author
-commit or material base movement after the final review. Pending, cancelled,
-stale, malformed, action-required, and silently skipped evidence do not satisfy
-the gate. Merge remains followed by current-main verification and durable
-issue/spec/proof/worktree reconciliation.
+For ordinary repository delivery, the current H review and product/scope
+judgment precede conditional native queue authority. Required CI qualifies the
+actual composed G after enqueue; do not require a future G result at H or assume
+a new manual pause after green G. New blocking findings require withdrawal and
+readback. The owner reads back actual M and reconciles objective acceptance.
+Follow [the queue source/settings cutover](../ci/merge-queue-cutover.md); review,
+admission, qualification, landing and closeout remain distinct states.
+
 
 ## Current Work and Historical Goals
 
