@@ -34,15 +34,16 @@ def identity(msrv, rustc, cargo):
         host = fields.get("host", "")
         if re.fullmatch(r"[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+){2,}", host) is None:
             raise ValueError(f"missing or malformed {tool} host: {host!r}")
-        observed.append((release, host))
-    rust_release, rust_host = observed[0]
-    cargo_release, cargo_host = observed[1]
+        observed.append((release, host, fields.get("commit-hash", "unknown")))
+    rust_release, rust_host, rust_commit = observed[0]
+    cargo_release, cargo_host = observed[1][:2]
     if rust_host != cargo_host:
         raise ValueError("rustc and cargo host identities differ")
     return {
         "toolchain": rust_release,
         "target": "host:" + rust_host,
         "host": rust_host,
+        "commit_hash": rust_commit,
         "cargo": cargo_release,
     }
 

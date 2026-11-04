@@ -160,19 +160,10 @@ cat target/floor-proof/execution-identity.json
 # verbatim in the receipt's execution provenance.
 export CARGO_ALLOW_BUILD_COMMIT="$(git rev-parse HEAD)"
 export CARGO_ALLOW_BUILD_PROFILE="$BUILD_PROFILE"
-# Single-line compiler identity from the collector-owned rustc, parsed
-# from the same -vV output floor_execution_identity.py observes.
-CARGO_ALLOW_RUSTC_IDENTITY="$("$RUSTC" -vV | python3 -c 'import sys
-
-fields = {}
-for line in sys.stdin.read().splitlines():
-    key, separator, value = line.partition(": ")
-    if separator:
-        fields[key] = value
-print(
-    "rustc", fields.get("release", "unknown"),
-    fields.get("commit-hash", "unknown"), fields.get("host", "unknown"),
-)')"
+# Single-line compiler identity parsed from the collector's own single
+# rustc -vV observation (floor_execution_identity.py's output) — no
+# second tool invocation, so the recorded-call contract stays intact.
+CARGO_ALLOW_RUSTC_IDENTITY="$(jq -r '["rustc", (.toolchain // "unknown"), (.commit_hash // "unknown"), .host] | join(" ")' target/floor-proof/execution-identity.json)"
 export CARGO_ALLOW_RUSTC_IDENTITY
 
 # Identity digests are bound to the detached worktree's own inputs — the
@@ -516,7 +507,7 @@ subject = json.load(open("target/floor-proof/source-identity.json", encoding="ut
 projection = json.load(open("target/floor-proof/product-workspace-identity.json", encoding="utf-8"))
 
 
-def selected_source_digest():
+def selected_source_digest(sources):
     """The non-circular selected-source projection (#4214): bare
     sha256 over every Rust source under crates/, CR-stripped and framed
     as path<NUL>content<NUL> in sorted forward-slash path order — the
@@ -525,41 +516,49 @@ def selected_source_digest():
     governance/docs artifact) never moves it; a Rust-source edit does.
     """
     digest = hashlib.sha256()
-    count = 0
-    for path in sorted(Path("crates").rglob("*.rs"), key=lambda item: item.as_posix()):
+    for path in sources:
         relative = path.as_posix()
         digest.update(relative.encode("utf-8") + b"\0")
         digest.update(path.read_bytes().replace(b"\r", b""))
         digest.update(b"\0")
-        count += 1
-    if count == 0:
-        raise ValueError("empty selected-source projection: no Rust sources under crates/")
     return digest.hexdigest()
 
 
-provenance = {
-    "command": "bash scripts/proof-direct-floors.sh",
-    "working_directory": os.environ["INVOCATION_DIR"],
-    "source_commit": subject["derived_commit"],
-    "source_tree": subject["derived_tree"],
-    "selected_source_digest": selected_source_digest(),
-    "selected_source_scope": [
-        "crates/**/*.rs: every workspace Rust source, CR-stripped, "
-        "framed path<NUL>content<NUL> in sorted path order",
-    ],
-    "selected_source_exclusions": [
-        "target/: build outputs, never source inputs",
-        "docs/, policy/, .changes/, .allow/: governance, retained receipts, "
-        "and change notes; committing them must not self-invalidate the proof",
-        "Cargo.toml manifests and Cargo.lock: already bound by "
-        "manifest_set_digest and lock_digest",
-        "fixtures/ and tests/fixtures/: scan fixtures outside the certified closure build",
-    ],
-    "toolchain_identity": os.environ["CARGO_ALLOW_RUSTC_IDENTITY"],
-    "profile": os.environ["CARGO_ALLOW_BUILD_PROFILE"],
-    "executable_path": None,
-    "executable_digest": None,
-}
+selected_sources = sorted(
+    Path("crates").rglob("*.rs"), key=lambda item: item.as_posix(),
+) if Path("crates").is_dir() else []
+if selected_sources:
+    provenance = {
+        "command": "bash scripts/proof-direct-floors.sh",
+        "working_directory": os.environ["INVOCATION_DIR"],
+        "source_commit": subject["derived_commit"],
+        "source_tree": subject["derived_tree"],
+        "selected_source_digest": selected_source_digest(selected_sources),
+        "selected_source_scope": [
+            "crates/**/*.rs: every workspace Rust source, CR-stripped, "
+            "framed path<NUL>content<NUL> in sorted path order",
+        ],
+        "selected_source_exclusions": [
+            "target/: build outputs, never source inputs",
+            "docs/, policy/, .changes/, .allow/: governance, retained receipts, "
+            "and change notes; committing them must not self-invalidate the proof",
+            "Cargo.toml manifests and Cargo.lock: already bound by "
+            "manifest_set_digest and lock_digest",
+            "fixtures/ and tests/fixtures/: scan fixtures outside the certified closure build",
+        ],
+        "toolchain_identity": os.environ["CARGO_ALLOW_RUSTC_IDENTITY"],
+        "profile": os.environ["CARGO_ALLOW_BUILD_PROFILE"],
+        "executable_path": None,
+        "executable_digest": None,
+    }
+else:
+    # No Rust sources under crates/: the executed subject is a
+    # characterization fixture (or a degenerate source-free tree), so
+    # the selected-source projection is inapplicable; the optional
+    # provenance section is omitted rather than fabricated. The drift
+    # evaluator grades provenance-less receipts not_proven, so a real
+    # tree that somehow lost its sources still fails closed downstream.
+    provenance = None
 
 snapshot = settlement.read_lock_snapshot(Path(lock_path))
 floors = json.load(open(floors_path, encoding="utf-8"))
