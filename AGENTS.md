@@ -19,42 +19,46 @@ unless they narrow the scope. A consequential external or irreversible effect
 still needs its actual authority; do not infer release permission from coding
 or merge permission.
 
-## Selected-candidate CI and continuous ownership
+## Queue-only CI and continuous ownership
 
-Develop and review cheaply with warm focused proof. Compare alternatives before
-PR publication while opening a Draft still triggers hosted CI. Alternative Drafts
-may stay cheap only after a documented request-based CI migration is installed,
-qualified, and tied to a recorded cutover event. Expensive pre-merge
-qualification is for the candidate selected to land, not each alternative. Selection is per objective, never a
-repository-wide one-PR queue. Do not duplicate an existing implementation merely
-to consume agent capacity.
+The selected ordinary lifecycle is warm in-session proof and substantive review,
+current product/scope judgment at exact head H, conditional authorization to the
+native merge queue, required proof on its actual composed candidate G, and
+protected landing M with readback. The same useful owner normally keeps context
+through implementation, review, repair, selection, queue wait and reconciliation.
+Selection is per objective; independent objectives may progress concurrently.
 
-The intended lifecycle is explicit late qualification, normally at most 20 minutes
-of complete CI execution, followed by a distinct final current-repository/product
-judgment and protected expected-head squash. Queue time is separate. The same
-useful lead normally retains context through the CI wait, result inspection,
-merge and landing readback. Use supported waits/events or bounded checks, not
-tight polling or a compulsory new agent/human handoff. A real interruption retains
-the exact candidate, run/attempt, findings, owner and next action.
+Ordinary commit, push, PR open/synchronize/reopen, Draft, Ready, labels and body
+edits allocate zero GitHub Actions work, including cheap readiness wrappers.
+Run development checks in the owning session. Ready remains review/UI state,
+not an enqueue request or landing authorization. Native enqueue grants conditional
+landing authority; do not assume a second manual approval pause after green G.
 
-Use the actual installed interface and inspect its triggers. Current automatic
-PR/push workflows are not changed by these instructions; coordinate their existing
-CI-economy owners rather than silently skipping proof or inventing a command.
-`premerge-ci-request` / `request-premerge-ci` are proposals, not installed names.
-No routine auto-merge or merge queue. A retained label, sibling's green result or
-successful source review cannot authorize a different head. Reconcile an existing
-run before requesting another; classify a failure before repair or justified retry.
+Read [the source/settings cutover](docs/ci/merge-queue-cutover.md) and live #4602
+before using the route. A source candidate does not activate required checks,
+queue settings or the trusted H publisher. Preserve current protections until
+coordinated activation is qualified; report a missing native operation or
+unsatisfiable requirement instead of inventing a command or bypassing it.
 
-Inspect submitted reviews, inline threads including outdated unresolved threads,
-and ordinary Conversation findings. Missing/partial reads and provider quota skips
-are not a clean review. Repair or refute material findings with current evidence,
-reply before resolving a thread, and read back both transitions. An earlier clean
-review does not suppress a later valid finding. Preserve unaffected proof while
-refreshing the dimensions changed by a repair or actual integration interaction.
+Inspect submitted reviews, inline/outdated unresolved threads and ordinary
+Conversation findings. Missing/partial reads and provider quota skips are not a
+clean review. Repair or refute material findings with current evidence, reply
+before resolving a thread and read back both transitions. New blocking findings
+withdraw readiness even at unchanged H: remove the native queue entry and read
+back the result. If landing wins that race, record actual M and route the repair.
+Do not claim that a Draft transition alone revoked an in-flight queue operation.
 
-When the task delegates ordinary integration and the final conditions below hold,
-finish the protected merge without another routine approval. Explicit read-only,
-Draft-only, release, settings and credential boundaries remain unchanged.
+Reuse unaffected proof with its original subject/run identity; refresh affected
+dimensions after a repair or real integration change. A normal wait is not a
+handoff. Use supported waits/events or bounded checks, not tight polling. A real
+interruption retains candidate/objective, findings, authority, run/attempt,
+accessible proof bytes, owner and one next action. Before deleting unique proof
+or transferring executors, verify the receiver can retrieve it. Useful warm build
+state and evidence are retained according to their separate purposes.
+
+Worker-local GitHub reads and decisions remain the default. The coordinating
+owner handles dependencies, capacity and integration; a protected effect/publisher
+service is not a mandatory gateway for ordinary observations.
 
 ## cargo-allow Product Boundary
 
@@ -125,90 +129,58 @@ maintenance.
 The selected target lifecycle is:
 
 ```text
-warm implementation and focused proof
+warm implementation and focused proof in-session
 -> differentiated substantive review and joined repair
--> publish actual-source evidence
--> explicitly request qualification for the selected current candidate
--> run mandatory plus justified risk-directed proof
--> make a separate current product/repository/integration judgment
--> protected expected-head merge
--> reconcile the actual landing
+-> current product/scope judgment and conditional authority for exact H
+-> verified native enqueue
+-> required proof on actual G, its base and queue composition
+-> native protected landing M or removal/recomposition
+-> actual M and objective reconciliation
 ```
 
-Ordinary commit, push, Draft, Ready, open, synchronize, reopen, unrelated label,
-and body-edit events do not request expensive qualification in the target. A
-request or retained label for H1 cannot authorize H2. Technically eligible
-alternative candidates do not all receive speculative full CI.
+H authorization and G proof are different obligations. Do not require a future G
+result before enqueueing, manufacture a pre-G success, or treat an old H label
+or sibling's green result as authority. Reconcile the observed native operation
+before repeating an uncertain request. Source-only tests do not establish live
+admission or protection.
 
-The request must bind the repository, PR, exact head, current review/evidence,
-selected proof, requester authority, and stable operation identity. Duplicate or
-uncertain requests read back the native operation before retry. An admission
-acknowledgment, skipped job, empty test selection, or candidate-authored success
-field is not the protected product result.
+Use the existing mandatory/affected portfolio (#2569/#3753); unknown impact
+widens proof or blocks. Preserve MSRV, platform, package, coverage, frozen-subject
+and release-sensitive requirements. A cache hit, skipped job, control
+acknowledgment or candidate-authored success field is not qualification. Keep
+executed, admissibly reused, evidenced inapplicable and missing obligations
+separate. A changed queue composition needs a new G.
 
-For every declared obligation, the selected proof plan records one of:
-
-```text
-execute
-reuse_verified
-not_applicable_with_evidence
-blocked_or_not_proven
-```
-
-Unknown impact widens proof or blocks. A cache hit is not a test result. A
-review-readiness Check is not independent qualification. Historical proof remains
-true for its observed source; current applicability is assessed separately.
-
-The normal complete active ordinary qualification targets no more than 20
-minutes, including required setup, selected children, finalization, and trusted
-result publication. Queue/request latency and shifted local work are measured
-separately. Do not meet the target by weakening proof or hiding work.
-
-As of this instruction generation, [#4602](https://github.com/EffortlessMetrics/cargo-allow/issues/4602)
-retains implementation and cutover of the explicit request/result path. Inspect
-the installed workflows, skills, required contexts, and settings before acting.
-If the target operation is absent, report the actual qualified route and
-migration gap. Do not invent a command, bypass checks, or claim a source-only
-instruction change activated the new lifecycle.
-
-No routine auto-merge or PR merge queue is part of the selected normal flow.
-Ordinary main health is separately admitted only after both one hour and ten
-merges from its accepted baseline. Release, incident, deep-analysis, Windows,
-MSRV, package, and final-freeze obligations retain their separately governed
-purpose.
+Complete active ordinary qualification targets at most 20 minutes, including
+setup, required children, finalization and trusted result publication. Queue wait,
+aggregate machine cost and shifted local work are measured separately. Do not
+weaken proof or hide work to meet the target. Ordinary main changes launch no
+routine replay; no age/count or daily health fallback is selected.
 
 ## Final Judgment and Merge
 
-After qualification completes, reacquire the live head/base/merge base,
-material findings, evidence applicability, product fit, mergeability, and actual
-protection. Passing CI can coexist with a decision not to merge.
+Before native enqueue, reacquire the selected H, current base/merge-base,
+material findings, review/proof applicability, product fit and conditional
+landing authority. Confirm a non-draft candidate and the actual supported queue
+operation under the observed protection generation. Missing, stale, malformed,
+cancelled, silently skipped and action-required evidence is not green.
 
-Before merge, verify that:
+The native queue qualifies actual G against its composed base and predecessors.
+`queue-qualification` covers the mandatory ci.yml portfolio; sentinel,
+frozen-subject and deterministic Changie contexts remain separate requirements
+in the coordinated settings generation. No direct squash or auto-merge fallback
+substitutes for native queue enforcement. A queue-qualified result may land
+without another owner action.
 
-- the live PR head, base ref/SHA, and effective merge base still match the
-  reviewed/current pair or every affected dimension has been refreshed;
-- the PR is non-draft and mergeable against the intended base;
-- substantive conversations are resolved with current evidence;
-- the explicit qualification result, where installed, is complete and belongs
-  to the actual subject;
-- every other required check is terminal and green or explicitly inapplicable
-  under repository policy;
-- pending, cancelled, stale, malformed, action-required, silently skipped, and
-  missing evidence are not called green;
-- the change still fits current product and release boundaries.
+Read back the queue/PR state and actual landed commit/tree M. Associate the
+receipt with the actual composition before reusing it. A successful enqueue
+response is not a merge receipt; an executed G is not automatically proof of a
+different M. Reconcile the objective and any residual acceptance with one owner
+and next action. A child merge does not alone close its parent objective.
 
-Green CI alone is not merge readiness. Prefer a head-pinned protected squash
-merge when the platform supports it.
-Expected-head checking does not atomically freeze the base; inspect material
-integration relationships instead of claiming an impossible guarantee.
-
-Read back the PR state and actual landed commit/tree. A successful API response
-alone is not reconciliation. Qualification on one composition is not proof that
-a materially different squash tree was executed.
-
-Deleting local or remote branches and worktrees is allowed for branches and
-worktrees created by the current lane, or confirmed stale after inspection. Do
-not delete ambiguous user work.
+Deleting local/remote branches and worktrees is allowed for task-owned or
+confirmed stale state after evidence custody is secured. Do not delete ambiguous
+user work or another lane's caches, evidence or unfinished work.
 
 ## Release Workflow and Authority
 
@@ -241,9 +213,10 @@ After merge, verify the actual landing and reconcile the issue. Reuse still-vali
 candidate proof; run affected integration checks when the landed composition
 requires them, not the full suite again merely because a merge occurred. Preserve
 required enforcement while the automatic-main CI migration is incomplete.
-After a green merge, sync `main`, rerun the required lightweight source guard,
-and perform post-merge cleanup of temporary local artifacts, especially when
-disk/memory pressure is present. Inspect ownership and retain useful proof
+After landing, sync and inspect actual `main`; reuse applicable G proof and run
+affected in-session checks when a material difference requires them. Clean
+temporary local artifacts when their ownership and evidence retention are clear,
+especially under actual disk/memory pressure. Inspect ownership and retain useful proof
 first; clean `target/cargo-allow`, `target/package`, scratch files, stale
 branches and disposable worktrees created for the lane only when they are no
 longer needed. Do not delete another lane's caches, evidence or unfinished

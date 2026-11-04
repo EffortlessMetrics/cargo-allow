@@ -58,7 +58,7 @@ id = "feature-configuration-proof"
 product = "cargo-allow"
 posture = "required"
 scope = "workspace"
-note = "routed feature-configuration matrix proof (#3905): derives the affected matrix rows from changed files (wide by default) and proves exactly those; the scheduled feature-configuration-qualification workflow proves the full selected union"
+note = "routed feature-configuration matrix proof (#3905): derives the affected matrix rows from changed files (wide by default) and proves exactly those; the explicitly dispatched feature-configuration-qualification workflow proves the full selected union"
 
 [[lane]]
 id = "test-core-platforms"
@@ -154,3 +154,19 @@ lane = "coverage"
 referenced_product = "shared-protocol"
 token = "effortless-rust-source-index"
 reason = "coverage instruments the source-structural Rust item contract package owned by the shared protocol rail (#3618)"
+
+# Queue identity and aggregation wrap the existing #3358 denominator; they do
+# not promote informational sibling lanes to cargo-allow requirements.
+[[lane]]
+id = "queue-subject"
+product = "cargo-allow"
+posture = "required"
+scope = "workspace"
+note = "validate the native merge-group checkout, base, tree and run identity"
+
+[[lane]]
+id = "queue-qualification"
+product = "cargo-allow"
+posture = "required"
+scope = "workspace"
+note = "require every mandatory ci.yml producer to succeed on the same actual G"

@@ -4,8 +4,8 @@ name: Frozen subject lock
 # explicit invalidation must not merge. Read-only: evaluation only.
 
 on:
-  pull_request:
-  push:
+  merge_group:
+    types: [checks_requested]
     branches: [main]
 
 permissions:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@1.95.0
       - run: cargo run -p cargo-allow --locked -- frozen-subject-lock check --receipt docs/dogfood/receipts/final-freeze/final-freeze.receipt.json

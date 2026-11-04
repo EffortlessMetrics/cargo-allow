@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "cargo-allow merge-group observation or required-result receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id", "schema_version", "repository", "base_ref", "base_sha",
+    "head_ref", "head_sha", "tree_sha", "parents", "run_id", "run_attempt",
+    "workflow_ref", "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "enum": ["cargo-allow.merge-group-subject.v1", "cargo-allow.merge-group-result.v1"]
+    },
+    "schema_version": {"const": 1},
+    "repository": {"type": "string", "minLength": 1},
+    "base_ref": {"const": "refs/heads/main"},
+    "base_sha": {"$ref": "#/$defs/sha"},
+    "head_ref": {"type": "string", "pattern": "^refs/heads/gh-readonly-queue/main/.+"},
+    "head_sha": {"$ref": "#/$defs/sha"},
+    "tree_sha": {"$ref": "#/$defs/sha"},
+    "parents": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sha"}},
+    "run_id": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+    "run_attempt": {"type": "string", "pattern": "^[1-9][0-9]*$"},
+    "workflow_ref": {"type": "string"},
+    "claim_boundary": {"type": "string", "minLength": 1},
+    "required_job_results": {
+      "type": "object", "minProperties": 1,
+      "additionalProperties": {"const": "success"}
+    }
+  },
+  "if": {"properties": {"schema_id": {"const": "cargo-allow.merge-group-result.v1"}}},
+  "then": {"required": ["required_job_results"]},
+  "else": {"not": {"required": ["required_job_results"]}},
+  "$defs": {"sha": {"type": "string", "pattern": "^[0-9a-f]{40}$"}}
+}
