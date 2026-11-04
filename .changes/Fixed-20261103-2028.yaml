@@ -1,0 +1,15 @@
+kind: Fixed
+body: >-
+  Make the UB Review workflow's requested review posting actually
+  authenticatable and its posted claims truthful (#4255). The `Run ub-review`
+  step now passes `github-token` so the pinned action can submit the grouped
+  PR review under the workflow's existing pull-requests/checks write scopes
+  instead of always failing the missing-token preflight while advisory
+  enforcement stays unchanged. A new bounded post-run agreement-check step
+  fails the wrapper when a retained `publication_result=posted` claim has no
+  acknowledged post-result receipt or contradicts the retained post-error
+  record; the instrument ships its own missing-token, rejected-post, success,
+  artifact-only, and edge fixtures via
+  `scripts/check-ub-review-post-agreement.sh --self-test`. The upstream
+  truthful-posted serializer fix remains owned by EffortlessMetrics/ub-review#959.
+time: 2026-11-03T20:28:00Z
