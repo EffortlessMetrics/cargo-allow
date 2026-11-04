@@ -1172,3 +1172,32 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
     }
     Ok(())
 }
+
+#[test]
+fn package_size_absence_and_zero_remain_mismatch_not_ordinary_producer_holds() -> ExperienceResult {
+    for value in [
+        None,
+        Some(serde_json::Value::Null),
+        Some(serde_json::json!(0)),
+    ] {
+        let mut original = bundle()?;
+        let mut predecessors = original.predecessors()?;
+        let row = predecessors
+            .first_mut()
+            .and_then(|candidate| candidate.pointer_mut("/rows/0"))
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("candidate first package row missing")?;
+        if let Some(value) = value {
+            row.insert("crate_size_bytes".to_string(), value);
+        } else {
+            row.remove("crate_size_bytes");
+        }
+        original.reseal_predecessors(predecessors)?;
+        assert_admission(
+            &original,
+            State::Mismatch,
+            "disagrees across original producers or selected upload bytes",
+        )?;
+    }
+    Ok(())
+}

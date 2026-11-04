@@ -691,7 +691,7 @@ fn bind_packages(
             || qualified.package_version != row.cargo_package_version
             || qualified.logical_id != row.logical_id
             || !family_matches
-            || !row.crate_size_bytes.is_some_and(|size| size > 0)
+            || row.crate_size_bytes.is_none_or(|size| size == 0)
             || !same_digest(digest, &installed.crate_digest)
             || !same_digest(digest, &installed.index_checksum)
             || !same_digest(digest, &qualified.crate_digest)

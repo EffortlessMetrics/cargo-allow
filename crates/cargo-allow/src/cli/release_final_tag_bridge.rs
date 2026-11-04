@@ -225,7 +225,7 @@ fn valid_control_time(value: &str, now: &str) -> bool {
     };
     if value.len() != 20
         || value > now
-        || !allow_core::SimpleDate::parse(date).is_some_and(|parsed| parsed.to_string() == date)
+        || allow_core::SimpleDate::parse(date).is_none_or(|parsed| parsed.to_string() != date)
     {
         return false;
     }
@@ -2229,4 +2229,32 @@ pub(super) fn cmd_release_final_tag_bridge(_: &ReleaseFinalTagBridgeArgs) -> Car
         .write_all(&output)
         .and_then(|_| stdout.write_all(b"\n"))
         .map_err(|_| instrument("bounded output write failed"))
+}
+
+#[cfg(test)]
+mod control_time_tests {
+    #[test]
+    fn control_time_preserves_exact_dates_and_refuses_future_or_malformed_values()
+    -> Result<(), String> {
+        let now = "2026-11-04T02:00:00Z";
+        for (value, expected) in [
+            (now, true),
+            ("2026-11-03T23:59:59Z", true),
+            ("2024-02-29T00:00:00Z", true),
+            ("2026-02-29T00:00:00Z", false),
+            ("2026-00-04T00:00:00Z", false),
+            ("2026-1-004T00:00:00Z", false),
+            ("2026-11-04T02:00:01Z", false),
+            ("2026-11-03T24:00:00Z", false),
+            ("2026-11-03T00:60:00Z", false),
+            ("2026-11-03T00:00:60Z", false),
+            ("2026-11-03T00:00:00z", false),
+            ("", false),
+        ] {
+            if super::valid_control_time(value, now) != expected {
+                return Err(format!("unexpected control-time admission for {value:?}"));
+            }
+        }
+        Ok(())
+    }
 }

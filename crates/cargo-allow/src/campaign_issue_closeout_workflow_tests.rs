@@ -87,10 +87,8 @@ fn validate_closeout(
                 codes.push("closeout_id_missing".to_string());
             }
         }
-        "Duplicate" => {
-            if payload.replacement_issue.is_none() {
-                codes.push("replacement_issue_missing".to_string());
-            }
+        "Duplicate" if payload.replacement_issue.is_none() => {
+            codes.push("replacement_issue_missing".to_string());
         }
         "NotPlanned"
             if payload

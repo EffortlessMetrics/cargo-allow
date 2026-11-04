@@ -374,10 +374,10 @@ fn aggregate_schema_and_authorization_evidence_are_explicit() -> Result<(), Box<
             // The note is descriptive, not a semantic result. Any nonempty
             // string is compatible; never infer status from its prose.
             if field != "phase_status_note"
-                || !malformed
+                || malformed
                     .pointer("/authorization_boundary/phase_status_note")
                     .and_then(Json::as_str)
-                    .is_some_and(|note| !note.is_empty())
+                    .is_none_or(|note| note.is_empty())
             {
                 rejected_with(
                     &subject,
