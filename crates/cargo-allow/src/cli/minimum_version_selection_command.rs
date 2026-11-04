@@ -19,7 +19,7 @@ use clap::{Parser, Subcommand};
 
 use crate::minimum_version_selection::{
     ProductSelection, derive_selection, lock_digest, manifest_set_digest, product_roots, products,
-    retained_receipt_path, workspace_msrv,
+    retained_receipt_path, selected_source_digest, workspace_msrv,
 };
 
 /// Read-only direct-floor drift evaluation (hidden automation tooling).
@@ -168,6 +168,15 @@ fn build_observation(
             .map_err(|error| CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, error))?,
         lock_digest: lock_digest(root)
             .map_err(|error| CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, error))?,
+        // The #4214 selected-source projection: the same digest the
+        // producer records in a receipt's execution provenance, so a
+        // Rust-source-only edit stales a provenance-carrying receipt
+        // even when the manifest and lock digests are equal.
+        selected_source_digest: Some(
+            selected_source_digest(root).map_err(|error| {
+                CargoAllowError::with_kind(CargoAllowErrorKind::Inventory, error)
+            })?,
+        ),
         floors: selection
             .floors
             .into_iter()

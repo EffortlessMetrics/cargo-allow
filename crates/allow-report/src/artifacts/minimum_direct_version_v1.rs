@@ -18,6 +18,13 @@
 //!   silently (control 7): the receipt's toolchain must match the
 //!   request's MSRV;
 //! - source/manifest/lock movement stales the receipt (control 8);
+//! - a present `execution_provenance` section binds the receipt to the
+//!   actually executed source subject (executed commit/tree plus a
+//!   non-circular selected-source projection digest, #4214); receipts
+//!   predating the section stay decodable historical evidence that is
+//!   graded on the fields it carries, and the executable-identity
+//!   fields (path/digest, toolchain identity, profile) are named for
+//!   #4225's executable-provenance fill;
 //! - zero selected rows is never `Proven` (control 9);
 //! - unavailable/yanked and compile-incompatible dispositions stay
 //!   distinct (control 6);
@@ -221,9 +228,57 @@ pub struct MinimumVersionProofReceiptV1 {
     /// Digest of the changed lock/override artifact the proof produced.
     #[serde(default)]
     pub floor_lock_digest: String,
+    /// Additive execution provenance (#4214/#4225): binds the receipt
+    /// to the actually executed source subject — the executed source
+    /// commit/tree and the non-circular selected-source projection
+    /// digest — with the executable-identity fields named for #4225's
+    /// fill. Absent on receipts that predate the section; those stay
+    /// decodable historical evidence valid for their recorded subject
+    /// and are graded on the fields they carry. A present section is
+    /// enforced: a selected-source projection mismatch stales the
+    /// receipt, and a present-but-invalid row is a named failure.
+    #[serde(default)]
+    pub execution_provenance: Option<MinimumVersionExecutionProvenanceV1>,
     #[serde(default)]
     pub limitations: Vec<String>,
     pub claim_boundary: String,
+}
+
+/// The execution-provenance section of a proof receipt (#4214 shared
+/// shape with #4225): what actually executed, over which source
+/// subject, with the executable identity the #4225 fill records.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MinimumVersionExecutionProvenanceV1 {
+    /// The producer invocation that executed the proof (the proof
+    /// class commands remain in the receipt's `commands`).
+    pub command: String,
+    /// The working directory the producer was invoked from; the
+    /// executed subject is pinned by `source_commit`/`source_tree`.
+    pub working_directory: String,
+    /// The executed source commit: the exact checked-out subject the
+    /// proof classes ran against (the producer's derived floor commit).
+    pub source_commit: String,
+    /// The executed source tree hash.
+    pub source_tree: String,
+    /// The non-circular selected-source projection digest: bare sha256
+    /// over the selected Rust source inputs in sorted path order, so a
+    /// Rust-source-only edit moves it while committing the receipt
+    /// itself (or any governance/docs artifact) never does.
+    pub selected_source_digest: String,
+    /// The input scope the projection digest covers.
+    pub selected_source_scope: Vec<String>,
+    /// The explicit exclusions from the projection, each justified.
+    pub selected_source_exclusions: Vec<String>,
+    /// The observed compiler identity for the executed proof.
+    pub toolchain_identity: Option<String>,
+    /// The build profile the proof classes compiled under.
+    pub profile: Option<String>,
+    /// Absolute path of the executed proof executable (#4225 fill).
+    pub executable_path: Option<String>,
+    /// Canonical `sha256:v1:` digest of the executed executable bytes
+    /// (#4225 fill); required whenever `executable_path` is recorded.
+    pub executable_digest: Option<String>,
 }
 
 /// The evaluated verdict over one receipt.

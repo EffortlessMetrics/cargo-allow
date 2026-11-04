@@ -433,6 +433,68 @@ pub(crate) fn lock_digest(root: &Path) -> Result<String, String> {
     Ok(hex_sha256(hasher.finalize()))
 }
 
+/// The selected-source projection digest (#4214): the CR-stripped
+/// sha256 over every Rust source under `crates/`, framed as
+/// `path\0content\0` in sorted forward-slash path order — byte-for-byte
+/// the stream `scripts/proof-direct-floors.sh` hashes when it records a
+/// receipt's `execution_provenance.selected_source_digest`. This is the
+/// non-circular source-currentness key: committing the receipt itself,
+/// change notes, policy, or docs never moves it, while any Rust source
+/// edit under `crates/` does. Uncommitted working-tree sources move it
+/// exactly like committed ones — the same clean-source admission the
+/// producer enforces before minting a receipt.
+///
+/// Scope and exclusions mirror the receipt's provenance scope rows:
+/// manifests and `Cargo.lock` are already bound by
+/// [`manifest_set_digest`] and [`lock_digest`], `target/` is build
+/// output, and `docs/`, `policy/`, `.changes/`, `.allow/`, `fixtures/`,
+/// and `tests/fixtures/` are governance, receipts, and scan fixtures
+/// outside the certified closure build.
+pub(crate) fn selected_source_digest(root: &Path) -> Result<String, String> {
+    let crates_dir = root.join("crates");
+    if !crates_dir.is_dir() {
+        return Err(format!(
+            "the workspace crates dir reads: {} is not a directory",
+            crates_dir.display()
+        ));
+    }
+    let mut sources = BTreeSet::new();
+    collect_rust_sources(&crates_dir, "crates", &mut sources)?;
+    let mut hasher = Sha256::new();
+    for relative in &sources {
+        let bytes = std::fs::read(root.join(relative))
+            .map_err(|error| format!("source {relative} reads: {error}"))?;
+        hasher.update(relative.as_bytes());
+        hasher.update([0u8]);
+        hasher.update(cr_stripped(&bytes));
+        hasher.update([0u8]);
+    }
+    Ok(hex_sha256(hasher.finalize()))
+}
+
+/// Recursively collect `*.rs` paths under `dir`, recorded as
+/// forward-slash paths relative to the workspace root in sorted order.
+fn collect_rust_sources(
+    dir: &Path,
+    prefix: &str,
+    sources: &mut BTreeSet<String>,
+) -> Result<(), String> {
+    let entries =
+        std::fs::read_dir(dir).map_err(|error| format!("dir {} reads: {error}", dir.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("dir entry reads: {error}"))?;
+        let path = entry.path();
+        let name = entry.file_name().to_string_lossy().replace('\\', "/");
+        let relative = format!("{prefix}/{name}");
+        if path.is_dir() {
+            collect_rust_sources(&path, &relative, sources)?;
+        } else if name.ends_with(".rs") {
+            sources.insert(relative);
+        }
+    }
+    Ok(())
+}
+
 /// The workspace's claimed MSRV (`workspace.package.rust-version`).
 pub(crate) fn workspace_msrv(root: &Path) -> Result<String, String> {
     let ws = parse_manifest(&root.join("Cargo.toml"))?;
@@ -685,5 +747,117 @@ c = ["dep:other"]
         );
         let _ = std::fs::remove_dir_all(&lf_root);
         let _ = std::fs::remove_dir_all(&crlf_root);
+    }
+
+    /// The exact fixture the producer-side python stream was pinned
+    /// against: the committed hex below was produced by the receipt
+    /// emitter's `selected_source_digest` on byte-identical fixture
+    /// files, so any framing drift between the producer and this
+    /// observer fails here instead of at the next regeneration.
+    fn write_parity_fixture() -> std::path::PathBuf {
+        let id = FIXTURE_COUNTER.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        let root =
+            std::env::temp_dir().join(format!("floor-source-parity-{}-{id}", std::process::id()));
+        std::fs::create_dir_all(root.join("crates/alpha/src")).expect("fixture dirs write");
+        std::fs::create_dir_all(root.join("docs/ci/receipts")).expect("fixture dirs write");
+        std::fs::write(
+            root.join("Cargo.toml"),
+            "[workspace]\nmembers = [\"crates/alpha\"]\n",
+        )
+        .expect("fixture writes");
+        std::fs::write(
+            root.join("crates/alpha/Cargo.toml"),
+            "[package]\nname = \"alpha\"\n",
+        )
+        .expect("fixture writes");
+        std::fs::write(
+            root.join("crates/alpha/src/lib.rs"),
+            "pub fn one() -> u32 {\r\n    1\r\n}\r\n",
+        )
+        .expect("fixture writes");
+        std::fs::write(root.join("crates/alpha/src/main.rs"), "fn main() {}\n")
+            .expect("fixture writes");
+        std::fs::write(
+            root.join("docs/ci/receipts/direct-floor-proof-x.json"),
+            "{}\n",
+        )
+        .expect("fixture writes");
+        root
+    }
+
+    #[test]
+    fn selected_source_digest_matches_the_producer_stream_hex() {
+        let root = write_parity_fixture();
+        let digest = selected_source_digest(&root).expect("digest derives");
+        assert_eq!(
+            digest, "0ef5cc36fbe92389eec515bc163036bc5ee76c67e397b3b5b2b738de9a70e818",
+            "the observer's framing matches the producer's python stream"
+        );
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn selected_source_digest_is_non_circular_and_binds_rust_sources() {
+        let root = write_parity_fixture();
+        let baseline = selected_source_digest(&root).expect("digest derives");
+
+        // The non-circular contract: committing the receipt itself (or
+        // any governance artifact) never moves the projection.
+        std::fs::write(
+            root.join("docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json"),
+            "{\"execution_provenance\": {}}\n",
+        )
+        .expect("receipt writes");
+        assert_eq!(
+            selected_source_digest(&root).expect("digest derives"),
+            baseline,
+            "a receipt-only change does not move the projection"
+        );
+
+        // A Rust-source-only edit moves it with unchanged manifests.
+        let lib = root.join("crates/alpha/src/lib.rs");
+        let original = std::fs::read_to_string(&lib).expect("lib reads");
+        std::fs::write(&lib, original.replace("one", "onE")).expect("lib writes");
+        let moved = selected_source_digest(&root).expect("digest derives");
+        assert_ne!(moved, baseline, "a Rust-source-only edit moves the digest");
+
+        // Restoring the exact source requalifies it.
+        std::fs::write(&lib, &original).expect("lib restores");
+        assert_eq!(
+            selected_source_digest(&root).expect("digest derives"),
+            baseline,
+            "the restored source reproduces the original projection"
+        );
+
+        // Line-ending independence: an LF checkout hashes the same.
+        std::fs::write(&lib, original.replace("\r\n", "\n")).expect("lib rewrites");
+        assert_eq!(
+            selected_source_digest(&root).expect("digest derives"),
+            baseline,
+            "CRLF and LF checkouts hash alike"
+        );
+
+        // A new source file under crates/ participates.
+        std::fs::write(&lib, original).expect("lib restores");
+        std::fs::create_dir_all(root.join("crates/alpha/tests")).expect("tests dir writes");
+        std::fs::write(
+            root.join("crates/alpha/tests/it.rs"),
+            "#[test]\nfn it_works() {}\n",
+        )
+        .expect("test file writes");
+        let grown = selected_source_digest(&root).expect("digest derives");
+        assert_ne!(grown, baseline, "a new Rust source moves the digest");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn selected_source_digest_fails_closed_without_a_crates_dir() {
+        let root = std::env::temp_dir().join(format!("floor-no-crates-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("fixture dir writes");
+        assert!(
+            selected_source_digest(&root).is_err(),
+            "a missing crates dir fails closed"
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

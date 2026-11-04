@@ -1,0 +1,34 @@
+# Revision note: land the #4214 execution-provenance source binding.
+#
+# The lane adds one additive execution_provenance section on
+# MinimumVersionProofReceiptV1 (executed commit/tree plus a non-circular
+# selected-source projection digest), the matching drift observation and
+# evaluator laws, the producer wiring in scripts/proof-direct-floors.sh,
+# and focused fixture/drift/selection tests. The new digest tests follow
+# the same invariant-guard pattern the #3903 reviewed exceptions already
+# cover in the same two modules, so the two occurrence limits are
+# loosened to the exact new headroom instead of splitting or narrowing
+# the reviewed classes; no selector, reason, owner, or classification
+# changes. The third record self-covers this note file, matching the
+# #4342 and #3792 precedents.
+
+[[records]]
+allow_ids = ["allow-11254"]
+reason = "The #4214 selected-source digest tests extend the same invariant-guard class the #3903 exception already reviews in this module: every new expect guards a fixture workspace write, a retained-file write, a projection-digest derivation, or a digest movement/restore comparison whose success is the property under test. Headroom moves 18 to 38, the exact counted total; selector, owner, classification, and reason class stay unchanged."
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:5e9e71403fc97bcc752f2becb1aa6ccf16e4625b2816f3759104f64c681e1b03"
+after_fingerprint = "sha256:v1:8d5c0c8bd2bf09b468dda527f675bd76a91d4a9d7c4e45e68837a1d513b5c5b2"
+
+[[records]]
+allow_ids = ["allow-11256"]
+reason = "The #4214 live drift test adds one projection-digest derivation expect to the same reviewed drift-test class: it guards the live selected-source projection whose success is the property under test. Headroom moves 7 to 8, the exact counted total; selector, owner, classification, and reason class stay unchanged."
+change_kinds = ["occurrence_limit_loosened"]
+before_fingerprint = "sha256:v1:250b3a85f0a2b35b358bd38e88336df6a094a772d4d524f74f589afb5acda390"
+after_fingerprint = "sha256:v1:c62fede3229fadb30fc5dbbb797d08ff7c52c786cbb1c61af3cf2d12e082c4a8"
+
+[[records]]
+allow_ids = ["allow-11370"]
+reason = "Self-covering revision note for the #4214 occurrence-limit loosening and the new note file itself, matching the #4342 and #3792 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6cf3713c8bb32ec33f092750cbc939dcd3098b7c546786ed46ac1469f9c1e7c3"
+

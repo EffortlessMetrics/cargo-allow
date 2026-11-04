@@ -85,6 +85,15 @@ mapfile -t ROOTS < <(product_roots "$PRODUCT")
 # selection would skip every proof and still certify the rows (negative
 # control 10).
 IFS=',' read -r -a CLASS_LIST <<< "$CLASSES"
+
+# The build profile the check/test classes compile under (dev); a
+# package-only selection compiles its single archive sample under
+# release. Recorded in the receipt's execution provenance and exported
+# for self-built binaries' compile-time identity.
+BUILD_PROFILE="release"
+if [[ " ${CLASS_LIST[*]} " == *" check "* || " ${CLASS_LIST[*]} " == *" test "* ]]; then
+  BUILD_PROFILE="dev"
+fi
 known_class() {
   case "$1" in
     check | test | package) return 0 ;;
@@ -107,6 +116,12 @@ done
 # Resolve the output path before the worktree changes the working directory.
 mkdir -p "$(dirname "$CI_PROOF_OUT")"
 OUT="$(cd "$(dirname "$CI_PROOF_OUT")" && pwd)/$(basename "$CI_PROOF_OUT")"
+
+# The collector's invocation directory (the checked-out source root the
+# producer was launched from), recorded in the receipt's execution
+# provenance. The executed subject itself is pinned by the derived
+# source commit/tree recorded alongside it.
+INVOCATION_DIR="$(pwd)"
 
 WORKTREE="$(mktemp -d)"
 cleanup() {
@@ -135,6 +150,30 @@ export RUSTC_WORKSPACE_WRAPPER=""
 python3 scripts/floor_execution_identity.py "$MSRV" > target/floor-proof/execution-identity.json
 host_target="$(jq -r '.host' target/floor-proof/execution-identity.json)"
 cat target/floor-proof/execution-identity.json
+
+# #4214/#4225: bind self-built binaries' compile-time identity to the
+# executed floor subject. CARGO_ALLOW_BUILD_COMMIT is the detached
+# worktree's derived HEAD — the actual executed source — so the
+# tool-identity contract's option_env! reads stop being always-None for
+# binaries built by these proof classes. The compiler identity and
+# build profile complete the compile-time provenance and are recorded
+# verbatim in the receipt's execution provenance.
+export CARGO_ALLOW_BUILD_COMMIT="$(git rev-parse HEAD)"
+export CARGO_ALLOW_BUILD_PROFILE="$BUILD_PROFILE"
+# Single-line compiler identity from the collector-owned rustc, parsed
+# from the same -vV output floor_execution_identity.py observes.
+CARGO_ALLOW_RUSTC_IDENTITY="$("$RUSTC" -vV | python3 -c 'import sys
+
+fields = {}
+for line in sys.stdin.read().splitlines():
+    key, separator, value = line.partition(": ")
+    if separator:
+        fields[key] = value
+print(
+    "rustc", fields.get("release", "unknown"),
+    fields.get("commit-hash", "unknown"), fields.get("host", "unknown"),
+)')"
+export CARGO_ALLOW_RUSTC_IDENTITY
 
 # Identity digests are bound to the detached worktree's own inputs — the
 # exact manifests and the HEAD Cargo.lock the floor candidate starts
@@ -453,6 +492,7 @@ fi
 PRODUCT="$PRODUCT" \
 CHECK_CMD="$check_cmd" TEST_CMD="$test_cmd" PACKAGE_CMD="$package_cmd" \
 ROOTS_JSON="$(jq -c '.roots' target/floor-proof/floors-selection.json)" \
+INVOCATION_DIR="$INVOCATION_DIR" \
 python3 - "$WORKTREE/Cargo.lock" "$WORKTREE/target/floor-proof/floors.json" "$WORKTREE/target/floor-proof/pin-failures.json" \
   "$check_status" "$test_status" "$package_status" "$MSRV" \
   "$manifest_set_digest" "$lock_digest" > "$OUT" <<'PY'
@@ -474,6 +514,52 @@ package_roots = json.loads(os.environ["ROOTS_JSON"])
 execution = json.load(open("target/floor-proof/execution-identity.json", encoding="utf-8"))
 subject = json.load(open("target/floor-proof/source-identity.json", encoding="utf-8"))
 projection = json.load(open("target/floor-proof/product-workspace-identity.json", encoding="utf-8"))
+
+
+def selected_source_digest():
+    """The non-circular selected-source projection (#4214): bare
+    sha256 over every Rust source under crates/, CR-stripped and framed
+    as path<NUL>content<NUL> in sorted forward-slash path order — the
+    exact stream crates/cargo-allow's minimum_version_selection hashes
+    for the drift observation. Committing this receipt (or any
+    governance/docs artifact) never moves it; a Rust-source edit does.
+    """
+    digest = hashlib.sha256()
+    count = 0
+    for path in sorted(Path("crates").rglob("*.rs"), key=lambda item: item.as_posix()):
+        relative = path.as_posix()
+        digest.update(relative.encode("utf-8") + b"\0")
+        digest.update(path.read_bytes().replace(b"\r", b""))
+        digest.update(b"\0")
+        count += 1
+    if count == 0:
+        raise ValueError("empty selected-source projection: no Rust sources under crates/")
+    return digest.hexdigest()
+
+
+provenance = {
+    "command": "bash scripts/proof-direct-floors.sh",
+    "working_directory": os.environ["INVOCATION_DIR"],
+    "source_commit": subject["derived_commit"],
+    "source_tree": subject["derived_tree"],
+    "selected_source_digest": selected_source_digest(),
+    "selected_source_scope": [
+        "crates/**/*.rs: every workspace Rust source, CR-stripped, "
+        "framed path<NUL>content<NUL> in sorted path order",
+    ],
+    "selected_source_exclusions": [
+        "target/: build outputs, never source inputs",
+        "docs/, policy/, .changes/, .allow/: governance, retained receipts, "
+        "and change notes; committing them must not self-invalidate the proof",
+        "Cargo.toml manifests and Cargo.lock: already bound by "
+        "manifest_set_digest and lock_digest",
+        "fixtures/ and tests/fixtures/: scan fixtures outside the certified closure build",
+    ],
+    "toolchain_identity": os.environ["CARGO_ALLOW_RUSTC_IDENTITY"],
+    "profile": os.environ["CARGO_ALLOW_BUILD_PROFILE"],
+    "executable_path": None,
+    "executable_digest": None,
+}
 
 snapshot = settlement.read_lock_snapshot(Path(lock_path))
 floors = json.load(open(floors_path, encoding="utf-8"))
@@ -600,6 +686,7 @@ receipt = {
     "rows": rows,
     "commands": commands,
     "floor_lock_digest": floor_lock_digest,
+    "execution_provenance": provenance,
     "limitations": limitations,
     "claim_boundary": claim_boundary,
 }

@@ -75,6 +75,7 @@ fn receipt(product: &str, rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersio
         rows,
         commands: vec!["cargo check --locked".to_string()],
         floor_lock_digest: "sha256:v1:floor-lock".to_string(),
+        execution_provenance: None,
         limitations: Vec::new(),
         claim_boundary: "bounded".to_string(),
     }

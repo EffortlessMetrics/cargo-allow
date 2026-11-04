@@ -9,10 +9,13 @@
 use allow_report::{
     DRIFT_RELEASE_SET_PRODUCT, MinimumFloorResultV1, MinimumVersionDriftEvaluationV1,
     MinimumVersionDriftFloorRowV1, MinimumVersionDriftObservationV1, MinimumVersionDriftVerdictV1,
-    MinimumVersionProofReceiptV1, MinimumVersionRowResultV1, evaluate_minimum_version_drift,
+    MinimumVersionExecutionProvenanceV1, MinimumVersionProofReceiptV1, MinimumVersionRowResultV1,
+    evaluate_minimum_version_drift,
 };
 
-use crate::minimum_version_selection::{derive_selection, manifest_set_digest, workspace_msrv};
+use crate::minimum_version_selection::{
+    derive_selection, manifest_set_digest, selected_source_digest, workspace_msrv,
+};
 
 fn floor_row(package: &str) -> MinimumVersionDriftFloorRowV1 {
     MinimumVersionDriftFloorRowV1 {
@@ -30,6 +33,7 @@ fn observation(product: &str) -> MinimumVersionDriftObservationV1 {
         target: "host (product closure default target)".to_string(),
         manifest_set_digest: "manifests-current".to_string(),
         lock_digest: "lock-current".to_string(),
+        selected_source_digest: None,
         floors: vec![floor_row("serde")],
     }
 }
@@ -64,8 +68,28 @@ fn receipt(product: &str, rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersio
         rows,
         commands: vec!["cargo check --locked".to_string()],
         floor_lock_digest: "sha256:v1:floor-lock".to_string(),
+        execution_provenance: None,
         limitations: Vec::new(),
         claim_boundary: "bounded".to_string(),
+    }
+}
+
+/// A well-formed execution provenance row over `digest`, with the
+/// executable-identity pair recorded canonically (the shape #4225's
+/// fill must satisfy).
+fn provenance(digest: &str) -> MinimumVersionExecutionProvenanceV1 {
+    MinimumVersionExecutionProvenanceV1 {
+        command: "bash scripts/proof-direct-floors.sh".to_string(),
+        working_directory: "/checkout".to_string(),
+        source_commit: "0123456789abcdef0123456789abcdef01234567".to_string(),
+        source_tree: "fedcba9876543210fedcba9876543210fedcba98".to_string(),
+        selected_source_digest: digest.to_string(),
+        selected_source_scope: vec!["crates/**/*.rs".to_string()],
+        selected_source_exclusions: vec!["target/".to_string()],
+        toolchain_identity: Some("rustc 1.95.0 (1111) x86_64-unknown-linux-gnu".to_string()),
+        profile: Some("dev".to_string()),
+        executable_path: Some("/usr/local/bin/cargo".to_string()),
+        executable_digest: Some(format!("sha256:v1:{}", "a".repeat(64))),
     }
 }
 
@@ -254,6 +278,186 @@ fn minimum_direct_version_drift_legacy_roots_binding_stays_optional() {
         evaluation.verdict,
         MinimumVersionDriftVerdictV1::Current,
         "no roots movement is invented for a legacy receipt: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
+fn minimum_direct_version_drift_selected_source_movement_stales_with_equal_manifests_and_lock() {
+    // #4214: with the manifest-set and lock digests unchanged, a
+    // Rust-source-only edit still moves the selected-source projection,
+    // and the receipt cannot inherit the earlier proof.
+    let mut moved = observation("cargo-allow");
+    moved.selected_source_digest =
+        Some("1111111111111111111111111111111111111111111111111111111111111111".to_string());
+    let mut receipt = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    receipt.execution_provenance = Some(provenance(
+        "2222222222222222222222222222222222222222222222222222222222222222",
+    ));
+    let evaluation = evaluate_minimum_version_drift(&moved, Some(&receipt));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Stale);
+    assert!(evaluation.blocking, "release-set source drift blocks");
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("selected source moved since the receipt")),
+        "the source movement is named: {:?}",
+        evaluation.reasons
+    );
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("manifests and Cargo.lock are unchanged")),
+        "the equal manifest/lock digests are named: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
+fn minimum_direct_version_drift_restored_selected_source_requalifies() {
+    // Restoring the exact selected source (or regenerating the receipt
+    // on it) returns the receipt to current: the projection digest is
+    // the non-circular requalification key.
+    let digest = "3333333333333333333333333333333333333333333333333333333333333333";
+    let mut observation = observation("cargo-allow");
+    observation.selected_source_digest = Some(digest.to_string());
+    let mut receipt = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    receipt.execution_provenance = Some(provenance(digest));
+    let evaluation = evaluate_minimum_version_drift(&observation, Some(&receipt));
+    assert_eq!(
+        evaluation.verdict,
+        MinimumVersionDriftVerdictV1::Current,
+        "an exact-source receipt is current: {:?}",
+        evaluation.reasons
+    );
+    assert!(evaluation.reasons.is_empty());
+    assert!(!evaluation.blocking);
+}
+
+#[test]
+fn minimum_direct_version_drift_historical_receipt_without_provenance_stays_graded() {
+    // A receipt that predates the execution-provenance section stays
+    // decodable historical evidence graded on the fields it carries:
+    // no source movement is invented for it, and the missing section
+    // cannot manufacture missing current-source proof.
+    let mut observation = observation("cargo-allow");
+    observation.selected_source_digest = Some("4".repeat(64));
+    let receipt = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    assert!(receipt.execution_provenance.is_none());
+    let evaluation = evaluate_minimum_version_drift(&observation, Some(&receipt));
+    assert_eq!(
+        evaluation.verdict,
+        MinimumVersionDriftVerdictV1::Current,
+        "no source movement is invented for a historical receipt: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
+fn minimum_direct_version_drift_observation_without_projection_does_not_invent_movement() {
+    // The symmetric legacy shape: an observation that cannot derive the
+    // projection grades the receipt on its carried fields alone.
+    let mut receipt = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    receipt.execution_provenance = Some(provenance(&"5".repeat(64)));
+    let evaluation = evaluate_minimum_version_drift(&observation("cargo-allow"), Some(&receipt));
+    assert_eq!(
+        evaluation.verdict,
+        MinimumVersionDriftVerdictV1::Current,
+        "no source movement is invented without a live projection: {:?}",
+        evaluation.reasons
+    );
+}
+
+#[test]
+fn minimum_direct_version_drift_present_but_invalid_provenance_is_named_incomplete() {
+    // #4225's validator law, exercised on the shared section: blank
+    // identity fields, a non-canonical executable digest, and an
+    // executable path recorded without its digest are each named
+    // incomplete failures, never silent passes.
+    let base = observation("cargo-allow");
+    let mut bad_digest = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    let mut entry = provenance(&"6".repeat(64));
+    entry.selected_source_digest = "short".to_string();
+    bad_digest.execution_provenance = Some(entry);
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&bad_digest));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("the selected-source digest is not bare sha256 hex")),
+        "the malformed digest is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut blank_field = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    let mut entry = provenance(&"7".repeat(64));
+    entry.working_directory = "   ".to_string();
+    blank_field.execution_provenance = Some(entry);
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&blank_field));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("the working directory is empty")),
+        "the blank field is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut digest_without_path = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    let mut entry = provenance(&"8".repeat(64));
+    entry.executable_path = None;
+    digest_without_path.execution_provenance = Some(entry);
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&digest_without_path));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("an executable digest is recorded without its path")),
+        "the pathless digest is named: {:?}",
+        evaluation.reasons
+    );
+
+    let mut non_canonical_digest = receipt(
+        "cargo-allow",
+        vec![row("serde", MinimumFloorResultV1::Proven)],
+    );
+    let mut entry = provenance(&"9".repeat(64));
+    entry.executable_digest = Some("deadbeef".to_string());
+    non_canonical_digest.execution_provenance = Some(entry);
+    let evaluation = evaluate_minimum_version_drift(&base, Some(&non_canonical_digest));
+    assert_eq!(evaluation.verdict, MinimumVersionDriftVerdictV1::Incomplete);
+    assert!(
+        evaluation
+            .reasons
+            .iter()
+            .any(|reason| reason.contains("the executable digest is not canonical sha256:v1: hex")),
+        "the non-canonical digest is named: {:?}",
         evaluation.reasons
     );
 }
@@ -483,6 +687,15 @@ fn minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree
     .canonicalize()
     .expect("workspace root resolves");
     let msrv = workspace_msrv(&root).expect("the workspace MSRV derives");
+    // The live selected-source projection (#4214): receipts carrying
+    // execution provenance grade against this digest; retained receipts
+    // that predate the section stay graded on their carried fields.
+    let live_source_digest = selected_source_digest(&root).expect("the source digest derives");
+    assert_eq!(
+        live_source_digest.len(),
+        64,
+        "the projection digest is bare sha256 hex"
+    );
     for product in crate::minimum_version_selection::products() {
         let selection = derive_selection(&root, product)
             .unwrap_or_else(|error| panic!("the {product} selection derives: {error}"));
@@ -494,6 +707,7 @@ fn minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree
             manifest_set_digest: manifest_set_digest(&root).expect("the digest derives"),
             lock_digest: crate::minimum_version_selection::lock_digest(&root)
                 .expect("the digest derives"),
+            selected_source_digest: Some(live_source_digest.clone()),
             floors: selection
                 .floors
                 .iter()

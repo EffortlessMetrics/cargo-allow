@@ -740,9 +740,9 @@ pub use artifacts::{
     DirectDependencyClassV1, DirectMinimumVersionSetV1, DirectRequirementRowV1,
     MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
     MinimumFloorRowV1, MinimumProofEvaluationV1, MinimumProofVerdictV1,
-    MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
-    ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
-    render_minimum_proof_json,
+    MinimumVersionExecutionProvenanceV1, MinimumVersionProofReceiptV1,
+    MinimumVersionProofRequestV1, MinimumVersionRowResultV1, ProductDependencySetV1,
+    evaluate_minimum_version_proof, render_minimum_proof_human, render_minimum_proof_json,
 };
 
 // Root re-exports for the #3904 workspace lint inventory.
