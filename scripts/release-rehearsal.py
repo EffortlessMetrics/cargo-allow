@@ -554,12 +554,44 @@ def run_phase_release_identity(
     return PHASE_COMPLETE
 
 
+def _candidate_package_diagnostic(
+    reason: str, *, process: Any = None, observed_rows: int | None = None,
+) -> None:
+    """Retain bounded failure facts, never nested output or environment values.
+
+    The command-stage hint describes an observed publisher failure marker, not
+    its root cause and never admission authority. Stream digests bind the
+    suppressed observations without forwarding paths, credentials or prose.
+    """
+    record: dict[str, Any] = {"reason": reason, "observed_rows": observed_rows}
+    if process is not None:
+        record["publisher_exit"] = getattr(process, "returncode", None)
+        stderr = getattr(process, "stderr", None) or ""
+        stage = "unknown"
+        if isinstance(stderr, str):
+            for line in stderr.splitlines():
+                if line.startswith("release-topology-publisher: error: command failed ("):
+                    if "): cargo package --workspace --locked --no-verify" in line:
+                        stage = "cargo-package"
+                    elif "): cargo metadata --format-version 1 --no-deps --locked" in line:
+                        stage = "cargo-metadata"
+        record["publisher_stage"] = stage
+        for stream in ("stdout", "stderr"):
+            content = getattr(process, stream, None) or b""
+            if isinstance(content, str):
+                content = content.encode("utf-8", errors="replace")
+            record[stream + "_bytes"] = len(content)
+            record[stream + "_sha256"] = hashlib.sha256(content).hexdigest()
+    print("candidate_package_set: " + json.dumps(record, sort_keys=True), file=sys.stderr)
+
+
 def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
     """Package the ten cargo-allow candidate rows from the committed subject.
 
     The publisher's --package-only mode validates exact release-coupled
-    internal requirements and packages the selected rows offline (no registry
-    reads, no compilation); this phase records each row's name, version,
+    internal requirements and packages the selected rows without compilation
+    or upload. Cargo may still resolve registry inputs; this is not an offline
+    guarantee. This phase records each row's name, version,
     release order, SHA-256, and archive size without any upload path.
     """
     preflight_path = ROOT / "target/cargo-allow/rehearsal-candidate-package-set.json"
@@ -581,13 +613,16 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
             timeout=300,
             check=False,
         )
-    except (OSError, subprocess.SubprocessError):
+    except (OSError, subprocess.SubprocessError) as error:
+        reason = "publisher-timeout" if isinstance(error, subprocess.TimeoutExpired) else "publisher-unavailable"
+        _candidate_package_diagnostic(reason, process=error)
         return PHASE_INSTRUMENT_FAILURE
     rows: list[dict[str, Any]] = []
     try:
         packaged = json.loads(preflight_path.read_text(encoding="utf-8"))
         rows = packaged.get("rows", [])
     except (OSError, json.JSONDecodeError):
+        _candidate_package_diagnostic("receipt-unavailable", process=result)
         if result.returncode == 0:
             return PHASE_INSTRUMENT_FAILURE
     recorded = []
@@ -610,6 +645,7 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
         )
     receipt["candidate_package_set"] = {"rows": recorded}
     if result.returncode != 0:
+        _candidate_package_diagnostic("publisher-failed", process=result, observed_rows=len(recorded))
         return PHASE_MISMATCH
     expected_version = (receipt.get("release_identity") or {}).get("version")
     if (
@@ -618,6 +654,7 @@ def run_phase_candidate_package_set(receipt: dict[str, Any]) -> str:
         or any(row.get("version") != expected_version for row in recorded)
         or any(row.get("size_bytes") is None or row["size_bytes"] <= 0 for row in recorded)
     ):
+        _candidate_package_diagnostic("candidate-rows-mismatch", process=result, observed_rows=len(recorded))
         return PHASE_MISMATCH
     return PHASE_COMPLETE
 

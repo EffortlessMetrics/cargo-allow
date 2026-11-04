@@ -687,6 +687,109 @@ class TestCandidateIdentity(unittest.TestCase):
         self.assertEqual(run.call_args.args[0][:2], ["cargo", "run"])
 
 
+class TestCandidatePackageDiagnostics(unittest.TestCase):
+    """Use the real phase with controlled process/receipt failures, not Cargo."""
+
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        patcher = mock.patch.object(REHEARSAL, "ROOT", self.root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.path = self.root / "target/cargo-allow/rehearsal-candidate-package-set.json"
+        self.path.parent.mkdir(parents=True)
+
+    def packaged(self, count: int = 10, *, version: str = "0.2.0") -> None:
+        archive = self.root / "selected.crate"
+        archive.write_bytes(b"controlled package bytes")
+        self.path.write_text(json.dumps({"rows": [
+            {"name": "fixture-" + str(index), "version": version,
+             "release_order": index, "crate": "selected.crate", "local_checksum": "sha256:" + "a" * 64}
+            for index in range(count)
+        ]}), encoding="utf-8")
+
+    def invoke(self, *, code: int = 0, stderr: str = "", error: Exception | None = None):
+        receipt = {"release_identity": {"version": "0.2.0"}}
+        diagnostics = io.StringIO()
+        process = subprocess.CompletedProcess([], code, "private-stdout-canary", stderr)
+        with mock.patch.object(REHEARSAL, "_run_process", return_value=process, side_effect=error), contextlib.redirect_stderr(diagnostics):
+            state = REHEARSAL.run_phase_candidate_package_set(receipt)
+        text = diagnostics.getvalue()
+        self.assertNotIn("private-", text)
+        self.assertLess(len(text), 2048)
+        rows = [json.loads(line.removeprefix("candidate_package_set: ")) for line in text.splitlines()]
+        return state, receipt, rows
+
+    def test_complete_control_remains_quiet(self) -> None:
+        self.packaged()
+        state, receipt, diagnostics = self.invoke()
+        self.assertEqual(state, "Complete")
+        self.assertEqual(len(receipt["candidate_package_set"]["rows"]), 10)
+        self.assertEqual(diagnostics, [])
+
+    def test_failed_publisher_preserves_exit_and_stage_without_child_text(self) -> None:
+        for stage, command in [
+            ("cargo-package", "cargo package --workspace --locked --no-verify --target-dir /private-path"),
+            ("cargo-metadata", "cargo metadata --format-version 1 --no-deps --locked"),
+            ("unknown", "other tool"),
+        ]:
+            with self.subTest(stage=stage):
+                stderr = "private-stderr-canary\nrelease-topology-publisher: error: command failed (101): " + command
+                state, receipt, diagnostics = self.invoke(code=1, stderr=stderr)
+                self.assertEqual(state, "Mismatch")
+                self.assertEqual(receipt["candidate_package_set"], {"rows": []})
+                self.assertEqual([row["reason"] for row in diagnostics], ["receipt-unavailable", "publisher-failed"])
+                last = diagnostics[-1]
+                self.assertEqual(last["publisher_exit"], 1)
+                self.assertEqual(last["publisher_stage"], stage)
+                self.assertEqual(last["observed_rows"], 0)
+                self.assertEqual(last["stderr_bytes"], len(stderr.encode()))
+                self.assertEqual(last["stderr_sha256"], REHEARSAL.hashlib.sha256(stderr.encode()).hexdigest())
+
+    def test_nonzero_exit_cannot_be_hidden_by_ten_rows(self) -> None:
+        self.packaged()
+        state, _, diagnostics = self.invoke(code=1)
+        self.assertEqual(state, "Mismatch")
+        self.assertEqual(diagnostics[-1]["reason"], "publisher-failed")
+        self.assertEqual(diagnostics[-1]["observed_rows"], 10)
+
+    def test_success_without_usable_receipt_is_instrument_failure(self) -> None:
+        for malformed in [False, True]:
+            with self.subTest(malformed=malformed):
+                if malformed:
+                    self.path.write_text("private-malformed-canary", encoding="utf-8")
+                state, _, diagnostics = self.invoke()
+                self.assertEqual(state, "InstrumentFailure")
+                self.assertEqual(diagnostics[-1]["reason"], "receipt-unavailable")
+                self.assertEqual(diagnostics[-1]["publisher_exit"], 0)
+
+    def test_missing_wrong_version_and_missing_archive_remain_mismatch(self) -> None:
+        for count, version, missing_archive in [(9, "0.2.0", False), (10, "0.3.0", False), (10, "0.2.0", True)]:
+            with self.subTest(count=count, version=version, missing_archive=missing_archive):
+                self.packaged(count, version=version)
+                if missing_archive:
+                    (self.root / "selected.crate").unlink()
+                state, _, diagnostics = self.invoke()
+                self.assertEqual(state, "Mismatch")
+                self.assertEqual(diagnostics[-1]["reason"], "candidate-rows-mismatch")
+                self.assertEqual(diagnostics[-1]["observed_rows"], count)
+
+    def test_timeout_retains_only_bounded_category_and_stream_digests(self) -> None:
+        error = subprocess.TimeoutExpired(["private-command-canary"], 300,
+                                          output=b"private-output-canary", stderr=b"private-error-canary")
+        state, _, diagnostics = self.invoke(error=error)
+        self.assertEqual(state, "InstrumentFailure")
+        self.assertEqual(diagnostics[-1]["reason"], "publisher-timeout")
+        self.assertEqual(diagnostics[-1]["publisher_exit"], None)
+        self.assertEqual(diagnostics[-1]["stdout_sha256"], REHEARSAL.hashlib.sha256(error.output).hexdigest())
+
+    def test_unavailable_process_never_leaks_exception_path(self) -> None:
+        state, _, diagnostics = self.invoke(error=OSError("private-path-canary"))
+        self.assertEqual(state, "InstrumentFailure")
+        self.assertEqual(diagnostics[-1]["reason"], "publisher-unavailable")
+
+
 class TestReleaseRehearsal(unittest.TestCase):
     def test_characterization_cannot_report_complete(self) -> None:
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
