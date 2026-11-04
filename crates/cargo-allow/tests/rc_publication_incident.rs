@@ -197,7 +197,8 @@ fn ruling_fixed_fields_are_pinned() {
         record
             .observation_limits
             .iter()
-            .any(|limit| limit.contains("32684125678") && limit.contains("retained no provider artifacts")),
+            .any(|limit| limit.contains("32684125678")
+                && limit.contains("retained no provider artifacts")),
         "a run with no retained artifacts must stay an explicit observation limit"
     );
     assert!(
