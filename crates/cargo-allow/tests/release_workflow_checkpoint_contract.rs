@@ -124,7 +124,11 @@ fn require_write_step_contract(step: &str, label: &str) -> Result<(), Box<dyn Er
 
 /// Verify-step markers: exact-byte independent readback with a non-clean
 /// fail-closed classification.
-fn require_verify_step_contract(step: &str, label: &str, blocked: &str) -> Result<(), Box<dyn Error>> {
+fn require_verify_step_contract(
+    step: &str,
+    label: &str,
+    blocked: &str,
+) -> Result<(), Box<dyn Error>> {
     for required in [
         "expected_payload_sha256",
         "observed_payload_sha256",
@@ -174,11 +178,7 @@ fn test_release_workflow_writes_checkpoints_at_the_law_points() -> Result<(), Bo
             require_write_step_contract(&block, name)?;
         }
         if name.starts_with("Verify") {
-            require_verify_step_contract(
-                &block,
-                name,
-                "publication progress stays blocked",
-            )?;
+            require_verify_step_contract(&block, name, "publication progress stays blocked")?;
         }
     }
 
@@ -249,8 +249,8 @@ fn test_release_workflow_writes_checkpoints_at_the_law_points() -> Result<(), Bo
 /// namespace publication step, with the namespace operation identity and
 /// the namespace evidence bindings.
 #[test]
-fn test_release_authorized_workflow_writes_checkpoints_at_the_law_points(
-) -> Result<(), Box<dyn Error>> {
+fn test_release_authorized_workflow_writes_checkpoints_at_the_law_points()
+-> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let content = workflow(&root, "release-authorized.yml")?;
 
