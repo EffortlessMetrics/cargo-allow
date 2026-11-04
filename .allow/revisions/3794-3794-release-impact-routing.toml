@@ -1,0 +1,17 @@
+# #3794: typed release-impact routing contract, classifier, and rehearsal
+# routing graph. No release, publication, source-exception weakening, or
+# CI-bypass authority.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11371"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d13de4326c5a88d0eb83933b6948a043e2b21131c44e4e274d9c58c135c366ab"
+reason = "Typed release-impact routing decision schema (#3794): the JSON Schema is a source-controlled reusable-component contract registered in the artifact schema registry and docs/schemas catalog; shape validation selects proof routing and grants no release authority."
+
+[[records]]
+allow_ids = ["allow-11372"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:424f1d4d155c79eff2949cfbe7b86efda902d84a358f813efc961d7eec104c20"
+reason = "Self-covering revision note for the #3794 release-impact schema allowance; note retention only, no new scanned surface, no policy-wide, CI-bypass, or release authority."

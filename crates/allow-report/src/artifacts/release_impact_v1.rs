@@ -1266,7 +1266,10 @@ mod tests {
         let receipt = classify(&[".github/workflows/ci.yml"]);
         assert_eq!(receipt.classification, ReleaseImpactDecisionV1::Unknown);
         assert!(receipt.rehearsal_required);
-        assert_eq!(receipt.path_decisions[0].rule, "workflow-graph-unresolved");
+        assert_eq!(
+            receipt.path_decisions.first().map(|row| row.rule.as_str()),
+            Some("workflow-graph-unresolved")
+        );
     }
 
     #[test]
@@ -1308,7 +1311,11 @@ mod tests {
                 "{path} must be release sensitive"
             );
             assert!(receipt.rehearsal_required, "{path}");
-            assert_eq!(receipt.path_decisions[0].rule, rule, "{path}");
+            assert_eq!(
+                receipt.path_decisions.first().map(|row| row.rule.as_str()),
+                Some(rule),
+                "{path}"
+            );
         }
     }
 
@@ -1324,8 +1331,14 @@ mod tests {
             receipt.classification,
             ReleaseImpactDecisionV1::ReleaseSensitive
         );
-        assert_eq!(receipt.path_decisions[0].rule, "semantic-owner-inventory");
-        assert_eq!(receipt.path_decisions[0].owner, "#3903");
+        assert_eq!(
+            receipt.path_decisions.first().map(|row| row.rule.as_str()),
+            Some("semantic-owner-inventory")
+        );
+        assert_eq!(
+            receipt.path_decisions.first().map(|row| row.owner.as_str()),
+            Some("#3903")
+        );
 
         // Package include/file-list authority: shipped package bytes.
         let receipt = classify(&["crates/allow-match/src/lib.rs"]);
@@ -1333,7 +1346,10 @@ mod tests {
             receipt.classification,
             ReleaseImpactDecisionV1::ReleaseSensitive
         );
-        assert_eq!(receipt.path_decisions[0].rule, "package-bytes");
+        assert_eq!(
+            receipt.path_decisions.first().map(|row| row.rule.as_str()),
+            Some("package-bytes")
+        );
 
         // Packaged asset root authority.
         for path in [
@@ -1347,7 +1363,8 @@ mod tests {
                 "{path}"
             );
             assert_eq!(
-                receipt.path_decisions[0].rule, "packaged-asset-root",
+                receipt.path_decisions.first().map(|row| row.rule.as_str()),
+                Some("packaged-asset-root"),
                 "{path}"
             );
         }
@@ -1584,8 +1601,12 @@ mod tests {
             "a missing receipt cannot prove invocation"
         );
         let mut foreign = executed_receipt();
-        foreign["commit_sha"] =
-            serde_json::Value::String("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".to_string());
+        if let Some(object) = foreign.as_object_mut() {
+            object.insert(
+                "commit_sha".to_string(),
+                serde_json::Value::String("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee".to_string()),
+            );
+        }
         assert!(
             observe_release_rehearsal_v1(
                 &impact,

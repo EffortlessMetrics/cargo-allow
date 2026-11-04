@@ -112,7 +112,10 @@ fn fixture_1_direct_release_workflow_change_requires_the_rehearsal() -> Result<(
     )?;
     require(receipt.rehearsal_required, "the rehearsal must be required")?;
     require(
-        receipt.path_decisions[0].rule == "release-workflow",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "release-workflow"),
         "the release-workflow rule must decide the path",
     )?;
     Ok(())
@@ -127,11 +130,17 @@ fn fixture_2_package_readme_included_in_the_crate_requires_the_rehearsal()
         "a packaged README changes shipped package bytes",
     )?;
     require(
-        receipt.path_decisions[0].rule == "package-bytes",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "package-bytes"),
         "the package include/file-list authority must decide the README",
     )?;
     require(
-        receipt.path_decisions[0].owner.contains("cargo-allow"),
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.owner.contains("cargo-allow")),
         "the decision names the owning topology row",
     )?;
     Ok(())
@@ -149,7 +158,10 @@ fn fixture_3_generated_support_projection_source_requires_the_rehearsal()
         "an inventoried semantic-owner surface cannot escape as unrelated",
     )?;
     require(
-        receipt.path_decisions[0].rule == "semantic-owner-inventory",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "semantic-owner-inventory"),
         "the semantic-owner inventory must decide the path",
     )?;
     Ok(())
@@ -164,7 +176,10 @@ fn fixture_4_new_release_script_not_yet_inventoried_requires_the_rehearsal()
         "a new release-named script matches the checked path rule before any inventory is needed",
     )?;
     require(
-        receipt.path_decisions[0].rule == "release-script",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "release-script"),
         "the release-script rule decides the new script",
     )?;
     Ok(())
@@ -182,7 +197,10 @@ fn fixture_5_unrelated_docs_typo_stays_on_the_fast_path() -> Result<(), Box<dyn 
         "the fast path needs no rehearsal",
     )?;
     require(
-        receipt.path_decisions[0].rule == "docs-non-release",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "docs-non-release"),
         "the unrelated docs rule decides the path",
     )?;
     Ok(())
@@ -198,7 +216,10 @@ fn fixture_6_shipped_package_bytes_change_requires_the_rehearsal() -> Result<(),
         "published package source changes shipped package bytes",
     )?;
     require(
-        receipt.path_decisions[0].rule == "package-bytes",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "package-bytes"),
         "the package-bytes authority decides the source file",
     )?;
     Ok(())
@@ -249,7 +270,10 @@ fn fixture_8_unknown_file_type_fails_closed_to_the_rehearsal() -> Result<(), Box
         "the unknown path is retained verbatim",
     )?;
     require(
-        receipt.path_decisions[0].rule == "unmatched-path",
+        receipt
+            .path_decisions
+            .first()
+            .is_some_and(|row| row.rule == "unmatched-path"),
         "the unmatched-path decision records the fail-closed default",
     )?;
     Ok(())
@@ -368,8 +392,12 @@ fn the_schema_file_binds_the_rendered_receipts() -> Result<(), Box<dyn Error>> {
         require(
             !validator.is_valid(&{
                 let mut drift = parsed.clone();
-                drift["schema_id"] =
-                    serde_json::Value::String("cargo-allow.release-impact.v0".to_string());
+                if let Some(object) = drift.as_object_mut() {
+                    object.insert(
+                        "schema_id".to_string(),
+                        serde_json::Value::String("cargo-allow.release-impact.v0".to_string()),
+                    );
+                }
                 drift
             }),
             "a drifted schema_id must fail schema validation",
@@ -377,7 +405,12 @@ fn the_schema_file_binds_the_rendered_receipts() -> Result<(), Box<dyn Error>> {
         require(
             !validator.is_valid(&{
                 let mut drift = parsed.clone();
-                drift["merge_base_sha"] = serde_json::Value::String("HEAD".to_string());
+                if let Some(object) = drift.as_object_mut() {
+                    object.insert(
+                        "merge_base_sha".to_string(),
+                        serde_json::Value::String("HEAD".to_string()),
+                    );
+                }
                 drift
             }),
             "a non-hex merge base must fail schema validation",
