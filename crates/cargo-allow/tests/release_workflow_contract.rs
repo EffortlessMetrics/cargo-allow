@@ -303,6 +303,13 @@ fn test_release_workflow_canonical_operation_identity_transport() -> Result<(), 
 #[test]
 fn test_release_workflow_gates_publication_on_source_candidate_smoke() -> Result<(), Box<dyn Error>>
 {
+/// #2497: the release manifest's semantic authority is the typed Rust
+/// command. The shell script is gone from the authoritative path, generation
+/// requires the typed Complete result, the exact bytes are re-validated
+/// immediately before attestation, and attestation plus every release step
+/// are gated on the typed result output.
+#[test]
+fn test_release_workflow_manifest_is_typed_and_complete_gated() -> Result<(), Box<dyn Error>> {
     let root = repo_root()?;
     let release_wf_path = root.join(".github/workflows/release.yml");
     if !release_wf_path.exists() {
@@ -395,6 +402,75 @@ fn test_release_workflow_gates_publication_on_source_candidate_smoke() -> Result
          classification (#3737) instead of inferring it from absent rows",
     )?;
     Ok(())
+}
+
+    let release = job_block(&content, "github-release")
+        .ok_or_else(|| io::Error::other("release.yml must define the github-release job"))?;
+
+    require(
+        release.contains("cargo run -p cargo-allow --locked --quiet -- release-manifest"),
+        "the manifest must be produced by the typed release-manifest command",
+    )?;
+    require(
+        release.contains("--require-result complete"),
+        "manifest generation must require the typed complete result",
+    )?;
+    require(
+        !content.contains("generate-release-manifest.sh"),
+        "release.yml must not route manifest authority through a shell script",
+    )?;
+
+    require(
+        release.contains("Require the typed Complete manifest before attestation"),
+        "a pre-attestation typed Complete gate must exist",
+    )?;
+    require(
+        release.contains("--manifest target/cargo-allow/release-manifest-v2.json"),
+        "the pre-attestation gate must re-validate the exact manifest bytes",
+    )?;
+
+    let gate = "steps.release_manifest.outputs.result == 'complete'";
+    for step in [
+        "Attest release manifest",
+        "Create GitHub Release (draft until manifest attached)",
+        "Attach release manifest to GitHub Release",
+        "Publish release after manifest attached",
+    ] {
+        let block = step_block(&release, step)
+            .ok_or_else(|| io::Error::other(format!("release.yml must define the {step} step")))?;
+        require(
+            block.contains(&format!("if: success() && {gate}")),
+            &format!("the {step} step must be gated on the typed Complete result"),
+        )?;
+    }
+    Ok(())
+}
+
+/// Extract one step's block (its `- name:` line through the line before the
+/// next sibling `- ` entry) without slicing, so the helper itself stays
+/// free of panic findings.
+fn step_block(job: &str, name: &str) -> Option<String> {
+    let header = format!("      - name: {name}");
+    let mut collected: Vec<&str> = Vec::new();
+    let mut in_block = false;
+    for line in job.lines() {
+        if !in_block {
+            if line.trim_end() == header {
+                in_block = true;
+                collected.push(line);
+            }
+            continue;
+        }
+        if line.starts_with("      - ") {
+            break;
+        }
+        collected.push(line);
+    }
+    if collected.is_empty() {
+        None
+    } else {
+        Some(collected.join("\n"))
+    }
 }
 
 /// Extract one job's block (its header line through the last line before the

@@ -25,6 +25,7 @@ pub(crate) mod release_freeze_command;
 mod release_freeze_rehearsal;
 mod release_identity_command;
 mod release_impact_command;
+mod release_manifest_command;
 mod review_disposition_command;
 mod review_readiness_command;
 mod workflow_construction_command;
@@ -157,6 +158,9 @@ pub(crate) enum CargoAllowCommand {
     /// Validate one out-of-tree release authorization against observed facts.
     #[command(hide = true)]
     ReleaseAuthorization(release_authorization_command::ReleaseAuthorizationArgs),
+    /// Produce and validate the typed ReleaseManifestV2 release evidence.
+    #[command(hide = true)]
+    ReleaseManifest(release_manifest_command::ReleaseManifestArgs),
     /// Project release-candidate preparation without writing.
     #[command(hide = true)]
     PrepCandidate(candidate_preparation_command::PrepCandidateArgs),
@@ -311,6 +315,9 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         }
         CargoAllowCommand::ReleaseAuthorization(args) => {
             release_authorization_command::cmd_release_authorization(args)
+        }
+        CargoAllowCommand::ReleaseManifest(args) => {
+            release_manifest_command::cmd_release_manifest(args)
         }
         CargoAllowCommand::PrepCandidate(args) => {
             candidate_preparation_command::cmd_prep_candidate(args)
@@ -598,6 +605,7 @@ impl CargoAllowCommand {
         "changie",
         "release-identity",
         "release-authorization",
+        "release-manifest",
         "reconcile-package-publication",
         "prep-candidate",
         "release-freeze",

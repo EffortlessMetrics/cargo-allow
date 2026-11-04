@@ -564,7 +564,7 @@ pub use release_impact_v1::{
     render_release_rehearsal_required_json, validate_release_impact_receipt_v1,
 };
 pub use release_manifest_v2::{
-    RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
+    ConsumedEvidenceV1, RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
     ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
     ReleaseManifestPackageRowV2, ReleaseManifestPayloadV2, ReleaseManifestPublicationPostureV2,
     ReleaseManifestResultV2, ReleaseManifestSupportPostureV2, ReleaseManifestV2Validation,
