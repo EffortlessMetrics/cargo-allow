@@ -1,0 +1,239 @@
+diff --git a/.changes/Fixed-20261103-2359.yaml b/.changes/Fixed-20261103-2359.yaml
+index 75c67d628b5942d41f6970b04fb66f33d807bbd0..571c028f505c50ed6ac54603abbed9988dd95308 100644
+--- a/.changes/Fixed-20261103-2359.yaml
++++ b/.changes/Fixed-20261103-2359.yaml
+@@ -1,3 +1,3 @@
+ kind: Fixed
+-body: Reject invalid init summary destinations before policy mutation and protect recovery backups across write, preview, and error paths.
++body: Reject invalid init summary destinations before policy mutation and protect recovery backups across write, preview, and error paths, including canonical config aliases and conflicting file ancestry.
+ time: 2026-11-03T23:59:00Z
+diff --git a/crates/cargo-allow/src/cli.rs b/crates/cargo-allow/src/cli.rs
+index d8d76661b50204964dffad0cdda8fac71060cf10..11c01bceb0cc69063c383a3e9823f54da8820199 100644
+--- a/crates/cargo-allow/src/cli.rs
++++ b/crates/cargo-allow/src/cli.rs
+@@ -393,7 +393,9 @@ fn configure_summary_output(
+     let Some(path) = summary_output else {
+         return Ok(());
+     };
+-    use crate::core_command_router::ConflictBase::{SourceTreeRoot, WorkingDirectory};
++    use crate::core_command_router::ConflictBase::{
++        SourceTreeRoot, SourceTreeTargetBackup, WorkingDirectory,
++    };
+     // `--config` is discovered under the source-tree root for every command, and
+     // `adopt` resolves `--output` under the root as well. The rest write through
+     // `emit_text`/`write_file`, which are relative to the working directory.
+@@ -441,10 +443,12 @@ fn configure_summary_output(
+         CargoAllowCommand::Init(args) if args.profile.is_none() => {
+             // Reserve recovery bytes even for previews and error summaries.
+             // Match write_file_no_overwrite's existing backup naming law;
+-            // the router resolves both paths through canonical target identity.
++            // the router resolves the policy before deriving its actual backup
++            // on every validation, including preview and error emission.
+             vec![
+                 (SourceTreeRoot, Some(args.config.clone())),
+                 (SourceTreeRoot, Some(args.config.with_extension("toml.bak"))),
++                (SourceTreeTargetBackup, Some(args.config.clone())),
+             ]
+         }
+         CargoAllowCommand::Propose(args) => vec![
+diff --git a/crates/cargo-allow/src/core_command_router.rs b/crates/cargo-allow/src/core_command_router.rs
+index 3920ad5ef679528c75551a35ec866e5cc15834f6..d14b212039205577e35f624be6b2c799616a76ca 100644
+--- a/crates/cargo-allow/src/core_command_router.rs
++++ b/crates/cargo-allow/src/core_command_router.rs
+@@ -29,6 +29,9 @@ use effortless_repo_edit::{
+ pub(crate) enum ConflictBase {
+     /// Resolved under the source-tree root (`--config`, `adopt --output`).
+     SourceTreeRoot,
++    /// Backup of the canonical source-tree target, derived after resolution.
++    /// Init's writer uses this spelling, not a backup of a config symlink.
++    SourceTreeTargetBackup,
+     /// Resolved under the process working directory.
+     WorkingDirectory,
+ }
+@@ -955,6 +958,12 @@ fn resolve_summary_output_target(
+     for (base, conflict) in &config.conflicts {
+         let candidate = match base {
+             ConflictBase::SourceTreeRoot => resolve_under_root(root, conflict),
++            ConflictBase::SourceTreeTargetBackup => {
++                let policy = resolve_under_root(root, conflict);
++                let target = effortless_repo_edit::resolve_mutation_target(&policy, root)
++                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
++                target.normalized_absolute().with_extension("toml.bak")
++            }
+             // An absolute conflict resolves to itself, so it needs no base at all.
+             // Only a relative one has to consult the working directory, and if that
+             // is unavailable the collision is undecidable — refuse rather than skip
+@@ -974,10 +983,19 @@ fn resolve_summary_output_target(
+         };
+         let candidate_target = effortless_repo_edit::resolve_mutation_target(&candidate, root)
+             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+-        if summary_target.target_fingerprint() == candidate_target.target_fingerprint() {
++        // All configured conflicts are file-valued, including doctor's JSON
++        // support bundle. Neither file may become the other's parent, even
++        // before either exists. Component-aware canonical paths retain valid
++        // prefix-lookalike siblings and supported parent aliases (#4714).
++        let summary_path = summary_target.normalized_absolute();
++        let candidate_path = candidate_target.normalized_absolute();
++        if summary_target.target_fingerprint() == candidate_target.target_fingerprint()
++            || summary_path.starts_with(candidate_path)
++            || candidate_path.starts_with(summary_path)
++        {
+             return Err(CargoAllowError::with_kind(
+                 CargoAllowErrorKind::Usage,
+-                "--command-summary-output must differ from --output, --receipt, and --config",
++                "--command-summary-output must differ from --output, --receipt, and --config and must not contain or be beneath their file targets",
+             ));
+         }
+     }
+diff --git a/crates/cargo-allow/tests/core_command_summary_router_cli.rs b/crates/cargo-allow/tests/core_command_summary_router_cli.rs
+index 079925e0414cb2782220a27346cf36241bb37be8..81de048de260ff8b93aefe9724aecf2fcd8c7308 100644
+--- a/crates/cargo-allow/tests/core_command_summary_router_cli.rs
++++ b/crates/cargo-allow/tests/core_command_summary_router_cli.rs
+@@ -167,12 +167,21 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
+     remove_temp_root(root)
+ }
+ 
++struct InitSummaryRootCleanup(PathBuf);
++
++impl Drop for InitSummaryRootCleanup {
++    fn drop(&mut self) {
++        let _ = fs::remove_dir_all(&self.0);
++    }
++}
++
+ /// #4714: a preflight rejection must not create or replace the live ledger.
+ /// These cases execute the installed bin with real argv, root/cwd resolution,
+ /// and filesystem effects; error-summary emission remains best effort.
+ #[test]
+ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(), String> {
+     let root = temp_root("init-summary-preflight")?;
++    let _cleanup = InitSummaryRootCleanup(root.clone());
+     write_source(&root, "pub fn clean() {}\n")?;
+     git_commit_fixture(&root)?;
+     let policy = root.join("policy/allow.toml");
+@@ -324,6 +333,7 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
+ #[test]
+ fn init_preflight_respects_cross_cwd_common_summary_resolution() -> Result<(), String> {
+     let root = temp_root("init-summary-cross-cwd")?;
++    let _cleanup = InitSummaryRootCleanup(root.clone());
+     write_source(&root, "pub fn clean() {}\n")?;
+     git_commit_fixture(&root)?;
+     let cwd = root.join("work");
+diff --git a/crates/cargo-allow/tests/init_summary_backup_cli.rs b/crates/cargo-allow/tests/init_summary_backup_cli.rs
+index 0f5be6ccdaf7a64f83ad17757a7c2d992ea85906..f6a244791bdf7682a4591041db317137087765b6 100644
+--- a/crates/cargo-allow/tests/init_summary_backup_cli.rs
++++ b/crates/cargo-allow/tests/init_summary_backup_cli.rs
+@@ -195,3 +195,113 @@ fn init_summary_through_parent_symlink_cannot_alias_backup() -> Result<(), Strin
+         "symlink collision changed the policy or its backup",
+     )
+ }
++
++
++#[test]
++fn init_summary_file_ancestry_preserves_bytes_and_absence() -> Result<(), String> {
++    for config in ["policy/allow.toml", "custom/ledger.data"] {
++        for policy_exists in [false, true] {
++            for mode in ["force", "refusal", "dry-run"] {
++                for relationship in ["policy-child", "backup-child", "policy-parent"] {
++                    let root = Root::new()?;
++                    let policy = root.0.join(config);
++                    let backup = policy.with_extension("toml.bak");
++                    if policy_exists {
++                        root.seed(config, false)?;
++                    }
++                    let before = bytes(&policy)?;
++                    let parent = policy.parent().ok_or("policy has no parent")?;
++                    let parent_existed = parent.exists();
++                    let summary = match relationship {
++                        "policy-child" => policy.join("nested/summary.json"),
++                        "backup-child" => backup.join("nested/summary.json"),
++                        "policy-parent" => parent.to_path_buf(),
++                        _ => return Err("unexpected relationship".to_string()),
++                    };
++                    let output = root.run(config, &summary, mode)?;
++                    require(
++                        !output.status.success(),
++                        format!("{config}/{mode}/{relationship}: file ancestry accepted"),
++                    )?;
++                    require(
++                        bytes(&policy)? == before && bytes(&backup)?.is_none()
++                            && parent.exists() == parent_existed,
++                        format!("{config}/{mode}/{relationship}: refusal changed policy, backup or parent"),
++                    )?;
++                }
++            }
++        }
++    }
++    Ok(())
++}
++
++#[test]
++fn init_summary_prefix_lookalike_directory_remains_supported() -> Result<(), String> {
++    for mode in ["force", "refusal", "dry-run"] {
++        let root = Root::new()?;
++        let (policy, backup) = root.seed("policy/allow.toml", true)?;
++        let summary = root.0.join("policy/allow.toml.bak-extra/summary.json");
++        let output = root.run("policy/allow.toml", &summary, mode)?;
++        require(
++            output.status.success() == (mode != "refusal") && summary.is_file(),
++            "component-distinct prefix sibling must still emit its summary",
++        )?;
++        let expected = if mode == "force" { POLICY } else { BACKUP };
++        require(bytes(&backup)?.as_deref() == Some(expected), "sibling summary changed backup")?;
++        if mode != "force" {
++            require(bytes(&policy)?.as_deref() == Some(POLICY), "read-only route changed policy")?;
++        }
++    }
++    Ok(())
++}
++
++#[cfg(unix)]
++#[test]
++fn init_config_symlink_reserves_canonical_backup_on_every_route() -> Result<(), String> {
++    for backup_exists in [false, true] {
++        for mode in ["force", "refusal", "dry-run"] {
++            for child in [false, true] {
++                let root = Root::new()?;
++                let (policy, backup) = root.seed("policy/allow.toml", backup_exists)?;
++                let before = bytes(&backup)?;
++                std::os::unix::fs::symlink(&policy, root.0.join("alias.policy"))
++                    .map_err(|error| error.to_string())?;
++                let summary = if child { backup.join("summary.json") } else { backup.clone() };
++                let output = root.run("alias.policy", &summary, mode)?;
++                require(!output.status.success(), "canonical backup collision must be refused")?;
++                require(
++                    bytes(&policy)?.as_deref() == Some(POLICY) && bytes(&backup)? == before,
++                    "config symlink route changed canonical policy or backup",
++                )?;
++                require(
++                    fs::symlink_metadata(root.0.join("alias.policy"))
++                        .map_err(|error| error.to_string())?.file_type().is_symlink(),
++                    "config alias must remain unchanged",
++                )?;
++            }
++        }
++    }
++    Ok(())
++}
++
++#[cfg(unix)]
++#[test]
++fn init_config_symlink_noncolliding_summaries_preserve_writer_refusal() -> Result<(), String> {
++    for mode in ["force", "refusal", "dry-run"] {
++        let root = Root::new()?;
++        let (policy, backup) = root.seed("policy/allow.toml", true)?;
++        std::os::unix::fs::symlink(&policy, root.0.join("alias.policy"))
++            .map_err(|error| error.to_string())?;
++        let summary = root.0.join("summary.json");
++        let output = root.run("alias.policy", &summary, mode)?;
++        require(
++            output.status.success() == (mode == "dry-run") && summary.is_file(),
++            "noncolliding summary must preserve preview and writer/error behavior",
++        )?;
++        require(
++            bytes(&policy)?.as_deref() == Some(POLICY) && bytes(&backup)?.as_deref() == Some(BACKUP),
++            "noncolliding config-link route changed protected bytes",
++        )?;
++    }
++    Ok(())
++}
