@@ -823,3 +823,21 @@ may_satisfy_release_gate = false
 last_reconciled_commit = "branch-under-review"
 claim_boundary = "The golden fixture proves validator law only; production generation and publication are not proven."
 
+
+[[surfaces]]
+id = "release-workflow-checkpoint-law"
+owner_issue = 3922
+semantic_authority = "release workflow publication-checkpoint emission law at the package-upload law points"
+path = "crates/cargo-allow/tests/release_workflow_checkpoint_contract.rs"
+subject = "release.yml / release-authorized.yml checkpoint emission steps"
+producer = "Rust integration test"
+consumer = "release checkpoint verification"
+claimed_acceptance_row = "pre-intent checkpoint (write/store/fetch/verify, fail-closed exact-byte readback) precedes each package upload; post-observation checkpoint links to the exact stored bytes; evidence retention runs if:always()"
+assertion_mechanism = "workflow-content contract assertions over the checkpoint steps"
+evidence_class = "TypedModelValidation"
+disposition = "workflow-content contract law"
+required_stronger_owner = "#3922 provider-completion slices"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "Workflow-content contract law only; provider completion and live-release proof are #3922's open acceptance slices."
+
