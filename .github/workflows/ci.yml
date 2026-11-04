@@ -197,6 +197,278 @@ jobs:
             dependency-graph-evidence-summary.md
           if-no-files-found: warn
 
+  # Release-impact routing (#3794), job 1 of 3: one always-run, no-secret
+  # classifier that decides the exact base/head/merge-base subject into the
+  # typed ReleaseImpactReceiptV1 (cargo-allow.release-impact.v1). The
+  # denominator is the checked release-sensitive path rules plus the #3786
+  # semantic-owner inventory plus the generation-2 package topology
+  # include/file-list authority; an unmatched path or unresolved semantic
+  # owner selects the rehearsal (fail closed). This job routes proof only —
+  # it never receives token context and never performs an external action.
+  release-impact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          # Bind to the submitted head, not GitHub's synthetic merge commit.
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - name: Resolve the exact base/head/merge-base subject
+        id: subject
+        env:
+          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          if [ -n "${EVENT_BASE:-}" ]; then
+            base_sha="${EVENT_BASE}"
+          elif [ -n "${BEFORE:-}" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            base_sha="${BEFORE}"
+          else
+            base_sha="$(git rev-parse HEAD~1)"
+          fi
+          merge_base="$(git merge-base "$base_sha" "$head_sha")"
+          git diff --name-only "$merge_base" "$head_sha" > "$RUNNER_TEMP/changed-paths.txt"
+          {
+            echo "head=$head_sha"
+            echo "base=$base_sha"
+            echo "merge_base=$merge_base"
+          } >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: release-impact
+      - name: Classify the release impact
+        env:
+          SUBJECT_BASE: ${{ steps.subject.outputs.base }}
+          SUBJECT_HEAD: ${{ steps.subject.outputs.head }}
+          SUBJECT_MERGE_BASE: ${{ steps.subject.outputs.merge_base }}
+        run: |
+          set -euo pipefail
+          mkdir -p target/cargo-allow
+          cargo run -p cargo-allow --locked -- release-impact classify \
+            --base "$SUBJECT_BASE" \
+            --head "$SUBJECT_HEAD" \
+            --merge-base "$SUBJECT_MERGE_BASE" \
+            --paths-from "$RUNNER_TEMP/changed-paths.txt" \
+            --root . \
+            --output target/cargo-allow/release-impact.receipt.json
+      - name: Expose the routing decision
+        id: impact
+        run: |
+          set -euo pipefail
+          required="$(jq -r '.rehearsal_required' target/cargo-allow/release-impact.receipt.json)"
+          echo "rehearsal_required=$required" >> "$GITHUB_OUTPUT"
+      - name: Retain the release-impact receipt
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-impact-receipt
+          path: target/cargo-allow/release-impact.receipt.json
+          if-no-files-found: error
+
+  # Release-impact routing (#3794), job 2 of 3: the conditional
+  # exact-subject rehearsal. When the validated impact receipt requires
+  # the rehearsal, the #3792 harness runs against the pinned head and its
+  # receipt is recorded verbatim; otherwise the job records the checked
+  # NotApplicable observation. The job validates the receipt subject
+  # binding itself, receives no secrets, and records no interpretation:
+  # #3792 owns the discriminating-status correction.
+  release-rehearsal:
+    needs: release-impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - name: Resolve the exact base/head/merge-base subject
+        id: subject
+        env:
+          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          if [ -n "${EVENT_BASE:-}" ]; then
+            base_sha="${EVENT_BASE}"
+          elif [ -n "${BEFORE:-}" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            base_sha="${BEFORE}"
+          else
+            base_sha="$(git rev-parse HEAD~1)"
+          fi
+          merge_base="$(git merge-base "$base_sha" "$head_sha")"
+          {
+            echo "head=$head_sha"
+            echo "base=$base_sha"
+            echo "merge_base=$merge_base"
+          } >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: release-rehearsal
+      - name: Restore the release-impact receipt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-impact-receipt
+          path: target/cargo-allow
+      - name: Validate the impact receipt against the exact subject
+        env:
+          SUBJECT_BASE: ${{ steps.subject.outputs.base }}
+          SUBJECT_HEAD: ${{ steps.subject.outputs.head }}
+          SUBJECT_MERGE_BASE: ${{ steps.subject.outputs.merge_base }}
+        run: |
+          set -euo pipefail
+          cargo run -p cargo-allow --locked -- release-impact validate \
+            --impact-receipt target/cargo-allow/release-impact.receipt.json \
+            --expected-base "$SUBJECT_BASE" \
+            --expected-head "$SUBJECT_HEAD" \
+            --expected-merge-base "$SUBJECT_MERGE_BASE"
+      - name: Read the routing decision
+        id: impact
+        run: |
+          set -euo pipefail
+          required="$(jq -r '.rehearsal_required' target/cargo-allow/release-impact.receipt.json)"
+          echo "rehearsal_required=$required" >> "$GITHUB_OUTPUT"
+      - name: Run the exact-subject release rehearsal when required
+        id: harness
+        if: steps.impact.outputs.rehearsal_required == 'true'
+        env:
+          SUBJECT_HEAD: ${{ steps.subject.outputs.head }}
+        # The #3792 harness fails closed (its aggregate carries the
+        # reserved-authorization posture), so the invocation exit code is
+        # recorded and routed into the observation instead of failing the
+        # job before the observation exists.
+        run: |
+          set -euo pipefail
+          mkdir -p target/cargo-allow/release-rehearsal
+          set +e
+          python3 scripts/release-rehearsal.py --commit "$SUBJECT_HEAD" \
+            --output target/cargo-allow/release-rehearsal/release-rehearsal.receipt.json
+          code=$?
+          set -e
+          echo "exit_code=$code" >> "$GITHUB_OUTPUT"
+          echo "harness invocation exit code: $code"
+      - name: Record the routing observation
+        if: always()
+        env:
+          REHEARSAL_REQUIRED: ${{ steps.impact.outputs.rehearsal_required }}
+          HARNESS_EXIT: ${{ steps.harness.outputs.exit_code }}
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "$REHEARSAL_REQUIRED" = "true" ]; then
+            args+=(--outcome executed --harness-exit-code "$HARNESS_EXIT" --harness-receipt target/cargo-allow/release-rehearsal/release-rehearsal.receipt.json)
+          else
+            args+=(--outcome not-applicable)
+          fi
+          cargo run -p cargo-allow --locked -- release-impact observe \
+            --impact-receipt target/cargo-allow/release-impact.receipt.json \
+            "${args[@]}" \
+            --output target/cargo-allow/release-rehearsal-observation.json
+      - name: Retain the rehearsal observation
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-rehearsal-observation
+          path: target/cargo-allow/release-rehearsal-observation.json
+          if-no-files-found: error
+
+  # Release-impact routing (#3794), job 3 of 3: the always-run terminal
+  # routing aggregate and the stable required-check identity for this
+  # graph (`release-rehearsal-required`; live required-check selection is
+  # the #2283/#2284 authority and is not registered by this workflow). It
+  # validates that the impact receipt and the rehearsal observation
+  # exist, bind the exact expected subject, and agree — distinguishing a
+  # legitimate NotApplicable from missing, skipped, cancelled, stale, or
+  # malformed proof. A Passing result is routing completeness only; it is
+  # not release authorization and does not interpret the harness status.
+  release-rehearsal-required:
+    needs: [release-impact, release-rehearsal]
+    # Always run: a conditionally skipped job must never be the required
+    # branch-protection signal, and failed siblings must produce an honest
+    # typed failure, not a missing check.
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+      - name: Resolve the exact base/head/merge-base subject
+        id: subject
+        env:
+          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          head_sha="$(git rev-parse HEAD)"
+          if [ -n "${EVENT_BASE:-}" ]; then
+            base_sha="${EVENT_BASE}"
+          elif [ -n "${BEFORE:-}" ] && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            base_sha="${BEFORE}"
+          else
+            base_sha="$(git rev-parse HEAD~1)"
+          fi
+          merge_base="$(git merge-base "$base_sha" "$head_sha")"
+          {
+            echo "head=$head_sha"
+            echo "base=$base_sha"
+            echo "merge_base=$merge_base"
+          } >> "$GITHUB_OUTPUT"
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: release-rehearsal-required
+      - name: Restore the impact receipt
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-impact-receipt
+          path: target/cargo-allow
+        # A missing artifact is exactly the failure the aggregate must
+        # report; the typed result is emitted either way.
+        continue-on-error: true
+      - name: Restore the rehearsal observation
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-rehearsal-observation
+          path: target/cargo-allow
+        continue-on-error: true
+      - name: Evaluate the terminal routing aggregate
+        env:
+          SUBJECT_BASE: ${{ steps.subject.outputs.base }}
+          SUBJECT_HEAD: ${{ steps.subject.outputs.head }}
+          SUBJECT_MERGE_BASE: ${{ steps.subject.outputs.merge_base }}
+        run: |
+          set -euo pipefail
+          cargo run -p cargo-allow --locked -- release-impact aggregate \
+            --impact-receipt target/cargo-allow/release-impact.receipt.json \
+            --rehearsal-observation target/cargo-allow/release-rehearsal-observation.json \
+            --expected-base "$SUBJECT_BASE" \
+            --expected-head "$SUBJECT_HEAD" \
+            --expected-merge-base "$SUBJECT_MERGE_BASE" \
+            --output target/cargo-allow/release-rehearsal-required.json
+      - name: Retain the terminal routing aggregate
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-rehearsal-required
+          path: target/cargo-allow/release-rehearsal-required.json
+          if-no-files-found: error
+
   # Prove the workspace rust-version pin (1.95) still builds and runs the
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).

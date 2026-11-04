@@ -22,6 +22,7 @@ const REUSABLE_COMPONENT_SCHEMA_NAMES: &[&str] = &[
     "cargo-allow.release-authorization-custody.v1",
     "cargo-allow.release-authorization-consumption.v1",
     "cargo-allow.release-experience.v1",
+    "cargo-allow.release-impact.v1",
 ];
 const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] = &[
     "tool-identity",

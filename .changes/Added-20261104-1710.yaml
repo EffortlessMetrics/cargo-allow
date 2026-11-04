@@ -1,0 +1,12 @@
+kind: Added
+body: >-
+  Route release-sensitive PRs through the full exact-subject release
+  rehearsal: the typed `cargo-allow.release-impact.v1` receipt (checked path
+  rules, #3786 semantic-owner inventory, generation-2 package topology
+  include authority; unmatched or unresolved paths select the rehearsal), the
+  hidden `release-impact` CLI (classify, validate, observe, aggregate), and
+  the ci.yml three-job graph whose always-run `release-rehearsal-required`
+  terminal aggregate distinguishes a legitimate NotApplicable from missing,
+  skipped, cancelled, stale, or contradictory proof (#3794). Routing selects
+  proof only; it grants no release authority.
+time: 2026-11-04T17:10:00Z

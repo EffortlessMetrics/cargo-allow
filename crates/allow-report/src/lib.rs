@@ -340,6 +340,24 @@ pub use artifacts::{
     TrustClassV1, UntrustedInputPostureV1,
 };
 
+// Root re-exports for the typed release-impact routing contract (#3794).
+pub use artifacts::{
+    CargoAllowReleaseImpactReceiptV1, CargoAllowReleaseRehearsalRequiredResultV1,
+    RELEASE_IMPACT_SCHEMA_ID, RELEASE_IMPACT_SCHEMA_VERSION,
+    RELEASE_REHEARSAL_OBSERVATION_SCHEMA_ID, RELEASE_REHEARSAL_OBSERVATION_SCHEMA_VERSION,
+    RELEASE_REHEARSAL_REQUIRED_SCHEMA_ID, RELEASE_REHEARSAL_REQUIRED_SCHEMA_VERSION,
+    RELEASE_SENSITIVE_PATH_RULES_V1, RELEASE_UNRELATED_PATH_RULES_V1,
+    RELEASE_UNRESOLVED_GOVERNANCE_RULES_V1, ReleaseImpactClassifierInputV1,
+    ReleaseImpactDecisionV1, ReleaseImpactDenominatorBindingV1, ReleaseImpactDenominatorV1,
+    ReleaseImpactPathDecisionV1, ReleaseImpactPathMatchV1, ReleaseImpactPathRuleV1,
+    ReleaseImpactSubjectV1, ReleaseRehearsalObservationOutcomeV1, ReleaseRehearsalObservationV1,
+    ReleaseRehearsalRequiredAggregateV1, classify_release_impact_v1,
+    evaluate_release_rehearsal_required_v1, is_git_object_name, observe_release_rehearsal_v1,
+    release_impact_denominator, render_release_impact_receipt_human,
+    render_release_impact_receipt_json, render_release_rehearsal_observation_human,
+    render_release_rehearsal_observation_json, render_release_rehearsal_required_human,
+    render_release_rehearsal_required_json, validate_release_impact_receipt_v1,
+};
 // Root re-exports for the one-operation release authorization contract (#3789).
 pub use artifacts::{
     CargoAllowReleaseAuthorizationV1, RELEASE_AUTHORIZATION_AUTH_CLASS,

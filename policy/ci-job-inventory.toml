@@ -243,3 +243,21 @@ name = "sensor-burden-audit"
 purpose = "IntegratedDogfood"
 routing_owner = "core/ci"
 blocking = false
+
+[[jobs]]
+name = "release-impact"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "release-rehearsal"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false
+
+[[jobs]]
+name = "release-rehearsal-required"
+purpose = "ReleaseRehearsal"
+routing_owner = "core/release"
+blocking = false

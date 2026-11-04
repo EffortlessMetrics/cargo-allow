@@ -24,6 +24,7 @@ mod release_final_tag_bridge;
 pub(crate) mod release_freeze_command;
 mod release_freeze_rehearsal;
 mod release_identity_command;
+mod release_impact_command;
 mod review_disposition_command;
 mod review_readiness_command;
 mod workflow_construction_command;
@@ -198,6 +199,9 @@ pub(crate) enum CargoAllowCommand {
     /// Compile a base/head dependency graph delta receipt.
     #[command(hide = true)]
     DependencyGraphDelta(dependency_graph_delta_command::DependencyGraphDeltaArgs),
+    /// Route one exact subject through the release-impact rehearsal graph.
+    #[command(hide = true)]
+    ReleaseImpact(release_impact_command::ReleaseImpactArgs),
 }
 
 /// Resolve the process output style from the flag, the environment, and
@@ -346,6 +350,7 @@ pub(crate) fn run() -> CargoAllowResult<()> {
         CargoAllowCommand::DependencyGraphDelta(args) => {
             dependency_graph_delta_command::cmd_dependency_graph_delta(args)
         }
+        CargoAllowCommand::ReleaseImpact(args) => release_impact_command::cmd_release_impact(args),
     };
     // #4393: a summary-supported command that exits on a hard error still
     // writes its `--command-summary-output` sidecar, classified by the typed
@@ -609,6 +614,7 @@ impl CargoAllowCommand {
         "dependency-graph-evidence",
         "dependency-graph-delta",
         "command-migration-evidence",
+        "release-impact",
     ];
 }
 
