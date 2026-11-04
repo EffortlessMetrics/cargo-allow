@@ -45,20 +45,22 @@ review_dir = run_dir / "review"
 gate_path = review_dir / "gate_outcome.json"
 result_path = review_dir / "post-result.json"
 error_path = review_dir / "post-error.json"
+# A decoded JSON null is a present, malformed gate record, not absence.
+MISSING = object()
 
 
 def load(path):
-    """Return None when absent, False when present but unreadable/malformed."""
+    """Return MISSING when absent, False when unreadable/malformed."""
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
-        return None
+        return MISSING
     except (OSError, ValueError):
         return False
 
 
 gate = load(gate_path)
-if gate is None:
+if gate is MISSING:
     print(
         f"::notice::{run_dir}: no review/gate_outcome.json retained; "
         "nothing to agreement-check"
@@ -125,14 +127,19 @@ build_fixture() {
 }
 
 expect_exit() {
-  local expected="$1" label="$2" dir="$3" status
-  set +e
-  run_check "${dir}" >/dev/null 2>&1
-  status=$?
-  set -e
+  local expected="$1" label="$2" dir="$3" diagnostic="${4:-}" status output
+  if output="$(run_check "${dir}" 2>&1)"; then
+    status=0
+  else
+    status=$?
+  fi
   if [[ "${status}" -ne "${expected}" ]]; then
     printf 'self-test %s: expected exit %s, got %s\n' \
       "${label}" "${expected}" "${status}" >&2
+    return 1
+  fi
+  if [[ -n "${diagnostic}" && "${output}" != *"${diagnostic}"* ]]; then
+    printf 'self-test %s: expected diagnostic %s\n' "${label}" "${diagnostic}" >&2
     return 1
   fi
   printf 'self-test %s: exit %s as expected\n' "${label}" "${status}"
@@ -160,6 +167,13 @@ run_self_test() {
   build_fixture "${tmp}/truthful-failure" "${gate_failed}" '' "${post_error_missing_token}"
   build_fixture "${tmp}/posted-unverified" "${gate_posted}" '' ''
   build_fixture "${tmp}/missing-gate" '' '' ''
+  build_fixture "${tmp}/null-gate" 'null' '' ''
+  build_fixture "${tmp}/false-gate" 'false' '' ''
+  build_fixture "${tmp}/true-gate" 'true' '' ''
+  build_fixture "${tmp}/array-gate" '[]' '' ''
+  build_fixture "${tmp}/number-gate" '1' '' ''
+  build_fixture "${tmp}/string-gate" '"gate"' '' ''
+  mkdir -p "${tmp}/directory-gate/review/gate_outcome.json"
   mkdir -p "${tmp}/malformed-gate/review"
   printf 'not json at all' > "${tmp}/malformed-gate/review/gate_outcome.json"
 
@@ -169,8 +183,11 @@ run_self_test() {
   expect_exit 0 artifact-only "${tmp}/artifact-only"
   expect_exit 0 truthful-failure "${tmp}/truthful-failure"
   expect_exit 1 posted-unverified "${tmp}/posted-unverified"
-  expect_exit 0 missing-gate "${tmp}/missing-gate"
-  expect_exit 2 malformed-gate "${tmp}/malformed-gate"
+  expect_exit 0 missing-gate "${tmp}/missing-gate" 'no review/gate_outcome.json retained'
+  local invalid
+  for invalid in null false true array number string directory malformed; do
+    expect_exit 2 "${invalid}-gate" "${tmp}/${invalid}-gate" 'not a readable JSON object'
+  done
 
   printf 'check-ub-review-post-agreement self-test: passed\n'
 }
