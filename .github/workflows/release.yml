@@ -57,6 +57,8 @@ jobs:
       authorization: ${{ steps.release_context.outputs.authorization }}
       recovery_receipt_run_id: ${{ steps.release_context.outputs.recovery_receipt_run_id }}
       github_prerelease: ${{ steps.release_context.outputs.github_prerelease }}
+      release_record_path: ${{ steps.release_context.outputs.release_record_path }}
+      github_note_path: ${{ steps.release_context.outputs.github_note_path }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -141,6 +143,13 @@ jobs:
           # manifest text in this workflow.
           version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' target/cargo-allow/release-identity.json)"
           github_prerelease="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["github_prerelease"]).lower())' target/cargo-allow/release-identity.json)"
+          # #3788: the exact release-record and GitHub-note paths are read
+          # from the validated projection. Downstream jobs consume these
+          # outputs; they never assemble release paths from raw version or
+          # tag text, and a missing note file is a typed missing-input
+          # error, not a locally synthesized fallback.
+          release_record_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["release_record_path"])' target/cargo-allow/release-identity.json)"
+          github_note_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["github_note_path"])' target/cargo-allow/release-identity.json)"
           {
             echo "version=${version}"
             echo "tag=${tag}"
@@ -150,6 +159,8 @@ jobs:
             echo "authorization=${authorization}"
             echo "recovery_receipt_run_id=${RECOVERY_RECEIPT_RUN_ID}"
             echo "github_prerelease=${github_prerelease}"
+            echo "release_record_path=${release_record_path}"
+            echo "github_note_path=${github_note_path}"
           } >> "${GITHUB_OUTPUT}"
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
@@ -290,6 +301,7 @@ jobs:
       authorization_digest: ${{ needs.authorize.outputs.authorization_digest }}
       version: ${{ needs.preflight.outputs.version }}
       github_prerelease: ${{ needs.preflight.outputs.github_prerelease }}
+      github_note_path: ${{ needs.preflight.outputs.github_note_path }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1341,20 +1353,18 @@ jobs:
           subject-path: target/cargo-allow/release-manifest-v2.json
       - name: Resolve release notes
         id: notes
+        env:
+          RELEASE_NOTE_PATH: ${{ needs.publish.outputs.github_note_path }}
         run: |
-          version="${RELEASE_VERSION}"
-          notes_path="docs/release/github/v${version}.md"
-          if [ -f "${notes_path}" ]; then
-            echo "body_path=${notes_path}" >> "${GITHUB_OUTPUT}"
-          else
-            cat > "/tmp/release-notes.md" <<EOF
-          # cargo-allow v${version}
-
-          See [docs/release/${version}.md](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/docs/release/${version}.md)
-          for the full release record.
-          EOF
-            echo "body_path=/tmp/release-notes.md" >> "${GITHUB_OUTPUT}"
-          fi
+          set -euo pipefail
+          # #3788: the note path is the typed release-identity projection's
+          # exact selected path, relayed through preflight and publish. Its
+          # absence is a typed missing-input error that fails this release
+          # closed; a locally assembled or synthesized fallback note could
+          # disagree with the validated identity and is deleted.
+          [ -n "${RELEASE_NOTE_PATH}" ] || { echo "::error::typed release note input missing: the projection carried no github_note_path"; exit 1; }
+          [ -f "${RELEASE_NOTE_PATH}" ] || { echo "::error::typed release note input missing: no release notes at the projected path ${RELEASE_NOTE_PATH}"; exit 1; }
+          echo "body_path=${RELEASE_NOTE_PATH}" >> "${GITHUB_OUTPUT}"
       - name: Verify manifest checksum after attestation
         run: |
           cd target/cargo-allow
