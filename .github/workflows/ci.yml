@@ -589,6 +589,20 @@ jobs:
             --baseline docs/dogfood/receipts/package-candidate-v2.example.json
       - name: Package candidate producer contract characterization (#2924)
         run: python3 scripts/test-exact-candidate-package-candidate.py
+      - name: Exact staged outside-workspace packaging (#2886)
+        run: |
+          python3 scripts/test-exact-candidate-staged-packaging.py
+          cargo fetch --locked
+          STAGED_ROOT="${RUNNER_TEMP}/exact-candidate-staged"
+          python3 scripts/exact-candidate-staged-packaging.py --mode stage \
+            --output-root "${STAGED_ROOT}" \
+            --receipt target/cargo-allow/staged-packaging.receipt.json
+          python3 scripts/exact-candidate-staged-packaging.py --mode package \
+            --output-root "${STAGED_ROOT}" \
+            --receipt target/cargo-allow/staged-packaging.receipt.json
+          python3 scripts/exact-candidate-staged-packaging.py --mode verify \
+            --output-root "${STAGED_ROOT}" \
+            --receipt target/cargo-allow/staged-packaging.receipt.json
       - name: Exact isolated local-registry install (#2925)
         run: |
           python3 scripts/test-exact-candidate-index-checksum.py
@@ -649,6 +663,13 @@ jobs:
         with:
           name: exact-candidate-package-candidate-receipt
           path: target/exact-candidate-package-candidate/package-candidate-v2.json
+          if-no-files-found: warn
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: exact-candidate-staged-packaging-receipt
+          path: target/cargo-allow/staged-packaging.receipt.json
           if-no-files-found: warn
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

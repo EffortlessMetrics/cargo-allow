@@ -1,0 +1,26 @@
+# Revision-note admission for #2886 (fix/2886-2886-mixed-version-packaging).
+# Ledger-change metadata only; does not ratify the exception scope, waive CI,
+# review, merge checks, or release authorization. The receipted producer is
+# read-only over candidate packaging: it never uploads, never tags, and
+# reaches no crates.io lookup (crates.io is source-replaced by a staged local
+# registry during packaging). The changie fragment for this lane is receipted
+# by the pre-existing .changes/*.yaml configuration entry, not by this lane.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11375"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aaee8303eaf63794f8ec0a4e88f6714098ccc3252bcce00054bcc775e00abd2b"
+reason = "Retain the staged outside-workspace packaging producer scripts/exact-candidate-staged-packaging.py (#2886): it derives every and only candidate row from the V2 topology, stages the selected closure outside the workspace with inheritance resolved and internal path dependencies rewritten to exact topology version requirements, packages one row per release_order entry fully offline against a staged local registry, requires byte-identical --locked re-packages, and fails closed on digest, membership, manifest, registry-checksum, and lockfile drift. No upload and no crates.io lookup is reachable."
+
+[[records]]
+allow_ids = ["allow-11379"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f342485397168eb7ce499c183111f0bcfa6f0b23b6bce48e2ec91af638a2a9c1"
+reason = "Retain the characterization suite scripts/test-exact-candidate-staged-packaging.py (#2886): a two-version fixture proves the mixed-version candidate law offline through the verification-build ceiling with an isolated CARGO_HOME, and negative controls prove digest, missing-package, membership, packaged-manifest, registry-checksum, and lockfile drift fail closed."
+
+[[records]]
+allow_ids = ["allow-11380"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a2172add66940120e956dca9b3444558b56f58c93aa0bac77525365a169247a5"
+reason = "Self-covering governance revision admission for the #2886 staged packaging revision note file itself; retention metadata only, no ratification, CI, review, merge, or release bypass."
