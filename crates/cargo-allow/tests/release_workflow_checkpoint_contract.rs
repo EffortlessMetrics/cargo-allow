@@ -155,11 +155,15 @@ fn test_release_workflow_writes_checkpoints_at_the_law_points() -> Result<(), Bo
 
     let publish = position(&content, "  publish:")
         .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
-    let next_job = content[publish..]
-        .find("\n  install-smoke:")
+    let next_job = content
+        .get(publish..)
+        .and_then(|rest| rest.find("\n  install-smoke:"))
         .map(|index| publish + index)
         .unwrap_or(content.len());
-    let job = content[publish..next_job].to_string();
+    let job = content
+        .get(publish..next_job)
+        .ok_or_else(|| io::Error::other("publish job slice unavailable"))?
+        .to_string();
 
     let publish_step = "Publish cargo-allow topology rows in dependency order";
     let publish_at = position(&job, publish_step)
@@ -256,7 +260,10 @@ fn test_release_authorized_workflow_writes_checkpoints_at_the_law_points()
 
     let job_at = position(&content, "  publish-namespace:")
         .ok_or_else(|| io::Error::other("release-authorized.yml must define publish-namespace"))?;
-    let job = content[job_at..].to_string();
+    let job = content
+        .get(job_at..)
+        .ok_or_else(|| io::Error::other("publish-namespace job slice unavailable"))?
+        .to_string();
 
     let publish_step = "Publish and verify shared, intent, and proof 0.1.0 rows";
     let publish_at = position(&job, publish_step)
