@@ -1,0 +1,3 @@
+kind: Fixed
+body: Distinguish missing review gate records from retained JSON null and other malformed records without changing publication policy.
+time: 2026-11-04T05:04:00Z
