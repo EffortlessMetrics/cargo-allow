@@ -39,19 +39,18 @@ for command_name in tar gzip sha256sum python3 git; do
   command -v "${command_name}" >/dev/null 2>&1 || fail "${command_name} is required"
 done
 
+# The archive must carry the exact caller-supplied release identity
+# (#3787): the version is never derived from the archive filename; the
+# canonical archive name is constructed from the expected version and
+# compared for exact equality.
+[[ -n "${expected_version}" ]] \
+  || fail "--version with the exact projected release identity is required"
 archive="$(cd "$(dirname "${archive}")" && pwd)/$(basename "${archive}")"
 archive_name="$(basename "${archive}")"
-prefix="cargo-allow-v"
-suffix="-x86_64-unknown-linux-gnu.tar.gz"
-[[ "${archive_name}" == ${prefix}*${suffix} ]] \
-  || fail "archive name must be cargo-allow-v<VERSION>-x86_64-unknown-linux-gnu.tar.gz"
-version="${archive_name#${prefix}}"
-version="${version%${suffix}}"
-[[ -n "${version}" && "${version}" != *[[:space:]/\\]* ]] \
-  || fail "archive has no valid version in its filename"
-if [[ -n "${expected_version}" && "${version}" != "${expected_version}" ]]; then
-  fail "archive version ${version} does not match expected ${expected_version}"
-fi
+version="${expected_version}"
+expected_archive_name="cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz"
+[[ "${archive_name}" == "${expected_archive_name}" ]] \
+  || fail "archive name ${archive_name} is not the canonical archive for release ${version}: ${expected_archive_name}"
 
 sidecar="${archive}.sha256"
 [[ -f "${sidecar}" ]] || fail "missing archive checksum sidecar: ${sidecar}"

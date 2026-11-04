@@ -26309,3 +26309,77 @@ glob = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11381"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/release_identity_projection.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Shared fail-closed bounded reader (#3787) that extracts exact fields from one canonical `cargo-allow release-identity` JSON projection and binds caller-supplied expected values; it validates the envelope (schema generation, validated result), checks field JSON types, prints KEY=VALUE lines, and owns no release grammar, channel inference, tag reconstruction, or path selection."
+evidence = ['issue:3787', 'test:scripts/test-release-identity-projection-reader.py']
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/release_identity_projection.py"
+target_fingerprint = "py"
+glob = "scripts/release_identity_projection.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+
+
+[[allow]]
+id = "allow-11382"
+kind = "non_rust_file"
+family = "release_script"
+path = "scripts/test-release-identity-projection-reader.py"
+owner = "core/release"
+classification = "release_automation_script"
+reason = "Fixture-only fail-closed controls (#3787) for the bounded projection reader: fixtures mirror the exact typed authority output shapes for stable 0.2.0 and RC.1/RC.2/RC.10 and pin envelope validation, exact extraction, expected-value binding, and fail-closed corruption negatives; the fixtures decide no channel semantics."
+evidence = ['issue:3787', 'test:scripts/test-release-identity-projection-reader.py']
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-release-identity-projection-reader.py"
+target_fingerprint = "py"
+glob = "scripts/test-release-identity-projection-reader.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+
+
+[[allow]]
+id = "allow-11384"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/3787-3787-typed-release-consumers.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #3787 typed-release-consumers lane's added allow-11375, allow-11376, allow-11377, and allow-11378 receipts; note retention only, no new scanned surface beyond this file."
+evidence = ['issue:3787']
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/3787-3787-typed-release-consumers.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/3787-3787-typed-release-consumers.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
