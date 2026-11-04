@@ -123,6 +123,357 @@ jobs:
           cargo run -p cargo-allow -- check --mode no-new --format markdown \
             --receipt target/cargo-allow/check.receipt.json \
             --output target/cargo-allow/check.md
+      # #3922 checkpoint law, evidence-only wire-up. Before the package
+      # upload begins, one durable pre-intent checkpoint is rendered from
+      # settled workflow evidence per CargoAllowPublicationCheckpointV1,
+      # stored on the selected GitHub Actions artifact surface, fetched
+      # back, and verified by exact-byte independent readback. A failed
+      # render, store, fetch, or readback verification stops this job so
+      # the publication step cannot run. Field bindings (every digest is a
+      # real sha256 over exact named evidence bytes, never a synthetic
+      # value):
+      #   operation_identity_digest + custody_digest
+      #     <- the verified release/authorize-v0.2.0.json document bytes
+      #   operation_head_digest + journal_head_digest + freeze_digest
+      #     <- the settled no-new check receipt bytes
+      #   authorization_digest <- sha256 of the exact authorization
+      #     reference token the publisher consumes (the raw token is
+      #     never embedded in any checkpoint bytes)
+      # The namespace operation declares its own operation id; the #3921
+      # journal operation vocabulary does not yet carry a namespace
+      # variant, so these records are schema-valid durable evidence, not
+      # model-minted checkpoint authority (provider completion remains
+      # #3922 open work). The provider object_id binds the deterministic
+      # run-scoped artifact identity; the provider-assigned numeric
+      # artifact id lands in the readback receipt. No tag is created,
+      # nothing is published, and every authorization gate below stays
+      # byte-identical.
+      - name: Write the pre-intent publication checkpoint
+        id: write_pre_intent_checkpoint
+        env:
+          NAMESPACE_AUTHORIZATION: ${{ steps.authorization.outputs.authorization }}
+          CHECKPOINT_NOTE: >-
+            release-authorized publish-namespace pre-intent checkpoint
+            (#3922 evidence-only). Digests bind exact evidence:
+            identity+custody=namespace authorization document;
+            head+journal+freeze=no-new receipt. The namespace operation
+            awaits journal vocabulary.
+          PRODUCER_WORKFLOW: ${{ github.workflow }}
+          PRODUCER_RUN: ${{ github.run_id }}
+          PRODUCER_ATTEMPT: ${{ github.run_attempt }}
+          PRODUCER_JOB: publish-namespace
+          PRODUCER_GIT_REF: ${{ github.ref }}
+          PRODUCER_COMMIT: ${{ github.sha }}
+          CHECKPOINT_DIR: target/cargo-allow/checkpoints
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import time
+          import tomllib
+          from pathlib import Path
+
+          SCHEMA_ID = "cargo-allow.publication-checkpoint.v1"
+          JOURNAL_SCHEMA_ID = "cargo-allow.publication-journal.v1"
+          NAMESPACE_OPERATION = "publish_shared_namespace_for_v0_2_0"
+          RETENTION_DAYS = 90
+          CLAIM_BOUNDARY = (
+              "This record owns one remotely durable, independently readable "
+              "checkpoint per publication journal prefix: exact operation and "
+              "journal-prefix identity, monotonic sequence linkage, immutable "
+              "provider object identity, producer trust, retention, and "
+              "readback classification. It does not upload packages, observe "
+              "the registry, authorize the operation, or execute recovery."
+          )
+          LIMITATIONS = [
+              "does_not_upload_packages",
+              "does_not_observe_registry",
+              "does_not_authorize_operation",
+          ]
+
+          def sha256_bytes(data: bytes) -> str:
+              return "sha256:" + hashlib.sha256(data).hexdigest()
+
+          def digest_file(path: Path) -> str:
+              return sha256_bytes(path.read_bytes())
+
+          def digest_text(text: str) -> str:
+              return sha256_bytes(text.encode("utf-8"))
+
+          def canonical(value) -> bytes:
+              return json.dumps(
+                  value, separators=(",", ":"), ensure_ascii=False
+              ).encode("utf-8")
+
+          def pretty(value) -> bytes:
+              return json.dumps(value, indent=2, ensure_ascii=False).encode("utf-8")
+
+          checkpoint_dir = Path(os.environ["CHECKPOINT_DIR"])
+          checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+          authorization = Path("release/authorize-v0.2.0.json")
+          settled = Path("target/cargo-allow/check.receipt.json")
+          topology = Path("policy/product-package-topology-v2.toml")
+          for required in (authorization, settled, topology):
+              if not required.is_file():
+                  raise SystemExit(
+                      f"publication checkpoint requires settled evidence {required}"
+                  )
+
+          # The first row the namespace publication may render
+          # irreversible, selected with the same V2 topology filters the
+          # publisher applies for this mode.
+          with topology.open("rb") as handle:
+              document = tomllib.load(handle)
+          if (
+              document.get("schema_version") != "2.0"
+              or document.get("authority_generation") != 2
+          ):
+              raise SystemExit(
+                  "publication checkpoint requires the selected V2 topology authority"
+              )
+          rows = []
+          for raw in document.get("package", []):
+              if raw.get("product_family") not in {
+                  "shared",
+                  "cargo-intent",
+                  "cargo-proof",
+              }:
+                  continue
+              if raw.get("publish") is not True:
+                  continue
+              rows.append((int(raw["release_order"]), raw["cargo_package_name"]))
+          if not rows:
+              raise SystemExit("topology selected no rows for the checkpoint row")
+          rows.sort()
+          first_order, first_row = rows[0]
+
+          operation_identity_digest = digest_file(authorization)
+          head_evidence_digest = digest_file(settled)
+          authorization_digest = digest_text(
+              os.environ.get("NAMESPACE_AUTHORIZATION", "")
+          )
+          note = os.environ["CHECKPOINT_NOTE"]
+          if not (1 <= len(note) <= 256):
+              raise SystemExit("checkpoint note must be a bounded operator note")
+
+          producer = {
+              "workflow": os.environ["PRODUCER_WORKFLOW"],
+              "run": os.environ["PRODUCER_RUN"],
+              "attempt": os.environ["PRODUCER_ATTEMPT"],
+              "job": os.environ["PRODUCER_JOB"],
+              "git_ref": os.environ["PRODUCER_GIT_REF"],
+              "commit": os.environ["PRODUCER_COMMIT"],
+          }
+          if len(producer["commit"]) not in (40, 64) or any(
+              character not in "0123456789abcdef" for character in producer["commit"]
+          ):
+              raise SystemExit("checkpoint producer commit must be a canonical Git SHA")
+
+          artifact_name = "publication-checkpoint-pre-intent"
+          created_at = int(time.time())
+          record = {
+              "schema_id": SCHEMA_ID,
+              "schema_version": 1,
+              "checkpoint_id": "checkpoint-shared-namespace-001",
+              "operation_id": NAMESPACE_OPERATION,
+              "operation_identity_digest": operation_identity_digest,
+              "operation_head_digest": head_evidence_digest,
+              "operation_class": "clean_final_publication",
+              "authorization_digest": authorization_digest,
+              "custody_digest": operation_identity_digest,
+              "freeze_digest": head_evidence_digest,
+              "journal_schema_id": JOURNAL_SCHEMA_ID,
+              "journal_head_sequence": 1,
+              "journal_head_digest": head_evidence_digest,
+              "checkpoint_sequence": 1,
+              "prior_checkpoint_digest": None,
+              "kind": "pre_intent_durable",
+              "row": {
+                  "package_name": first_row,
+                  "row_order": first_order,
+                  "state": "intent_durable",
+              },
+              "first_irreversible_row": None,
+              "incident_recorded": False,
+              "provider": {
+                  "provider": "github_actions_artifact",
+                  "object_id": f"run-{producer['run']}-{artifact_name}",
+                  "object_name": artifact_name,
+                  "object_digest": "",
+                  "object_size_bytes": 0,
+              },
+              "producer": producer,
+              "retention_days": RETENTION_DAYS,
+              "created_at_unix_seconds": created_at,
+              "expires_at_unix_seconds": created_at + RETENTION_DAYS * 86400,
+              "note": note,
+              "readback": "missing",
+              "readback_at_unix_seconds": None,
+              "claim_boundary": CLAIM_BOUNDARY,
+              "limitations": list(LIMITATIONS),
+          }
+          body_fields = [
+              key
+              for key in record
+              if key not in ("provider", "readback", "readback_at_unix_seconds")
+          ]
+          body_digest = sha256_bytes(
+              canonical({key: record[key] for key in body_fields})
+          )
+          record["provider"]["object_digest"] = body_digest
+
+          # The stored bytes use the model's canonical rendering shape
+          # (render_publication_checkpoint_v1): pretty JSON, no trailing
+          # newline. The payload carries its own converged size: render,
+          # measure, rewrite the size field, and repeat until the record
+          # is its own fixed point.
+          size_guess = 0
+          for _ in range(32):
+              record["provider"]["object_size_bytes"] = size_guess
+              payload = pretty(record)
+              if record["provider"]["object_size_bytes"] == len(payload):
+                  break
+              size_guess = len(payload)
+          else:
+              raise SystemExit("checkpoint payload size did not converge")
+
+          payload_path = checkpoint_dir / f"{artifact_name}.json"
+          payload_path.write_bytes(payload)
+          meta = {
+              "checkpoint_id": record["checkpoint_id"],
+              "operation_id": NAMESPACE_OPERATION,
+              "operation_class": record["operation_class"],
+              "checkpoint_kind": "pre_intent_durable",
+              "checkpoint_sequence": 1,
+              "artifact_name": artifact_name,
+              "created_at_unix_seconds": created_at,
+              "operation_identity_digest": operation_identity_digest,
+              "operation_head_digest": head_evidence_digest,
+              "authorization_digest": authorization_digest,
+              "custody_digest": operation_identity_digest,
+              "freeze_digest": head_evidence_digest,
+              "expected_payload_sha256": sha256_bytes(payload),
+              "expected_payload_size_bytes": len(payload),
+              "body_digest": body_digest,
+          }
+          meta_path = checkpoint_dir / f"{artifact_name}.meta.json"
+          meta_path.write_bytes(canonical(meta) + b"\n")
+          print(
+              f"pre-intent publication checkpoint rendered: {payload_path} "
+              f"({len(payload)} bytes)"
+          )
+          PY
+      - name: Store the pre-intent publication checkpoint
+        id: store_pre_intent_checkpoint
+        if: always() && steps.write_pre_intent_checkpoint.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: publication-checkpoint-pre-intent
+          path: target/cargo-allow/checkpoints/publication-checkpoint-pre-intent.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fetch the stored pre-intent checkpoint for independent readback
+        id: fetch_pre_intent_checkpoint
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: publication-checkpoint-pre-intent
+          path: target/cargo-allow/checkpoints/pre-intent-readback
+      - name: Verify the independent pre-intent checkpoint readback
+        id: verify_pre_intent_checkpoint
+        env:
+          STORED_ARTIFACT_ID: ${{ steps.store_pre_intent_checkpoint.outputs.artifact-id }}
+          CHECKPOINT_ARTIFACT_NAME: publication-checkpoint-pre-intent
+          CHECKPOINT_READBACK_DIR: pre-intent-readback
+          PRODUCER_WORKFLOW: ${{ github.workflow }}
+          PRODUCER_RUN: ${{ github.run_id }}
+          PRODUCER_ATTEMPT: ${{ github.run_attempt }}
+          PRODUCER_JOB: publish-namespace
+          PRODUCER_GIT_REF: ${{ github.ref }}
+          PRODUCER_COMMIT: ${{ github.sha }}
+          CHECKPOINT_DIR: target/cargo-allow/checkpoints
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          # #3922 readback law: provider success without an independent
+          # exact-byte readback is never clean. The stored payload is
+          # fetched from the provider surface and compared by byte identity
+          # against the rendered canonical bytes; a mismatch or absence
+          # classifies non-clean and fails this job closed before the
+          # publication step can run.
+          import hashlib
+          import json
+          import os
+          import time
+          from pathlib import Path
+
+          def sha256_bytes(data: bytes) -> str:
+              return "sha256:" + hashlib.sha256(data).hexdigest()
+
+          checkpoint_dir = Path(os.environ["CHECKPOINT_DIR"])
+          artifact_name = os.environ["CHECKPOINT_ARTIFACT_NAME"]
+          meta_path = checkpoint_dir / f"{artifact_name}.meta.json"
+          stored_path = (
+              checkpoint_dir
+              / os.environ["CHECKPOINT_READBACK_DIR"]
+              / f"{artifact_name}.json"
+          )
+          meta = json.loads(meta_path.read_text(encoding="utf-8"))
+          observed_digest = None
+          observed_size = None
+          if stored_path.is_file():
+              stored = stored_path.read_bytes()
+              observed_digest = sha256_bytes(stored)
+              observed_size = len(stored)
+              result = (
+                  "complete"
+                  if observed_digest == meta["expected_payload_sha256"]
+                  else "mismatch"
+              )
+          else:
+              result = "missing"
+          receipt = {
+              "checkpoint_id": meta["checkpoint_id"],
+              "operation_id": meta["operation_id"],
+              "checkpoint_kind": meta["checkpoint_kind"],
+              "checkpoint_sequence": meta["checkpoint_sequence"],
+              "provider": {
+                  "surface": "github_actions_artifact",
+                  "artifact_name": artifact_name,
+                  "artifact_id": os.environ.get("STORED_ARTIFACT_ID", ""),
+              },
+              "producer": {
+                  "workflow": os.environ["PRODUCER_WORKFLOW"],
+                  "run": os.environ["PRODUCER_RUN"],
+                  "attempt": os.environ["PRODUCER_ATTEMPT"],
+                  "job": os.environ["PRODUCER_JOB"],
+                  "git_ref": os.environ["PRODUCER_GIT_REF"],
+                  "commit": os.environ["PRODUCER_COMMIT"],
+              },
+              "expected_payload_sha256": meta["expected_payload_sha256"],
+              "observed_payload_sha256": observed_digest,
+              "expected_payload_size_bytes": meta["expected_payload_size_bytes"],
+              "observed_payload_size_bytes": observed_size,
+              "result": result,
+              "readback_at_unix_seconds": int(time.time()),
+          }
+          receipt_path = checkpoint_dir / f"{artifact_name}.readback.json"
+          receipt_path.write_bytes(
+              json.dumps(receipt, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+          )
+          if result != "complete":
+              print(
+                  f"::error::independent readback of {artifact_name} classified "
+                  f"{result}; publication progress stays blocked"
+              )
+              raise SystemExit(1)
+          print(
+              f"independent readback of {artifact_name}: complete "
+              f"({observed_size} bytes)"
+          )
+          PY
       - name: Publish and verify shared, intent, and proof 0.1.0 rows
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
@@ -133,6 +484,357 @@ jobs:
             --publish \
             --authorization "${{ steps.authorization.outputs.authorization }}" \
             --receipt target/cargo-allow/namespace-publish.receipt.json
+      # #3922 checkpoint law, evidence-only wire-up. After the publication
+      # step settles its receipt and before any dependant work begins, one
+      # durable post-observation checkpoint is rendered from that settled
+      # receipt, linked to the exact stored pre-intent bytes by their
+      # SHA-256, stored on the artifact surface, fetched back, and verified
+      # by exact-byte independent readback. Field bindings: the operation,
+      # authorization, custody, freeze, and operation-head digests are the
+      # pre-intent bindings (linkage never crosses operations or rewrites
+      # its head); journal_head_sequence advances to 2 and
+      # journal_head_digest binds the settled namespace publish receipt
+      # bytes; prior_checkpoint_digest binds the exact downloaded
+      # pre-intent payload bytes; first_irreversible_row is the publisher
+      # receipt's recorded first irreversible row. A failed render, store,
+      # fetch, or readback verification stops this job. No tag is created,
+      # nothing is published, and every authorization gate above stays
+      # byte-identical.
+      - name: Write the post-observation publication checkpoint
+        id: write_post_observation_checkpoint
+        env:
+          CHECKPOINT_NOTE: >-
+            release-authorized publish-namespace post-observation checkpoint
+            (#3922 evidence-only). Linked to the read-back pre-intent bytes;
+            journal head binds the namespace publish receipt. The namespace
+            operation awaits journal vocabulary.
+          PRODUCER_WORKFLOW: ${{ github.workflow }}
+          PRODUCER_RUN: ${{ github.run_id }}
+          PRODUCER_ATTEMPT: ${{ github.run_attempt }}
+          PRODUCER_JOB: publish-namespace
+          PRODUCER_GIT_REF: ${{ github.ref }}
+          PRODUCER_COMMIT: ${{ github.sha }}
+          CHECKPOINT_DIR: target/cargo-allow/checkpoints
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import time
+          from pathlib import Path
+
+          SCHEMA_ID = "cargo-allow.publication-checkpoint.v1"
+          JOURNAL_SCHEMA_ID = "cargo-allow.publication-journal.v1"
+          RETENTION_DAYS = 90
+          CLAIM_BOUNDARY = (
+              "This record owns one remotely durable, independently readable "
+              "checkpoint per publication journal prefix: exact operation and "
+              "journal-prefix identity, monotonic sequence linkage, immutable "
+              "provider object identity, producer trust, retention, and "
+              "readback classification. It does not upload packages, observe "
+              "the registry, authorize the operation, or execute recovery."
+          )
+          LIMITATIONS = [
+              "does_not_upload_packages",
+              "does_not_observe_registry",
+              "does_not_authorize_operation",
+          ]
+          ROW_STATES = {
+              "published_verified": "visible_exact",
+              "verified_existing": "visible_exact",
+              "already_published_exact": "visible_exact",
+              "recovered_already_published_exact": "visible_exact",
+              "uploaded_waiting_for_registry": "waiting",
+              "missing": "observed_absent",
+              "checksum_conflict": "visible_conflict",
+          }
+
+          def sha256_bytes(data: bytes) -> str:
+              return "sha256:" + hashlib.sha256(data).hexdigest()
+
+          def digest_file(path: Path) -> str:
+              return sha256_bytes(path.read_bytes())
+
+          def canonical(value) -> bytes:
+              return json.dumps(
+                  value, separators=(",", ":"), ensure_ascii=False
+              ).encode("utf-8")
+
+          def pretty(value) -> bytes:
+              return json.dumps(value, indent=2, ensure_ascii=False).encode("utf-8")
+
+          checkpoint_dir = Path(os.environ["CHECKPOINT_DIR"])
+          checkpoint_dir.mkdir(parents=True, exist_ok=True)
+
+          publication = Path("target/cargo-allow/namespace-publish.receipt.json")
+          if not publication.is_file():
+              raise SystemExit(
+                  "post-observation checkpoint requires the settled publish receipt"
+              )
+          receipt_document = json.loads(publication.read_text(encoding="utf-8"))
+          if receipt_document.get("schema_id") != (
+              "cargo-allow.topology-publish-receipt.v1"
+          ):
+              raise SystemExit("publish receipt is not the typed topology receipt")
+          if (
+              receipt_document.get("complete") is not True
+              or receipt_document.get("incident_state") is not None
+          ):
+              raise SystemExit(
+                  "publish receipt is not a clean settled batch; refusing to "
+                  "render a post-observation checkpoint"
+              )
+          receipt_rows = receipt_document.get("rows") or []
+          if not receipt_rows:
+              raise SystemExit("publish receipt selected no rows")
+          ordered_rows = sorted(receipt_rows, key=lambda row: int(row["release_order"]))
+          last = ordered_rows[-1]
+          last_state = ROW_STATES.get(last.get("state"), "incident")
+
+          first_name = None
+          first_order = receipt_document.get("first_irreversible_row")
+          if first_order is not None:
+              matches = [
+                  row["name"]
+                  for row in receipt_rows
+                  if int(row["release_order"]) == int(first_order)
+              ]
+              if len(matches) != 1:
+                  raise SystemExit(
+                      "publish receipt first irreversible row does not resolve "
+                      "to exactly one row"
+                  )
+              first_name = matches[0]
+
+          stored_pre = (
+              checkpoint_dir
+              / "pre-intent-readback"
+              / "publication-checkpoint-pre-intent.json"
+          )
+          if not stored_pre.is_file():
+              raise SystemExit(
+                  "the read-back pre-intent checkpoint bytes are absent; "
+                  "linkage refuses to advance"
+              )
+          prior_digest = sha256_bytes(stored_pre.read_bytes())
+          pre_meta = json.loads(
+              (checkpoint_dir / "publication-checkpoint-pre-intent.meta.json")
+              .read_text(encoding="utf-8")
+          )
+          created_at = int(time.time())
+          if created_at < int(pre_meta["created_at_unix_seconds"]):
+              raise SystemExit("checkpoint construction time moved backward")
+          note = os.environ["CHECKPOINT_NOTE"]
+          if not (1 <= len(note) <= 256):
+              raise SystemExit("checkpoint note must be a bounded operator note")
+
+          producer = {
+              "workflow": os.environ["PRODUCER_WORKFLOW"],
+              "run": os.environ["PRODUCER_RUN"],
+              "attempt": os.environ["PRODUCER_ATTEMPT"],
+              "job": os.environ["PRODUCER_JOB"],
+              "git_ref": os.environ["PRODUCER_GIT_REF"],
+              "commit": os.environ["PRODUCER_COMMIT"],
+          }
+          if len(producer["commit"]) not in (40, 64) or any(
+              character not in "0123456789abcdef" for character in producer["commit"]
+          ):
+              raise SystemExit("checkpoint producer commit must be a canonical Git SHA")
+
+          artifact_name = "publication-checkpoint-post-observation"
+          record = {
+              "schema_id": SCHEMA_ID,
+              "schema_version": 1,
+              "checkpoint_id": "checkpoint-shared-namespace-002",
+              "operation_id": pre_meta["operation_id"],
+              "operation_identity_digest": pre_meta["operation_identity_digest"],
+              "operation_head_digest": pre_meta["operation_head_digest"],
+              "operation_class": pre_meta["operation_class"],
+              "authorization_digest": pre_meta["authorization_digest"],
+              "custody_digest": pre_meta["custody_digest"],
+              "freeze_digest": pre_meta["freeze_digest"],
+              "journal_schema_id": JOURNAL_SCHEMA_ID,
+              "journal_head_sequence": 2,
+              "journal_head_digest": digest_file(publication),
+              "checkpoint_sequence": 2,
+              "prior_checkpoint_digest": prior_digest,
+              "kind": "post_observation",
+              "row": {
+                  "package_name": last["name"],
+                  "row_order": int(last["release_order"]),
+                  "state": last_state,
+              },
+              "first_irreversible_row": first_name,
+              "incident_recorded": False,
+              "provider": {
+                  "provider": "github_actions_artifact",
+                  "object_id": f"run-{producer['run']}-{artifact_name}",
+                  "object_name": artifact_name,
+                  "object_digest": "",
+                  "object_size_bytes": 0,
+              },
+              "producer": producer,
+              "retention_days": RETENTION_DAYS,
+              "created_at_unix_seconds": created_at,
+              "expires_at_unix_seconds": created_at + RETENTION_DAYS * 86400,
+              "note": note,
+              "readback": "missing",
+              "readback_at_unix_seconds": None,
+              "claim_boundary": CLAIM_BOUNDARY,
+              "limitations": list(LIMITATIONS),
+          }
+          body_fields = [
+              key
+              for key in record
+              if key not in ("provider", "readback", "readback_at_unix_seconds")
+          ]
+          body_digest = sha256_bytes(
+              canonical({key: record[key] for key in body_fields})
+          )
+          record["provider"]["object_digest"] = body_digest
+
+          # The stored bytes use the model's canonical rendering shape
+          # (render_publication_checkpoint_v1): pretty JSON, no trailing
+          # newline. The payload carries its own converged size: render,
+          # measure, rewrite the size field, and repeat until the record
+          # is its own fixed point.
+          size_guess = 0
+          for _ in range(32):
+              record["provider"]["object_size_bytes"] = size_guess
+              payload = pretty(record)
+              if record["provider"]["object_size_bytes"] == len(payload):
+                  break
+              size_guess = len(payload)
+          else:
+              raise SystemExit("checkpoint payload size did not converge")
+
+          payload_path = checkpoint_dir / f"{artifact_name}.json"
+          payload_path.write_bytes(payload)
+          meta = {
+              "checkpoint_id": record["checkpoint_id"],
+              "operation_id": record["operation_id"],
+              "operation_class": record["operation_class"],
+              "checkpoint_kind": "post_observation",
+              "checkpoint_sequence": 2,
+              "artifact_name": artifact_name,
+              "created_at_unix_seconds": created_at,
+              "expected_payload_sha256": sha256_bytes(payload),
+              "expected_payload_size_bytes": len(payload),
+              "body_digest": body_digest,
+          }
+          meta_path = checkpoint_dir / f"{artifact_name}.meta.json"
+          meta_path.write_bytes(canonical(meta) + b"\n")
+          print(
+              f"post-observation publication checkpoint rendered: {payload_path} "
+              f"({len(payload)} bytes)"
+          )
+          PY
+      - name: Store the post-observation publication checkpoint
+        id: store_post_observation_checkpoint
+        if: always() && steps.write_post_observation_checkpoint.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: publication-checkpoint-post-observation
+          path: target/cargo-allow/checkpoints/publication-checkpoint-post-observation.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Fetch the stored post-observation checkpoint for independent readback
+        id: fetch_post_observation_checkpoint
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: publication-checkpoint-post-observation
+          path: target/cargo-allow/checkpoints/post-observation-readback
+      - name: Verify the independent post-observation checkpoint readback
+        id: verify_post_observation_checkpoint
+        env:
+          STORED_ARTIFACT_ID: ${{ steps.store_post_observation_checkpoint.outputs.artifact-id }}
+          CHECKPOINT_ARTIFACT_NAME: publication-checkpoint-post-observation
+          CHECKPOINT_READBACK_DIR: post-observation-readback
+          PRODUCER_WORKFLOW: ${{ github.workflow }}
+          PRODUCER_RUN: ${{ github.run_id }}
+          PRODUCER_ATTEMPT: ${{ github.run_attempt }}
+          PRODUCER_JOB: publish-namespace
+          PRODUCER_GIT_REF: ${{ github.ref }}
+          PRODUCER_COMMIT: ${{ github.sha }}
+          CHECKPOINT_DIR: target/cargo-allow/checkpoints
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          # #3922 readback law: provider success without an independent
+          # exact-byte readback is never clean. A mismatch or absence
+          # classifies non-clean and fails this job closed.
+          import hashlib
+          import json
+          import os
+          import time
+          from pathlib import Path
+
+          def sha256_bytes(data: bytes) -> str:
+              return "sha256:" + hashlib.sha256(data).hexdigest()
+
+          checkpoint_dir = Path(os.environ["CHECKPOINT_DIR"])
+          artifact_name = os.environ["CHECKPOINT_ARTIFACT_NAME"]
+          meta_path = checkpoint_dir / f"{artifact_name}.meta.json"
+          stored_path = (
+              checkpoint_dir
+              / os.environ["CHECKPOINT_READBACK_DIR"]
+              / f"{artifact_name}.json"
+          )
+          meta = json.loads(meta_path.read_text(encoding="utf-8"))
+          observed_digest = None
+          observed_size = None
+          if stored_path.is_file():
+              stored = stored_path.read_bytes()
+              observed_digest = sha256_bytes(stored)
+              observed_size = len(stored)
+              result = (
+                  "complete"
+                  if observed_digest == meta["expected_payload_sha256"]
+                  else "mismatch"
+              )
+          else:
+              result = "missing"
+          receipt = {
+              "checkpoint_id": meta["checkpoint_id"],
+              "operation_id": meta["operation_id"],
+              "checkpoint_kind": meta["checkpoint_kind"],
+              "checkpoint_sequence": meta["checkpoint_sequence"],
+              "provider": {
+                  "surface": "github_actions_artifact",
+                  "artifact_name": artifact_name,
+                  "artifact_id": os.environ.get("STORED_ARTIFACT_ID", ""),
+              },
+              "producer": {
+                  "workflow": os.environ["PRODUCER_WORKFLOW"],
+                  "run": os.environ["PRODUCER_RUN"],
+                  "attempt": os.environ["PRODUCER_ATTEMPT"],
+                  "job": os.environ["PRODUCER_JOB"],
+                  "git_ref": os.environ["PRODUCER_GIT_REF"],
+                  "commit": os.environ["PRODUCER_COMMIT"],
+              },
+              "expected_payload_sha256": meta["expected_payload_sha256"],
+              "observed_payload_sha256": observed_digest,
+              "expected_payload_size_bytes": meta["expected_payload_size_bytes"],
+              "observed_payload_size_bytes": observed_size,
+              "result": result,
+              "readback_at_unix_seconds": int(time.time()),
+          }
+          receipt_path = checkpoint_dir / f"{artifact_name}.readback.json"
+          receipt_path.write_bytes(
+              json.dumps(receipt, indent=2, sort_keys=True).encode("utf-8") + b"\n"
+          )
+          if result != "complete":
+              print(
+                  f"::error::independent readback of {artifact_name} classified "
+                  f"{result}; dependant progress stays blocked"
+              )
+              raise SystemExit(1)
+          print(
+              f"independent readback of {artifact_name}: complete "
+              f"({observed_size} bytes)"
+          )
+          PY
       - name: Upload namespace publication receipt
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -142,3 +844,10 @@ jobs:
             target/cargo-allow/namespace-publish.receipt.json
             target/cargo-allow/check.receipt.json
             target/cargo-allow/check.md
+      - name: Retain publication checkpoint evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: publication-checkpoint-readbacks
+          path: target/cargo-allow/checkpoints/
+          if-no-files-found: warn
