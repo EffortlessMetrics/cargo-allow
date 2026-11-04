@@ -1,0 +1,165 @@
+diff --git a/.changes/Fixed-20261104-0235.yaml b/.changes/Fixed-20261104-0235.yaml
+new file mode 100644
+index 0000000000000000000000000000000000000000..8d1f0d0d1a7660450a82197d4610d7d277fef4e9
+--- /dev/null
++++ b/.changes/Fixed-20261104-0235.yaml
+@@ -0,0 +1,3 @@
++kind: Fixed
++body: Preserve release evidence refusals while restoring selected Rust 1.95 Clippy predicates.
++time: 2026-11-04T02:35:00Z
+diff --git a/crates/cargo-allow/src/campaign_issue_closeout_workflow_tests.rs b/crates/cargo-allow/src/campaign_issue_closeout_workflow_tests.rs
+index 871449f665134b6ade00a00ba4e72631522e643e..e0867fb45dbe7a86d241371e3bdbd2a025df630c 100644
+--- a/crates/cargo-allow/src/campaign_issue_closeout_workflow_tests.rs
++++ b/crates/cargo-allow/src/campaign_issue_closeout_workflow_tests.rs
+@@ -87,10 +87,8 @@ fn validate_closeout(
+                 codes.push("closeout_id_missing".to_string());
+             }
+         }
+-        "Duplicate" => {
+-            if payload.replacement_issue.is_none() {
+-                codes.push("replacement_issue_missing".to_string());
+-            }
++        "Duplicate" if payload.replacement_issue.is_none() => {
++            codes.push("replacement_issue_missing".to_string());
+         }
+         "NotPlanned"
+             if payload
+diff --git a/crates/cargo-allow/src/cli/release_final_tag_bridge.rs b/crates/cargo-allow/src/cli/release_final_tag_bridge.rs
+index 0619c020000851c57ce0b1dcad53d71d45f6a469..38ce61f1f70ba42cda4738401f566c856af4ab22 100644
+--- a/crates/cargo-allow/src/cli/release_final_tag_bridge.rs
++++ b/crates/cargo-allow/src/cli/release_final_tag_bridge.rs
+@@ -225,7 +225,7 @@ fn valid_control_time(value: &str, now: &str) -> bool {
+     };
+     if value.len() != 20
+         || value > now
+-        || !allow_core::SimpleDate::parse(date).is_some_and(|parsed| parsed.to_string() == date)
++        || allow_core::SimpleDate::parse(date).is_none_or(|parsed| parsed.to_string() != date)
+     {
+         return false;
+     }
+@@ -2230,3 +2230,30 @@ pub(super) fn cmd_release_final_tag_bridge(_: &ReleaseFinalTagBridgeArgs) -> Car
+         .and_then(|_| stdout.write_all(b"\n"))
+         .map_err(|_| instrument("bounded output write failed"))
+ }
++
++#[cfg(test)]
++mod control_time_tests {
++    #[test]
++    fn control_time_preserves_exact_dates_and_refuses_future_or_malformed_values() -> Result<(), String> {
++        let now = "2026-11-04T02:00:00Z";
++        for (value, expected) in [
++            (now, true),
++            ("2026-11-03T23:59:59Z", true),
++            ("2024-02-29T00:00:00Z", true),
++            ("2026-02-29T00:00:00Z", false),
++            ("2026-00-04T00:00:00Z", false),
++            ("2026-1-004T00:00:00Z", false),
++            ("2026-11-04T02:00:01Z", false),
++            ("2026-11-03T24:00:00Z", false),
++            ("2026-11-03T00:60:00Z", false),
++            ("2026-11-03T00:00:60Z", false),
++            ("2026-11-03T00:00:00z", false),
++            ("", false),
++        ] {
++            if super::valid_control_time(value, now) != expected {
++                return Err(format!("unexpected control-time admission for {value:?}"));
++            }
++        }
++        Ok(())
++    }
++}
+diff --git a/crates/cargo-allow/src/cli/release_freeze_experience.rs b/crates/cargo-allow/src/cli/release_freeze_experience.rs
+index a245d70e97b38f13aa1e9332c096cf57cd79cca6..68a06241dd198aa3283be2d76b1c0cd7af09ad72 100644
+--- a/crates/cargo-allow/src/cli/release_freeze_experience.rs
++++ b/crates/cargo-allow/src/cli/release_freeze_experience.rs
+@@ -691,7 +691,7 @@ fn bind_packages(
+             || qualified.package_version != row.cargo_package_version
+             || qualified.logical_id != row.logical_id
+             || !family_matches
+-            || !row.crate_size_bytes.is_some_and(|size| size > 0)
++            || row.crate_size_bytes.is_none_or(|size| size == 0)
+             || !same_digest(digest, &installed.crate_digest)
+             || !same_digest(digest, &installed.index_checksum)
+             || !same_digest(digest, &qualified.crate_digest)
+diff --git a/crates/cargo-allow/src/cli/release_freeze_experience_tests.rs b/crates/cargo-allow/src/cli/release_freeze_experience_tests.rs
+index 6ee9c03799b68b4d1eab8ba01877a0eba85d9e0b..eea23545b5d5ee40dd905b1caee11a7beee38419 100644
+--- a/crates/cargo-allow/src/cli/release_freeze_experience_tests.rs
++++ b/crates/cargo-allow/src/cli/release_freeze_experience_tests.rs
+@@ -1172,3 +1172,28 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
+     }
+     Ok(())
+ }
++
++#[test]
++fn package_size_absence_and_zero_remain_mismatch_not_ordinary_producer_holds() -> ExperienceResult {
++    for value in [None, Some(serde_json::Value::Null), Some(serde_json::json!(0))] {
++        let mut original = bundle()?;
++        let mut predecessors = original.predecessors()?;
++        let row = predecessors
++            .first_mut()
++            .and_then(|candidate| candidate.pointer_mut("/rows/0"))
++            .and_then(serde_json::Value::as_object_mut)
++            .ok_or("candidate first package row missing")?;
++        if let Some(value) = value {
++            row.insert("crate_size_bytes".to_string(), value);
++        } else {
++            row.remove("crate_size_bytes");
++        }
++        original.reseal_predecessors(predecessors)?;
++        assert_admission(
++            &original,
++            State::Mismatch,
++            "disagrees across original producers or selected upload bytes",
++        )?;
++    }
++    Ok(())
++}
+diff --git a/crates/cargo-allow/src/cli/release_freeze_rehearsal.rs b/crates/cargo-allow/src/cli/release_freeze_rehearsal.rs
+index 6d3dd312c54f7f035d88fb29d29edd55b9b067fc..eb8eec5bceedae794377b679ea0a1295e8a8870f 100644
+--- a/crates/cargo-allow/src/cli/release_freeze_rehearsal.rs
++++ b/crates/cargo-allow/src/cli/release_freeze_rehearsal.rs
+@@ -124,10 +124,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
+                     "fail:rehearsal authorization_boundary.token_present must be false".to_string(),
+                 );
+             }
+-            if !boundary
++            if boundary
+                 .get("phase_status_note")
+                 .and_then(Json::as_str)
+-                .is_some_and(|note| !note.is_empty())
++                .is_none_or(|note| note.is_empty())
+             {
+                 notes.push(
+                     "fail:rehearsal authorization_boundary.phase_status_note must be a nonempty string"
+diff --git a/crates/cargo-allow/src/cli/release_freeze_rehearsal_tests.rs b/crates/cargo-allow/src/cli/release_freeze_rehearsal_tests.rs
+index 994b99d9453e81ee7e2a1914a448248fab844e09..c7c015e8474a513aea4c13a4d09197b31eab1b5c 100644
+--- a/crates/cargo-allow/src/cli/release_freeze_rehearsal_tests.rs
++++ b/crates/cargo-allow/src/cli/release_freeze_rehearsal_tests.rs
+@@ -374,10 +374,10 @@ fn aggregate_schema_and_authorization_evidence_are_explicit() -> Result<(), Box<
+             // The note is descriptive, not a semantic result. Any nonempty
+             // string is compatible; never infer status from its prose.
+             if field != "phase_status_note"
+-                || !malformed
++                || malformed
+                     .pointer("/authorization_boundary/phase_status_note")
+                     .and_then(Json::as_str)
+-                    .is_some_and(|note| !note.is_empty())
++                    .is_none_or(|note| note.is_empty())
+             {
+                 rejected_with(
+                     &subject,
+diff --git a/crates/cargo-allow/src/extraction_shim_registry_tests.rs b/crates/cargo-allow/src/extraction_shim_registry_tests.rs
+index 39c2e4e12c0989df927fa55f641843ec8ba34047..f510f3037d9a38efdba02b4bad273b12486cd885 100644
+--- a/crates/cargo-allow/src/extraction_shim_registry_tests.rs
++++ b/crates/cargo-allow/src/extraction_shim_registry_tests.rs
+@@ -131,8 +131,8 @@ fn repo_edit_command_shims_match_live_apply_forwards() -> Result<(), String> {
+         let source = std::fs::read_to_string(root.join(source_path))
+             .map_err(|err| format!("read {source_path}: {err}"))?;
+         if !source.contains("SingleTargetApplyMode")
+-            || (!source.contains("apply_single_target(SingleTargetApplyRequest")
+-                && !(source.contains("apply_single_target_with_target")
++            || !(source.contains("apply_single_target(SingleTargetApplyRequest")
++                || (source.contains("apply_single_target_with_target")
+                     && source.contains("SingleTargetApplyRequest")))
+         {
+             return Err(format!(
