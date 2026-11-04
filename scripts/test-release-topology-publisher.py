@@ -1386,7 +1386,13 @@ def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
     if workflow is None:
         workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     job = workflow.split("\n  publish:\n", 1)[1].split("\n  build:", 1)[0]
-    assert "    needs: [preflight, authorize]\n" in job
+    # #2267: publication additionally gates on the cross-platform
+    # source-candidate smoke aggregate. The original preflight/authorize
+    # execution gates must stay present in the chain either way.
+    assert (
+        "    needs: [preflight, authorize]\n" in job
+        or "    needs: [preflight, authorize, source-candidate-smoke-aggregate]\n" in job
+    )
     assert "    if:" not in job.split("    steps:\n", 1)[0]
     preflight_name = "Prove shared registry preflight before upload"
     token_name = "Require crates.io API token for publication"
