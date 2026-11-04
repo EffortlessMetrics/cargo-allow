@@ -1,5 +1,4 @@
 # Task-owned worker only. Never merge this workflow override into main.
-# It prepares the selected #4716 candidate and publishes only a staging branch.
 name: PR 4716 focused integration
 on:
   push:
@@ -15,8 +14,8 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 25
     outputs:
-      candidate: ${{ steps.finalize.outputs.candidate }}
-      tree: ${{ steps.finalize.outputs.tree }}
+      candidate: ${{ steps.bind.outputs.candidate }}
+      tree: ${{ steps.bind.outputs.tree }}
     env:
       RUSTUP_TOOLCHAIN: '1.95.0'
       CARGO_BUILD_JOBS: '2'
@@ -45,12 +44,12 @@ jobs:
       - uses: dtolnay/rust-toolchain@035fceb3c12fb0c6a9461b52775e16473133e591
         with:
           toolchain: '1.95.0'
-          components: rustfmt, clippy
+          components: rustfmt
       - uses: ./.github/actions/rust-cache
         with:
           lane: pr4716-focused
           toolchain: '1.95.0'
-      - name: Format only the new regression suite and verify the full tree
+      - name: Format the new test and verify the exact source
         shell: bash
         run: |
           set -euo pipefail
@@ -61,38 +60,57 @@ jobs:
           python scripts/test-verify-evidence-surface-inventory.py
           python scripts/verify-evidence-surface-inventory.py
           git diff --check
-          # Check this candidate's actual delta, not main's inherited CRLF rows.
           git diff --cached --check ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198
-          git write-tree > "$RUNNER_TEMP/integration-evidence/tested-tree.txt"
-      - name: Focused real-binary regression tests
+      - name: Bind the candidate before source and revision proof
+        id: bind
+        shell: bash
+        run: |
+          set -euo pipefail
+          tree=$(git write-tree)
+          test "$tree" = 5c0f056fc5a568e505009688ac2cf535b920c034
+          candidate=$(printf '%s\n' 'Merge current main into init summary safety repair (#4714)' '' 'Preserve the exact main policy prefix and both existing branch records.' 'Qualification is recorded by exact-tree external results, not this commit message.' | git commit-tree "$tree" -p 8a2090d946392d47e41e0ce7e5907770a92efa3d -p ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198)
+          git merge --quit
+          git checkout --detach "$candidate"
+          git diff --exit-code
+          git diff --cached --exit-code
+          git update-ref refs/heads/pr4716-prepared "$candidate"
+          git bundle create "$RUNNER_TEMP/integration-evidence/integration.bundle" refs/heads/pr4716-prepared
+          git diff --stat ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198 "$candidate" > "$RUNNER_TEMP/integration-evidence/diff-stat.txt"
+          printf '%s\n' "$candidate" > "$RUNNER_TEMP/integration-evidence/candidate.txt"
+          printf '%s\n' "$tree" > "$RUNNER_TEMP/integration-evidence/tested-tree.txt"
+          printf 'candidate=%s\ntree=%s\n' "$candidate" "$tree" >> "$GITHUB_OUTPUT"
+      - name: Focused real-binary tests on Rust 1.95
         shell: bash
         run: |
           set -euo pipefail
           cargo test -p cargo-allow --locked --test init_summary_backup_cli --test core_command_summary_router_cli 2>&1 | tee "$RUNNER_TEMP/integration-evidence/focused-tests.log"
-      - name: Clippy and source guards
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo clippy -p cargo-allow --all-targets --locked -- -D warnings 2>&1 | tee "$RUNNER_TEMP/integration-evidence/clippy.log"
-          cargo run -q -p cargo-allow --locked -- check --mode no-new --format markdown 2>&1 | tee "$RUNNER_TEMP/integration-evidence/no-new.log"
-          cargo run -q -p cargo-allow --locked -- diff --base ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198 --format markdown --require-change-note 2>&1 | tee "$RUNNER_TEMP/integration-evidence/diff.log"
-      - name: Retain the exact tested tree, executable, and commit
-        id: finalize
-        shell: bash
-        run: |
-          set -euo pipefail
-          git diff --exit-code
-          tree=$(git write-tree)
-          test "$tree" = "$(cat "$RUNNER_TEMP/integration-evidence/tested-tree.txt")"
-          candidate=$(printf '%s\n' 'Merge current main into init summary safety repair (#4714)' '' 'Preserve the exact main policy prefix and both existing branch records.' 'Native focused tests, Clippy, formatting and source guards qualify this tree only.' | git commit-tree "$tree" -p 8a2090d946392d47e41e0ce7e5907770a92efa3d -p ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198)
-          git update-ref refs/heads/pr4716-prepared "$candidate"
-          git bundle create "$RUNNER_TEMP/integration-evidence/integration.bundle" refs/heads/pr4716-prepared
-          git diff --stat ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198 "$candidate" > "$RUNNER_TEMP/integration-evidence/diff-stat.txt"
           cp target/debug/cargo-allow "$RUNNER_TEMP/integration-evidence/cargo-allow"
           sha256sum "$RUNNER_TEMP/integration-evidence/cargo-allow" > "$RUNNER_TEMP/integration-evidence/binary.sha256"
-          printf '%s\n' "$candidate" > "$RUNNER_TEMP/integration-evidence/candidate.txt"
-          printf 'candidate=%s\ntree=%s\n' "$candidate" "$tree" >> "$GITHUB_OUTPUT"
-      - name: Retain source and proof, including failures
+      - name: Source and exact committed revision guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          candidate=$(cat "$RUNNER_TEMP/integration-evidence/candidate.txt")
+          test "$(git rev-parse HEAD)" = "$candidate"
+          cargo run -q -p cargo-allow --locked -- check --mode no-new --format markdown 2>&1 | tee "$RUNNER_TEMP/integration-evidence/no-new.log"
+          cargo run -q -p cargo-allow --locked -- diff --base ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198 --head "$candidate" --format markdown --require-change-note 2>&1 | tee "$RUNNER_TEMP/integration-evidence/diff.log"
+      - name: Select the normal stable lint compiler
+        uses: dtolnay/rust-toolchain@035fceb3c12fb0c6a9461b52775e16473133e591
+        with:
+          toolchain: stable
+          components: clippy
+      - name: Stable Clippy without suppressions
+        env:
+          RUSTUP_TOOLCHAIN: stable
+        shell: bash
+        run: |
+          set -euo pipefail
+          rustc -Vv | tee "$RUNNER_TEMP/integration-evidence/clippy-rustc.txt"
+          cargo clippy -p cargo-allow --all-targets --locked -- -D warnings 2>&1 | tee "$RUNNER_TEMP/integration-evidence/clippy.log"
+          git diff --exit-code
+          git diff --cached --exit-code
+          test "$(git rev-parse HEAD^{tree})" = "$(cat "$RUNNER_TEMP/integration-evidence/tested-tree.txt")"
+      - name: Retain original candidate and proof even on failure
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
