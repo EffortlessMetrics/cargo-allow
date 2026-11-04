@@ -338,80 +338,103 @@ mod tests {
         }
     }
 
-    #[test]
-    fn api_token_posture_with_evidence_verifies() {
-        let validation = validate_crates_io_trusted_publishing_receipt_v1(&receipt(
-            CratesIoAuthClassV1::CratesIoApiToken,
-        ));
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::VerifiedApiToken
-        );
-        assert!(validation.gaps.is_empty());
+    /// Result-style assertions keep the test suite receipt-free: a failed
+    /// expectation returns `Err` instead of introducing panic findings.
+    fn expect_result(
+        actual: &CratesIoTrustedPublishingResultV1,
+        expected: &CratesIoTrustedPublishingResultV1,
+    ) -> Result<(), String> {
+        if actual != expected {
+            return Err(format!("classified {actual:?}, expected {expected:?}"));
+        }
+        Ok(())
+    }
+
+    fn expect_gap(
+        validation: &CratesIoTrustedPublishingValidationV1,
+        needle: &str,
+    ) -> Result<(), String> {
+        if !validation.gaps.iter().any(|gap| gap.contains(needle)) {
+            return Err(format!("gaps {:?} lack {needle}", validation.gaps));
+        }
+        Ok(())
     }
 
     #[test]
-    fn oidc_posture_with_pinned_action_verifies() {
+    fn api_token_posture_with_evidence_verifies() -> Result<(), String> {
+        let validation = validate_crates_io_trusted_publishing_receipt_v1(&receipt(
+            CratesIoAuthClassV1::CratesIoApiToken,
+        ));
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::VerifiedApiToken,
+        )?;
+        if !validation.gaps.is_empty() {
+            return Err(format!("verified posture reported {:?}", validation.gaps));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn oidc_posture_with_pinned_action_verifies() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::TrustedPublishingOidc);
         record.oidc = oidc();
         record.authorization_evidence_digest = None;
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::VerifiedTrustedPublishing
-        );
-        assert!(validation.gaps.is_empty());
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::VerifiedTrustedPublishing,
+        )?;
+        if !validation.gaps.is_empty() {
+            return Err(format!("verified posture reported {:?}", validation.gaps));
+        }
+        Ok(())
     }
 
     #[test]
-    fn unsupported_auth_class_is_named() {
+    fn unsupported_auth_class_is_named() -> Result<(), String> {
         let record = receipt(CratesIoAuthClassV1::Unsupported("basic".to_string()));
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::UnsupportedAuthClass
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("basic is unsupported"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::UnsupportedAuthClass,
+        )?;
+        expect_gap(&validation, "basic is unsupported")
     }
 
     #[test]
-    fn missing_auth_class_is_missing_auth() {
+    fn missing_auth_class_is_missing_auth() -> Result<(), String> {
         let record = receipt(CratesIoAuthClassV1::Missing);
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::MissingAuth
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::MissingAuth,
+        )
     }
 
     #[test]
-    fn token_class_without_evidence_is_missing_auth() {
+    fn token_class_without_evidence_is_missing_auth() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::CratesIoApiToken);
         record.authorization_evidence_digest = None;
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::MissingAuth
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::MissingAuth,
+        )
     }
 
     #[test]
-    fn oidc_class_without_posture_is_missing_auth() {
+    fn oidc_class_without_posture_is_missing_auth() -> Result<(), String> {
         let record = receipt(CratesIoAuthClassV1::TrustedPublishingOidc);
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::MissingAuth
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::MissingAuth,
+        )
     }
 
     #[test]
-    fn mutable_action_tag_is_not_a_pinned_posture() {
+    fn mutable_action_tag_is_not_a_pinned_posture() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::TrustedPublishingOidc);
         record.oidc = Some(OidcPostureV1 {
             action_repository: "rust-lang/crates-io-auth-action".to_string(),
@@ -419,107 +442,82 @@ mod tests {
             audience: "crates-io".to_string(),
         });
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::Malformed
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("40-hex commit SHA"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::Malformed,
+        )?;
+        expect_gap(&validation, "40-hex commit SHA")
     }
 
     #[test]
-    fn credential_material_is_rejected_over_every_other_diagnosis() {
+    fn credential_material_is_rejected_over_every_other_diagnosis() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::CratesIoApiToken);
         record.authorization_evidence_digest = None;
         record.limitations = vec!["collected with crates_io_token from the runner".to_string()];
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::CredentialMaterialRejected
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::CredentialMaterialRejected,
+        )
     }
 
     #[test]
-    fn private_path_in_claim_boundary_is_malformed() {
+    fn private_path_in_claim_boundary_is_malformed() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::CratesIoApiToken);
         record.claim_boundary = "posture proven from /home/runner/work/receipts only".to_string();
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::Malformed
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("private absolute path"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::Malformed,
+        )?;
+        expect_gap(&validation, "private absolute path")
     }
 
     #[test]
-    fn noncurrent_generation_is_unsupported() {
+    fn noncurrent_generation_is_unsupported() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::CratesIoApiToken);
         record.schema_version = 2;
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::UnsupportedGeneration
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::UnsupportedGeneration,
+        )
     }
 
     #[test]
-    fn missing_producer_identity_is_reported() {
+    fn missing_producer_identity_is_reported() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::CratesIoApiToken);
         record.workflow_run_id = 0;
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("workflow_run_id"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::Malformed
-        );
+        expect_gap(&validation, "workflow_run_id")?;
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn oidc_class_rejects_token_flow_evidence() {
+    fn oidc_class_rejects_token_flow_evidence() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::TrustedPublishingOidc);
         record.oidc = oidc();
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("token-flow authorization evidence"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::Malformed
-        );
+        expect_gap(&validation, "token-flow authorization evidence")?;
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn malformed_evidence_digest_is_reported() {
+    fn malformed_evidence_digest_is_reported() -> Result<(), String> {
         let mut record = receipt(CratesIoAuthClassV1::CratesIoApiToken);
         record.authorization_evidence_digest = Some("digest".to_string());
         let validation = validate_crates_io_trusted_publishing_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("authorization_evidence_digest"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoTrustedPublishingResultV1::Malformed
-        );
+        expect_gap(&validation, "authorization_evidence_digest")?;
+        expect_result(
+            &validation.result,
+            &CratesIoTrustedPublishingResultV1::Malformed,
+        )
     }
 
     #[test]

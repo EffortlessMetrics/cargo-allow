@@ -306,18 +306,43 @@ mod tests {
         }
     }
 
-    #[test]
-    fn green_journey_with_resolved_graph_verifies() {
-        let validation = validate_crates_io_registry_install_journey_receipt_v1(&receipt());
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::InstalledVerified
-        );
-        assert!(validation.gaps.is_empty());
+    /// Result-style assertions keep the test suite receipt-free: a failed
+    /// expectation returns `Err` instead of introducing panic findings.
+    fn expect_result(
+        actual: &CratesIoRegistryInstallJourneyResultV1,
+        expected: &CratesIoRegistryInstallJourneyResultV1,
+    ) -> Result<(), String> {
+        if actual != expected {
+            return Err(format!("classified {actual:?}, expected {expected:?}"));
+        }
+        Ok(())
+    }
+
+    fn expect_gap(
+        validation: &CratesIoRegistryInstallJourneyValidationV1,
+        needle: &str,
+    ) -> Result<(), String> {
+        if !validation.gaps.iter().any(|gap| gap.contains(needle)) {
+            return Err(format!("gaps {:?} lack {needle}", validation.gaps));
+        }
+        Ok(())
     }
 
     #[test]
-    fn failed_step_is_incomplete() {
+    fn green_journey_with_resolved_graph_verifies() -> Result<(), String> {
+        let validation = validate_crates_io_registry_install_journey_receipt_v1(&receipt());
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::InstalledVerified,
+        )?;
+        if !validation.gaps.is_empty() {
+            return Err(format!("green journey reported {:?}", validation.gaps));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn failed_step_is_incomplete() -> Result<(), String> {
         let mut record = receipt();
         let failed = RegistryJourneyStepV1 {
             id: "install".to_string(),
@@ -325,42 +350,37 @@ mod tests {
         };
         record.journey_steps = vec![step("version-readback"), failed];
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::Incomplete
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("exited with 101"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::Incomplete,
+        )?;
+        expect_gap(&validation, "exited with 101")
     }
 
     #[test]
-    fn empty_journey_is_incomplete() {
+    fn empty_journey_is_incomplete() -> Result<(), String> {
         let mut record = receipt();
         record.journey_steps = Vec::new();
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::Incomplete
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::Incomplete,
+        )
     }
 
     #[test]
-    fn empty_resolved_graph_is_checksum_unresolved() {
+    fn empty_resolved_graph_is_checksum_unresolved() -> Result<(), String> {
         let mut record = receipt();
         record.resolved_graph = Vec::new();
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::ChecksumUnresolved
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::ChecksumUnresolved,
+        )
     }
 
     #[test]
-    fn row_without_retained_checksum_is_checksum_unresolved() {
+    fn row_without_retained_checksum_is_checksum_unresolved() -> Result<(), String> {
         let mut record = receipt();
         record.resolved_graph = vec![RegistryResolvedRowV1 {
             package_name: "cargo-allow".to_string(),
@@ -368,31 +388,26 @@ mod tests {
             registry_checksum: None,
         }];
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::ChecksumUnresolved
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("no retained registry checksum"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::ChecksumUnresolved,
+        )?;
+        expect_gap(&validation, "no retained registry checksum")
     }
 
     #[test]
-    fn unsupported_channel_is_named() {
+    fn unsupported_channel_is_named() -> Result<(), String> {
         let mut record = receipt();
         record.channel = RegistryInstallChannelV1::Unsupported("local-path".to_string());
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::UnsupportedInstallChannel
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::UnsupportedInstallChannel,
+        )
     }
 
     #[test]
-    fn malformed_row_checksum_is_malformed() {
+    fn malformed_row_checksum_is_malformed() -> Result<(), String> {
         let mut record = receipt();
         record.resolved_graph = vec![RegistryResolvedRowV1 {
             package_name: "cargo-allow".to_string(),
@@ -400,80 +415,65 @@ mod tests {
             registry_checksum: Some("sha256:nope".to_string()),
         }];
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::Malformed
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn missing_platform_identity_is_reported() {
+    fn missing_platform_identity_is_reported() -> Result<(), String> {
         let mut record = receipt();
         record.platform = "  ".to_string();
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert!(validation.gaps.iter().any(|gap| gap.contains("platform")));
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::Malformed
-        );
+        expect_gap(&validation, "platform is missing")?;
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn missing_run_identity_is_reported() {
+    fn missing_run_identity_is_reported() -> Result<(), String> {
         let mut record = receipt();
         record.workflow_run_id = 0;
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("workflow_run_id"))
-        );
+        expect_gap(&validation, "workflow_run_id")
     }
 
     #[test]
-    fn duplicated_step_id_is_reported() {
+    fn duplicated_step_id_is_reported() -> Result<(), String> {
         let mut record = receipt();
         record.journey_steps = vec![step("doctor"), step("doctor")];
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("id is duplicated"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::Malformed
-        );
+        expect_gap(&validation, "id is duplicated")?;
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn private_path_in_claim_boundary_is_reported() {
+    fn private_path_in_claim_boundary_is_reported() -> Result<(), String> {
         let mut record = receipt();
         record.claim_boundary = "journey ran from /home/runner/work only".to_string();
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("private absolute path"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::Malformed
-        );
+        expect_gap(&validation, "private absolute path")?;
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn noncurrent_generation_is_unsupported() {
+    fn noncurrent_generation_is_unsupported() -> Result<(), String> {
         let mut record = receipt();
         record.schema_version = 2;
         let validation = validate_crates_io_registry_install_journey_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoRegistryInstallJourneyResultV1::UnsupportedGeneration
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoRegistryInstallJourneyResultV1::UnsupportedGeneration,
+        )
     }
 
     #[test]

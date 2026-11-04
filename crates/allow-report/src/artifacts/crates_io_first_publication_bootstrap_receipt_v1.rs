@@ -342,195 +342,203 @@ mod tests {
         }
     }
 
+    /// Result-style assertions keep the test suite receipt-free: a failed
+    /// expectation returns `Err` instead of introducing panic findings.
+    fn expect_result(
+        actual: &CratesIoFirstPublicationBootstrapResultV1,
+        expected: &CratesIoFirstPublicationBootstrapResultV1,
+    ) -> Result<(), String> {
+        if actual != expected {
+            return Err(format!("classified {actual:?}, expected {expected:?}"));
+        }
+        Ok(())
+    }
+
+    fn expect_gap(
+        validation: &CratesIoFirstPublicationBootstrapValidationV1,
+        needle: &str,
+    ) -> Result<(), String> {
+        if !validation.gaps.iter().any(|gap| gap.contains(needle)) {
+            return Err(format!("gaps {:?} lack {needle}", validation.gaps));
+        }
+        Ok(())
+    }
+
     #[test]
-    fn exact_shared_rows_classify_bootstrap_published() {
+    fn exact_shared_rows_classify_bootstrap_published() -> Result<(), String> {
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![
             row("effortless-repo-protocol", "0.1.0", AUTHORITY),
             row("effortless-repo-edit", "0.1.0", AUTHORITY),
         ]));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::BootstrapPublishedExact
-        );
-        assert!(validation.gaps.is_empty());
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::BootstrapPublishedExact,
+        )?;
+        if !validation.gaps.is_empty() {
+            return Err(format!("exact rows reported {:?}", validation.gaps));
+        }
+        Ok(())
     }
 
     #[test]
-    fn conflicting_row_keeps_whole_receipt_nonclean() {
+    fn conflicting_row_keeps_whole_receipt_nonclean() -> Result<(), String> {
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![
             row("effortless-repo-protocol", "0.1.0", AUTHORITY),
             row("effortless-repo-edit", "0.1.0", CONFLICTING),
         ]));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::ChecksumConflict
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("conflicts with the retained namespace authority"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::ChecksumConflict,
+        )?;
+        expect_gap(
+            &validation,
+            "conflicts with the retained namespace authority",
+        )
     }
 
     #[test]
-    fn shared_version_rewritten_to_final_line_is_named() {
+    fn shared_version_rewritten_to_final_line_is_named() -> Result<(), String> {
         let validation =
             validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![row(
                 "effortless-repo-edit",
                 "0.2.0",
                 AUTHORITY,
             )]));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::VersionRewritten
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::VersionRewritten,
+        )
     }
 
     #[test]
-    fn generic_name_without_namespace_prefix_is_named() {
+    fn generic_name_without_namespace_prefix_is_named() -> Result<(), String> {
         let validation =
             validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![row(
                 "repo-edit",
                 "0.1.0",
                 AUTHORITY,
             )]));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::GenericPackageName
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::GenericPackageName,
+        )
     }
 
     #[test]
-    fn intent_package_entering_the_graph_is_foreign() {
+    fn intent_package_entering_the_graph_is_foreign() -> Result<(), String> {
         let mut foreign = row("intent-model", "0.1.0", AUTHORITY);
         foreign.family = BootstrapRowFamilyV1::CargoIntent;
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![
             row("effortless-repo-edit", "0.1.0", AUTHORITY),
             foreign,
         ]));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::ForeignPackage
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::ForeignPackage,
+        )
     }
 
     #[test]
-    fn promotion_to_final_release_evidence_is_rejected() {
+    fn promotion_to_final_release_evidence_is_rejected() -> Result<(), String> {
         let mut record = receipt(vec![row("effortless-repo-edit", "0.1.0", AUTHORITY)]);
         record.promotion = BootstrapPromotionV1::FinalReleaseEvidence;
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::PromotionRejected
-        );
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("cannot be promoted"))
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::PromotionRejected,
+        )?;
+        expect_gap(&validation, "cannot be promoted")
     }
 
     #[test]
-    fn missing_authority_generation_is_stale_evidence() {
+    fn missing_authority_generation_is_stale_evidence() -> Result<(), String> {
         let mut record = receipt(vec![row("effortless-repo-edit", "0.1.0", AUTHORITY)]);
         record.namespace_authority_generation = "  ".to_string();
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::StaleBootstrapEvidence
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::StaleBootstrapEvidence,
+        )
     }
 
     #[test]
-    fn stale_against_retained_authority_is_detectable() {
+    fn stale_against_retained_authority_is_detectable() -> Result<(), String> {
         let record = receipt(vec![row("effortless-repo-edit", "0.1.0", AUTHORITY)]);
-        assert!(record.is_stale_against("namespace-evidence-2026-11-01"));
-        assert!(!record.is_stale_against("namespace-evidence-2026-08-24"));
+        if !record.is_stale_against("namespace-evidence-2026-11-01") {
+            return Err("older authority generation must read as stale".to_string());
+        }
+        if record.is_stale_against("namespace-evidence-2026-08-24") {
+            return Err("matching authority generation must not read as stale".to_string());
+        }
+        Ok(())
     }
 
     #[test]
-    fn empty_rows_are_incomplete() {
+    fn empty_rows_are_incomplete() -> Result<(), String> {
         let validation =
             validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(Vec::new()));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::Incomplete
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::Incomplete,
+        )
     }
 
     #[test]
-    fn malformed_row_checksum_is_malformed() {
+    fn malformed_row_checksum_is_malformed() -> Result<(), String> {
         let validation =
             validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![row(
                 "effortless-repo-edit",
                 "0.1.0",
                 "sha256:short",
             )]));
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::Malformed
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn malformed_incident_digest_is_reported() {
+    fn malformed_incident_digest_is_reported() -> Result<(), String> {
         let mut record = receipt(vec![row("effortless-repo-edit", "0.1.0", AUTHORITY)]);
         record.retained_incident_digests = vec!["digest".to_string()];
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("retained incident digest"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::Malformed
-        );
+        expect_gap(&validation, "retained incident digest")?;
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::Malformed,
+        )
     }
 
     #[test]
-    fn private_path_in_limitations_is_reported() {
+    fn private_path_in_limitations_is_reported() -> Result<(), String> {
         let mut record = receipt(vec![row("effortless-repo-edit", "0.1.0", AUTHORITY)]);
         record.limitations = vec!["fixtures were staged under C:\\Users\\builder".to_string()];
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&record);
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("private absolute path"))
-        );
+        expect_gap(&validation, "private absolute path")
     }
 
     #[test]
-    fn noncurrent_generation_is_unsupported() {
+    fn noncurrent_generation_is_unsupported() -> Result<(), String> {
         let mut record = receipt(vec![row("effortless-repo-edit", "0.1.0", AUTHORITY)]);
         record.schema_version = 2;
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&record);
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::UnsupportedGeneration
-        );
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::UnsupportedGeneration,
+        )
     }
 
     #[test]
-    fn duplicated_row_name_is_reported() {
+    fn duplicated_row_name_is_reported() -> Result<(), String> {
         let validation = validate_crates_io_first_publication_bootstrap_receipt_v1(&receipt(vec![
             row("effortless-repo-edit", "0.1.0", AUTHORITY),
             row("effortless-repo-edit", "0.1.1", AUTHORITY),
         ]));
-        assert!(
-            validation
-                .gaps
-                .iter()
-                .any(|gap| gap.contains("package name is duplicated"))
-        );
-        assert_eq!(
-            validation.result,
-            CratesIoFirstPublicationBootstrapResultV1::Malformed
-        );
+        expect_gap(&validation, "package name is duplicated")?;
+        expect_result(
+            &validation.result,
+            &CratesIoFirstPublicationBootstrapResultV1::Malformed,
+        )
     }
 
     #[test]
