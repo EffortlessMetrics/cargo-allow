@@ -219,8 +219,48 @@ Prior retained runs remain historical in Git; they are not the source of
 the refreshed copies.
 
 These are bounded historical executions, not proof for arbitrary later source
-trees or release qualification. The v1 receipt's manifest/lock freshness does
-not bind the complete source tree; [#4214](https://github.com/EffortlessMetrics/cargo-allow/issues/4214)
-owns that broader provenance contract. Protocol controls and activation
+trees or release qualification. Protocol controls and activation
 evidence are tracked in [#4228](https://github.com/EffortlessMetrics/cargo-allow/issues/4228)
 and [#4230](https://github.com/EffortlessMetrics/cargo-allow/issues/4230).
+
+## Execution provenance in the receipt (#4214/#4225)
+
+The receipt schema carries one additive, optional `execution_provenance`
+section. A producer run records, verbatim: the collector command and its
+invocation working directory; the executed source commit and tree (the derived
+floor subject); a `selected_source_digest`; the projection's scope and
+exclusions; the observed compiler identity and build profile; and reserved
+executable-identity fields (`executable_path`, `executable_digest`, currently
+`null`) named for
+[#4225](https://github.com/EffortlessMetrics/cargo-allow/issues/4225)'s
+executable-provenance fill.
+
+The `selected_source_digest` is the non-circular source-currentness key: bare
+sha256 over every Rust source under `crates/`, CR-stripped and framed as
+`path\0content\0` in sorted path order — the exact stream
+`crates/cargo-allow/src/minimum_version_selection.rs::selected_source_digest`
+derives for the drift observation. Excluded, each explicitly: `target/` build
+outputs; `docs/`, `policy/`, `.changes/`, and `.allow/` governance, retained
+receipts, and change notes — committing the receipt itself never
+self-invalidates the proof; the manifests and `Cargo.lock`, already bound by
+`manifest_set_digest` and `lock_digest`; and `fixtures/` plus
+`tests/fixtures/`, scan fixtures outside the certified closure build.
+Uncommitted working-tree Rust sources move the digest exactly like committed
+ones, matching the producer's clean-source admission.
+
+The drift evaluator enforces a present section: with equal manifest and lock
+digests, a selected-source mismatch still grades the receipt `stale`, so a
+Rust-source-only edit cannot inherit the earlier proof, and restoring the
+exact source (or regenerating on it) requalifies. A present-but-invalid row —
+empty identity fields, a non-canonical selected-source digest, or an
+executable path recorded without its canonical `sha256:v1:` digest — is a
+named `incomplete` failure, never a silent pass. Receipts predating the
+section stay decodable historical evidence valid for their recorded subject:
+they are graded on the fields they carry, no source movement is invented for
+them, and the missing section cannot manufacture missing current-source
+proof. The collector also exports `CARGO_ALLOW_BUILD_COMMIT` (the executed
+derived HEAD), `CARGO_ALLOW_BUILD_PROFILE`, and `CARGO_ALLOW_RUSTC_IDENTITY`
+while the proof classes compile, so binaries the proof builds record their
+compile-time provenance instead of leaving it unset. The four retained
+receipts predate the section; regenerating them requires the coordinated
+build slot and stays a separate step.
