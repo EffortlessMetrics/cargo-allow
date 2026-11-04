@@ -942,10 +942,10 @@ fn canonical_operation_identity_for(
             tag: "v0.2.0".to_string(),
             channel: "stable".to_string(),
             github_prerelease: false,
-            freeze_digest: digest(1),
+            freeze_digest: record.mint.freeze_receipt_digest.clone(),
             final_evidence_graph_digest: digest(2),
-            custody_digest: digest(3),
-            replay_digest: digest(4),
+            custody_digest: record.mint.candidate_custody_digest.clone(),
+            replay_digest: record.mint.replay_digest.clone(),
             authorization_digest: record.authorization_digest.clone(),
             cargo_lock_digest: digest(6),
             topology_digest: digest(7),
@@ -1057,6 +1057,83 @@ fn selection_binds_canonical_operation_authorization() -> Result<(), Box<dyn Err
         record.state == Consumption::SelectedForRun
             && record.transitions.len() == transitions_before,
         "failed settlement must leave the custody record unchanged",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn selection_refuses_sibling_operation_sharing_only_the_authorization() -> Result<(), Box<dyn Error>>
+{
+    let mut record = minted()?;
+    let rendered = render_release_authorization_custody_v1(&record)?;
+    require(
+        note_custody_readback_v1(&mut record, rendered.as_bytes()) == CustodyReadbackV1::Match,
+        "synthetic readback must match",
+    )?;
+    let identity = canonical_operation_identity_for(&record, "custody-sibling-0001")?;
+    let evidence = record.evidence_digest.clone();
+
+    // A sibling canonical identity may share the exact authorization digest
+    // while retaining different freeze, replay, or custody evidence. Such an
+    // operation must never consume the one-use record: authority retained
+    // for one frozen operation cannot be attached to another.
+    let mut sibling = identity.clone();
+    sibling.freeze_digest = digest(901);
+    require(
+        sibling.freeze_digest != identity.freeze_digest
+            && sibling.authorization_digest == identity.authorization_digest,
+        "the sibling fixture must isolate the retained-evidence difference",
+    )?;
+    let state_before = record.state;
+    require(
+        select_authorization_for_operation_v1(
+            &sibling,
+            &mut record,
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
+        "a sibling operation with different retained evidence must never select",
+    )?;
+    require(
+        record.state == state_before && record.consumed_nonces.is_empty(),
+        "a refused sibling selection must not mutate or burn the one-use record",
+    )?;
+
+    let mut custody_sibling = identity.clone();
+    custody_sibling.custody_digest = digest(902);
+    require(
+        select_authorization_for_operation_v1(
+            &custody_sibling,
+            &mut record,
+            NONCE,
+            SELECT_AT,
+            &evidence,
+            true,
+        )
+        .is_err(),
+        "a sibling with different candidate-custody evidence must never select",
+    )?;
+    require(
+        record.state == state_before && record.consumed_nonces.is_empty(),
+        "a refused custody-sibling selection must not mutate the record",
+    )?;
+
+    // The exact operation still selects normally afterwards.
+    select_authorization_for_operation_v1(
+        &identity,
+        &mut record,
+        NONCE,
+        SELECT_AT,
+        &evidence,
+        true,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        record.state == Consumption::SelectedForRun,
+        "the exact operation must still select after sibling refusals",
     )?;
     Ok(())
 }

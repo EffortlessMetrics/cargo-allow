@@ -616,9 +616,15 @@ fn canonical_operation_identity(
     )
 }
 
-fn canonical_head(
+fn canonical_history(
     identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
-) -> Result<allow_report::CargoAllowReleaseOperationHeadV1, Box<dyn Error>> {
+) -> Result<
+    (
+        Vec<allow_report::CargoAllowReleaseOperationEventV1>,
+        allow_report::CargoAllowReleaseOperationHeadV1,
+    ),
+    Box<dyn Error>,
+> {
     let producer = allow_report::CargoAllowReleaseOperationProducerV1 {
         tool: "cargo-allow".to_string(),
         schema: "cargo-allow.release-operation-producer.v1".to_string(),
@@ -667,20 +673,26 @@ fn canonical_head(
             .map_err(io::Error::other)?;
         events.push(event);
     }
-    Ok(
-        compile_release_operation_head_v1(identity, &events, 1_790_100_000)
-            .map_err(io::Error::other)?,
-    )
+    let head = compile_release_operation_head_v1(identity, &events, 1_790_100_000)
+        .map_err(io::Error::other)?;
+    Ok((events, head))
+}
+
+fn canonical_head(
+    identity: &allow_report::CargoAllowReleaseOperationIdentityV1,
+) -> Result<allow_report::CargoAllowReleaseOperationHeadV1, Box<dyn Error>> {
+    Ok(canonical_history(identity)?.1)
 }
 
 #[test]
 fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dyn Error>> {
     let identity = canonical_operation_identity("checkpoint-binding-0001")?;
-    let head = canonical_head(&identity)?;
+    let (events, head) = canonical_history(&identity)?;
     let journal = settled_journal()?;
     let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
-    let checkpoint = begin_publication_checkpoint_for_operation_v1(&identity, &head, init, None)
-        .map_err(io::Error::other)?;
+    let checkpoint =
+        begin_publication_checkpoint_for_operation_v1(&identity, &events, &head, init, None)
+            .map_err(io::Error::other)?;
     require(
         checkpoint.operation_identity_digest
             == release_operation_identity_digest_v1(&identity).map_err(io::Error::other)?,
@@ -698,8 +710,14 @@ fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dy
     let journal = settled_journal()?;
     let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
     require(
-        begin_publication_checkpoint_for_operation_v1(&identity, &foreign_head, init, None)
-            .is_err(),
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &foreign_head,
+            init,
+            None,
+        )
+        .is_err(),
         "a head from another operation must never bind this operation",
     )?;
 
@@ -707,6 +725,7 @@ fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dy
     let journal = settled_journal()?;
     let first = begin_publication_checkpoint_for_operation_v1(
         &identity,
+        &events,
         &head,
         checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?,
         None,
@@ -760,9 +779,157 @@ fn checkpoint_binds_canonical_operation_identity_and_head() -> Result<(), Box<dy
         checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
     crossed_class.operation_class = allow_report::PublicationCheckpointClassV1::IncidentRecovery;
     require(
-        begin_publication_checkpoint_for_operation_v1(&identity, &head, crossed_class, None)
-            .is_err(),
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &head,
+            crossed_class,
+            None,
+        )
+        .is_err(),
         "checkpoint class must agree with the canonical operation class",
+    )?;
+    Ok(())
+}
+
+#[test]
+fn checkpoint_head_is_validated_and_advances_with_the_operation() -> Result<(), Box<dyn Error>> {
+    let identity = canonical_operation_identity("checkpoint-head-law-0001")?;
+    let (mut events, head) = canonical_history(&identity)?;
+    let journal = settled_journal()?;
+
+    // A fabricated head never becomes checkpoint authority: any mutated
+    // field fails recompilation against the supplied history even though
+    // its identity digest and shape are intact.
+    let mut fabricated_sequence = head.clone();
+    fabricated_sequence.sequence += 1;
+    let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &fabricated_sequence,
+            init,
+            None,
+        )
+        .is_err(),
+        "a fabricated head sequence must never advertise a canonical replay point",
+    )?;
+    let mut fabricated_lineage = head.clone();
+    fabricated_lineage.incident_lineage = true;
+    let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &events,
+            &fabricated_lineage,
+            init,
+            None,
+        )
+        .is_err(),
+        "a fabricated incident lineage must never become checkpoint authority",
+    )?;
+
+    // A foreign event history never validates this operation's head.
+    let foreign_identity = canonical_operation_identity("checkpoint-head-law-0002")?;
+    let (foreign_events, _) = canonical_history(&foreign_identity)?;
+    let init = checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?;
+    require(
+        begin_publication_checkpoint_for_operation_v1(
+            &identity,
+            &foreign_events,
+            &head,
+            init,
+            None,
+        )
+        .is_err(),
+        "a foreign event history must never validate this operation's head",
+    )?;
+
+    // The recorded replay point advances with the operation: after one real
+    // appended event the next checkpoint records the NEW canonical head
+    // instead of being forced to reuse the stale predecessor digest.
+    let mut checkpoint = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &events,
+        &head,
+        checkpoint_init(&journal, 1, PublicationCheckpointKindV1::PreIntentDurable)?,
+        None,
+    )
+    .map_err(io::Error::other)?;
+    require(
+        checkpoint.operation_head_digest
+            == release_operation_head_digest_v1(&head).map_err(io::Error::other)?,
+        "the first checkpoint records the validated head digest",
+    )?;
+    let stored = store_checkpoint(&mut checkpoint)?;
+    record_checkpoint_readback_with_witness_v1(
+        &mut checkpoint,
+        CheckpointProviderOutcomeV1::Delivered(stored),
+        CREATED_AT + 50,
+    )
+    .map_err(io::Error::other)?;
+
+    // Append one real operation event: durable tag intent follows the
+    // acquired lease in the clean transition law.
+    let producer = allow_report::CargoAllowReleaseOperationProducerV1 {
+        tool: "cargo-allow".to_string(),
+        schema: "cargo-allow.release-operation-producer.v1".to_string(),
+        generation: 1,
+        repository: "EffortlessMetrics/cargo-allow".to_string(),
+        workflow: "release".to_string(),
+        workflow_ref: "refs/heads/main".to_string(),
+        run: "4242".to_string(),
+        attempt: 1,
+        job: "checkpoint-binding".to_string(),
+        commit: "a".repeat(40),
+    };
+    let tag_intent = CargoAllowReleaseOperationEventInitV1 {
+        event_class: CargoAllowReleaseOperationEventClassV1::TagIntentDurable,
+        subject: CargoAllowReleaseOperationEventSubjectV1::Operation,
+        payload_schema_id: "cargo-allow.synthetic-release-payload.v1".to_string(),
+        payload_digest: digest(1_004),
+        producer,
+        actor: "release-operator".to_string(),
+        authority_class: identity.authority_kind,
+        request_boundary: "synthetic-no-provider-call".to_string(),
+        response_posture: CargoAllowReleaseOperationResponsePostureV1::NotApplicable,
+        semantic_result: CargoAllowReleaseOperationSemanticResultV1::Exact,
+        artifact_digest: Some(digest(2_004)),
+        observed_at_unix_seconds: 1_790_000_004,
+        timestamp_source: CargoAllowReleaseOperationTimestampSourceV1::WorkflowRuntime,
+    };
+    let event = append_release_operation_event_v1(&identity, &events, tag_intent)
+        .map_err(io::Error::other)?;
+    events.push(event);
+    let advanced_head = compile_release_operation_head_v1(&identity, &events, 1_790_100_200)
+        .map_err(io::Error::other)?;
+    require(
+        advanced_head.sequence == head.sequence + 1,
+        "the appended event must advance the canonical sequence",
+    )?;
+    let advanced_digest =
+        release_operation_head_digest_v1(&advanced_head).map_err(io::Error::other)?;
+    require(
+        advanced_digest != checkpoint.operation_head_digest,
+        "the advanced head must differ from the recorded replay point",
+    )?;
+
+    let advanced = begin_publication_checkpoint_for_operation_v1(
+        &identity,
+        &events,
+        &advanced_head,
+        checkpoint_init(&journal, 2, PublicationCheckpointKindV1::PreIntentDurable)?,
+        Some(&checkpoint),
+    )
+    .map_err(io::Error::other)?;
+    require(
+        advanced.operation_head_digest == advanced_digest,
+        "the later checkpoint must record the advanced canonical head, never a stale replay point",
+    )?;
+    require(
+        advanced.operation_identity_digest == checkpoint.operation_identity_digest,
+        "head advancement must keep the operation identity fixed",
     )?;
     Ok(())
 }
