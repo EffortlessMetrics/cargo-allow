@@ -1,0 +1,36 @@
+# Revision note: land the #2267 release publication smoke gate.
+#
+# The lane wires the cross-platform source-candidate smoke matrix into
+# release.yml ahead of publish: two #3737-selected platform rows (Linux and
+# Windows x86_64 on Rust 1.95) reuse the landed #2256 Stage A packaging
+# harness and the #2266 installed first-hour journey against the exact
+# preflight commit/tree; a fail-closed aggregate gate
+# (scripts/release-source-candidate-smoke-gate.py) refuses missing, skipped,
+# cancelled, timed-out, stale, partial-graph, unclaimed, and unexpected rows
+# before publish may start, and publish re-verifies the aggregate binding
+# inline. The new tracked source surfaces are receipted additively; the note
+# file is self-covered by its own added_allow record, matching the
+# #3793/#4214/#4716 precedents. The lane's changie changelog fragment is
+# intentionally NOT re-receipted here: it is already covered by the
+# repository-wide .changes/*.yaml glob entry allow-0312, and adding a
+# file-specific duplicate would make the fragment ambiguous. Its
+# review-due state is pre-existing baseline debt shared with every other
+# changie fragment, not a posture this lane may renew or narrow.
+
+[[records]]
+allow_ids = ["allow-11376"]
+reason = "The release publication gate checker is a new release automation script that parses workflow-emitted platform receipts and the typed #2266 harness receipt, verifies exact release-identity binding, the complete journey with negative controls, the exact packaged crate graph, and the declared #3737 NotIncluded classifications; zero network, zero upload, no project-code execution. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8ed3236b9d8f9e7a729293df61bce079366557f3c936c550946bba443c577813"
+
+[[records]]
+allow_ids = ["allow-11377"]
+reason = "Offline characterization for the gate checker synthesizes green and faulted receipt directories covering every refusal row of the #2267 aggregate law plus one exact green composition; zero network, zero upload, no toolchain. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0a9cec9ba3b8614aebbd550c7f290daffcbe72c825001ca3ae23cd892e63f757"
+
+[[records]]
+allow_ids = ["allow-11378"]
+reason = "Self-covering revision note receipting this note file, matching the #3793/#4214/#4716 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7033521b2ad3736c21b3e37d7f20a3a648edc1e2842b4d3b31f77cbe259fc6b9"

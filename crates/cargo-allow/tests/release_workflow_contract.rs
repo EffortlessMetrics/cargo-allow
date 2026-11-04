@@ -301,7 +301,8 @@ fn test_release_workflow_canonical_operation_identity_transport() -> Result<(), 
 /// explicit macOS / Rust-1.85 NotIncluded classification are pinned here so
 /// the claimed platform set cannot drift through YAML edits alone.
 #[test]
-fn test_release_workflow_gates_publication_on_source_candidate_smoke() -> Result<(), Box<dyn Error>> {
+fn test_release_workflow_gates_publication_on_source_candidate_smoke() -> Result<(), Box<dyn Error>>
+{
     let root = repo_root()?;
     let release_wf_path = root.join(".github/workflows/release.yml");
     if !release_wf_path.exists() {
@@ -309,10 +310,12 @@ fn test_release_workflow_gates_publication_on_source_candidate_smoke() -> Result
     }
     let content = fs::read_to_string(release_wf_path)?;
 
-    let smoke = job_block(&content, "source-candidate-smoke")
-        .ok_or_else(|| io::Error::other("release.yml must define the source-candidate-smoke matrix job"))?;
-    let aggregate = job_block(&content, "source-candidate-smoke-aggregate")
-        .ok_or_else(|| io::Error::other("release.yml must define the source-candidate-smoke-aggregate gate job"))?;
+    let smoke = job_block(&content, "source-candidate-smoke").ok_or_else(|| {
+        io::Error::other("release.yml must define the source-candidate-smoke matrix job")
+    })?;
+    let aggregate = job_block(&content, "source-candidate-smoke-aggregate").ok_or_else(|| {
+        io::Error::other("release.yml must define the source-candidate-smoke-aggregate gate job")
+    })?;
     let publish = job_block(&content, "publish")
         .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
 
