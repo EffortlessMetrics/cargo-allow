@@ -1,0 +1,32 @@
+# Revision note: land the #3787 typed-release-consumers migration.
+#
+# The lane migrates the remaining shell/Python release consumers to the
+# typed release identity: scripts/release-version-preflight.sh consumes
+# the canonical projection once through a new shared bounded reader
+# (scripts/release_identity_projection.py) and deletes the residual
+# tag-to-version strip; scripts/verify-release-binary.sh requires the
+# exact projected release identity and compares the constructed canonical
+# archive name; scripts/release-install-smoke.sh invokes the installed
+# binary by absolute path with exact self-reported identity. The two new
+# tracked script surfaces, the changie fragment, and this note file are
+# receipted additively; the note file is self-covered by its own
+# added_allow record, matching the #3793/#4214/#4716 precedents. No
+# existing entry was narrowed, loosened, or expired.
+
+[[records]]
+allow_ids = ["allow-11381"]
+reason = "The shared bounded release-identity projection reader is a new release automation script that extracts exact fields from one canonical `cargo-allow release-identity` JSON projection and binds caller-supplied expected values, failing closed on unreadable, malformed, foreign-schema, non-validated, incomplete, or mistyped projections; it owns no release grammar, channel inference, tag reconstruction, or path selection. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8368b1181c03ddb928d083fbe69a35d3baac281fae0d8bd572a1e19240062ec4"
+
+[[records]]
+allow_ids = ["allow-11382"]
+reason = "Fixture-only fail-closed controls for the bounded projection reader: fixtures mirror the exact typed authority output shapes (stable 0.2.0, RC.1, RC.2, RC.10) and pin envelope validation, exact extraction, expected-value binding, and corruption negatives; they decide no channel semantics. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:78ddfda27a111fee10e7fa9f1875d21fc597458411294a1fa8dfc10454adc7b8"
+
+[[records]]
+allow_ids = ["allow-11384"]
+reason = "Self-covering revision note receipting this note file, matching the #3793, #4214, and #4716 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:215905074e743e2903a12b840f6864c2b5dd8597d0c7568cf9424f85bdbaa421"
