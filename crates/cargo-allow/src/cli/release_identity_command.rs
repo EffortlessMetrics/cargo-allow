@@ -36,6 +36,8 @@ struct ReleaseIdentityProjectionV1 {
     channel: &'static str,
     rc_ordinal: Option<u32>,
     github_prerelease: bool,
+    release_record_path: String,
+    github_note_path: String,
     precedence: ReleasePrecedenceProjectionV1,
 }
 
@@ -68,16 +70,23 @@ fn build_release_identity_projection(
         ReleaseChannelV1::ReleaseCandidate { ordinal } => ("release_candidate", Some(ordinal)),
     };
     let (major, minor, patch, stable_flag, precedence_ordinal) = identity.version().precedence();
+    // #3788: the exact evidence paths are projected from the validated
+    // identity, never re-derived by consumers from raw version/tag text.
+    let canonical_version = identity.version().as_str();
+    let release_record_path = format!("docs/release/{canonical_version}.md");
+    let github_note_path = format!("docs/release/github/v{canonical_version}.md");
 
     Ok(ReleaseIdentityProjectionV1 {
         schema: RELEASE_IDENTITY_SCHEMA,
         result: "validated",
-        version: identity.version().as_str().to_string(),
+        version: canonical_version.to_string(),
         tag: identity.tag().to_string(),
         tag_source,
         channel,
         rc_ordinal,
         github_prerelease,
+        release_record_path,
+        github_note_path,
         precedence: ReleasePrecedenceProjectionV1 {
             major,
             minor,
@@ -132,6 +141,8 @@ mod tests {
                 channel: "stable",
                 rc_ordinal: None,
                 github_prerelease: false,
+                release_record_path: "docs/release/0.2.0.md".to_string(),
+                github_note_path: "docs/release/github/v0.2.0.md".to_string(),
                 precedence: ReleasePrecedenceProjectionV1 {
                     major: 0,
                     minor: 2,
@@ -154,6 +165,8 @@ mod tests {
             || projection.channel != "release_candidate"
             || projection.rc_ordinal != Some(1)
             || !projection.github_prerelease
+            || projection.release_record_path != "docs/release/0.2.0-rc.1.md"
+            || projection.github_note_path != "docs/release/github/v0.2.0-rc.1.md"
             || projection.precedence
                 != (ReleasePrecedenceProjectionV1 {
                     major: 0,
