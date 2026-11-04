@@ -594,6 +594,16 @@ fn classify_disposition(
         || disposition.currentness == FinalEvidenceCurrentnessV1::Mismatch;
     let provider = disposition.result == FinalEvidenceNodeResultV1::ProviderUnavailable
         || disposition.currentness == FinalEvidenceCurrentnessV1::ProviderUnavailable;
+    // A registry node whose canonical negative result survived (Incomplete or
+    // NotProven) with provider-unavailable currentness records missing
+    // independent registry authority, not a provider transport outage: the
+    // producing provider answered and its observation is retained (#4426).
+    // Checked before the provider branch; every condition already excludes the
+    // real outage result.
+    let registry_authority_hold = disposition.class
+        == FinalEvidenceNodeClassV1::RegistryObservation
+        && disposition.result != FinalEvidenceNodeResultV1::ProviderUnavailable
+        && disposition.currentness == FinalEvidenceCurrentnessV1::ProviderUnavailable;
     let instrument = disposition.result == FinalEvidenceNodeResultV1::InstrumentFailure
         || disposition.currentness == FinalEvidenceCurrentnessV1::InstrumentFailure;
     let stale = disposition.result == FinalEvidenceNodeResultV1::Stale
@@ -611,6 +621,15 @@ fn classify_disposition(
             "evidence conflicts with, or is excluded from, the selected final subject",
             owner,
             "rebuild the evidence against the exact selected subject",
+        );
+    } else if registry_authority_hold {
+        push_row(
+            rows,
+            FinalReadinessRowKindV1::ProviderUnavailable,
+            Some(evidence_id),
+            "the provider answered, but the independent authority that certifies registry evidence current is unavailable; this is distinct from a provider transport outage",
+            owner,
+            "assemble the independent current registry context and re-evaluate without granting Current",
         );
     } else if provider {
         push_row(

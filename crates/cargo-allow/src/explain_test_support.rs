@@ -1,6 +1,17 @@
 use super::*;
-use allow_core::{AllowEntry, FindingKind, Lifecycle, Selector, Span, StructuralIdentity};
+use allow_core::{
+    AllowEntry, FindingKind, Lifecycle, Selector, SimpleDate, Span, StructuralIdentity,
+};
 use std::path::PathBuf;
+
+/// Fixed fixture as-of date for explain test rendering (#4237). Every
+/// lifecycle boundary used in the explain tests sits well before or well
+/// after it, so projections never depend on the wall clock.
+pub(super) const EXPLAIN_TEST_AS_OF: SimpleDate = SimpleDate {
+    year: 2026,
+    month: 7,
+    day: 14,
+};
 
 pub(super) fn test_entry(id: &str, kind: FindingKind) -> AllowEntry {
     AllowEntry {

@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Land the missing proof suites for the typed ReleaseManifestV2 law
+  (#3761): release_manifest_incidents pins incident/prepublication/Complete
+  distinctness, the fail-closed laws (matching checksums cannot upgrade
+  Missing/ProviderUnavailable, malformed-evidence precedence, wrong
+  existing-visible and post-upload checksums, crate_digest projection only
+  after equality proof, and append-only incident lineage at batch,
+  envelope, and incident-record levels); release_manifest_golden pins the
+  full-payload final 0.2.0 golden envelope with per-row typed authority and
+  producer evidence; and scripts/test-generate-release-manifest.sh is the
+  contract test proving the generator embeds the typed envelope and refuses
+  a package version that is not the selected release identity.

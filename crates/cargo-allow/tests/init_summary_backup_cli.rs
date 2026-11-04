@@ -100,8 +100,7 @@ fn init_summary_collision_preserves_policy_and_backup_on_every_route() -> Result
                 let before = bytes(&backup)?;
                 // Summary is cwd-relative while --config is root-relative.
                 // The dot component exercises canonical alias comparison.
-                let summary =
-                    Path::new("../.").join(Path::new(config).with_extension("toml.bak"));
+                let summary = Path::new("../.").join(Path::new(config).with_extension("toml.bak"));
                 let output = root.run(config, &summary, mode)?;
                 require(
                     !output.status.success(),
@@ -152,10 +151,9 @@ fn init_separate_summary_keeps_success_preview_and_error_outputs() -> Result<(),
                 output.status.success() == (mode != "refusal"),
                 format!("{config}/{mode}: wrong exit: {:?}", output.status),
             )?;
-            let value: serde_json::Value = serde_json::from_slice(
-                &fs::read(&summary).map_err(|error| error.to_string())?,
-            )
-            .map_err(|error| error.to_string())?;
+            let value: serde_json::Value =
+                serde_json::from_slice(&fs::read(&summary).map_err(|error| error.to_string())?)
+                    .map_err(|error| error.to_string())?;
             require(
                 value.get("operation").and_then(serde_json::Value::as_str) == Some("init"),
                 "noncolliding summary must still be emitted as an init summary",

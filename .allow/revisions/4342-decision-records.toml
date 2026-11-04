@@ -1,0 +1,22 @@
+# Decision-record retention admission for #4342 (fix/4342-decision-records).
+# Metadata only; does not ratify any decision, waive CI, review, merge checks,
+# or release authorization. Ratification of DECISION-0001 stays a human action.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1200"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:85fb71ab8dcb466421f0de4fc7c91f204a719d420acc3963a0b463b6c1d60879"
+reason = "Retain the docs/decisions index file itself: the lightweight decision-record convention is deliberately lighter than an ADR and stays unregistered in doc-artifacts.toml."
+
+[[records]]
+allow_ids = ["allow-1201"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:dd3315a022a390d8a7c73c463f5dd560e27187b262d8ad7d4bd5d3814858b963"
+reason = "Retain proposed DECISION-0001 (default sensor profile) drafting the 3884 posture package against the 3883 measured audit; status stays proposed until the maintainer ratifies."
+
+[[records]]
+allow_ids = ["allow-1202"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:40fa152e24b5ca1890b7dd7b42c49bac332c82bd85f6dca9bc011854395dd7e9"
+reason = "Self-covering governance revision admission for the exact-path decision-record revision note; retention metadata only, no ratification, CI, review, merge, or release bypass."

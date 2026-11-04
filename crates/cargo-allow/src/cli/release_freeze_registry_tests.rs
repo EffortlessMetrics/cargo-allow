@@ -630,6 +630,80 @@ fn complete_adapter_contract_requires_selected_context_and_no_fixture_origin() -
     Ok(())
 }
 
+/// The two provider-unavailable failures present differently. A missing
+/// independent authority holds an answered provider observation non-Current
+/// with an authority-missing note; a real transport outage stays non-Current
+/// with a transport note and never acquires the authority-hold note (#4426).
+#[test]
+fn registry_authority_hold_and_transport_outage_present_different_failures() -> TestResult {
+    use ObservationFreshnessV1 as Freshness;
+    let subject = super::tests::subject();
+    let (input, selected, context) = fixture(&subject, None)?;
+    let mut external = serde_json::to_value(&input)?;
+    for (index, _) in input.observations.iter().enumerate() {
+        for dimension in ["version", "owner", "authority"] {
+            super::rehearsal_tests::replace(
+                &mut external,
+                &format!("/observations/{index}/{dimension}_provenance/origin"),
+                json!("external_provider"),
+            )?;
+        }
+    }
+    // Authority-missing: the provider answered every row, so the hold keeps
+    // the canonical Complete evaluation non-Current and the note names the
+    // missing independent registry authority instead of an outage.
+    let held = super::registry::reconcile(
+        &subject,
+        &selected,
+        &[retained(&subject, external.clone())?],
+        None,
+    );
+    require_result(&held, Node::NotProven, Freshness::ProviderUnavailable)?;
+    if !held
+        .2
+        .detail
+        .contains("not because of a provider transport outage")
+        || !held
+            .2
+            .detail
+            .contains("independent registry authority is unavailable")
+        || !held.2.detail.contains("#3792/#2501")
+        || held.2.detail.contains("version provider unavailable")
+    {
+        return Err(format!("authority hold lost its discriminating note: {held:?}").into());
+    }
+    // Transport outage: a real provider failure keeps the observation
+    // non-Current through the typed outcome map, carrying the transport note
+    // and never the authority-hold note.
+    let mut outage_input: FinalRegistryPreflightInputV1 = serde_json::from_value(external)?;
+    let row = outage_input
+        .observations
+        .first_mut()
+        .ok_or("observation absent")?;
+    row.version = FinalRegistryVersionResponseV1::ProviderUnavailable {};
+    let outage = super::registry::reconcile(
+        &subject,
+        &selected,
+        &[retained(&subject, serde_json::to_value(&outage_input)?)?],
+        Some((&context, 110, 10)),
+    );
+    require_result(
+        &outage,
+        Node::ProviderUnavailable,
+        Freshness::ProviderUnavailable,
+    )?;
+    if !outage.2.detail.contains("version provider unavailable")
+        || outage
+            .2
+            .detail
+            .contains("not because of a provider transport outage")
+        || outage.2.detail.contains("#3792/#2501")
+    {
+        return Err(format!("transport outage lost its discriminating note: {outage:?}").into());
+    }
+    Ok(())
+}
+
 /// Execute the delivered observer's actual main, HTTP response projection,
 /// evidence retention, and candidate-input merge. Only the HTTP transport and
 /// clock are fixtures; owner/authority outputs are never upgraded.
@@ -1055,10 +1129,18 @@ fn require_outcome_composition(
             RowKind::NotProven,
             "produce the exact current evidence for this required row; a narrowing cannot substitute",
         ),
-        (_, Freshness::ProviderUnavailable) => (
+        // A real provider transport failure keeps the outage row and action.
+        (Node::ProviderUnavailable, Freshness::ProviderUnavailable) => (
             Currentness::ProviderUnavailable,
             RowKind::ProviderUnavailable,
             "restore provider access and re-observe through the exact producer",
+        ),
+        // The authority hold keeps the same non-Current row kind and outcome,
+        // but names the missing independent registry authority (#4426).
+        (_, Freshness::ProviderUnavailable) => (
+            Currentness::ProviderUnavailable,
+            RowKind::ProviderUnavailable,
+            "assemble the independent current registry context and re-evaluate without granting Current",
         ),
         _ => return Err("unexpected negative registry test expectation".into()),
     };

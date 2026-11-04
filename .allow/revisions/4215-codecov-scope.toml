@@ -1,0 +1,18 @@
+# Issue #4215/#1902: codecov measurement-scope config receipt.
+# The codecov.yml ignore entries exclude the two process-harness modules
+# from the patch gate because their defensive error arms are unexecutable
+# by design; the harnesses are proven by their suites passing. This entry
+# grants no review, merge, or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1198"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8eb18486285c760be19170e6d7e11065abbc8f2d7f4d74ab401b6c8d4af49d96"
+reason = "Receipt the codecov measurement-scope config; product-code coverage proof is unchanged and the harness suites themselves (242/242) remain the harness proof."
+
+[[records]]
+allow_ids = ["allow-1199"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f4ab56d1f5832a9f3c8fd623875d69f5c52f948bb0846a7be17a6d9684909a5b"
+reason = "Receipt this authored note for the allow-1198 codecov scope config entry; existing policy entries and review, merge, and release authority are preserved."

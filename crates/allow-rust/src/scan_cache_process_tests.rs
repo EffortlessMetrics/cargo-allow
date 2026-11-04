@@ -3,7 +3,7 @@ use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdout, Command, ExitStatus, Stdio};
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
@@ -96,32 +96,234 @@ fn spawn_helper(root: &Path, mode: &str) -> Result<(ChildGuard, BufReader<ChildS
     Ok((child, BufReader::new(stdout)))
 }
 
-fn wait_ready(stdout: BufReader<ChildStdout>) -> Result<(), String> {
-    let (sender, receiver) = mpsc::channel();
-    thread::spawn(move || {
-        let mut stdout = stdout;
-        let mut line = String::new();
-        let mut ready = false;
-        let result = loop {
-            line.clear();
-            match stdout.read_line(&mut line) {
-                Ok(0) if ready => break Ok(()),
-                Ok(0) => break Err("child exited before READY".to_string()),
-                Ok(_) if line.trim() == "READY" && !ready => {
-                    ready = true;
-                    let _ = sender.send(Ok(()));
-                }
-                Ok(_) => {}
-                Err(error) => break Err(error.to_string()),
+/// READY-handshake ceiling. Deliberately not raised blanket-style (#4215):
+/// a timeout must remain a real signal, so the failure instead carries the
+/// child state, elapsed time, and a bounded stdout tail.
+const READY_TIMEOUT: Duration = Duration::from_secs(10);
+const STDOUT_TAIL_LINES: usize = 10;
+
+/// Shared bounded tail of the child's stdout lines, for timeout diagnostics.
+#[derive(Clone)]
+struct StdoutTail(Arc<Mutex<Vec<String>>>);
+
+impl StdoutTail {
+    fn new() -> Self {
+        Self(Arc::new(Mutex::new(Vec::new())))
+    }
+    fn record(&self, line: &str) {
+        // Recover from poison: the buffered lines are valid diagnostics even
+        // if another thread panicked while holding the guard (#4215).
+        let mut buffer = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        buffer.push(line.to_string());
+        let length = buffer.len();
+        if length > STDOUT_TAIL_LINES {
+            buffer.drain(..length - STDOUT_TAIL_LINES);
+        }
+    }
+    fn snapshot(&self) -> String {
+        // Same poison recovery as record: the tail must survive to reach the
+        // failure message (#4215).
+        let buffer = self
+            .0
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        if buffer.is_empty() {
+            "(no stdout lines)".to_string()
+        } else {
+            buffer.join("\n")
+        }
+    }
+}
+
+#[test]
+fn stdout_tail_snapshot_tolerates_poisoned_mutex() -> Result<(), String> {
+    // Poison by panicking while the guard is alive; the snapshot must fall
+    // back to its unavailable marker instead of propagating the poison.
+    let tail = StdoutTail(Arc::new(Mutex::new(Vec::new())));
+    let poisoner = {
+        let tail = tail.clone();
+        std::thread::spawn(move || {
+            let _guard = tail.0.lock().expect("unpoisoned lock");
+            panic!("deliberate poison for the tolerance test");
+        })
+    };
+    if poisoner.join().is_ok() {
+        return Err("poisoner thread unexpectedly succeeded".to_string());
+    }
+    tail.record("after poison");
+    let snapshot = tail.snapshot();
+    assert!(
+        snapshot.contains("after poison"),
+        "recorded lines must survive poisoning; snapshot: {snapshot}"
+    );
+    Ok(())
+}
+
+fn describe_exit(status: &Option<ExitStatus>) -> String {
+    match status {
+        Some(status) => {
+            if let Some(code) = status.code() {
+                format!("exited with code {code}")
+            } else {
+                format!("exited with {status}")
             }
-        };
-        if !ready {
-            let _ = sender.send(result);
+        }
+        None => "still running".to_string(),
+    }
+}
+
+fn reason_str(reason: &mpsc::RecvTimeoutError) -> &'static str {
+    match reason {
+        mpsc::RecvTimeoutError::Timeout => "deadline exceeded",
+        mpsc::RecvTimeoutError::Disconnected => "reader ended without a signal",
+    }
+}
+
+#[derive(Clone, Copy)]
+enum FailureKind {
+    Timeout,
+    StdoutClosed,
+    Deadline { reason: &'static str },
+}
+
+/// Shared terminal path for every non-success READY handshake outcome: kill
+/// and reap the child (for clock-driven failures), join the reader, and
+/// emit the typed diagnostic with elapsed time, child state, and the
+/// bounded stdout tail (#4215).
+fn finish_failure(
+    child: &mut ChildGuard,
+    tail: &StdoutTail,
+    started: Instant,
+    timeout: Duration,
+    reason: &str,
+    kind: FailureKind,
+) -> String {
+    let exit_before = child.child.try_wait().ok().flatten();
+    if matches!(kind, FailureKind::Timeout | FailureKind::Deadline { .. })
+        && let Err(cleanup_error) = child.kill_and_wait()
+    {
+        eprintln!("READY-timeout cleanup failed: {cleanup_error}; continuing to the diagnostic");
+    }
+    let exit_after = child.child.try_wait().ok().flatten();
+    let phase = match kind {
+        FailureKind::Timeout => format!("exceeded the {}s timeout budget", timeout.as_secs()),
+        FailureKind::StdoutClosed => "stdout closed before READY".to_string(),
+        FailureKind::Deadline { reason } => format!(
+            "deadline pass ({reason}; exceeded the {}s timeout budget)",
+            timeout.as_secs()
+        ),
+    };
+    format!(
+        "READY handshake failed after {:?} ({phase}; child {} at failure, final {}); reason: {reason}; stdout tail (last {STDOUT_TAIL_LINES} lines):\n{}",
+        started.elapsed(),
+        describe_exit(&exit_before),
+        describe_exit(&exit_after),
+        tail.snapshot(),
+    )
+}
+
+fn wait_ready(child: &mut ChildGuard, stdout: BufReader<ChildStdout>) -> Result<(), String> {
+    wait_ready_with_timeout(child, stdout, READY_TIMEOUT)
+}
+
+fn wait_ready_with_timeout(
+    child: &mut ChildGuard,
+    stdout: BufReader<ChildStdout>,
+    timeout: Duration,
+) -> Result<(), String> {
+    let started = Instant::now();
+    let deadline = started + timeout;
+    let tail = StdoutTail::new();
+    let (signal_tx, signal_rx) = mpsc::channel();
+    let reader_tail = tail.clone();
+    let reader = thread::spawn(move || {
+        let mut stdout = stdout;
+        let mut ready = false;
+        loop {
+            let mut line = String::new();
+            match stdout.read_line(&mut line) {
+                Ok(0) => {
+                    if !ready {
+                        let _ = signal_tx.send(Err("child stdout closed before READY".to_string()));
+                    }
+                    break;
+                }
+                Ok(_) => {
+                    let trimmed = line.trim_end().to_string();
+                    reader_tail.record(&trimmed);
+                    if trimmed == "READY" && !ready {
+                        ready = true;
+                        let _ = signal_tx.send(Ok(()));
+                    }
+                }
+                Err(error) => {
+                    if !ready {
+                        let _ = signal_tx.send(Err(format!("stdout read failed: {error}")));
+                    }
+                    break;
+                }
+            }
         }
     });
-    receiver
-        .recv_timeout(Duration::from_secs(10))
-        .map_err(|e| e.to_string())?
+    let remaining = deadline
+        .checked_duration_since(Instant::now())
+        .ok_or_else(|| {
+            finish_failure(
+                child,
+                &tail,
+                started,
+                timeout,
+                "READY deadline already passed at entry",
+                FailureKind::Timeout,
+            )
+        })?;
+    match signal_rx.recv_timeout(remaining) {
+        Ok(Ok(())) => {
+            // The reader stays alive until the child exits (stdout EOF),
+            // which every caller reaps; nothing leaks past the test.
+            Ok(())
+        }
+        Ok(Err(reason)) => {
+            // stdout EOF can precede process reaping by a scheduler tick;
+            // wait briefly so the diagnostic carries the exit status instead
+            // of a misleading "still running".
+            let mut waited = Duration::ZERO;
+            loop {
+                match child.child.try_wait().ok().flatten() {
+                    Some(_) => break,
+                    None if waited >= Duration::from_secs(1) => break,
+                    None => {
+                        thread::sleep(Duration::from_millis(10));
+                        waited += Duration::from_millis(10);
+                    }
+                }
+            }
+            let _ = reader.join();
+            Err(finish_failure(
+                child,
+                &tail,
+                started,
+                timeout,
+                &reason,
+                FailureKind::StdoutClosed,
+            ))
+        }
+        Err(reason @ (mpsc::RecvTimeoutError::Timeout | mpsc::RecvTimeoutError::Disconnected)) => {
+            Err(finish_failure(
+                child,
+                &tail,
+                started,
+                timeout,
+                &reason.to_string(),
+                FailureKind::Deadline {
+                    reason: reason_str(&reason),
+                },
+            ))
+        }
+    }
 }
 
 #[test]
@@ -129,7 +331,7 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
     let root = RootGuard::new("lock");
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
     let (mut child, stdout) = spawn_helper(&root.0, "hold")?;
-    wait_ready(stdout)?;
+    wait_ready(&mut child, stdout)?;
     let lock = OpenOptions::new()
         .read(true)
         .write(true)
@@ -155,8 +357,10 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         };
         store.flush_with_test_hooks(None, Some(&wait_hook), None)
     });
+    // 5s contention window: under parallel suite load the flush thread's
+    // scheduler delay can exceed a tighter bound (#4215 flake family).
     contention_rx
-        .recv_timeout(Duration::from_secs(2))
+        .recv_timeout(Duration::from_secs(5))
         .map_err(|e| e.to_string())?;
     child
         .child
@@ -183,7 +387,7 @@ fn killed_lock_holder_releases_os_lock() -> Result<(), String> {
     let root = RootGuard::new("kill-lock");
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
     let (mut child, stdout) = spawn_helper(&root.0, "hold")?;
-    wait_ready(stdout)?;
+    wait_ready(&mut child, stdout)?;
     let status = child.kill_and_wait()?;
     if status.success() {
         return Err("killed lock child unexpectedly succeeded".to_string());
@@ -220,7 +424,7 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
     }
     let destination = std::fs::read(root.0.join("scan-cache.v2.bin")).map_err(|e| e.to_string())?;
     let (mut child, stdout) = spawn_helper(&root.0, "flush-temp")?;
-    wait_ready(stdout)?;
+    wait_ready(&mut child, stdout)?;
     let status = child.kill_and_wait()?;
     if status.success() {
         return Err("interrupted flush child unexpectedly succeeded".to_string());
@@ -278,6 +482,83 @@ fn killed_child_after_temp_sync_preserves_destination_and_allows_next_flush() ->
 }
 
 #[test]
+fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), String> {
+    let started = std::time::Instant::now();
+    let root = RootGuard::new("silent-hold");
+    std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
+    let (mut child, stdout) = spawn_helper(&root.0, "silent-hold")?;
+    // Shorter dedicated deadline: still a real deadline (the typed failure
+    // must come from the clock), but a lighter footprint in the parallel
+    // suite than the full 10s scan budget.
+    let silent_deadline = Duration::from_secs(3);
+    let message = wait_ready_with_timeout(&mut child, stdout, silent_deadline)
+        .expect_err("silent child must time out");
+    // The failure must arrive from the deadline, not from a lost signal, and
+    // must carry the typed diagnostic content (#4215).
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed >= silent_deadline.saturating_sub(std::time::Duration::from_millis(500)),
+        "timeout returned too early: {elapsed:?}"
+    );
+    assert!(
+        message.contains("READY handshake failed"),
+        "message: {message}"
+    );
+    assert!(
+        message.contains(&format!(
+            "exceeded the {}s timeout budget",
+            silent_deadline.as_secs()
+        )),
+        "message: {message}"
+    );
+    assert!(
+        message.contains("child still running at failure"),
+        "message: {message}"
+    );
+    assert!(
+        message.contains("final exited with"),
+        "post-kill termination status must be described (platform-neutral); message: {message}"
+    );
+    assert!(message.contains("noise line"), "message: {message}");
+    assert!(
+        message.contains("noise line"),
+        "stdout tail must reach the diagnostics; message: {message}"
+    );
+    // The tail may carry the child harness's own framing lines; its content
+    // is diagnostic, not asserted here.
+    // wait_ready killed and reaped the timed-out child; the guard's wait
+    // must therefore return the recorded status immediately.
+    let status = child.wait()?;
+    if status.success() {
+        return Err("timed-out silent child unexpectedly succeeded".to_string());
+    }
+    Ok(())
+}
+
+#[test]
+fn child_exit_before_ready_surfaces_immediately_with_exit_status() -> Result<(), String> {
+    let started = std::time::Instant::now();
+    let root = RootGuard::new("exit-before-ready");
+    std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
+    let (mut child, stdout) = spawn_helper(&root.0, "unknown")?;
+    let message = wait_ready(&mut child, stdout).expect_err("exiting child must not be silent");
+    let elapsed = started.elapsed();
+    assert!(
+        elapsed < READY_TIMEOUT,
+        "child exit must surface immediately, not after the deadline: {elapsed:?}"
+    );
+    assert!(
+        message.contains("stdout closed before READY"),
+        "message: {message}"
+    );
+    assert!(
+        message.contains("exited with code 101"),
+        "child exit status must be attached (the unknown mode exits 101); message: {message}"
+    );
+    Ok(())
+}
+
+#[test]
 fn unknown_child_mode_fails_closed() -> Result<(), String> {
     let root = RootGuard::new("unknown-mode");
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
@@ -313,6 +594,21 @@ fn child_helper() -> Result<(), String> {
         if !store.flush_with_test_hooks(None, None, Some(&stop)) {
             return Err("production flush failed before stop point".to_string());
         }
+        return Ok(());
+    }
+    if mode == "silent-hold" {
+        // #4215: never prints READY — the READY-handshake timeout path's
+        // live-child diagnostic fixture. Emits noise lines (never READY) so
+        // the timeout diagnostic's stdout tail has real content. No lock:
+        // the diagnostic is about the handshake, not file contention.
+        for index in 0..12 {
+            println!("noise line {index} (no READY)");
+            std::io::stdout().flush().map_err(|e| e.to_string())?;
+        }
+        let mut input = [0_u8; 1];
+        std::io::stdin()
+            .read_exact(&mut input)
+            .map_err(|e| e.to_string())?;
         return Ok(());
     }
     if mode == "hold" {
