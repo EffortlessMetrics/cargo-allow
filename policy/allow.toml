@@ -26087,3 +26087,91 @@ glob = ".allow/revisions/3793-3793-escaped-defect-corpus.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-1214"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.crates-io-trusted-publishing-receipt.v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "JSON schema for the CratesIoTrustedPublishingReceiptV1 contract (#2282, #2496): typed crates.io publication authentication posture registered through the schema-index classification, README catalog, and cargo-allow title law; retained evidence contract, not a CLI artifact"
+evidence = ["issue:2496"]
+created = "2026-11-04"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.crates-io-trusted-publishing-receipt.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.crates-io-trusted-publishing-receipt.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1215"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.crates-io-registry-install-journey-receipt.v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "JSON schema for the CratesIoRegistryInstallJourneyReceiptV1 contract (#2496): typed registry-installed journey evidence binding installed version, platform, run identity, all-green journey steps, and the resolved graph with retained checksums; retained evidence contract, not a CLI artifact"
+evidence = ["issue:2496"]
+created = "2026-11-04"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.crates-io-registry-install-journey-receipt.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.crates-io-registry-install-journey-receipt.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1216"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/cargo-allow.crates-io-first-publication-bootstrap-receipt.v1.schema.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "JSON schema for the CratesIoFirstPublicationBootstrapReceiptV1 contract (#3145, #2496): typed shared-substrate bootstrap evidence whose rows classify by derived checksum equality and which can never complete the final release manifest; retained evidence contract, not a CLI artifact"
+evidence = ["issue:2496"]
+created = "2026-11-04"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/cargo-allow.crates-io-first-publication-bootstrap-receipt.v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/cargo-allow.crates-io-first-publication-bootstrap-receipt.v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1217"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2496-2496-typed-release-records.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #2496 typed release receipt lane added allow-1214 through allow-1216 schema receipts; note retention only, no new scanned surface beyond this file"
+evidence = ["issue:2496"]
+created = "2026-11-04"
+review_after = "2027-02-02"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2496-2496-typed-release-records.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2496-2496-typed-release-records.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
