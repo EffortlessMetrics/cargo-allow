@@ -858,3 +858,19 @@ may_satisfy_release_gate = false
 last_reconciled_commit = "branch-under-review"
 claim_boundary = "Workflow-content contract law only; provider completion and live-release proof are #3922's open acceptance slices."
 
+[[surfaces]]
+id = "crates-io-release-receipts-v1"
+owner_issue = 2496
+semantic_authority = "typed crates.io release receipt contracts: trusted-publishing posture (#2282), first-publication bootstrap (#3145), and registry-installed journey"
+path = "crates/cargo-allow/tests/crates_io_release_receipts.rs"
+subject = "CratesIoTrustedPublishingReceiptV1 / CratesIoFirstPublicationBootstrapReceiptV1 / CratesIoRegistryInstallJourneyReceiptV1"
+producer = "typed allow-report receipt validators with hostile synthetic fixtures"
+consumer = "release evidence reconciliation / #2501 final refreeze adapters"
+claimed_acceptance_row = "unsupported auth class, credential material, missing producer identity, mutable action pins, shared-version rewrite, generic package names, foreign packages, bootstrap promotion, checksum conflict, stale authority, skipped/cancelled producers, and unresolved install rows are named non-clean results; bootstrap evidence alone never completes the final release manifest"
+assertion_mechanism = "typed validators over synthetic receipt payloads plus schema-registration law assertions (schema_id const, cargo-allow title, $id file binding, required fields, closed additionalProperties, README catalog row)"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2282/#3145/#2268 release workflow producers"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "Synthetic typed-model validation only; no registry call, no token read, no tag, and no publication occurs, and no live release-authorization surface is created or modified."

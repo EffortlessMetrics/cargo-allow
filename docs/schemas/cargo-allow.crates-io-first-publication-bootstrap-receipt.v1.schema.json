@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.crates-io-first-publication-bootstrap-receipt.v1.schema.json",
+  "title": "cargo-allow CratesIoFirstPublicationBootstrapReceiptV1",
+  "description": "Typed first-publication bootstrap evidence for shared-substrate package rows visible on crates.io before the final release tag (#3145). Rows are classified against the retained namespace authority by derived checksum equality; a shared version rewritten onto the final release line, a generic non-namespaced package name, an intent/proof/cargo-allow row entering the graph, or a checksum conflict is a named non-clean result. Bootstrap evidence is at most BootstrapPublishedExact and never completes the final release manifest; the FinalReleaseEvidence promotion is typed only to be rejected. A later passing run cannot erase a retained first-publication incident.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "repository",
+    "source_commit",
+    "source_tree",
+    "workflow_run_id",
+    "workflow_attempt",
+    "observed_at",
+    "namespace_authority_generation",
+    "rows",
+    "promotion",
+    "retained_incident_digests",
+    "limitations",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.crates-io-first-publication-bootstrap-receipt.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40,64}$"
+    },
+    "source_tree": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40,64}$"
+    },
+    "workflow_run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflow_attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "observed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "namespace_authority_generation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/bootstrapRow"
+      }
+    },
+    "promotion": {
+      "oneOf": [
+        {
+          "const": "bootstrap_only"
+        },
+        {
+          "const": "final_release_evidence"
+        }
+      ]
+    },
+    "retained_incident_digests": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^sha256:[0-9a-fA-F]{64}$"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "bootstrapRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "package_version",
+        "registry_checksum",
+        "namespace_authority_checksum",
+        "family"
+      ],
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "registry_checksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-fA-F]{64}$"
+        },
+        "namespace_authority_checksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-fA-F]{64}$"
+        },
+        "family": {
+          "oneOf": [
+            {
+              "const": "shared"
+            },
+            {
+              "const": "cargo_allow"
+            },
+            {
+              "const": "cargo_intent"
+            },
+            {
+              "const": "cargo_proof"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
