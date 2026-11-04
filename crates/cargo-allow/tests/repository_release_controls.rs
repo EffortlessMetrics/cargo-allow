@@ -92,8 +92,9 @@ fn test_skipped_or_failed_gate_cannot_reach_token() -> Result<(), Box<dyn Error>
         .map(|(_, content)| content.clone())
         .ok_or_else(|| io::Error::other("release.yml is absent"))?;
     require(
-        release.contains("needs: [preflight, authorize]"),
-        "publish must need both preflight and authorize",
+        release.contains("needs: [preflight, authorize, source-candidate-smoke-aggregate]"),
+        "publish must need preflight, the authorize gate, and the #2267 \
+         source-candidate smoke aggregate",
     )?;
     // No token-bearing step may run unconditionally or under always():
     // steps open at six-space indent; jobs open at two-space indent.
