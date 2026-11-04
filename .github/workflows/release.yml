@@ -78,7 +78,11 @@ jobs:
           recovery=false
           authorization=""
           if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF_NAME}" == v* ]]; then
-            version="${GITHUB_REF_NAME#v}"
+            # #3786: the version is not stripped from the tag text here. The
+            # observed tag feeds the typed release-identity check through the
+            # preflight, and the validated projection below is this
+            # workflow's version source.
+            version=""
             tag="${GITHUB_REF_NAME}"
             # #3790: a pushed tag name is evidence of an attempted operation,
             # never authority. The authorize gate compiles the out-of-tree
@@ -111,7 +115,9 @@ jobs:
               exit 1
             fi
           else
-            version="$(awk '/^\[workspace\.package\]/{f=1;next} /^\[/{if(f) exit} f && /^version = /{gsub(/version = "/,""); gsub(/".*/,""); print; exit}' Cargo.toml)"
+            # #3786: the workspace version is read once, inside the preflight
+            # script; the validated projection below is the version source.
+            version=""
             tag=""
           fi
           commit="$(git rev-parse HEAD^{commit})"
@@ -130,6 +136,10 @@ jobs:
           fi
           RELEASE_IDENTITY_PROJECTION_FILE="target/cargo-allow/release-identity.json" \
             bash scripts/release-version-preflight.sh "${version}"
+          # #3786: the canonical version comes from the validated typed
+          # release-identity projection, never from re-parsing tag or
+          # manifest text in this workflow.
+          version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' target/cargo-allow/release-identity.json)"
           github_prerelease="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["github_prerelease"]).lower())' target/cargo-allow/release-identity.json)"
           {
             echo "version=${version}"

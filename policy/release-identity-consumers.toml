@@ -40,18 +40,17 @@ claim_boundary = "The numeric parser orders GLIBC ABI version needs against the 
 id = "release-workflow-tag-channel"
 path = ".github/workflows/release.yml"
 role = "tag-triggered release orchestrator"
-disposition = "deferred-with-named-owner"
-owner = "#3752"
-marker_classes = ["tag-strip", "workspace-reader", "prerelease-posture"]
+disposition = "typed-consumer"
+marker_classes = ["prerelease-posture"]
 exact_counts = [
-  { class = "tag-strip", count = 1 },
   { class = "prerelease-posture", count = 6 },
 ]
 sites = [
-  "version=\"${GITHUB_REF_NAME#v}\"",
+  "bash scripts/release-version-preflight.sh \"${version}\"",
+  "print(json.load(open(sys.argv[1]))[\"version\"])' target/cargo-allow/release-identity.json",
   "prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}",
 ]
-claim_boundary = "GitHub prerelease posture now comes from the typed projection: the preflight job validates identity through `cargo-allow release-identity`, writes its projection file, exports github_prerelease, and publish relays it so both GitHub release steps render `prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}`; an -rc tag can no longer ship as a stable release. Downstream jobs consume the preflight-projected version via RELEASE_VERSION instead of re-stripping the tag. The residual tag strip is the tag channel feeding the typed authority itself, and the workspace reader remains on the manual-dispatch path; both are input gathering, not channel inference. Remaining #3752 migrations cover the other inventoried surfaces."
+claim_boundary = "Every release-version value in this workflow is consumed from the typed projection: the preflight job resolves the selected identity through scripts/release-version-preflight.sh (the observed tag is passed to `cargo-allow release-identity` on tag pushes, the explicit recovery version on the recovery path, the workspace version otherwise) and reads the canonical version and github_prerelease back from the validated target/cargo-allow/release-identity.json projection; publish relays github_prerelease so both GitHub release steps render `prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}`; an -rc tag can no longer ship as a stable release. The former tag-text strip (`${GITHUB_REF_NAME#v}`) and the duplicated awk reader of the workspace version were deleted with the #3786 cutover; the residual `GITHUB_REF_NAME` uses are observed-ref pass-through (the tag value itself and the `v*` event-routing glob), not version parsing. Downstream jobs consume preflight outputs; no job reconstructs identity from tag or manifest text."
 
 [[consumers]]
 id = "release-version-preflight"

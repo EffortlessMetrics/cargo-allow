@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Cut the release workflow's remaining ad-hoc release-identity consumers over
+  to the typed authority: the preflight job no longer strips the version from
+  the pushed tag text (`${GITHUB_REF_NAME#v}`) and no longer duplicates the
+  awk workspace-version reader — the selected identity is resolved and
+  validated through `cargo-allow release-identity` via
+  scripts/release-version-preflight.sh, and the canonical version plus
+  github_prerelease posture are read back from the validated projection file,
+  so an -rc tag cannot ship as a stable release and no job reconstructs
+  identity from tag or manifest text (#3786).
+time: 2026-11-04T01:44:00Z
