@@ -106,6 +106,7 @@ def _invocation_command(context: _Invocation, operation: str, selected: Any) -> 
         "publisher-proof": ([context.python, str(context.root / "scripts/test-release-topology-publisher.py")], "python"),
         "history-proof": ([context.python, str(context.root / "scripts/generate-changie-history.py"), "--check"], "python"),
         "manifest-proof": ([context.python, str(context.root / "scripts/test-final-packaged-surface.py")], "python"),
+        "corpus-proof": ([context.python, str(context.root / "scripts/test-release-escaped-defect-corpus.py")], "python"),
     }
     if operation in fixed and selected is None:
         return fixed[operation]
@@ -151,7 +152,7 @@ def _run_process(command: list[str], *, operation: str, selected: Any = None, **
     expected, tool = _invocation_command(context, operation, selected)
     text_operations = {
         "resolve-commit", "release-identity", "candidate-package", "shared-preflight",
-        "publisher-proof", "history-proof", "manifest-proof",
+        "publisher-proof", "history-proof", "manifest-proof", "corpus-proof",
     }
     timeout = 15 if tool == "git" else 300
     if (
@@ -941,6 +942,423 @@ def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
     return PHASE_COMPLETE
 
 
+ESCAPED_DEFECT_CORPUS_SCHEMA = "cargo-allow.release-rehearsal-escaped-defect-corpus.v1"
+CORPUS_PROOF_SCRIPT = "scripts/test-release-escaped-defect-corpus.py"
+
+# The RC.1 escaped-defect corpus (#3793): one row per historical escape in the
+# issue's production-grip map, with the seam each fixture must traverse.
+# status is the per-row owner state on the subject carrying this receipt:
+#   fault_injected  — the corpus fixture script re-establishes the old
+#     false-green input against the landed production adapter;
+#   typed_identity   — the typed release-identity authority is invoked on the
+#     historical input form (no Python-side version grammar);
+#   phase_binding    — the row binds to the named rehearsal phase's recorded
+#     proof of the same production seam;
+#   pending_upstream — the seam's producer has not landed on this subject;
+#     the row records its owner and carries no proof (#3793 tracks imports).
+ESCAPED_DEFECT_CORPUS_ROWS = (
+    {
+        "incident_id": "RC1-ESCAPE-001",
+        "defect": "package cut without release records",
+        "seam": "typed identity -> selected record/note/Changie preflight",
+        "owner": "#3786/#3787",
+        "status": "phase_binding",
+        "claim_boundary": (
+            "Binds to the docs_and_support_identity phase's recorded "
+            "release-record/github-note binding of the typed identity; "
+            "the pinned-Changie history check rides the same phase."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-002",
+        "defect": "one parser rejects or misorders numbered RC",
+        "seam": "cargo-allow release-identity typed authority",
+        "owner": "#3786/#3787",
+        "status": "typed_identity",
+        "claim_boundary": (
+            "Invokes the typed authority on 0.2.0-rc.10 (integer ordinal "
+            "ordering) and 0.2.0-rc.0 (rejection); no Python-side grammar."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-003",
+        "defect": "shared VCS repackage differs while registry equals retained expected",
+        "seam": "shared_registry_preflight in release-topology-publisher.py",
+        "owner": "#3744",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "The preflight must decide on registry-versus-retained evidence; "
+            "local repackage drift alone must not block the shared rows."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-004",
+        "defect": "shared registry checksum conflict",
+        "seam": "shared_registry_preflight in release-topology-publisher.py",
+        "owner": "#3744",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "A conflicting shared observation must be recorded and block a "
+            "publishing run before the first upload."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-005",
+        "defect": "existing cargo-allow row with wrong checksum",
+        "seam": "publisher existing-row reconciliation loop",
+        "owner": "#3744",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "An existing row that differs from the local candidate must "
+            "raise a release incident and stop before any upload."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-006",
+        "defect": "post-upload checksum conflict",
+        "seam": "publisher visibility/equality loop",
+        "owner": "#3744",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "A newly uploaded row that becomes visible with a conflicting "
+            "checksum must retain a partial incident with the irreversible "
+            "boundary and stop before the next row."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-007",
+        "defect": "partial run resumed from moving main",
+        "seam": "load_recovery_receipt exact-candidate custody",
+        "owner": "#3791",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "Recovery admits only the incomplete incident receipt bound to "
+            "the exact original commit, tree, authorization, and posture."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-008",
+        "defect": "floating release action",
+        "seam": "immutable action inventory/workflow checker",
+        "owner": "#2498",
+        "status": "pending_upstream",
+        "claim_boundary": (
+            "Imported once #2498's immutable action inventory lands; this "
+            "row carries no proof."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-009",
+        "defect": "missing id-token: write for attestation",
+        "seam": "release workflow permission graph",
+        "owner": "#3726/#3792",
+        "status": "phase_binding",
+        "claim_boundary": (
+            "Binds to the workflow_graph_permissions phase's recorded "
+            "github-release id-token scoping proof."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-010",
+        "defect": "noncanonical checksum encoding",
+        "seam": "canonical_receipt_checksum canonical-form authority",
+        "owner": "#3761/#2496",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "The publisher's canonical-form authority rejects every "
+            "noncanonical encoding; the typed-manifest adapter leg remains "
+            "with #2496."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-011",
+        "defect": "RC release uses prerelease=false",
+        "seam": "typed identity projection -> draft adapter",
+        "owner": "#3788/#3726",
+        "status": "typed_identity",
+        "claim_boundary": (
+            "The typed authority must project an RC version with "
+            "github_prerelease true; the workflow-output leg remains with "
+            "#3788."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-012",
+        "defect": "tag push treated as authority",
+        "seam": "pre-tag authorization graph",
+        "owner": "#3790",
+        "status": "phase_binding",
+        "claim_boundary": (
+            "Binds to the publisher_state_machine phase, whose fixture "
+            "matrix pins the authorize-gated publish workflow contract; the "
+            "typed final-tag bridge keeps its own #3790 fixtures."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-013",
+        "defect": "moved tag presented as original package producer",
+        "seam": "RC incident model/evidence adapter",
+        "owner": "#3759/#3761",
+        "status": "pending_upstream",
+        "claim_boundary": (
+            "Imported once the incident evidence adapter lands; this row "
+            "carries no proof."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-014",
+        "defect": "actual asset set differs from the manifest",
+        "seam": "GitHub draft fixture adapter + closeout validator",
+        "owner": "#3726",
+        "status": "pending_upstream",
+        "claim_boundary": (
+            "Imported once the draft-fixture adapter lands; this row "
+            "carries no proof."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-015",
+        "defect": "later green retry erases the incident",
+        "seam": "typed manifest/incident aggregation",
+        "owner": "#2496/#2497/#3785",
+        "status": "pending_upstream",
+        "claim_boundary": (
+            "Imported once the incident evidence denominator (#3785) lands; "
+            "this row carries no proof."
+        ),
+    },
+    {
+        "incident_id": "RC1-ESCAPE-016",
+        "defect": "issue closed from narration",
+        "seam": "campaign-issue-closeout evidence checker",
+        "owner": "#3780",
+        "status": "fault_injected",
+        "claim_boundary": (
+            "A narration-only close and lexical-only acceptance backing "
+            "must be rejected; typed evidence is admitted."
+        ),
+    },
+)
+
+CORPUS_FAULT_INJECTED_IDS = frozenset(
+    row["incident_id"] for row in ESCAPED_DEFECT_CORPUS_ROWS
+    if row["status"] == "fault_injected"
+)
+
+
+def _corpus_failure(status: str, reason: str) -> str:
+    """Expose a bounded category, never child output or environment values."""
+    print(f"escaped_defect_corpus: {reason}", file=sys.stderr)
+    return status
+
+
+def _corpus_identity_result(version: str, *, candidate_executable, candidate_sha256):
+    """Invoke the typed release-identity authority for one corpus input.
+
+    Returns the CompletedProcess, or None when the instrument is unavailable.
+    A supplied candidate is digest-re-verified immediately before use; the
+    digest is verified again after the invocation by the caller's phase.
+    """
+    candidate = None
+    prefix = ["cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--"]
+    if candidate_executable is not None or candidate_sha256 is not None:
+        if (
+            candidate_executable is None or candidate_sha256 is None
+            or not candidate_executable.is_absolute()
+        ):
+            return None
+        try:
+            if (
+                not candidate_executable.is_file()
+                or compute_sha256(candidate_executable) != candidate_sha256
+            ):
+                return None
+        except OSError:
+            return None
+        candidate = candidate_executable
+        prefix = [str(candidate_executable)]
+    try:
+        return _run_process(
+            prefix + ["release-identity", "--version", version],
+            operation="release-identity", selected=(version, candidate),
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def run_phase_escaped_defect_corpus(
+    receipt: dict[str, Any], *, candidate_executable: Path | None = None,
+    candidate_sha256: str | None = None,
+) -> str:
+    """Carry the RC.1 escaped-defect corpus over its production seams (#3793).
+
+    Every landed seam is gripped by a discriminating zero-upload fixture or a
+    fail-closed binding to the rehearsal phase that already proves it; seams
+    whose producers have not landed are recorded as pending with their owner.
+    A typed production seam is never reduced to a text grep, and the corpus
+    never re-derives release grammar in Python.
+    """
+    rows = {row["incident_id"]: dict(row) for row in ESCAPED_DEFECT_CORPUS_ROWS}
+    if candidate_executable is not None and candidate_sha256 is not None:
+        try:
+            changed = compute_sha256(candidate_executable) != candidate_sha256
+        except OSError:
+            changed = True
+        if changed:
+            return _corpus_failure(PHASE_MISMATCH, "candidate_changed")
+
+    typed_inputs = (
+        ("RC1-ESCAPE-002", "0.2.0-rc.10"),
+        ("RC1-ESCAPE-011", "0.2.0-rc.10"),
+    )
+    rc_result = None
+    for incident_id, version in typed_inputs:
+        if rc_result is None:
+            rc_result = _corpus_identity_result(
+                version, candidate_executable=candidate_executable,
+                candidate_sha256=candidate_sha256,
+            )
+        if rc_result is None:
+            return _corpus_failure(PHASE_INSTRUMENT_FAILURE, "identity_instrument_unavailable")
+        projection = None
+        if rc_result.returncode == 0:
+            try:
+                projection = json.loads(rc_result.stdout)
+            except json.JSONDecodeError:
+                projection = None
+        consistent = (
+            rc_result.returncode == 0
+            and isinstance(projection, dict)
+            and projection.get("schema") == "cargo-allow.release-identity.v1"
+            and projection.get("result") == "validated"
+            and projection.get("version") == version
+            and projection.get("tag") == "v" + version
+            and projection.get("channel") == "release_candidate"
+            and type(projection.get("rc_ordinal")) is int
+            and projection["rc_ordinal"] == 10
+            and projection.get("github_prerelease") is True
+        )
+        if not consistent:
+            rows[incident_id]["result"] = "rejected"
+            return _corpus_failure(PHASE_MISMATCH, "rc_projection_mismatch")
+        rows[incident_id]["result"] = "proven"
+
+    rejection = _corpus_identity_result(
+        "0.2.0-rc.0", candidate_executable=candidate_executable,
+        candidate_sha256=candidate_sha256,
+    )
+    if rejection is None:
+        return _corpus_failure(PHASE_INSTRUMENT_FAILURE, "identity_instrument_unavailable")
+    if rejection.returncode == 0:
+        return _corpus_failure(PHASE_MISMATCH, "rc_zero_ordinal_accepted")
+
+    try:
+        result = _run_process(
+            [sys.executable, str(ROOT / CORPUS_PROOF_SCRIPT)],
+            operation="corpus-proof",
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return _corpus_failure(PHASE_INSTRUMENT_FAILURE, "corpus_instrument_unavailable")
+    fixtures: dict[str, dict[str, Any]] = {}
+    if result.stdout.strip():
+        try:
+            emitted = json.loads(result.stdout)
+            if isinstance(emitted, dict) and isinstance(emitted.get("rows"), list):
+                fixtures = {
+                    row["incident_id"]: row for row in emitted["rows"]
+                    if isinstance(row, dict) and isinstance(row.get("incident_id"), str)
+                }
+        except json.JSONDecodeError:
+            fixtures = {}
+    if set(fixtures) != CORPUS_FAULT_INJECTED_IDS:
+        return _corpus_failure(
+            PHASE_MISMATCH if result.returncode == 0 or fixtures else PHASE_INSTRUMENT_FAILURE,
+            "corpus_fixture_output_invalid",
+        )
+    for incident_id in sorted(CORPUS_FAULT_INJECTED_IDS):
+        fixture = fixtures[incident_id]
+        if fixture.get("result") == "proven":
+            rows[incident_id]["result"] = "proven"
+        else:
+            rows[incident_id]["result"] = "rejected"
+            return _corpus_failure(PHASE_MISMATCH, "escaped_input_accepted")
+
+    bindings = (
+        ("RC1-ESCAPE-001", "release_identity", "docs_and_support_identity"),
+        ("RC1-ESCAPE-009", "workflow_graph_permissions",),
+        ("RC1-ESCAPE-012", "publisher_state_machine",),
+    )
+    for binding in bindings:
+        incident_id, *phase_names = binding
+        if any(receipt["phases"].get(name) != PHASE_COMPLETE for name in phase_names):
+            rows[incident_id]["result"] = "blocked"
+            return _corpus_failure(
+                PHASE_MISMATCH, f"{incident_id.lower()}_seam_phase_not_proven",
+            )
+        rows[incident_id]["result"] = "proven"
+
+    identity = receipt.get("release_identity") or {}
+    docs = receipt.get("docs_and_support_identity") or {}
+    record_path = Path(docs.get("release_record", "")).as_posix()
+    note_path = Path(docs.get("github_note", "")).as_posix()
+    version = identity.get("version") or ""
+    tag = identity.get("tag") or ""
+    if (
+        not version
+        or not (
+            record_path == f"docs/release/{version}.md"
+            or record_path.endswith(f"/docs/release/{version}.md")
+        )
+        or not (
+            note_path == f"docs/release/github/{tag}.md"
+            or note_path.endswith(f"/docs/release/github/{tag}.md")
+        )
+    ):
+        return _corpus_failure(PHASE_MISMATCH, "record_note_binding_mismatch")
+    workflow = receipt.get("workflow_graph_permissions") or {}
+    if not (
+        workflow.get("top_level_read_scoped") is True
+        and workflow.get("top_level_write_scoped") is True
+        and workflow.get("github_release_scoped") is True
+        and workflow.get("authorized_namespace_mode") is True
+    ):
+        return _corpus_failure(PHASE_MISMATCH, "attestation_permission_binding_mismatch")
+    machine = receipt.get("publisher_state_machine") or {}
+    if machine.get("fixture_matrix") != "scripts/test-release-topology-publisher.py":
+        return _corpus_failure(PHASE_MISMATCH, "authorization_graph_binding_mismatch")
+
+    for row in ESCAPED_DEFECT_CORPUS_ROWS:
+        if row["status"] == "pending_upstream":
+            rows[row["incident_id"]]["result"] = "recorded_pending"
+
+    receipt["escaped_defect_corpus"] = {
+        "schema": ESCAPED_DEFECT_CORPUS_SCHEMA,
+        "fixture_matrix": CORPUS_PROOF_SCRIPT,
+        "rows": [rows[row["incident_id"]] for row in ESCAPED_DEFECT_CORPUS_ROWS],
+        "claim_boundary": (
+            "Per-row owner status at this subject: fault_injected and "
+            "typed_identity rows prove their historical rejection against "
+            "the landed production adapter; phase_binding rows bind to the "
+            "named phase's recorded proof; pending_upstream rows carry no "
+            "proof and name their owner. Full corpus completion tracks the "
+            "owner issues; this phase never proves publication readiness."
+        ),
+    }
+    return PHASE_COMPLETE
+
+
 CHARACTERIZATION_PHASES = frozenset({
     "authorization_boundary",
 })
@@ -1071,13 +1489,17 @@ def _build_rehearsal_receipt(
         "claim_boundary": (
             "Phases release_identity, candidate_package_set, "
             "shared_prerequisites, publisher_state_machine, "
-            "docs_and_support_identity, and manifest_and_assets prove typed "
-            "semantics (typed identity validation; offline candidate packaging "
-            "with exact internal requirements; read-only shared registry "
-            "equality; the publisher fixture state-machine matrix; "
-            "changelog-corpus identity plus exact release-record/note and "
-            "support-doc binding; the manifest/asset surface fixture matrix; "
-            "the release workflow graph permission inventory). The "
+            "docs_and_support_identity, manifest_and_assets, and "
+            "workflow_graph_permissions prove typed semantics (typed "
+            "identity validation; offline candidate packaging with exact "
+            "internal requirements; read-only shared registry equality; the "
+            "publisher fixture state-machine matrix; changelog-corpus "
+            "identity plus exact release-record/note and support-doc "
+            "binding; the manifest/asset surface fixture matrix; the release "
+            "workflow graph permission inventory). The escaped_defect_corpus "
+            "phase carries the #3793 RC.1 escaped-defect corpus: landed "
+            "seams are gripped by discriminating zero-upload fixtures, "
+            "pending seams are recorded with their owner issues. The "
             "authorization_boundary phase deliberately stays Incomplete: the "
             "rehearsal checks the selected CARGO_REGISTRY_TOKEN environment "
             "entry without reading its value and records the checked "
@@ -1099,6 +1521,10 @@ def _build_rehearsal_receipt(
         "manifest_and_assets": run_phase_manifest_and_assets,
         "authorization_boundary": run_phase_authorization_boundary,
         "workflow_graph_permissions": run_phase_workflow_graph_permissions,
+        "escaped_defect_corpus": lambda target: run_phase_escaped_defect_corpus(
+            target, candidate_executable=candidate_executable,
+            candidate_sha256=candidate_sha256,
+        ),
     }
 
     for phase_name, runner in phases.items():

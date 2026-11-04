@@ -700,6 +700,33 @@ fn typed_fixture() -> TestResult<serde_json::Value> {
         // the real Rust bridge independently verifies Unicode/surrogate bytes.
         "observation_digest": "sha256:v1:168608fcb9325abb504a7028d85d066e9ee732e1b6046f56162050b3a28e6cbe"
     });
+    let corpus_rows: Vec<serde_json::Value> = (1_u32..=16)
+        .map(|number| {
+            let (status, owner) = match number {
+                1 => ("phase_binding", "#3786/#3787"),
+                2 => ("typed_identity", "#3786/#3787"),
+                3..=7 => ("fault_injected", "#3744"),
+                8 => ("pending_upstream", "#2498"),
+                9 => ("phase_binding", "#3726/#3792"),
+                10 => ("fault_injected", "#3761/#2496"),
+                11 => ("typed_identity", "#3788/#3726"),
+                12 => ("phase_binding", "#3790"),
+                13 => ("pending_upstream", "#3759/#3761"),
+                14 => ("pending_upstream", "#3726"),
+                15 => ("pending_upstream", "#2496/#2497/#3785"),
+                _ => ("fault_injected", "#3780"),
+            };
+            serde_json::json!({
+                "incident_id": format!("RC1-ESCAPE-{number:03}"),
+                "defect": "synthetic escaped defect",
+                "seam": "synthetic production seam",
+                "owner": owner,
+                "status": status,
+                "result": if status == "pending_upstream" { "recorded_pending" } else { "proven" },
+                "claim_boundary": "synthetic claim boundary"
+            })
+        })
+        .collect();
     let rehearsal = serde_json::json!({"schema_version": "1.0", "aggregate_status": "Incomplete",
         "release_identity": release_identity(), "commit_sha": COMMIT,
         "subject_lockfile_digest": digest(1), "subject_topology_digest": digest(2),
@@ -711,11 +738,16 @@ fn typed_fixture() -> TestResult<serde_json::Value> {
             "cargo_publish_prevented": true, "registry_mutation_prevented": true,
             "github_release_mutation_prevented": true, "live_setting_mutation_prevented": true,
             "external_repository_mutation_prevented": true},
+        "escaped_defect_corpus": {"schema": "cargo-allow.release-rehearsal-escaped-defect-corpus.v1",
+            "fixture_matrix": "scripts/test-release-escaped-defect-corpus.py",
+            "rows": corpus_rows,
+            "claim_boundary": "Synthetic canonical corpus shape for the driver fixture."},
         "phases": {
         "release_identity": "Complete", "candidate_package_set": "Complete",
         "shared_prerequisites": "Complete", "publisher_state_machine": "Complete",
         "docs_and_support_identity": "Complete", "manifest_and_assets": "Complete",
-        "workflow_graph_permissions": "Complete", "authorization_boundary": "Incomplete"
+        "workflow_graph_permissions": "Complete", "authorization_boundary": "Incomplete",
+        "escaped_defect_corpus": "Complete"
     }});
     files.insert("live-controls.json".to_string(), json_bytes(&controls)?);
     files.insert("rehearsal.json".to_string(), json_bytes(&rehearsal)?);

@@ -35,6 +35,7 @@ REQUIRED_PHASES = (
     "manifest_and_assets",
     "authorization_boundary",
     "workflow_graph_permissions",
+    "escaped_defect_corpus",
 )
 
 
@@ -687,6 +688,179 @@ class TestCandidateIdentity(unittest.TestCase):
         self.assertEqual(run.call_args.args[0][:2], ["cargo", "run"])
 
 
+class TestEscapedDefectCorpus(unittest.TestCase):
+    """The corpus phase's fail-closed row decisions with synthetic instruments."""
+
+    def setUp(self) -> None:
+        self.receipt = {
+            "phases": {name: "Complete" for name in REQUIRED_PHASES},
+            "release_identity": {"version": "0.2.0", "tag": "v0.2.0"},
+            "docs_and_support_identity": {
+                "release_record": "docs/release/0.2.0.md",
+                "github_note": "docs/release/github/v0.2.0.md",
+            },
+            "workflow_graph_permissions": {
+                "top_level_read_scoped": True, "top_level_write_scoped": True,
+                "github_release_scoped": True, "authorized_namespace_mode": True,
+            },
+            "publisher_state_machine": {
+                "fixture_matrix": "scripts/test-release-topology-publisher.py",
+            },
+        }
+        self.rc_projection = {
+            "schema": "cargo-allow.release-identity.v1", "result": "validated",
+            "version": "0.2.0-rc.10", "tag": "v0.2.0-rc.10",
+            "channel": "release_candidate", "rc_ordinal": 10, "github_prerelease": True,
+        }
+        self.child_rows = [
+            {"incident_id": f"RC1-ESCAPE-{number:03d}", "result": "proven", "detail": "x"}
+            for number in (3, 4, 5, 6, 7, 10, 16)
+        ]
+
+    def run_phase(self, *, rc_output=None, rc_status=0, rc_zero_accepted=False,
+                  child_output=None, child_status=0):
+        calls = []
+
+        def instrument(command, *, operation, selected=None, **options):
+            calls.append(operation)
+            if operation == "release-identity":
+                version = selected[0]
+                if version == "0.2.0-rc.0":
+                    if rc_zero_accepted:
+                        return subprocess.CompletedProcess(
+                            [], 0, json.dumps(self.rc_projection), "")
+                    return subprocess.CompletedProcess([], 2, "", "rejected")
+                output = json.dumps(self.rc_projection) if rc_output is None else rc_output
+                return subprocess.CompletedProcess([], rc_status, output, "")
+            if operation == "corpus-proof":
+                output = json.dumps({"schema": "fixture", "rows": self.child_rows}) \
+                    if child_output is None else child_output
+                return subprocess.CompletedProcess([], child_status, output, "")
+            raise AssertionError(f"unselected corpus operation {operation}")
+
+        with mock.patch.object(REHEARSAL, "_run_process", side_effect=instrument):
+            status = REHEARSAL.run_phase_escaped_defect_corpus(self.receipt)
+        return status, calls
+
+    def test_complete_corpus_records_all_sixteen_rows_with_owner_status(self) -> None:
+        status, calls = self.run_phase()
+        self.assertEqual(status, "Complete")
+        self.assertEqual(calls, ["release-identity", "release-identity", "corpus-proof"])
+        record = self.receipt["escaped_defect_corpus"]
+        self.assertEqual(
+            record["schema"], "cargo-allow.release-rehearsal-escaped-defect-corpus.v1"
+        )
+        self.assertEqual(
+            record["fixture_matrix"], "scripts/test-release-escaped-defect-corpus.py"
+        )
+        self.assertEqual(len(record["rows"]), 16)
+        by_id = {row["incident_id"]: row for row in record["rows"]}
+        self.assertEqual(
+            sorted(by_id), [f"RC1-ESCAPE-{number:03d}" for number in range(1, 17)]
+        )
+        for incident_id, row in by_id.items():
+            self.assertTrue(row["owner"].startswith("#"), incident_id)
+            if row["status"] == "pending_upstream":
+                self.assertEqual(row["result"], "recorded_pending", incident_id)
+                self.assertTrue(row["claim_boundary"])
+            else:
+                self.assertEqual(row["result"], "proven", incident_id)
+        self.assertEqual(by_id["RC1-ESCAPE-003"]["status"], "fault_injected")
+        self.assertEqual(by_id["RC1-ESCAPE-011"]["status"], "typed_identity")
+        self.assertEqual(by_id["RC1-ESCAPE-012"]["status"], "phase_binding")
+        self.assertEqual(by_id["RC1-ESCAPE-015"]["owner"], "#2496/#2497/#3785")
+
+    def test_rc_projection_regressions_are_mismatches(self) -> None:
+        for changes, expected_rows in (
+            ({"rc_ordinal": 2}, ("RC1-ESCAPE-002",)),
+            ({"github_prerelease": False}, ("RC1-ESCAPE-002", "RC1-ESCAPE-011")),
+            ({"channel": "stable", "rc_ordinal": None}, ("RC1-ESCAPE-002",)),
+            ({"tag": "v0.2.0-rc.2"}, ("RC1-ESCAPE-002",)),
+        ):
+            with self.subTest(changes=changes):
+                self.rc_projection = {
+                    **{
+                        "schema": "cargo-allow.release-identity.v1", "result": "validated",
+                        "version": "0.2.0-rc.10", "tag": "v0.2.0-rc.10",
+                        "channel": "release_candidate", "rc_ordinal": 10,
+                        "github_prerelease": True,
+                    },
+                    **changes,
+                }
+                status, _ = self.run_phase()
+                self.assertEqual(status, "Mismatch")
+                self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_accepted_rc_zero_ordinal_is_a_mismatch(self) -> None:
+        status, _ = self.run_phase(rc_zero_accepted=True)
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_rejected_corpus_fixture_row_is_a_mismatch(self) -> None:
+        self.child_rows[3] = {
+            "incident_id": "RC1-ESCAPE-006", "result": "rejected", "detail": "accepted",
+        }
+        status, _ = self.run_phase(child_status=1)
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_invalid_corpus_child_output_is_not_proven(self) -> None:
+        for output, status_value, expected in (
+            ("", 1, "InstrumentFailure"),
+            ("not-json", 0, "Mismatch"),
+            (json.dumps({"rows": []}), 0, "Mismatch"),
+        ):
+            with self.subTest(output=output[:20], expected=expected):
+                status, _ = self.run_phase(
+                    child_output=output, child_status=status_value,
+                )
+                self.assertEqual(status, expected)
+                self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_missing_corpus_child_instrument_is_instrument_failure(self) -> None:
+        with mock.patch.object(
+            REHEARSAL, "_run_process",
+            side_effect=OSError("fixture corpus child unavailable"),
+        ):
+            status = REHEARSAL.run_phase_escaped_defect_corpus(self.receipt)
+        self.assertEqual(status, "InstrumentFailure")
+        self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_blocked_binding_phase_is_a_mismatch(self) -> None:
+        for phase in ("docs_and_support_identity", "workflow_graph_permissions",
+                      "publisher_state_machine"):
+            with self.subTest(phase=phase):
+                self.receipt["phases"][phase] = "Mismatch"
+                status, _ = self.run_phase()
+                self.assertEqual(status, "Mismatch")
+                self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_record_note_and_permission_bindings_are_exact(self) -> None:
+        self.receipt["docs_and_support_identity"]["release_record"] = "docs/release/9.9.9.md"
+        status, _ = self.run_phase()
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("escaped_defect_corpus", self.receipt)
+        self.receipt["docs_and_support_identity"]["release_record"] = "docs/release/0.2.0.md"
+        self.receipt["workflow_graph_permissions"]["github_release_scoped"] = False
+        status, _ = self.run_phase()
+        self.assertEqual(status, "Mismatch")
+        self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+    def test_changed_candidate_is_not_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            candidate = Path(directory) / ("candidate.exe" if os.name == "nt" else "candidate")
+            candidate.write_bytes(b"corpus candidate bytes")
+            digest = REHEARSAL.compute_sha256(candidate)
+            with mock.patch.object(REHEARSAL, "_run_process") as terminal:
+                status = REHEARSAL.run_phase_escaped_defect_corpus(
+                    self.receipt, candidate_executable=candidate,
+                    candidate_sha256="sha256:v1:" + "0" * 64,
+                )
+            self.assertEqual(status, "Mismatch")
+            terminal.assert_not_called()
+        self.assertNotIn("escaped_defect_corpus", self.receipt)
+
+
 class TestReleaseRehearsal(unittest.TestCase):
     def test_characterization_cannot_report_complete(self) -> None:
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
@@ -775,6 +949,33 @@ class TestReleaseRehearsal(unittest.TestCase):
             for row in shared:
                 self.assertEqual(row["state"], "already_published_exact")
                 self.assertTrue(row["registry_checksum"].startswith("sha256:"))
+
+        corpus = receipt.get("escaped_defect_corpus")
+        if phases["escaped_defect_corpus"] == "Complete":
+            self.assertIsInstance(corpus, dict)
+            self.assertEqual(
+                corpus["schema"],
+                "cargo-allow.release-rehearsal-escaped-defect-corpus.v1",
+            )
+            self.assertEqual(
+                corpus["fixture_matrix"],
+                "scripts/test-release-escaped-defect-corpus.py",
+            )
+            rows = corpus["rows"]
+            self.assertEqual(len(rows), 16)
+            self.assertEqual(
+                [row["incident_id"] for row in rows],
+                [f"RC1-ESCAPE-{number:03d}" for number in range(1, 17)],
+            )
+            for row in rows:
+                self.assertTrue(row["owner"].startswith("#"))
+                self.assertIn(row["status"], {
+                    "fault_injected", "typed_identity", "phase_binding", "pending_upstream",
+                })
+                if row["status"] == "pending_upstream":
+                    self.assertEqual(row["result"], "recorded_pending")
+                else:
+                    self.assertEqual(row["result"], "proven")
 
         self.assertIsInstance(identity, dict)
         self.assertEqual(identity["schema"], "cargo-allow.release-identity.v1")
@@ -877,6 +1078,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             "run_phase_manifest_and_assets",
             "run_phase_authorization_boundary",
             "run_phase_workflow_graph_permissions",
+            "run_phase_escaped_defect_corpus",
         ):
             patch = mock.patch.object(REHEARSAL, name, return_value="Incomplete")
             self.phases.append(patch.start())

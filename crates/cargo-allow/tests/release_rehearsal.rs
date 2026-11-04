@@ -42,7 +42,30 @@ struct ReleaseRehearsalReceiptV1 {
     workflow_graph_permissions: Option<WorkflowGraphPermissionsRecordV1>,
     #[serde(default)]
     authorization_boundary: Option<AuthorizationBoundaryRecordV1>,
+    #[serde(default)]
+    escaped_defect_corpus: Option<EscapedDefectCorpusRecordV1>,
     aggregate_status: String,
+    claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EscapedDefectCorpusRecordV1 {
+    schema: String,
+    fixture_matrix: String,
+    rows: Vec<EscapedDefectCorpusRowV1>,
+    claim_boundary: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct EscapedDefectCorpusRowV1 {
+    incident_id: String,
+    defect: String,
+    seam: String,
+    owner: String,
+    status: String,
+    result: String,
     claim_boundary: String,
 }
 
@@ -622,6 +645,58 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         )?;
     }
 
+    // The #3793 escaped-defect corpus must carry every canonical incident row
+    // with its owner status; landed seams prove, pending seams record.
+    let corpus_status = receipt
+        .phases
+        .get("escaped_defect_corpus")
+        .ok_or_else(|| io::Error::other("escaped_defect_corpus phase must exist"))?;
+    let corpus = receipt.escaped_defect_corpus.as_ref().ok_or_else(|| {
+        io::Error::other(format!(
+            "a proven escaped_defect_corpus phase must record its rows: {corpus_status:?}"
+        ))
+    })?;
+    require(
+        corpus.schema == "cargo-allow.release-rehearsal-escaped-defect-corpus.v1",
+        "the corpus record must carry the escaped-defect corpus schema",
+    )?;
+    require(
+        corpus.fixture_matrix == "scripts/test-release-escaped-defect-corpus.py",
+        "the corpus provenance must name its fixture script",
+    )?;
+    require(
+        corpus.rows.len() == 16,
+        "the corpus must record all sixteen RC.1 escaped-defect rows",
+    )?;
+    for (index, row) in corpus.rows.iter().enumerate() {
+        require(
+            row.incident_id == format!("RC1-ESCAPE-{:03}", index + 1),
+            "corpus rows must carry the canonical incident identity in order",
+        )?;
+        require(
+            row.owner.starts_with('#') && row.owner.len() > 1,
+            "every corpus row must name its owner issue",
+        )?;
+        require(
+            !row.defect.is_empty() && !row.seam.is_empty() && !row.claim_boundary.is_empty(),
+            "every corpus row must name its defect, seam, and claim boundary",
+        )?;
+        if row.status == "pending_upstream" {
+            require(
+                row.result == "recorded_pending",
+                "a pending upstream corpus row must record its pending state",
+            )?;
+        } else {
+            require(
+                matches!(
+                    row.status.as_str(),
+                    "fault_injected" | "typed_identity" | "phase_binding"
+                ) && row.result == "proven",
+                "a landed-seam corpus row must prove its historical rejection",
+            )?;
+        }
+    }
+
     root.cleanup()?;
     Ok(())
 }
@@ -727,6 +802,8 @@ fn rehearsal_fixture_in(
         "scripts/release-rehearsal.py",
         "scripts/release-topology-publisher.py",
         "scripts/test-release-topology-publisher.py",
+        "scripts/test-release-escaped-defect-corpus.py",
+        "scripts/verify-campaign-issue-closeout.py",
         "scripts/final-packaged-surface.py",
         "scripts/exact_candidate_package_identity.py",
         "scripts/test-final-packaged-surface.py",

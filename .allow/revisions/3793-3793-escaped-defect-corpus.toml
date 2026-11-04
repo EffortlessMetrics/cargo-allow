@@ -1,0 +1,22 @@
+# Revision note: land the #3793 escaped-defect corpus rehearsal phase.
+#
+# The lane adds a fail-closed escaped_defect_corpus phase to
+# scripts/release-rehearsal.py carrying all sixteen RC.1 escaped-defect
+# rows with per-row owner status, a zero-upload fault-injected fixture
+# harness (scripts/test-release-escaped-defect-corpus.py), and the
+# canonical nine-phase admission update in the freeze composer and
+# final-tag driver. The two new tracked source surfaces are receipted
+# additively; the note file is self-covered by its own added_allow
+# record, matching the #4214/#4716 precedents.
+
+[[records]]
+allow_ids = ["allow-11374"]
+reason = "The #3793 corpus fixture harness is a new release automation script that drives landed production adapters (shared preflight, existing-row and post-upload conflict loops, recovery custody, canonical checksum authority, campaign-issue-closeout checker) with fault-injected historical inputs; zero upload, zero network, and no checkout mutation. Added receipt for a new scanned surface only; no existing entry narrowed, loosened, or expired."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bd85f9459152880b93293fe00054bff9b59ba2efaf26fbf18d9bf844761048bd"
+
+[[records]]
+allow_ids = ["allow-11373"]
+reason = "Self-covering revision note receipting this note file, matching the #4214 and #4716 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f93af4939babb3ecd9d773f9e49b79d3bb65d43c780dc5ac3fce77ecb3f6bd69"

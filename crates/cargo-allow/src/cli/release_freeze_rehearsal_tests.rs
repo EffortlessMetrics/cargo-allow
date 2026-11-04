@@ -7,9 +7,11 @@ use std::path::Path;
 use std::process::Command;
 
 /// Execute the real receipt constructor and authorization-boundary phase.
-/// Only subject acquisition and the seven reversible phase instruments are
+/// Only subject acquisition and the eight reversible phase instruments are
 /// mocked. The producer itself owns phase names, aggregate, claim boundary,
 /// and all zero-mutation flags; this fixture never upgrades their claims.
+/// The #3793 escaped-defect corpus record is injected as a canonical-shape
+/// fixture: its admission (not its proof) is what these tests exercise.
 pub(super) fn producer_characterization(subject: &SubjectIdentity) -> Result<Json, Box<dyn Error>> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -72,9 +74,38 @@ with contextlib.ExitStack() as stack:
     stack.enter_context(mock.patch.object(producer, 'compute_sha256', side_effect=[subject['lock'], subject['topology']]))
     stack.enter_context(mock.patch.object(producer, 'run_phase_release_identity', side_effect=identity))
     for name in ('candidate_package_set', 'shared_prerequisites', 'publisher_state_machine',
-                 'docs_and_support', 'manifest_and_assets', 'workflow_graph_permissions'):
+                 'docs_and_support', 'manifest_and_assets', 'workflow_graph_permissions',
+                 'escaped_defect_corpus'):
         stack.enter_context(mock.patch.object(producer, 'run_phase_' + name, return_value=producer.PHASE_COMPLETE))
     receipt = producer.build_rehearsal_receipt('HEAD')
+
+# Canonical-shape #3793 corpus fixture: statuses mirror the committed corpus
+# manifest's shape; this injection tests admission, never corpus proof.
+row_statuses = {1: 'phase_binding', 2: 'typed_identity', 3: 'fault_injected',
+                4: 'fault_injected', 5: 'fault_injected', 6: 'fault_injected',
+                7: 'fault_injected', 8: 'pending_upstream', 9: 'phase_binding',
+                10: 'fault_injected', 11: 'typed_identity', 12: 'phase_binding',
+                13: 'pending_upstream', 14: 'pending_upstream', 15: 'pending_upstream',
+                16: 'fault_injected'}
+row_owners = {8: '#2498', 13: '#3759/#3761', 14: '#3726', 15: '#2496/#2497/#3785'}
+corpus_rows = []
+for number in range(1, 17):
+    status = row_statuses[number]
+    corpus_rows.append({
+        'incident_id': 'RC1-ESCAPE-%03d' % number,
+        'defect': 'fixture escaped defect',
+        'seam': 'fixture production seam',
+        'owner': row_owners.get(number, '#3786/#3787'),
+        'status': status,
+        'result': 'recorded_pending' if status == 'pending_upstream' else 'proven',
+        'claim_boundary': 'fixture claim boundary',
+    })
+receipt['escaped_defect_corpus'] = {
+    'schema': 'cargo-allow.release-rehearsal-escaped-defect-corpus.v1',
+    'fixture_matrix': 'scripts/test-release-escaped-defect-corpus.py',
+    'rows': corpus_rows,
+    'claim_boundary': 'fixture corpus claim boundary',
+}
 print(json.dumps(receipt, sort_keys=True))
 "#;
 
@@ -394,6 +425,210 @@ fn aggregate_schema_and_authorization_evidence_are_explicit() -> Result<(), Box<
         .ok_or("boundary")?
         .insert("authorization_consumed".to_string(), json!(true));
     rejected_with(&subject, &consumed, "unknown authorization_boundary field")?;
+    Ok(())
+}
+
+#[test]
+fn escaped_defect_corpus_record_admission_is_canonical() -> Result<(), Box<dyn Error>> {
+    let subject = super::tests::subject();
+    let receipt = producer_characterization(&subject)?;
+    let rows = receipt
+        .pointer("/escaped_defect_corpus/rows")
+        .and_then(Json::as_array)
+        .ok_or("corpus rows are absent from the producer fixture")?
+        .clone();
+    if rows.len() != 16 {
+        return Err(format!("corpus fixture must carry sixteen rows, got {}", rows.len()).into());
+    }
+
+    let mut missing = receipt.clone();
+    remove(&mut missing, "", "escaped_defect_corpus")?;
+    rejected_with(
+        &subject,
+        &missing,
+        "no escaped_defect_corpus evidence object",
+    )?;
+    for replacement in [Json::Null, json!([]), json!("Complete")] {
+        let mut malformed = receipt.clone();
+        replace(&mut malformed, "/escaped_defect_corpus", replacement)?;
+        rejected_with(
+            &subject,
+            &malformed,
+            "no escaped_defect_corpus evidence object",
+        )?;
+    }
+    for (field, diagnostic) in [
+        ("schema", "escaped_defect_corpus.schema"),
+        ("fixture_matrix", "escaped_defect_corpus.fixture_matrix"),
+        ("claim_boundary", "escaped_defect_corpus.claim_boundary"),
+    ] {
+        let mut missing_field = receipt.clone();
+        remove(&mut missing_field, "/escaped_defect_corpus", field)?;
+        rejected_with(&subject, &missing_field, diagnostic)?;
+    }
+    for (replacement, diagnostic) in [
+        (json!("wrong"), "escaped_defect_corpus.schema"),
+        (json!("wrong"), "escaped_defect_corpus.fixture_matrix"),
+        (json!(""), "escaped_defect_corpus.claim_boundary"),
+        (Json::Null, "escaped_defect_corpus.claim_boundary"),
+    ] {
+        let field = if diagnostic.contains("schema") {
+            "schema"
+        } else if diagnostic.contains("fixture_matrix") {
+            "fixture_matrix"
+        } else {
+            "claim_boundary"
+        };
+        let mut malformed = receipt.clone();
+        replace(
+            &mut malformed,
+            &format!("/escaped_defect_corpus/{field}"),
+            replacement,
+        )?;
+        rejected_with(&subject, &malformed, diagnostic)?;
+    }
+    let mut no_rows = receipt.clone();
+    remove(&mut no_rows, "/escaped_defect_corpus", "rows")?;
+    rejected_with(&subject, &no_rows, "canonical sixteen-row array")?;
+    let mut truncated = receipt.clone();
+    replace(
+        &mut truncated,
+        "/escaped_defect_corpus/rows",
+        json!(&rows[..15]),
+    )?;
+    rejected_with(
+        &subject,
+        &truncated,
+        "must cover all 16 canonical incidents",
+    )?;
+
+    for (mutation, diagnostic) in [
+        ("incident_id", "incident_id must be canonical and unique"),
+        ("defect", ".defect must be a nonempty string"),
+        ("seam", ".seam must be a nonempty string"),
+        ("owner", ".owner must name its owner issue"),
+        (
+            "claim_boundary",
+            ".claim_boundary must be a nonempty string",
+        ),
+    ] {
+        let pointer = format!("/escaped_defect_corpus/rows/0/{mutation}");
+        let mut removed = receipt.clone();
+        remove(&mut removed, "/escaped_defect_corpus/rows/0", mutation)?;
+        rejected_with(&subject, &removed, diagnostic)?;
+        let mut malformed = receipt.clone();
+        replace(&mut malformed, &pointer, json!(""))?;
+        rejected_with(&subject, &malformed, diagnostic)?;
+    }
+    let mut non_canonical = receipt.clone();
+    replace(
+        &mut non_canonical,
+        "/escaped_defect_corpus/rows/0/incident_id",
+        json!("RC1-ESCAPE-099"),
+    )?;
+    rejected_with(
+        &subject,
+        &non_canonical,
+        "incident_id must be canonical and unique",
+    )?;
+    let mut duplicated = receipt.clone();
+    replace(
+        &mut duplicated,
+        "/escaped_defect_corpus/rows/1/incident_id",
+        json!("RC1-ESCAPE-001"),
+    )?;
+    rejected_with(
+        &subject,
+        &duplicated,
+        "incident_id must be canonical and unique",
+    )?;
+
+    let mut non_object_row = receipt.clone();
+    replace(
+        &mut non_object_row,
+        "/escaped_defect_corpus/rows/2",
+        json!("row"),
+    )?;
+    rejected_with(&subject, &non_object_row, "row must be an object")?;
+
+    for (status, result, diagnostic) in [
+        ("fault_injected", "proven", None),
+        ("typed_identity", "proven", None),
+        ("phase_binding", "proven", None),
+        ("pending_upstream", "recorded_pending", None),
+        (
+            "fault_injected",
+            "recorded_pending",
+            Some("escaped_defect_corpus.RC1-ESCAPE-001 must record result"),
+        ),
+        (
+            "pending_upstream",
+            "proven",
+            Some("escaped_defect_corpus.RC1-ESCAPE-001 must record result"),
+        ),
+        (
+            "unknown_status",
+            "proven",
+            Some("escaped_defect_corpus.RC1-ESCAPE-001.status must be a canonical corpus status"),
+        ),
+        (
+            "fault_injected",
+            "blocked",
+            Some("escaped_defect_corpus.RC1-ESCAPE-001 must record result"),
+        ),
+    ] {
+        let mut malformed = receipt.clone();
+        replace(
+            &mut malformed,
+            "/escaped_defect_corpus/rows/0/status",
+            json!(status),
+        )?;
+        replace(
+            &mut malformed,
+            "/escaped_defect_corpus/rows/0/result",
+            json!(result),
+        )?;
+        if let Some(diagnostic) = diagnostic {
+            rejected_with(&subject, &malformed, diagnostic)?;
+            continue;
+        }
+        let baseline = bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &receipt);
+        if baseline
+            .iter()
+            .any(|note| note.contains("escaped_defect_corpus"))
+        {
+            return Err(format!("canonical corpus fixture was denied: {baseline:?}").into());
+        }
+        let notes = bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &malformed);
+        if notes != baseline {
+            return Err(
+                format!("admitted {status}/{result} changed admission notes: {notes:?}").into(),
+            );
+        }
+    }
+
+    let mut extra_row_field = receipt.clone();
+    extra_row_field
+        .pointer_mut("/escaped_defect_corpus/rows/0")
+        .and_then(Json::as_object_mut)
+        .ok_or("row 0")?
+        .insert("authorization_claimed".to_string(), json!(true));
+    rejected_with(
+        &subject,
+        &extra_row_field,
+        "unknown escaped_defect_corpus row field",
+    )?;
+    let mut extra_field = receipt.clone();
+    extra_field
+        .get_mut("escaped_defect_corpus")
+        .and_then(Json::as_object_mut)
+        .ok_or("corpus")?
+        .insert("aggregate_proof".to_string(), json!(true));
+    rejected_with(
+        &subject,
+        &extra_field,
+        "unknown escaped_defect_corpus field",
+    )?;
     Ok(())
 }
 

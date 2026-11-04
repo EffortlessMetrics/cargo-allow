@@ -496,9 +496,27 @@ def rehearsal(subject):
         stack.enter_context(mock.patch.object(producer, "require_clean_checkout"))
         stack.enter_context(mock.patch.object(producer, "compute_sha256", side_effect=[subject["lock"], subject["topology"]]))
         stack.enter_context(mock.patch.object(producer, "run_phase_release_identity", side_effect=identity))
-        for name in ("candidate_package_set", "shared_prerequisites", "publisher_state_machine", "docs_and_support", "manifest_and_assets", "workflow_graph_permissions"):
+        for name in ("candidate_package_set", "shared_prerequisites", "publisher_state_machine", "docs_and_support", "manifest_and_assets", "workflow_graph_permissions", "escaped_defect_corpus"):
             stack.enter_context(mock.patch.object(producer, "run_phase_" + name, return_value=producer.PHASE_COMPLETE))
-        return producer.build_rehearsal_receipt("HEAD")
+        receipt = producer.build_rehearsal_receipt("HEAD")
+    # Canonical-shape #3793 corpus fixture: admission shape only, never proof.
+    row_statuses = {1:"phase_binding", 2:"typed_identity", 3:"fault_injected", 4:"fault_injected",
+                    5:"fault_injected", 6:"fault_injected", 7:"fault_injected", 8:"pending_upstream",
+                    9:"phase_binding", 10:"fault_injected", 11:"typed_identity", 12:"phase_binding",
+                    13:"pending_upstream", 14:"pending_upstream", 15:"pending_upstream", 16:"fault_injected"}
+    row_owners = {8:"#2498", 13:"#3759/#3761", 14:"#3726", 15:"#2496/#2497/#3785"}
+    receipt["escaped_defect_corpus"] = {
+        "schema": "cargo-allow.release-rehearsal-escaped-defect-corpus.v1",
+        "fixture_matrix": "scripts/test-release-escaped-defect-corpus.py",
+        "rows": [{"incident_id": f"RC1-ESCAPE-{number:03d}", "defect": "fixture escaped defect",
+                  "seam": "fixture production seam", "owner": row_owners.get(number, "#3786/#3787"),
+                  "status": status,
+                  "result": "recorded_pending" if status == "pending_upstream" else "proven",
+                  "claim_boundary": "fixture claim boundary"}
+                 for number, status in row_statuses.items()],
+        "claim_boundary": "fixture corpus claim boundary",
+    }
+    return receipt
 
 
 PRODUCTS = ["allow-core", "allow-policy", "allow-policy-legacy", "allow-inventory", "allow-files", "allow-rust",
