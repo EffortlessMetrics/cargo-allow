@@ -28,6 +28,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
       - name: Select exact main and preserve the reviewed patch
         shell: bash
         run: |
@@ -39,7 +42,6 @@ jobs:
           test -z "$(git status --porcelain)"
       - uses: dtolnay/rust-toolchain@035fceb3c12fb0c6a9461b52775e16473133e591
         with:
-          toolchain: '1.95.0'
           components: rustfmt, clippy
       - uses: ./.github/actions/rust-cache
         with:
@@ -129,10 +131,9 @@ jobs:
           PY
           cargo run -q -p cargo-allow --locked -- check --mode no-new --format markdown 2>&1 | tee "$RUNNER_TEMP/lint-proof/no-new.log"
           cargo run -q -p cargo-allow --locked -- diff --base ba6f8ab086edc0217ae241ec5a9f24fb1b6f7198 --head "$(cat "$RUNNER_TEMP/lint-proof/candidate.txt")" --format markdown --require-change-note 2>&1 | tee "$RUNNER_TEMP/lint-proof/diff.log"
-      - uses: dtolnay/rust-toolchain@035fceb3c12fb0c6a9461b52775e16473133e591
-        with:
-          toolchain: '1.99.1'
-          components: clippy
+      - name: Install the explicitly selected second lint compiler
+        shell: bash
+        run: rustup toolchain install 1.99.1 --profile minimal --component clippy --no-self-update
       - name: Recorded stable compiler Clippy and unchanged-tree check
         env:
           RUSTUP_TOOLCHAIN: '1.99.1'
