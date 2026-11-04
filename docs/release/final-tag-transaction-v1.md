@@ -146,7 +146,9 @@ finalized artifact ID. A provenance enum or local JSON file alone does not
 prove a provider call.
 
 Rehearsal admission uses the same unique-key decoder and canonical validator as
-the production freeze composer: schema 1.0, the exact eight phases, the
+the production freeze composer: schema 1.0, the exact nine phases (including
+the #3793 escaped-defect corpus, whose record must carry all sixteen canonical
+incident rows with owner statuses), the
 Incomplete aggregate and unconsumed authorization boundary, and all seven
 zero-mutation flags. Receipt version, commit, lock and topology must match.
 Its required `release-rehearsal` graph node must be Current, Complete,

@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Carry the complete RC.1 escaped-defect corpus (#3793) in the release
+  rehearsal as a fail-closed escaped_defect_corpus phase: seven landed seams
+  are gripped by zero-upload fault-injected fixtures, two by typed
+  release-identity invocations, three by fail-closed bindings to their
+  rehearsal phases, and four seams still pending upstream producers are
+  recorded with their owner issues in the rehearsal receipt. The freeze and
+  final-tag canonical rehearsal contract admits the ninth phase only with all
+  sixteen canonical incident rows and per-row owner statuses.
+time: 2026-11-04T05:50:00Z
