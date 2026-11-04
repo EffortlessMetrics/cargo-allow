@@ -1,0 +1,116 @@
+diff --git a/crates/cargo-allow/tests/release_rehearsal.rs b/crates/cargo-allow/tests/release_rehearsal.rs
+index a4b2fcc5a..ee7f1b369 100644
+--- a/crates/cargo-allow/tests/release_rehearsal.rs
++++ b/crates/cargo-allow/tests/release_rehearsal.rs
+@@ -706,12 +706,12 @@ fn candidate_package_failure_context_is_specific_and_redacted() -> Result<(), Bo
+         "aggregate_status": "Mismatch", "claim_boundary": "test fixture only"
+     }))?;
+     let stderr = concat!(
+-        "private-child-canary\n",
++        "child-only-marker-7d3e\n",
+         "candidate_package_set: {\"reason\":\"publisher-failed\",",
+         "\"publisher_stage\":\"cargo-package\",\"publisher_exit\":101,",
+-        "\"private\":\"private-field-canary\"}\n",
+-        "candidate_package_set: {\"reason\":\"private-reason-canary\",",
+-        "\"publisher_stage\":\"private-stage-canary\",\"publisher_exit\":\"private-exit-canary\"}\n"
++        "\"unrecognized_field\":\"/owned-fixture/opaque-path-9481\"}\n",
++        "candidate_package_set: {\"reason\":\"reason-marker-a231\",",
++        "\"publisher_stage\":\"stage-marker-b928\",\"publisher_exit\":\"exit-marker-c736\"}\n"
+     );
+     let context = candidate_package_failure_context(&receipt, stderr);
+     for expected in [
+@@ -729,10 +729,19 @@ fn candidate_package_failure_context_is_specific_and_redacted() -> Result<(), Bo
+             "failure context omitted a classified observation",
+         )?;
+     }
+-    require(
+-        !context.contains("private-"),
+-        "failure context leaked untrusted child text",
+-    )?;
++    for canary in [
++        "child-only-marker-7d3e",
++        "unrecognized_field",
++        "/owned-fixture/opaque-path-9481",
++        "reason-marker-a231",
++        "stage-marker-b928",
++        "exit-marker-c736",
++    ] {
++        require(
++            !context.contains(canary),
++            "failure context leaked an independently shaped canary",
++        )?;
++    }
+     require(context.len() < 1024, "failure context must remain bounded")?;
+     Ok(())
+ }
+ diff --git a/scripts/test-release-rehearsal.py b/scripts/test-release-rehearsal.py
+index c7515a58e..a7a119a74 100644
+--- a/scripts/test-release-rehearsal.py
++++ b/scripts/test-release-rehearsal.py
+@@ -712,13 +712,21 @@ class TestCandidatePackageDiagnostics(unittest.TestCase):
+     def invoke(self, *, code: int = 0, stderr: str = "", error: Exception | None = None):
+         receipt = {"release_identity": {"version": "0.2.0"}}
+         diagnostics = io.StringIO()
+-        process = subprocess.CompletedProcess([], code, "private-stdout-canary", stderr)
++        process = subprocess.CompletedProcess([], code, "stdout-marker-3b8c", stderr)
+         with mock.patch.object(REHEARSAL, "_run_process", return_value=process, side_effect=error), contextlib.redirect_stderr(diagnostics):
+             state = REHEARSAL.run_phase_candidate_package_set(receipt)
+         text = diagnostics.getvalue()
+-        self.assertNotIn("private-", text)
++        for canary in ["stdout-marker-3b8c", "stderr-marker-9d21", "/owned-fixture/path-marker-4f2b",
++                       "command-marker-08be", "timeout-output-47a9", "timeout-error-a361",
++                       "/unavailable-path/canary-9852", "malformed-marker-6ca3"]:
++            self.assertNotIn(canary, text)
+         self.assertLess(len(text), 2048)
+         rows = [json.loads(line.removeprefix("candidate_package_set: ")) for line in text.splitlines()]
++        self.assertLessEqual(len(rows), 2)
++        allowed_fields = {"reason", "observed_rows", "publisher_exit", "publisher_stage",
++                          "stdout_bytes", "stdout_sha256", "stderr_bytes", "stderr_sha256"}
++        for row in rows:
++            self.assertLessEqual(set(row), allowed_fields)
+         return state, receipt, rows
+ 
+     def test_complete_control_remains_quiet(self) -> None:
+@@ -730,12 +738,12 @@ class TestCandidatePackageDiagnostics(unittest.TestCase):
+ 
+     def test_failed_publisher_preserves_exit_and_stage_without_child_text(self) -> None:
+         for stage, command in [
+-            ("cargo-package", "cargo package --workspace --locked --no-verify --target-dir /private-path"),
++            ("cargo-package", "cargo package --workspace --locked --no-verify --target-dir /owned-fixture/path-marker-4f2b"),
+             ("cargo-metadata", "cargo metadata --format-version 1 --no-deps --locked"),
+             ("unknown", "other tool"),
+         ]:
+             with self.subTest(stage=stage):
+-                stderr = "private-stderr-canary\nrelease-topology-publisher: error: command failed (101): " + command
++                stderr = "stderr-marker-9d21\nrelease-topology-publisher: error: command failed (101): " + command
+                 state, receipt, diagnostics = self.invoke(code=1, stderr=stderr)
+                 self.assertEqual(state, "Mismatch")
+                 self.assertEqual(receipt["candidate_package_set"], {"rows": []})
+@@ -758,7 +766,7 @@ class TestCandidatePackageDiagnostics(unittest.TestCase):
+         for malformed in [False, True]:
+             with self.subTest(malformed=malformed):
+                 if malformed:
+-                    self.path.write_text("private-malformed-canary", encoding="utf-8")
++                    self.path.write_text("malformed-marker-6ca3", encoding="utf-8")
+                 state, _, diagnostics = self.invoke()
+                 self.assertEqual(state, "InstrumentFailure")
+                 self.assertEqual(diagnostics[-1]["reason"], "receipt-unavailable")
+@@ -776,8 +784,8 @@ class TestCandidatePackageDiagnostics(unittest.TestCase):
+                 self.assertEqual(diagnostics[-1]["observed_rows"], count)
+ 
+     def test_timeout_retains_only_bounded_category_and_stream_digests(self) -> None:
+-        error = subprocess.TimeoutExpired(["private-command-canary"], 300,
+-                                          output=b"private-output-canary", stderr=b"private-error-canary")
++        error = subprocess.TimeoutExpired(["command-marker-08be"], 300,
++                                          output=b"timeout-output-47a9", stderr=b"timeout-error-a361")
+         state, _, diagnostics = self.invoke(error=error)
+         self.assertEqual(state, "InstrumentFailure")
+         self.assertEqual(diagnostics[-1]["reason"], "publisher-timeout")
+@@ -785,7 +793,7 @@ class TestCandidatePackageDiagnostics(unittest.TestCase):
+         self.assertEqual(diagnostics[-1]["stdout_sha256"], REHEARSAL.hashlib.sha256(error.output).hexdigest())
+ 
+     def test_unavailable_process_never_leaks_exception_path(self) -> None:
+-        state, _, diagnostics = self.invoke(error=OSError("private-path-canary"))
++        state, _, diagnostics = self.invoke(error=OSError("/unavailable-path/canary-9852"))
+         self.assertEqual(state, "InstrumentFailure")
+         self.assertEqual(diagnostics[-1]["reason"], "publisher-unavailable")
