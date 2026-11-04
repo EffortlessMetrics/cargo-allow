@@ -29,6 +29,9 @@ use effortless_repo_edit::{
 pub(crate) enum ConflictBase {
     /// Resolved under the source-tree root (`--config`, `adopt --output`).
     SourceTreeRoot,
+    /// Backup of the canonical source-tree target, derived after resolution.
+    /// Init's writer uses this spelling, not a backup of a config symlink.
+    SourceTreeTargetBackup,
     /// Resolved under the process working directory.
     WorkingDirectory,
 }
@@ -955,6 +958,12 @@ fn resolve_summary_output_target(
     for (base, conflict) in &config.conflicts {
         let candidate = match base {
             ConflictBase::SourceTreeRoot => resolve_under_root(root, conflict),
+            ConflictBase::SourceTreeTargetBackup => {
+                let policy = resolve_under_root(root, conflict);
+                let target = effortless_repo_edit::resolve_mutation_target(&policy, root)
+                    .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
+                target.normalized_absolute().with_extension("toml.bak")
+            }
             // An absolute conflict resolves to itself, so it needs no base at all.
             // Only a relative one has to consult the working directory, and if that
             // is unavailable the collision is undecidable — refuse rather than skip
@@ -974,10 +983,19 @@ fn resolve_summary_output_target(
         };
         let candidate_target = effortless_repo_edit::resolve_mutation_target(&candidate, root)
             .map_err(crate::extraction_repo_edit_runtime::map_repo_edit_error)?;
-        if summary_target.target_fingerprint() == candidate_target.target_fingerprint() {
+        // All configured conflicts are file-valued, including doctor's JSON
+        // support bundle. Neither file may become the other's parent, even
+        // before either exists. Component-aware canonical paths retain valid
+        // prefix-lookalike siblings and supported parent aliases (#4714).
+        let summary_path = summary_target.normalized_absolute();
+        let candidate_path = candidate_target.normalized_absolute();
+        if summary_target.target_fingerprint() == candidate_target.target_fingerprint()
+            || summary_path.starts_with(candidate_path)
+            || candidate_path.starts_with(summary_path)
+        {
             return Err(CargoAllowError::with_kind(
                 CargoAllowErrorKind::Usage,
-                "--command-summary-output must differ from --output, --receipt, and --config",
+                "--command-summary-output must differ from --output, --receipt, and --config and must not contain or be beneath their file targets",
             ));
         }
     }

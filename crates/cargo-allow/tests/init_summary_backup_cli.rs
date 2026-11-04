@@ -195,3 +195,131 @@ fn init_summary_through_parent_symlink_cannot_alias_backup() -> Result<(), Strin
         "symlink collision changed the policy or its backup",
     )
 }
+
+#[test]
+fn init_summary_file_ancestry_preserves_bytes_and_absence() -> Result<(), String> {
+    for config in ["policy/allow.toml", "custom/ledger.data"] {
+        for policy_exists in [false, true] {
+            for mode in ["force", "refusal", "dry-run"] {
+                for relationship in ["policy-child", "backup-child", "policy-parent"] {
+                    let root = Root::new()?;
+                    let policy = root.0.join(config);
+                    let backup = policy.with_extension("toml.bak");
+                    if policy_exists {
+                        root.seed(config, false)?;
+                    }
+                    let before = bytes(&policy)?;
+                    let parent = policy.parent().ok_or("policy has no parent")?;
+                    let parent_existed = parent.exists();
+                    let summary = match relationship {
+                        "policy-child" => policy.join("nested/summary.json"),
+                        "backup-child" => backup.join("nested/summary.json"),
+                        "policy-parent" => parent.to_path_buf(),
+                        _ => return Err("unexpected relationship".to_string()),
+                    };
+                    let output = root.run(config, &summary, mode)?;
+                    require(
+                        !output.status.success(),
+                        format!("{config}/{mode}/{relationship}: file ancestry accepted"),
+                    )?;
+                    require(
+                        bytes(&policy)? == before
+                            && bytes(&backup)?.is_none()
+                            && parent.exists() == parent_existed,
+                        format!(
+                            "{config}/{mode}/{relationship}: refusal changed policy, backup or parent"
+                        ),
+                    )?;
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn init_summary_prefix_lookalike_directory_remains_supported() -> Result<(), String> {
+    for mode in ["force", "refusal", "dry-run"] {
+        let root = Root::new()?;
+        let (policy, backup) = root.seed("policy/allow.toml", true)?;
+        let summary = root.0.join("policy/allow.toml.bak-extra/summary.json");
+        let output = root.run("policy/allow.toml", &summary, mode)?;
+        require(
+            output.status.success() == (mode != "refusal") && summary.is_file(),
+            "component-distinct prefix sibling must still emit its summary",
+        )?;
+        let expected = if mode == "force" { POLICY } else { BACKUP };
+        require(
+            bytes(&backup)?.as_deref() == Some(expected),
+            "sibling summary changed backup",
+        )?;
+        if mode != "force" {
+            require(
+                bytes(&policy)?.as_deref() == Some(POLICY),
+                "read-only route changed policy",
+            )?;
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn init_config_symlink_reserves_canonical_backup_on_every_route() -> Result<(), String> {
+    for backup_exists in [false, true] {
+        for mode in ["force", "refusal", "dry-run"] {
+            for child in [false, true] {
+                let root = Root::new()?;
+                let (policy, backup) = root.seed("policy/allow.toml", backup_exists)?;
+                let before = bytes(&backup)?;
+                std::os::unix::fs::symlink(&policy, root.0.join("alias.policy"))
+                    .map_err(|error| error.to_string())?;
+                let summary = if child {
+                    backup.join("summary.json")
+                } else {
+                    backup.clone()
+                };
+                let output = root.run("alias.policy", &summary, mode)?;
+                require(
+                    !output.status.success(),
+                    "canonical backup collision must be refused",
+                )?;
+                require(
+                    bytes(&policy)?.as_deref() == Some(POLICY) && bytes(&backup)? == before,
+                    "config symlink route changed canonical policy or backup",
+                )?;
+                require(
+                    fs::symlink_metadata(root.0.join("alias.policy"))
+                        .map_err(|error| error.to_string())?
+                        .file_type()
+                        .is_symlink(),
+                    "config alias must remain unchanged",
+                )?;
+            }
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+#[test]
+fn init_config_symlink_noncolliding_summaries_preserve_writer_refusal() -> Result<(), String> {
+    for mode in ["force", "refusal", "dry-run"] {
+        let root = Root::new()?;
+        let (policy, backup) = root.seed("policy/allow.toml", true)?;
+        std::os::unix::fs::symlink(&policy, root.0.join("alias.policy"))
+            .map_err(|error| error.to_string())?;
+        let summary = root.0.join("summary.json");
+        let output = root.run("alias.policy", &summary, mode)?;
+        require(
+            output.status.success() == (mode == "dry-run") && summary.is_file(),
+            "noncolliding summary must preserve preview and writer/error behavior",
+        )?;
+        require(
+            bytes(&policy)?.as_deref() == Some(POLICY)
+                && bytes(&backup)?.as_deref() == Some(BACKUP),
+            "noncolliding config-link route changed protected bytes",
+        )?;
+    }
+    Ok(())
+}

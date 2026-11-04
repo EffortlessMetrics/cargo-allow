@@ -167,12 +167,21 @@ fn core_command_summary_mutation_init() -> Result<(), String> {
     remove_temp_root(root)
 }
 
+struct InitSummaryRootCleanup(PathBuf);
+
+impl Drop for InitSummaryRootCleanup {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
 /// #4714: a preflight rejection must not create or replace the live ledger.
 /// These cases execute the installed bin with real argv, root/cwd resolution,
 /// and filesystem effects; error-summary emission remains best effort.
 #[test]
 fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(), String> {
     let root = temp_root("init-summary-preflight")?;
+    let _cleanup = InitSummaryRootCleanup(root.clone());
     write_source(&root, "pub fn clean() {}\n")?;
     git_commit_fixture(&root)?;
     let policy = root.join("policy/allow.toml");
@@ -324,6 +333,7 @@ fn init_rejected_common_summary_destinations_preserve_policy_bytes() -> Result<(
 #[test]
 fn init_preflight_respects_cross_cwd_common_summary_resolution() -> Result<(), String> {
     let root = temp_root("init-summary-cross-cwd")?;
+    let _cleanup = InitSummaryRootCleanup(root.clone());
     write_source(&root, "pub fn clean() {}\n")?;
     git_commit_fixture(&root)?;
     let cwd = root.join("work");
