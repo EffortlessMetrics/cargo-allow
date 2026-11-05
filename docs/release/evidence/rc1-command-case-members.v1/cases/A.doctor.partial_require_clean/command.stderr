@@ -1,0 +1,1 @@
+error[E0006_POLICY_VIOLATION]: doctor --require-clean: Rust scanner coverage is partial (0 skipped, 1 parse errors)

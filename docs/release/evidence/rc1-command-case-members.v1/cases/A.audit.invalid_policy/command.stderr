@@ -1,0 +1,6 @@
+error[E0003_INVALID_POLICY]: failed to parse policy TOML in \\?\F:\Temp\rc1-4723-run\collection-rc1-command-cases-r2\fixtures\A.audit.invalid_policy\policy\allow.toml: TOML parse error at line 1, column 13
+  |
+1 | not = [valid
+  |             ^
+unclosed array, expected `]`
+

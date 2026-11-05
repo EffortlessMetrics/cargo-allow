@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.core-adoption-plan.v1",
+  "tool": "cargo-allow",
+  "command": "adopt",
+  "claim_boundary": [
+    "source_tree_inventory",
+    "source_syntax_only",
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed",
+    "source_text_in_identity_fields"
+  ],
+  "scanner_limitations": [
+    "cargo_metadata_not_invoked",
+    "cargo_commands_not_invoked",
+    "rustc_not_invoked",
+    "clippy_not_invoked",
+    "build_scripts_not_executed",
+    "proc_macros_not_executed",
+    "macro_expansion_not_analyzed",
+    "macro_token_tree_contents_not_analyzed",
+    "type_information_not_analyzed",
+    "mir_not_analyzed",
+    "build_output_not_analyzed",
+    "control_flow_not_analyzed",
+    "data_flow_not_analyzed",
+    "external_evidence_tools_not_invoked",
+    "repository_code_not_executed"
+  ],
+  "inventory": {
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "<repository-root>",
+    "files_scanned": 2,
+    "completeness": "scoped",
+    "empty_git_tracked": false
+  },
+  "plan": {
+    "schema_id": "cargo-allow.core-adoption-plan.v1",
+    "schema_version": 1,
+    "tool_version": "0.2.0-rc.1",
+    "repository_identity": "sha256:v1:12133acf5e470aee9aa8c88a114994c451682c5cffeb025520fd08c9ddfdb106",
+    "selected_root": "<repository-root>",
+    "channel": "source-preview",
+    "executable_identity": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+    "inventory": {
+      "mode": "GitTracked",
+      "completeness": "Complete",
+      "limitations": []
+    },
+    "policy": {
+      "state": "Invalid",
+      "path": "policy/allow.toml",
+      "schema_version": null,
+      "digest": "sha256:v1:d61deb07ebb2f9248f0b636bf692587e0604d0b52cf825579e15bc4bbcb930b7",
+      "total_findings": 0,
+      "new_unreceipted_findings": 0,
+      "stale_entries": 0,
+      "location_drift_entries": 0,
+      "broken_evidence_entries": 0,
+      "review_due_entries": 0,
+      "expired_entries": 0,
+      "occurrence_headroom_entries": 0,
+      "mirror_divergence": false
+    },
+    "bootstrap_disposition": "InvalidPolicy",
+    "primary_action": {
+      "kind": "RepairPolicy",
+      "argv": [
+        "cargo-allow",
+        "doctor",
+        "--require-clean"
+      ],
+      "reason": "policy validation failed; repair the policy before evaluating adoption",
+      "write_posture": "ReadOnly",
+      "expected_result": "the policy failure is diagnosed without changing policy bytes"
+    },
+    "follow_up_actions": [
+      {
+        "kind": "ConfigureCi",
+        "argv": [
+          "cargo-allow",
+          "check",
+          "--mode",
+          "no-new"
+        ],
+        "reason": "the policy is healthy but the complete no-new CI path is not recorded",
+        "write_posture": "ReadOnly",
+        "expected_result": "the no-new gate evaluates the current source tree"
+      }
+    ],
+    "may_write_paths": [],
+    "explicit_non_effects": [
+      "does not write policy or source files",
+      "does not execute the recommended command",
+      "does not infer owner, reason, evidence, expiry, or approval"
+    ],
+    "expected_result_markers": [
+      "primary_action=repair_policy",
+      "adoption_disposition=fail_closed"
+    ],
+    "ci_example_path": "docs/how-to/adopt-cargo-allow.md#step-3-ci-integration",
+    "rollback_guide_path": "docs/how-to/rollback-cargo-allow-adoption.md",
+    "limitations": [
+      "policy diagnostics are available only as normalized input facts"
+    ],
+    "claim_boundary": "This plan classifies source-tree exception-ledger adoption state and recommends one bounded next action; it does not execute commands or prove macro-expanded, type-aware, control-flow, data-flow, unsafe, coverage, or release behavior."
+  }
+}

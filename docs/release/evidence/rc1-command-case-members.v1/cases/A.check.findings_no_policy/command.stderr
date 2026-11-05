@@ -1,0 +1,1 @@
+error[E0002_INVALID_CONFIG]: no policy config found; run `cargo-allow init` or pass --config

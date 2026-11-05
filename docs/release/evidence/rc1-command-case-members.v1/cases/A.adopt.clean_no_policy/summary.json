@@ -1,0 +1,52 @@
+{
+  "schema_id": "cargo-allow.core-command-summary.v1",
+  "schema_version": 1,
+  "tool": "cargo-allow",
+  "tool_version": "0.2.0-rc.1",
+  "operation": "adopt",
+  "subject": {
+    "kind": "worktree",
+    "repository_identity": "sha256:v1:927afcef42d57c33afef968ddae3d52560a4611f94b747bad89e06b6d467b951",
+    "portable_identity": "worktree:git_tracked:current-unpinned",
+    "limitations": [
+      "the current worktree result is not bound to a commit, tree, or Git-index identity"
+    ]
+  },
+  "result_class": "completed",
+  "posture": "satisfied",
+  "completeness": "complete",
+  "currentness": "current",
+  "reason": {
+    "code": "adoption.clean_no_policy",
+    "message": "inventory is clean and no policy exists; inspect findings before adopting a gate"
+  },
+  "primary_action": {
+    "id": "adoption.continue_advisory_audit",
+    "kind": "command",
+    "title": "Run continue_advisory_audit",
+    "program": "cargo-allow",
+    "args": [
+      "audit"
+    ],
+    "write_posture": "read_only",
+    "reason": "inventory is clean and no policy exists; inspect findings before adopting a gate",
+    "expected_effect": "an advisory report is produced and repository bytes remain unchanged",
+    "proof_boundary": "The action must be re-evaluated against current command-specific inputs; this summary does not execute it."
+  },
+  "additional_action_count": 1,
+  "additional_actions_ref": "core_adoption_plan.follow_up_actions?exclude_index=none",
+  "operation_effects": {
+    "reads_repository": true,
+    "writes_repository": false,
+    "executes_repository_code": false,
+    "invokes_network": false,
+    "explicit_non_effects": [
+      "does not write policy or source files",
+      "does not execute the recommended command",
+      "does not infer owner, reason, evidence, expiry, or approval"
+    ]
+  },
+  "claim_boundary": {
+    "statement": "This plan classifies source-tree exception-ledger adoption state and recommends one bounded next action; it does not execute commands or prove macro-expanded, type-aware, control-flow, data-flow, unsafe, coverage, or release behavior."
+  }
+}

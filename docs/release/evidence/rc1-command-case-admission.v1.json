@@ -1,0 +1,647 @@
+{
+  "schema_id": "cargo-allow.command-case-admission.v1",
+  "schema_version": 1,
+  "catalogue_digest": "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08",
+  "context_digest": "sha256:v1:ddee71dbeef4bcbf88284d747847f57444da16dfeb9a5ee91bbce02972d2da02",
+  "bundle_digest": "sha256:v1:b07e3cd2d72b6611f809d724036516fbfa801a94d7904eec53ecc43f5732b774",
+  "collection_id": "rc1-installed-command-cases-4723-r2",
+  "semantic_validity": "invalid",
+  "qualification": "partial",
+  "cases": [
+    {
+      "case_id": "A.adopt.clean_no_policy",
+      "semantic_validity": "valid",
+      "process_observed": true,
+      "detail_reconciled": true,
+      "observed_result_class": "completed",
+      "observed_completeness": "complete",
+      "errors": [],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.adopt.findings_no_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.adopt.healthy_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "adoption policy state/path contradicts the selected fixture"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.adopt.new_finding",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "adoption policy state/path contradicts the selected fixture"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.adopt.invalid_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "absent/invalid policy falsely has a consumed-policy digest"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.adopt.partial_inventory",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "detail inventory subject or scope mismatch"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.adopt.instrument_failure",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "hard-error summary contradicts the existing native error adapter"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.clean_no_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "findings",
+      "observed_completeness": "complete",
+      "errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.findings_no_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "findings",
+      "observed_completeness": "complete",
+      "errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.healthy_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.new_finding",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.invalid_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "complete",
+      "errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.partial_inventory",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "partial",
+      "errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.doctor.instrument_failure",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "partial",
+      "errors": [
+        "hard-error summary contradicts the existing native error adapter"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.audit.clean_no_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "completed",
+      "observed_completeness": "complete",
+      "errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.audit.findings_no_policy",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "findings",
+      "observed_completeness": "complete",
+      "errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    },
+    {
+      "case_id": "A.audit.healthy_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.audit.new_finding",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.audit.invalid_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.audit.partial_inventory",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.audit.instrument_failure",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.clean_no_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.findings_no_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.healthy_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.new_finding",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.invalid_policy",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.partial_inventory",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.check.instrument_failure",
+      "semantic_validity": "incomplete",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": null,
+      "observed_completeness": null,
+      "errors": [],
+      "binding_gaps": [
+        "requested fresh summary member was not emitted"
+      ]
+    },
+    {
+      "case_id": "A.doctor.partial_require_clean",
+      "semantic_validity": "invalid",
+      "process_observed": true,
+      "detail_reconciled": false,
+      "observed_result_class": "malformed_input",
+      "observed_completeness": "partial",
+      "errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "binding_gaps": [
+        "common summary does not bind an evaluated mode; explicit argv/receipt observations are retained separately",
+        "common summary does not bind a selected sensor profile",
+        "full runtime resolved-configuration identity is unavailable; exact fixture policy bytes are a narrower observation",
+        "common summary has no artifact-set/detail references; retained member correspondence is checked without equating the different artifact-set semantic digest",
+        "worktree/adoption identity is not full source-byte identity; exact retained snapshots and caller-pinned context remain separate evidence"
+      ]
+    }
+  ],
+  "missing_cases": [
+    "A.adopt.findings_no_policy",
+    "A.adopt.healthy_policy",
+    "A.adopt.new_finding",
+    "A.adopt.invalid_policy",
+    "A.adopt.partial_inventory",
+    "A.adopt.instrument_failure",
+    "A.doctor.clean_no_policy",
+    "A.doctor.findings_no_policy",
+    "A.doctor.healthy_policy",
+    "A.doctor.new_finding",
+    "A.doctor.invalid_policy",
+    "A.doctor.partial_inventory",
+    "A.doctor.instrument_failure",
+    "A.audit.clean_no_policy",
+    "A.audit.findings_no_policy",
+    "A.audit.healthy_policy",
+    "A.audit.new_finding",
+    "A.audit.invalid_policy",
+    "A.audit.partial_inventory",
+    "A.audit.instrument_failure",
+    "A.check.clean_no_policy",
+    "A.check.findings_no_policy",
+    "A.check.healthy_policy",
+    "A.check.new_finding",
+    "A.check.invalid_policy",
+    "A.check.partial_inventory",
+    "A.check.instrument_failure",
+    "A.doctor.partial_require_clean",
+    "A.check.human_receipt",
+    "A.adopt.presentation",
+    "A.doctor.presentation",
+    "A.audit.presentation",
+    "A.check.presentation",
+    "B.list.empty",
+    "B.list.action",
+    "B.list.partial",
+    "B.list.presentation",
+    "B.explain.empty",
+    "B.explain.action",
+    "B.explain.partial",
+    "B.explain.presentation",
+    "B.why.empty",
+    "B.why.action",
+    "B.why.partial",
+    "B.why.presentation",
+    "B.worklist.empty",
+    "B.worklist.action",
+    "B.worklist.partial",
+    "B.worklist.presentation",
+    "C.init.preview",
+    "C.init.alternate_config",
+    "C.init.apply",
+    "C.init.stale_conflict",
+    "C.init.presentation",
+    "C.propose.preview",
+    "C.propose.candidate",
+    "C.propose.replacement_boundary",
+    "C.propose.stale_conflict",
+    "C.propose.presentation",
+    "C.add.preview",
+    "C.add.candidate",
+    "C.add.apply",
+    "C.add.stale_conflict",
+    "C.add.presentation",
+    "C.add_from_plan.unsupported_preview",
+    "C.add_from_plan.plan_linkage",
+    "C.add_from_plan.apply",
+    "C.add_from_plan.stale_conflict",
+    "C.add_from_plan.presentation",
+    "C.refresh.preview",
+    "C.refresh.report_output_boundary",
+    "C.refresh.apply",
+    "C.refresh.stale_conflict",
+    "C.refresh.presentation",
+    "C.prune.preview",
+    "C.prune.report_output_boundary",
+    "C.prune.apply",
+    "C.prune.stale_conflict",
+    "C.prune.presentation",
+    "C.migrate.unsupported_preview",
+    "C.migrate.candidate",
+    "C.migrate.apply",
+    "C.migrate.stale_conflict",
+    "C.migrate.presentation",
+    "D.diff.exact_range",
+    "D.diff.partial_stale",
+    "D.diff.presentation",
+    "E.help.entrypoint",
+    "E.adopt_docs.entrypoint",
+    "E.reference.entrypoint",
+    "E.man.entrypoint",
+    "E.completions.entrypoint",
+    "E.package.entrypoint",
+    "E.help.internal_leakage",
+    "E.help.extraction_leakage",
+    "E.help.sibling_requirement",
+    "E.help.spec_requirement",
+    "E.help.experimental_promotion",
+    "E.help.maturity_disagreement",
+    "E.help.hidden_reachability",
+    "E.help.alias_compatibility",
+    "E.help.write_posture",
+    "E.help.forbidden_proof",
+    "E.help.package_help_mismatch",
+    "E.help.published_channel_snippets",
+    "E.help.first_screen_crowding"
+  ],
+  "dimensions": [
+    {
+      "id": "complete_satisfied",
+      "description": "A complete satisfied result within the command's actual proof boundary."
+    },
+    {
+      "id": "blocking_finding",
+      "description": "A blocking finding remains distinct from advisory information."
+    },
+    {
+      "id": "advisory",
+      "description": "Advisory information does not become an enforcing gate pass."
+    },
+    {
+      "id": "empty",
+      "description": "No policy, no entries and no filter matches retain their separate meanings."
+    },
+    {
+      "id": "partial",
+      "description": "Partial inventory or scanner coverage cannot look complete."
+    },
+    {
+      "id": "stale",
+      "description": "Stale source, policy, plan or target cannot be reused as current proof."
+    },
+    {
+      "id": "unsupported",
+      "description": "Unsupported subjects or artifact generations remain explicit."
+    },
+    {
+      "id": "invalid",
+      "description": "Invalid configuration or policy remains distinct from instrument failure."
+    },
+    {
+      "id": "instrument_failure",
+      "description": "A tool or artifact I/O failure remains distinct from an evaluated domain outcome."
+    },
+    {
+      "id": "primary_action",
+      "description": "A deterministic primary action retains its exact argv and proof boundary."
+    },
+    {
+      "id": "repository_decision",
+      "description": "Repository judgment is not replaced by an invented preferred action."
+    },
+    {
+      "id": "read_only",
+      "description": "Read-only commands and their observed non-effects remain explicit."
+    },
+    {
+      "id": "candidate_write",
+      "description": "Candidate artifact writes name their exact owned paths."
+    },
+    {
+      "id": "live_mutation",
+      "description": "Live mutations name their exact owned paths and rollback boundary."
+    },
+    {
+      "id": "proof_scope",
+      "description": "Targeted evidence does not stand for full proof."
+    },
+    {
+      "id": "format_parity",
+      "description": "Human, JSON, receipt and summary outputs agree when applicable."
+    },
+    {
+      "id": "terminal_safety",
+      "description": "TTY, non-TTY, quiet and file output preserve terminal safety."
+    },
+    {
+      "id": "installed_outside_checkout",
+      "description": "The selected installed binary is exercised outside the source checkout."
+    }
+  ],
+  "errors": [],
+  "qualification_gaps": [
+    "the first-family reader cannot satisfy the full A-C, diff-D and #3882 denominator",
+    "JSON/detail/sidecar readback does not execute human, quiet, file, TTY or installed-entrypoint parity cases",
+    "runtime resolved-configuration, selected sensor-profile and same-evaluation artifact-set bindings remain incomplete (#3876/#3880/#3885)",
+    "expected-context custody, installation authority and final experience/qualification consumption remain outside this reader (#3151/#2501)",
+    "source-generation and candidate/install mappings are caller-pinned declarations; binary digest readback alone does not authenticate a build or installation",
+    "before/after snapshots cover the controlled fixture outside target and the blocked-output canary; they are not a sandbox or a claim about all host filesystem effects",
+    "supplied candidate/install identities are bound declarations; their existing installation receipt and custody authorities were not replayed"
+  ],
+  "claim_boundary": "Native readback checks retained bytes, expected context, selected fixture facts and the existing typed command projections. It does not rerun the scan, install or execute a candidate, authenticate a worker, select policy, authorize publication, or establish complete release qualification. A valid selected observation can coexist with Partial qualification."
+}
