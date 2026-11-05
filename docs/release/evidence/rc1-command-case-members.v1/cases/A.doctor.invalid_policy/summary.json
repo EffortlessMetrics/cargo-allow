@@ -1,0 +1,52 @@
+{
+  "schema_id": "cargo-allow.core-command-summary.v1",
+  "schema_version": 1,
+  "tool": "cargo-allow",
+  "tool_version": "0.2.0-rc.1",
+  "operation": "doctor",
+  "subject": {
+    "kind": "worktree",
+    "repository_identity": "local-repository:sha256:v1:d5783ea8bbf3a2297754b6f9377b5c9555ef58dca126f604c2ce71118aa00348",
+    "portable_identity": "worktree:git_tracked:current-unpinned",
+    "limitations": [
+      "the current worktree result is not bound to a commit, tree, or Git-index identity"
+    ]
+  },
+  "result_class": "malformed_input",
+  "posture": "decision_required",
+  "completeness": "complete",
+  "currentness": "current",
+  "reason": {
+    "code": "doctor.invalid_policy_config",
+    "message": "failed to parse policy TOML in \\\\?\\F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy\\policy\\allow.toml: TOML parse error at line 1, column 13\n  |\n1 | not = [valid\n  |             ^\nunclosed array, expected `]`\n"
+  },
+  "primary_action": {
+    "id": "doctor.repair_policy_config",
+    "kind": "decision",
+    "title": "Repair the invalid policy configuration",
+    "write_posture": "read_only",
+    "reason": "a malformed policy cannot be repaired automatically without inventing repository judgment",
+    "expected_effect": "a maintainer corrects the reported configuration defect at its source",
+    "proof_boundary": "cargo-allow does not validate the repair until doctor is rerun"
+  },
+  "additional_action_count": 0,
+  "operation_effects": {
+    "reads_repository": true,
+    "writes_repository": false,
+    "executes_repository_code": false,
+    "invokes_network": false,
+    "explicit_non_effects": [
+      "does not modify source, policy, Git, hooks, workflows, or GitHub settings",
+      "does not repair, extend, or authorize any source exception",
+      "does not execute repository code or external evidence tools"
+    ]
+  },
+  "claim_boundary": {
+    "statement": "cargo-allow diagnosed source-exception setup health only",
+    "limitations": [
+      "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked",
+      "macro expansion, type information, MIR, control flow, and data flow were not analyzed",
+      "a healthy setup does not prove the repository passes the no-new gate"
+    ]
+  }
+}

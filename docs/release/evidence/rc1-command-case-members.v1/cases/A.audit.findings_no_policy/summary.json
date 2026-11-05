@@ -1,0 +1,72 @@
+{
+  "schema_id": "cargo-allow.core-command-summary.v1",
+  "schema_version": 1,
+  "tool": "cargo-allow",
+  "tool_version": "0.2.0-rc.1",
+  "operation": "audit",
+  "subject": {
+    "kind": "worktree",
+    "repository_identity": "local-repository:sha256:v1:e0147acb586f315c1245fd03d290755fbd648bec8dc4c7fa4df358ce509a99f9",
+    "portable_identity": "worktree:git_tracked:current-unpinned",
+    "limitations": [
+      "the current worktree result is not bound to a commit, tree, or Git-index identity"
+    ]
+  },
+  "result_class": "findings",
+  "posture": "advisory",
+  "completeness": "complete",
+  "currentness": "current",
+  "reason": {
+    "code": "audit.advisory_findings",
+    "message": "1 advisory or review outcome(s) remain"
+  },
+  "primary_action": {
+    "id": "audit.inspect_worklist",
+    "kind": "command",
+    "title": "Inspect the worklist",
+    "program": "cargo-allow",
+    "args": [
+      "worklist",
+      "--format",
+      "json"
+    ],
+    "write_posture": "read_only",
+    "reason": "the report contains one or more exact maintenance or repair outcomes",
+    "expected_effect": "the current typed work items and their detailed actions are emitted",
+    "proof_boundary": "the worklist is guidance and does not mutate source or policy"
+  },
+  "additional_action_count": 0,
+  "operation_effects": {
+    "reads_repository": true,
+    "writes_repository": false,
+    "executes_repository_code": false,
+    "invokes_network": false,
+    "explicit_non_effects": [
+      "does not modify source, policy, Git, hooks, workflows, or GitHub settings",
+      "does not execute repository code or external evidence tools"
+    ]
+  },
+  "next_proof": {
+    "id": "audit.full_no_new_check",
+    "kind": "command",
+    "title": "Run the enforcing no-new check",
+    "program": "cargo-allow",
+    "args": [
+      "check",
+      "--mode",
+      "no-new"
+    ],
+    "write_posture": "read_only",
+    "reason": "audit is informational even when its source inputs are complete",
+    "expected_effect": "the current repository is evaluated under the no-new gate",
+    "proof_boundary": "the source-syntax gate does not prove compiled or runtime correctness"
+  },
+  "claim_boundary": {
+    "statement": "cargo-allow evaluated selected source-tree syntax and source-exception ledger posture only",
+    "limitations": [
+      "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked",
+      "macro expansion, type information, MIR, control flow, and data flow were not analyzed",
+      "the current worktree result is not bound to a commit, tree, or Git-index identity"
+    ]
+  }
+}
