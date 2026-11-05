@@ -1554,12 +1554,16 @@ jobs:
           AUTH_SOURCE: ${{ needs.publish.outputs.auth_source }}
           AUTHORIZATION_DIGEST: ${{ needs.publish.outputs.authorization_digest }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
+          # Retained as release evidence. Must equal Cargo.toml
+          # `rust-version` (scripts/check-msrv-consistency.sh enforces this).
+          MSRV: "1.95"
           PLATFORMS: "linux"
           BINARY_PACKAGE_RECEIPT: target/cargo-allow/release-assets/release-binary.receipt.json
           BINARY_INSTALL_RECEIPT: target/cargo-allow/release-assets/release-binary-install.receipt.json
           RUST_TOOLCHAIN: stable
           RUNNER: ubuntu-latest
           TOPOLOGY_RECEIPT: target/cargo-allow/topology-publish.receipt.json
+          REQUIRE_PUBLISHED_TOPOLOGY: "true"
           EXPECTED_TOPOLOGY_RECEIPT_SHA256: ${{ steps.publication_receipt.outputs.topology_sha256 }}
         run: |
           set -euo pipefail
