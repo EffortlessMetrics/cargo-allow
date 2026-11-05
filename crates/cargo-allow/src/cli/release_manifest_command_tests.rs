@@ -575,3 +575,901 @@ fn generated_at_utc_formats_the_typed_timestamp() -> TestResult {
     }
     Ok(())
 }
+
+/// Assert one refusal message names its law without panicking macros.
+fn expect_message(error: &CargoAllowError, needle: &str, label: &str) -> TestResult {
+    if !error.to_string().contains(needle) {
+        return Err(format!("{label}: refusal must name {needle:?}, got {error}").into());
+    }
+    Ok(())
+}
+
+/// Remove one top-level field of a receipt fixture without panicking indexing.
+fn remove_field(document: &mut Value, key: &str) -> TestResult {
+    if document
+        .as_object_mut()
+        .ok_or("receipt fixture is not an object")?
+        .remove(key)
+        .is_none()
+    {
+        return Err(format!("fixture field {key:?} is absent").into());
+    }
+    Ok(())
+}
+
+/// Run the command against one mutated copy of the published receipt fixture
+/// and return the typed refusal.
+fn topology_refusal_with<F>(
+    name: &str,
+    mutate: F,
+) -> Result<CargoAllowError, Box<dyn std::error::Error>>
+where
+    F: FnOnce(&mut Value) -> TestResult,
+{
+    let dir = fixture_dir(name);
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    let mut document = published_receipt_document();
+    mutate(&mut document)?;
+    write_receipt(&receipt, &document)?;
+    let args = generate_args(&dir, &receipt);
+    expect_refusal(cmd_release_manifest(&args), name)
+}
+
+/// Run the command with a mutated binary receipt pair and return the typed
+/// refusal.
+fn binary_case_with<F, G>(
+    name: &str,
+    mutate_documents: F,
+    mutate_args: G,
+) -> Result<CargoAllowError, Box<dyn std::error::Error>>
+where
+    F: FnOnce(&mut Value, &mut Value) -> TestResult,
+    G: FnOnce(&mut ReleaseManifestArgs),
+{
+    let dir = fixture_dir(name);
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let mut package = binary_receipt_document(BINARY_PACKAGE_RECEIPT_SCHEMA, false);
+    let mut install = binary_receipt_document(BINARY_INSTALL_RECEIPT_SCHEMA, false);
+    mutate_documents(&mut package, &mut install)?;
+    let package_path = dir.join("release-binary.receipt.json");
+    let install_path = dir.join("release-binary-install.receipt.json");
+    write_receipt(&package_path, &package)?;
+    write_receipt(&install_path, &install)?;
+    let mut args = generate_args(&dir, &receipt);
+    args.binary_package_receipt = Some(package_path);
+    args.binary_install_receipt = Some(install_path);
+    mutate_args(&mut args);
+    expect_refusal(cmd_release_manifest(&args), name)
+}
+
+// ---------------------------------------------------------------------------
+// Receipt loading laws (load_receipt).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn missing_receipt_file_refuses() -> TestResult {
+    let dir = fixture_dir("receipt-missing");
+    prepare_fixture_dir(&dir)?;
+    let args = generate_args(&dir, &dir.join("absent-topology-publish.receipt.json"));
+    let error = expect_refusal(cmd_release_manifest(&args), "missing receipt")?;
+    expect_message(&error, "invalid receipt", "missing receipt")
+}
+
+#[test]
+fn malformed_json_receipt_refuses() -> TestResult {
+    let dir = fixture_dir("receipt-malformed-json");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    std::fs::write(&receipt, b"not json at all")
+        .map_err(|error| format!("write {}: {error}", receipt.display()))?;
+    let args = generate_args(&dir, &receipt);
+    let error = expect_refusal(cmd_release_manifest(&args), "malformed receipt")?;
+    expect_message(&error, "invalid receipt", "malformed receipt")
+}
+
+#[test]
+fn non_object_receipt_refuses() -> TestResult {
+    let dir = fixture_dir("receipt-array");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &json!(["not", "an", "object"]))?;
+    let args = generate_args(&dir, &receipt);
+    let error = expect_refusal(cmd_release_manifest(&args), "array receipt")?;
+    expect_message(&error, "JSON payload is not an object", "array receipt")
+}
+
+#[test]
+fn unsupported_receipt_schema_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-schema-id", |document| {
+        set_field(
+            document,
+            "schema_id",
+            json!("cargo-allow.some-other-receipt.v1"),
+        )
+    })?;
+    expect_message(&error, "unsupported receipt schema", "schema drift")
+}
+
+#[test]
+fn unsupported_receipt_schema_version_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-schema-version", |document| {
+        set_field(document, "schema_version", json!(2))
+    })?;
+    expect_message(&error, "unsupported receipt schema", "schema version drift")
+}
+
+// ---------------------------------------------------------------------------
+// Topology evidence laws (load_topology_evidence).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn require_published_demands_expected_digest() -> TestResult {
+    let dir = fixture_dir("require-published-digest");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let mut args = generate_args(&dir, &receipt);
+    args.require_published_topology = true;
+    let error = expect_refusal(cmd_release_manifest(&args), "missing digest")?;
+    expect_message(
+        &error,
+        "requires the downloaded topology receipt digest",
+        "missing digest",
+    )
+}
+
+#[test]
+fn topology_identity_disagreement_refuses() -> TestResult {
+    let dir = fixture_dir("identity-drift");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let mut args = generate_args(&dir, &receipt);
+    args.commit = Some("drifted-commit".to_string());
+    let error = expect_refusal(cmd_release_manifest(&args), "identity drift")?;
+    expect_message(&error, "identity disagrees with release", "identity drift")
+}
+
+#[test]
+fn incomplete_candidate_receipt_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-incomplete", |document| {
+        set_field(document, "complete", json!(false))
+    })?;
+    expect_message(
+        &error,
+        "not a complete cargo-allow candidate",
+        "incomplete receipt",
+    )
+}
+
+#[test]
+fn non_cargo_allow_receipt_mode_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-mode-drift", |document| {
+        set_field(document, "mode", json!("other-tool"))
+    })?;
+    expect_message(&error, "not a complete cargo-allow candidate", "mode drift")
+}
+
+#[test]
+fn receipt_without_rows_refuses() -> TestResult {
+    let error =
+        topology_refusal_with("receipt-no-rows", |document| remove_field(document, "rows"))?;
+    expect_message(&error, "has no package rows", "absent rows")
+}
+
+#[test]
+fn empty_rows_receipt_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-empty-rows", |document| {
+        set_field(document, "rows", json!([]))
+    })?;
+    expect_message(&error, "has no package rows", "empty rows")
+}
+
+#[test]
+fn non_boolean_publish_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-publish-string", |document| {
+        set_field(document, "publish", json!("yes"))
+    })?;
+    expect_message(&error, "publish field must be a Boolean", "string publish")
+}
+
+#[test]
+fn published_receipt_without_marker_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-marker-absent", |document| {
+        remove_field(document, "first_irreversible_row")
+    })?;
+    expect_message(&error, "lacks an irreversible-row marker", "absent marker")
+}
+
+#[test]
+fn null_marker_with_published_rows_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-null-marker", |document| {
+        set_field(document, "first_irreversible_row", Value::Null)
+    })?;
+    expect_message(
+        &error,
+        "newly published rows require an irreversible-row marker",
+        "null marker",
+    )
+}
+
+#[test]
+fn invalid_irreversible_marker_refuses() -> TestResult {
+    let boolean = topology_refusal_with("receipt-marker-boolean", |document| {
+        set_field(document, "first_irreversible_row", json!(true))
+    })?;
+    expect_message(
+        &boolean,
+        "invalid irreversible-row marker",
+        "boolean marker",
+    )?;
+    let zero = topology_refusal_with("receipt-marker-zero", |document| {
+        set_field(document, "first_irreversible_row", json!(0))
+    })?;
+    expect_message(&zero, "invalid irreversible-row marker", "zero marker")
+}
+
+#[test]
+fn malformed_topology_digest_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-topology-digest", |document| {
+        set_field(document, "topology_sha256", json!("nope"))
+    })?;
+    expect_message(&error, "malformed topology digest", "topology digest")
+}
+
+#[test]
+fn malformed_lock_digest_refuses() -> TestResult {
+    let error = topology_refusal_with("receipt-lock-digest", |document| {
+        set_field(document, "cargo_lock_sha256", json!("nope"))
+    })?;
+    expect_message(&error, "malformed Cargo.lock digest", "lock digest")
+}
+
+#[test]
+fn publication_authorization_gate_refuses() -> TestResult {
+    let dir = fixture_dir("authorization-gate");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let mut args = generate_args(&dir, &receipt);
+    args.require_published_topology = true;
+    args.expected_topology_receipt_sha256 = Some(canonical_sha256(&receipt_bytes(&receipt)?));
+    // The release gate compiles a one-use sha256 digest; the issue-form
+    // authorization on the fixture receipt must refuse through the same arm.
+    args.authorization_digest = Some("issue:3760".to_string());
+    let error = expect_refusal(cmd_release_manifest(&args), "authorization gate")?;
+    expect_message(
+        &error,
+        "publication authorization differs from the release gate",
+        "authorization gate",
+    )
+}
+
+#[test]
+fn require_published_demands_package_archive_evidence() -> TestResult {
+    let dir = fixture_dir("require-published-archive");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    let mut document = published_receipt_document();
+    set_field(&mut document, "authorization", json!(digest('f')))?;
+    write_receipt(&receipt, &document)?;
+    let mut args = generate_args(&dir, &receipt);
+    args.require_published_topology = true;
+    args.expected_topology_receipt_sha256 = Some(canonical_sha256(&receipt_bytes(&receipt)?));
+    args.authorization_digest = Some(digest('f'));
+    let error = expect_refusal(cmd_release_manifest(&args), "archive evidence")?;
+    expect_message(&error, "package archive unavailable", "archive evidence")
+}
+
+// ---------------------------------------------------------------------------
+// Candidate row laws (candidate_row).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn incomplete_row_refuses() -> TestResult {
+    let error = topology_refusal_with("row-incomplete", |document| {
+        mutate_row(document, 0, "local_checksum", Value::Null)
+    })?;
+    expect_message(
+        &error,
+        "topology receipt row is incomplete",
+        "incomplete row",
+    )
+}
+
+#[test]
+fn unparseable_row_version_refuses() -> TestResult {
+    let error = topology_refusal_with("row-version-unparseable", |document| {
+        mutate_row(document, 0, "version", json!("not-a-version"))
+    })?;
+    expect_message(
+        &error,
+        "is not a validated typed release identity",
+        "unparseable version",
+    )
+}
+
+#[test]
+fn malformed_local_checksum_refuses() -> TestResult {
+    let error = topology_refusal_with("row-local-digest", |document| {
+        mutate_row(document, 0, "local_checksum", json!("sha256:zz"))
+    })?;
+    expect_message(
+        &error,
+        "malformed crate digest for allow-core",
+        "local digest",
+    )
+}
+
+#[test]
+fn oversized_release_order_refuses() -> TestResult {
+    let error = topology_refusal_with("row-order-oversized", |document| {
+        mutate_row(document, 0, "release_order", json!(5_000_000_000_u64))
+    })?;
+    expect_message(
+        &error,
+        "exceeds the manifest order range",
+        "oversized order",
+    )
+}
+
+#[test]
+fn zero_release_order_refuses() -> TestResult {
+    let error = topology_refusal_with("row-order-zero", |document| {
+        mutate_row(document, 0, "release_order", json!(0))
+    })?;
+    expect_message(&error, "duplicate package identity", "zero order")
+}
+
+// ---------------------------------------------------------------------------
+// Published and candidate row laws (manifest_row_from_candidate and
+// candidate_manifest_row).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn missing_state_row_refuses() -> TestResult {
+    let error = topology_refusal_with("row-state-missing", |document| {
+        mutate_row(document, 0, "state", json!("missing"))
+    })?;
+    expect_message(&error, "is not registry-verified", "missing state")
+}
+
+#[test]
+fn provider_unavailable_state_row_refuses() -> TestResult {
+    let error = topology_refusal_with("row-state-provider", |document| {
+        mutate_row(document, 0, "state", json!("provider_unavailable"))
+    })?;
+    expect_message(&error, "is not registry-verified", "provider state")
+}
+
+#[test]
+fn published_row_without_registry_checksum_refuses() -> TestResult {
+    let error = topology_refusal_with("row-registry-null", |document| {
+        mutate_row(document, 0, "registry_checksum", Value::Null)
+    })?;
+    expect_message(
+        &error,
+        "registry checksum missing or malformed for published row",
+        "null registry digest",
+    )
+}
+
+#[test]
+fn malformed_candidate_registry_checksum_refuses() -> TestResult {
+    let error = topology_refusal_with("row-registry-candidate", |document| {
+        set_field(document, "publish", json!(false))?;
+        set_field(document, "first_irreversible_row", Value::Null)?;
+        mutate_row(document, 0, "state", json!("packaged"))?;
+        mutate_row(document, 1, "state", json!("packaged"))?;
+        mutate_row(document, 1, "registry_checksum", Value::Null)?;
+        mutate_row(document, 0, "registry_checksum", json!("sha256:zz"))
+    })?;
+    expect_message(
+        &error,
+        "malformed registry checksum for allow-core",
+        "candidate digest",
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Binary evidence laws (load_binary_evidence).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn binary_receipt_missing_field_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-field-missing",
+        |package, _| remove_field(package, "archive_name"),
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "binary receipt is missing a required field",
+        "missing field",
+    )
+}
+
+#[test]
+fn binary_receipt_field_disagreement_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-field-drift",
+        |_, install| set_field(install, "commit", json!("other-commit")),
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "binary receipt disagreement in commit",
+        "field drift",
+    )
+}
+
+#[test]
+fn binary_receipt_version_disagreement_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-version-drift",
+        |package, install| {
+            set_field(package, "version", json!("0.1.11"))?;
+            set_field(install, "version", json!("0.1.11"))
+        },
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "binary receipt version disagrees with manifest",
+        "version drift",
+    )
+}
+
+#[test]
+fn binary_receipt_identity_disagreement_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-tag-drift",
+        |_, _| Ok(()),
+        |args| {
+            args.tag = Some("v0.1.11".to_string());
+        },
+    )?;
+    expect_message(
+        &error,
+        "binary receipt tag disagrees with manifest identity",
+        "tag drift",
+    )
+}
+
+#[test]
+fn unsupported_binary_target_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-target",
+        |package, install| {
+            set_field(package, "target_triple", json!("aarch64-unknown-linux-gnu"))?;
+            set_field(install, "target_triple", json!("aarch64-unknown-linux-gnu"))
+        },
+        |_| {},
+    )?;
+    expect_message(&error, "unsupported binary target", "target drift")
+}
+
+#[test]
+fn binary_requires_linux_platform_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-platform",
+        |_, _| Ok(()),
+        |args| {
+            args.platforms = "macos".to_string();
+        },
+    )?;
+    expect_message(
+        &error,
+        "Linux binary asset requires linux in PLATFORMS",
+        "platform drift",
+    )
+}
+
+#[test]
+fn binary_archive_name_law_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-archive-name",
+        |package, install| {
+            set_field(package, "archive_name", json!("wrong.tar.gz"))?;
+            set_field(install, "archive_name", json!("wrong.tar.gz"))
+        },
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "binary archive name is not the stable Linux name",
+        "archive name",
+    )
+}
+
+#[test]
+fn binary_archive_format_law_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-archive-format",
+        |package, install| {
+            set_field(package, "archive_format", json!("zip"))?;
+            set_field(install, "archive_format", json!("zip"))
+        },
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "Linux binary archive format must be tar.gz",
+        "archive format",
+    )
+}
+
+#[test]
+fn binary_executable_name_law_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-executable-name",
+        |package, install| {
+            set_field(package, "executable_name", json!("cargo-allowx"))?;
+            set_field(install, "executable_name", json!("cargo-allowx"))
+        },
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "binary executable name must be cargo-allow",
+        "executable name",
+    )
+}
+
+#[test]
+fn binary_requires_toolchain_and_runner_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-toolchain",
+        |_, _| Ok(()),
+        |args| {
+            args.rust_toolchain = String::new();
+        },
+    )?;
+    expect_message(
+        &error,
+        "binary toolchain and runner are required",
+        "toolchain drift",
+    )
+}
+
+#[test]
+fn malformed_binary_digest_refuses() -> TestResult {
+    let error = binary_case_with(
+        "binary-digest",
+        |package, install| {
+            set_field(package, "executable_sha256", json!("sha256:zz"))?;
+            set_field(install, "executable_sha256", json!("sha256:zz"))
+        },
+        |_| {},
+    )?;
+    expect_message(
+        &error,
+        "malformed binary digest executable_sha256",
+        "binary digest",
+    )
+}
+
+#[test]
+fn verified_attestation_binary_completes_without_diagnostics() -> TestResult {
+    let dir = fixture_dir("binary-attested");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let package_path = dir.join("release-binary.receipt.json");
+    let install_path = dir.join("release-binary-install.receipt.json");
+    write_receipt(
+        &package_path,
+        &binary_receipt_document(BINARY_PACKAGE_RECEIPT_SCHEMA, true),
+    )?;
+    write_receipt(
+        &install_path,
+        &binary_receipt_document(BINARY_INSTALL_RECEIPT_SCHEMA, true),
+    )?;
+    let mut args = generate_args(&dir, &receipt);
+    args.binary_package_receipt = Some(package_path);
+    args.binary_install_receipt = Some(install_path);
+    args.require_result = Some("complete".to_string());
+    cmd_release_manifest(&args)
+        .map_err(|error| format!("attested binary evidence must complete: {error}"))?;
+    let manifest: Value = serde_json::from_slice(&receipt_bytes(&args.output)?)
+        .map_err(|error| format!("manifest: {error}"))?;
+    let diagnostics = array_len_of(&manifest, &["instrument_diagnostics"])?;
+    if diagnostics != 0 {
+        return Err(format!(
+            "verified attestation must stay silent, got {diagnostics} diagnostics"
+        )
+        .into());
+    }
+    let evidence = manifest
+        .get("payload")
+        .and_then(|payload| payload.get("consumed_evidence"))
+        .and_then(Value::as_array)
+        .ok_or("consumed evidence is missing")?;
+    let install_verified = evidence.iter().any(|row| {
+        row.get("schema_id").and_then(Value::as_str) == Some(BINARY_INSTALL_RECEIPT_SCHEMA)
+            && row.get("result_class").and_then(Value::as_str) == Some("verified")
+    });
+    if !install_verified {
+        return Err("the verified install receipt must be retained as verified evidence".into());
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Generate input and required-result laws (require_generate_inputs,
+// parse_required_result, build_envelope).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn missing_generate_input_refuses() -> TestResult {
+    let dir = fixture_dir("input-version");
+    prepare_fixture_dir(&dir)?;
+    let mut args = generate_args(&dir, &dir.join("unused-topology-publish.receipt.json"));
+    args.version = None;
+    let error = expect_refusal(cmd_release_manifest(&args), "missing version")?;
+    expect_message(
+        &error,
+        "--version is required in generate mode",
+        "missing version",
+    )
+}
+
+#[test]
+fn binary_receipts_require_each_other_refuses() -> TestResult {
+    let dir = fixture_dir("input-binary-pair");
+    prepare_fixture_dir(&dir)?;
+    let mut args = generate_args(&dir, &dir.join("unused-topology-publish.receipt.json"));
+    args.binary_package_receipt = Some(dir.join("only-package.receipt.json"));
+    let error = expect_refusal(cmd_release_manifest(&args), "lone package receipt")?;
+    expect_message(
+        &error,
+        "binary package and install receipts must be supplied together",
+        "binary pair",
+    )
+}
+
+#[test]
+fn unsupported_auth_source_refuses() -> TestResult {
+    let dir = fixture_dir("input-auth-source");
+    prepare_fixture_dir(&dir)?;
+    let mut args = generate_args(&dir, &dir.join("unused-topology-publish.receipt.json"));
+    args.auth_source = Some("github_token".to_string());
+    let error = expect_refusal(cmd_release_manifest(&args), "auth source")?;
+    expect_message(
+        &error,
+        "only crates_io_api_token is supported",
+        "auth source",
+    )
+}
+
+#[test]
+fn unknown_required_result_refuses() -> TestResult {
+    let dir = fixture_dir("input-required-result");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let mut args = generate_args(&dir, &receipt);
+    args.manifest = Some(receipt);
+    args.require_result = Some("not-a-typed-result".to_string());
+    args.result_out = dir.join("unused-result.json");
+    let error = expect_refusal(cmd_release_manifest(&args), "required result")?;
+    expect_message(&error, "unknown required result", "required result")?;
+    if args.result_out.exists() {
+        return Err("an unknown required result must fail before any receipt is written".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn workflow_run_id_is_optional_in_the_authorization_reference() -> TestResult {
+    let dir = fixture_dir("workflow-reference-optional");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let mut args = generate_args(&dir, &receipt);
+    args.workflow_run_id = None;
+    cmd_release_manifest(&args)
+        .map_err(|error| format!("a run without a workflow id must generate: {error}"))?;
+    let manifest: Value = serde_json::from_slice(&receipt_bytes(&args.output)?)
+        .map_err(|error| format!("manifest: {error}"))?;
+    if str_field_of(&manifest, &["authorization_reference"])? != "workflow/crates-io" {
+        return Err("a run without a workflow id must use the generic reference".into());
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Validate-mode refusal laws (cmd_validate).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn validate_mode_missing_manifest_refuses() -> TestResult {
+    let dir = fixture_dir("validate-missing");
+    prepare_fixture_dir(&dir)?;
+    let mut args = generate_args(&dir, &dir.join("unused-topology-publish.receipt.json"));
+    args.manifest = Some(dir.join("absent-manifest.json"));
+    let error = expect_refusal(cmd_release_manifest(&args), "missing manifest")?;
+    expect_message(&error, "cannot read manifest", "missing manifest")
+}
+
+#[test]
+fn validate_mode_unparseable_manifest_refuses_without_diagnostics() -> TestResult {
+    let dir = fixture_dir("validate-garbage");
+    prepare_fixture_dir(&dir)?;
+    let manifest_path = dir.join("garbage-manifest.json");
+    std::fs::write(&manifest_path, b"not a manifest at all")
+        .map_err(|error| format!("write {}: {error}", manifest_path.display()))?;
+    let mut args = generate_args(&dir, &dir.join("unused-topology-publish.receipt.json"));
+    args.manifest = Some(manifest_path);
+    let error = expect_refusal(cmd_release_manifest(&args), "garbage manifest")?;
+    expect_message(
+        &error,
+        "does not parse against the typed contract",
+        "garbage manifest",
+    )?;
+    if args.result_out.exists() {
+        return Err("an unparseable manifest must not produce a diagnostics receipt".into());
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Artifact emission refusal laws (write_manifest_and_sidecar,
+// emit_result_receipt).
+// ---------------------------------------------------------------------------
+
+#[test]
+fn unwritable_manifest_directory_refuses() -> TestResult {
+    let dir = fixture_dir("output-parent-blocked");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let blocker = dir.join("blocker");
+    std::fs::write(&blocker, b"not a directory")
+        .map_err(|error| format!("write blocker: {error}"))?;
+    let mut args = generate_args(&dir, &receipt);
+    args.output = blocker.join("release-manifest-v2.json");
+    let error = expect_refusal(cmd_release_manifest(&args), "blocked output")?;
+    expect_message(&error, "cannot create manifest directory", "blocked output")
+}
+
+#[test]
+fn unwritable_result_directory_refuses() -> TestResult {
+    let dir = fixture_dir("result-parent-blocked");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let blocker = dir.join("blocker");
+    std::fs::write(&blocker, b"not a directory")
+        .map_err(|error| format!("write blocker: {error}"))?;
+    let mut args = generate_args(&dir, &receipt);
+    args.result_out = blocker.join("release-manifest-v2.result.json");
+    let error = expect_refusal(cmd_release_manifest(&args), "blocked result")?;
+    expect_message(
+        &error,
+        "cannot create result receipt directory",
+        "blocked result",
+    )
+}
+
+#[test]
+fn unwritable_github_output_refuses() -> TestResult {
+    let dir = fixture_dir("github-output-blocked");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    write_receipt(&receipt, &published_receipt_document())?;
+    let blocked = dir.join("blocked-github-output");
+    std::fs::create_dir_all(&blocked).map_err(|error| format!("create blocker: {error}"))?;
+    let mut args = generate_args(&dir, &receipt);
+    args.github_output = Some(blocked);
+    let error = expect_refusal(cmd_release_manifest(&args), "blocked github output")?;
+    expect_message(&error, "cannot open GitHub output", "blocked github output")
+}
+
+// ---------------------------------------------------------------------------
+// Timestamp and artifact-reference projection laws.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn generated_at_utc_rejects_a_pre_epoch_clock() -> TestResult {
+    let instant = UNIX_EPOCH
+        .checked_sub(std::time::Duration::from_secs(1))
+        .ok_or("pre-epoch instants must be representable")?;
+    let error = match generated_at_utc(instant) {
+        Ok(rendered) => return Err(format!("a pre-epoch clock rendered {rendered}").into()),
+        Err(error) => error,
+    };
+    if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+        return Err(format!("a pre-epoch clock must fail as an instrument: {error}").into());
+    }
+    expect_message(&error, "clock precedes the Unix epoch", "pre-epoch clock")
+}
+
+#[test]
+fn generated_at_utc_rejects_a_clock_beyond_the_calendar() -> TestResult {
+    let seconds = 3_900_000_u64 * 86_400;
+    let instant = UNIX_EPOCH
+        .checked_add(std::time::Duration::from_secs(seconds))
+        .ok_or("far-future instants must be representable")?;
+    let error = match generated_at_utc(instant) {
+        Ok(rendered) => return Err(format!("a far-future clock rendered {rendered}").into()),
+        Err(error) => error,
+    };
+    if error.kind() != CargoAllowErrorKind::InstrumentFailure {
+        return Err(format!("a far-future clock must fail as an instrument: {error}").into());
+    }
+    expect_message(&error, "exceeds the supported calendar", "far-future clock")
+}
+
+#[test]
+fn artifact_reference_forms_the_receipt_paths() -> TestResult {
+    let relative = artifact_reference(Path::new("target/cargo-allow/evidence.json"));
+    if relative != "target/cargo-allow/evidence.json" {
+        return Err(format!("relative evidence must stay relative: {relative}").into());
+    }
+    let cwd = std::env::current_dir().map_err(|error| format!("cwd: {error}"))?;
+    let inside = artifact_reference(&cwd.join("sub").join("evidence.json"));
+    if inside != "sub/evidence.json" {
+        return Err(format!(
+            "absolute evidence under the checkout must project relative: {inside}"
+        )
+        .into());
+    }
+    let outside =
+        artifact_reference(&std::env::temp_dir().join("cargo-allow-artifact-reference.json"));
+    if outside != "artifact/cargo-allow-artifact-reference.json" {
+        return Err(format!(
+            "absolute evidence outside the checkout must use the artifact/ form: {outside}"
+        )
+        .into());
+    }
+    let root = std::env::temp_dir()
+        .ancestors()
+        .last()
+        .ok_or("path ancestors are empty")?
+        .to_path_buf();
+    let rendered = artifact_reference(&root);
+    if rendered != "artifact/" {
+        return Err(format!(
+            "a path without a file name must fall back to the artifact/ form: {rendered}"
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn null_marker_with_verified_existing_rows_completes() -> TestResult {
+    let dir = fixture_dir("verified-existing-null-marker");
+    prepare_fixture_dir(&dir)?;
+    let receipt = dir.join("topology-publish.receipt.json");
+    let mut document = published_receipt_document();
+    set_field(&mut document, "first_irreversible_row", Value::Null)?;
+    let rows = document
+        .get_mut("rows")
+        .and_then(Value::as_array_mut)
+        .ok_or("fixture rows are missing")?;
+    for row in rows.iter_mut() {
+        let object = row.as_object_mut().ok_or("fixture row is not an object")?;
+        object.insert("state".to_string(), json!("verified_existing"));
+    }
+    write_receipt(&receipt, &document)?;
+    let mut args = generate_args(&dir, &receipt);
+    args.require_result = Some("complete".to_string());
+    cmd_release_manifest(&args)
+        .map_err(|error| format!("verified-existing rows must generate: {error}"))?;
+    let result_bytes = receipt_bytes(&args.result_out)?;
+    let result: Value =
+        serde_json::from_slice(&result_bytes).map_err(|error| format!("receipt: {error}"))?;
+    if result.get("result").and_then(Value::as_str) != Some("complete") {
+        return Err(format!(
+            "verified-existing evidence must reach complete, got {:?}",
+            result.get("result")
+        )
+        .into());
+    }
+    Ok(())
+}
