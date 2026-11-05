@@ -78,6 +78,7 @@ path, bytes, checksum, or retention interval.
 | `experience:exact-candidate` | `ExperienceReference` | Exact candidate V2 |
 | `experience:migration-denominator` | `ExperienceReference` | Original referenced bytes; semantic producer still required |
 | `experience:docs:<name>` | `ExperienceReference` | Every declared documentation identity's original bytes |
+| `experience:docs-execution` | `ExperienceReference` | Required when the input references an executed-documentation record (#4706) |
 | `experience:clean-pilot`, `experience:clean-pilot-friction` | `ExperienceReference` | Required when the input references a clean pilot |
 | `experience:brownfield-pilot` | `ExperienceReference` | Required when the input references a brownfield receipt |
 
@@ -129,7 +130,12 @@ dependencies, even when the supplied model-level result is `Complete`:
   validator. Router cases can be implemented first while later cases stay
   explicitly missing.
 - #3151 must produce the installed help/reference/man/completion observations
-  and coherence evidence for the eight selected documentation identities.
+  and coherence evidence for the eight selected documentation identities. The
+  executed-documentation admission (#4706) discharges exactly this hold when
+  the input references an original `ReleaseExperienceDocsExecutionV1` record
+  that binds the selected executable, identities, and claims and reads
+  `Complete` through its semantic reader; every defect keeps the hold, and a
+  forged `Complete` claim over a failed or missing record mismatches instead.
 
 These are semantic dependencies, not new DTOs, pilot proof, or an exception
 to the current `Complete` requirement. The composer no longer fabricates
@@ -143,6 +149,38 @@ validation, #3151 installed documentation observations, and #2466's separately
 owned pilot producer/reader after target selection. Their reviewed consumers
 must replace the corresponding missing-producer holds before production
 experience admission can become `Complete`.
+
+### Executed-documentation records (#4706)
+
+`cargo-allow.release-experience-docs-execution.v1` is the original record a
+producer emits after running the commands a selected installed candidate's
+shipped documentation advertises, inside owned temporary fixtures. Each check
+binds one of the eight existing docs identities, carries the exact argv,
+observed exit, output excerpts, and declared/observed write sets, and states
+the documented exit expectation (`expected_exit_code`), so an honestly
+documented red or error path can agree at its own exit while a forged success
+at a nonzero exit mismatches. The record claims no result of its own; the
+`allow-report` semantic reader computes it from the observations.
+
+The admission reads the record through the existing `ExperienceReference`
+byte-custody path, binds it to the input's installed executable digest,
+invocation path, subject version claim, and the eight selected documentation
+identities, enforces the Rust-floor claim against the recorded toolchain when
+both are version-shaped, rejects undeclared writes, unbounded text, unknown
+fields, duplicate ids, unknown identities, and missing identity coverage, and
+lifts only the #3151 hold when the recomputed reader result is `Complete` and
+equals the input's claim. #2466 and #3149 holds, staleness, and every named
+defect keep the admission below `Complete` exactly as before.
+
+One selected executed record is retained at
+[`evidence/rc1-installed-docs-execution.v1.json`](evidence/rc1-installed-docs-execution.v1.json):
+the public 0.2.0-rc.1 prerelease installed into an isolated root, with 30
+checks over all eight identities, seven honest E-family disagreements (flat
+first screen, unnamed prerelease channel, completion hiding leak, internal
+surface leakage, package-surface desynchronization, first-screen crowding)
+and the package rustdoc surface explicitly not executed. Its reader result is
+`Mismatch`, so the #3151 hold stays for this channel; it is retained executed
+evidence, not final installed qualification, and grants no release authority.
 
 ### Focused admission controls
 

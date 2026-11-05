@@ -9,13 +9,16 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use allow_core::sha256_v1_bytes;
 use allow_report::{
-    CargoAllowReleaseExperienceV1, ExactCandidatePayloadV2, ExactCandidateResultV2,
-    FinalEvidenceCurrentnessV1, FinalEvidenceGraphV1, FinalEvidenceNodeResultV1,
-    FinalEvidencePackageRoleV1, FinalEvidencePackageSubjectV1, IsolatedInstallPayloadV2,
-    IsolatedInstallResultV2, PackageCandidateFamilyV2, PackageCandidatePayloadV2,
-    PackageCandidateResultV2, ReleaseExperienceInputV1, ReleaseExperienceResultV1,
-    evaluate_release_experience_v1, validate_exact_candidate_v2, validate_isolated_install_v2,
-    validate_package_candidate_v2,
+    CargoAllowReleaseDocsExecutionEvaluationV1, CargoAllowReleaseExperienceV1,
+    ExactCandidatePayloadV2, ExactCandidateResultV2, FinalEvidenceCurrentnessV1,
+    FinalEvidenceGraphV1, FinalEvidenceNodeResultV1, FinalEvidencePackageRoleV1,
+    FinalEvidencePackageSubjectV1, IsolatedInstallPayloadV2, IsolatedInstallResultV2,
+    PackageCandidateFamilyV2, PackageCandidatePayloadV2, PackageCandidateResultV2,
+    RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID, RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION,
+    ReleaseExperienceDocsExecutionV1, ReleaseExperienceInputV1, ReleaseExperienceResultV1,
+    evaluate_release_experience_docs_execution_v1, evaluate_release_experience_v1,
+    rust_floor_satisfied, rust_floor_token, validate_exact_candidate_v2,
+    validate_isolated_install_v2, validate_package_candidate_v2,
 };
 use serde::de::DeserializeOwned;
 
@@ -57,13 +60,22 @@ impl Admission {
         }
     }
 
-    fn retain_dependencies(&mut self) {
+    fn retain_dependencies(&mut self, docs_executed: bool) {
         for note in [
             "#2466: the clean-pilot target/steps/friction producer and semantic reader are absent; retained opaque bytes do not prove a pilot",
             "#3149: the executed supported-case denominator and human/machine parity producer are absent",
-            "#3151: installed help/reference/man/completion and selected documentation coherence production are absent",
         ] {
             self.record(State::NotProven, note);
+        }
+        // #3151's documentation coherence hold lifts only when the original
+        // executed-documentation record was present, bound, and admitted
+        // Complete by the semantic reader; any defect keeps it, and no other
+        // role's Complete can override a failed or missing observation.
+        if !docs_executed {
+            self.record(
+                State::NotProven,
+                "#3151: installed help/reference/man/completion and selected documentation coherence production are absent",
+            );
         }
     }
 }
@@ -156,7 +168,7 @@ pub(super) fn reconcile(
         Ok(pair) => pair,
         Err(problem) => {
             admission.record(problem.result, problem.notes.join("; "));
-            admission.retain_dependencies();
+            admission.retain_dependencies(false);
             return admission;
         }
     };
@@ -185,6 +197,7 @@ pub(super) fn reconcile(
             "duplicate experience documentation identity",
         );
     }
+    let mut docs_executed = false;
     if let (Some(readback), Some(now)) = (readback, now) {
         if input.evaluated_at_unix_seconds > now
             || !now
@@ -201,11 +214,188 @@ pub(super) fn reconcile(
         if let Err(problem) = bind_references(subject, selected_packages, &input, readback) {
             admission.record(problem.result, problem.notes.join("; "));
         }
+        match admit_docs_execution(subject, &input, readback, now) {
+            DocsExecution::Unclaimed => {}
+            DocsExecution::Admitted => docs_executed = true,
+            DocsExecution::Defect(problem) => {
+                admission.record(problem.result, problem.notes.join("; "));
+            }
+        }
     }
     // An authentic download or matching model output is not a semantic proof.
-    // No supported producer/reader currently discharges these three obligations.
-    admission.retain_dependencies();
+    // #2466 and #3149 have no supported producer/reader yet; #3151 lifts only
+    // through an admitted executed-documentation observation.
+    admission.retain_dependencies(docs_executed);
     admission
+}
+
+/// Outcome of the executed-documentation admission (#4706) for one input.
+enum DocsExecution {
+    /// No claim on the input; the standing hold note stays unchanged.
+    Unclaimed,
+    /// Claim present, original record bound, reader Complete: discharge.
+    Admitted,
+    /// A named defect or a non-Complete reader result; the hold stays.
+    Defect(Admission),
+}
+
+/// Admit one original executed-documentation record against the selected
+/// subject. Byte custody, role, and digest binding reuse the existing
+/// reference path; every binding below ties the record to the exact input,
+/// installed executable, channel/version claim, and selected documentation
+/// identities before the reader's Complete result can lift the hold.
+fn admit_docs_execution(
+    subject: &SubjectIdentity,
+    input: &ReleaseExperienceInputV1,
+    readback: &ReadbackInput,
+    now: u64,
+) -> DocsExecution {
+    let Some(claim) = &input.docs_execution else {
+        return DocsExecution::Unclaimed;
+    };
+    let bytes = match reference(readback, "experience:docs-execution", &claim.record_digest) {
+        Ok(bytes) => bytes,
+        Err(problem) => return DocsExecution::Defect(problem),
+    };
+    let record: ReleaseExperienceDocsExecutionV1 =
+        match decode(bytes, "docs execution", docs_execution_fields) {
+            Ok(record) => record,
+            Err(problem) => return DocsExecution::Defect(problem),
+        };
+    if record.schema_id != RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID
+        || record.schema_version != RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION
+    {
+        return DocsExecution::Defect(Admission::issue(
+            State::Unsupported,
+            "docs execution record is a non-current generation",
+        ));
+    }
+    let expected_version = format!("cargo-allow {}", subject.version);
+    let binding_failure =
+        |detail: String| DocsExecution::Defect(Admission::issue(State::Mismatch, detail));
+    if !same_digest(&record.binary_digest, &input.binary_digest) {
+        return binding_failure(
+            "docs execution ran against a different installed executable".to_string(),
+        );
+    }
+    if record.invocation_path != input.invocation_path {
+        return binding_failure(
+            "docs execution invocation path differs from the selected install".to_string(),
+        );
+    }
+    if record.version_claim != expected_version
+        || record.installed_version_output != expected_version
+    {
+        return binding_failure(format!(
+            "docs execution version or channel claim differs from the selected subject {expected_version}"
+        ));
+    }
+    // The reader guarantees a shaped floor claim; enforce floor <= toolchain
+    // whenever the recorded toolchain is itself version-shaped (fixture
+    // toolchains like `selected-toolchain` carry no comparable version).
+    if let (Some(floor), Some(toolchain)) = (
+        rust_floor_token(&record.rust_floor_claim),
+        rust_floor_token(&record.toolchain),
+    ) && !rust_floor_satisfied(&floor, &toolchain)
+    {
+        return binding_failure(format!(
+            "docs execution rust floor {} exceeds the installed toolchain {}",
+            record.rust_floor_claim, record.toolchain
+        ));
+    }
+    let selected_identities: BTreeSet<_> = input
+        .docs_identities
+        .iter()
+        .map(|identity| identity.name.as_str())
+        .collect();
+    if let Some(check) = record
+        .checks
+        .iter()
+        .find(|check| !selected_identities.contains(check.docs_name.as_str()))
+    {
+        return binding_failure(format!(
+            "docs execution check {} does not bind a selected documentation identity",
+            check.id
+        ));
+    }
+    let evaluated: CargoAllowReleaseDocsExecutionEvaluationV1 =
+        evaluate_release_experience_docs_execution_v1(&record);
+    if evaluated.result != claim.result {
+        return DocsExecution::Defect(Admission::issue(
+            State::Mismatch,
+            format!(
+                "docs execution claim {claim:?} differs from the computed reader result {:?}; reader gaps: {}",
+                evaluated.result,
+                evaluated.gaps.join("; ")
+            ),
+        ));
+    }
+    if record.observed_at_unix_seconds > now
+        || !now
+            .checked_sub(record.observed_at_unix_seconds)
+            .is_some_and(|age| record.maximum_age_seconds > 0 && age <= record.maximum_age_seconds)
+    {
+        return DocsExecution::Defect(Admission::issue(
+            State::Stale,
+            "docs execution record is future-dated or expired at the checked provider observation",
+        ));
+    }
+    if claim.result == State::Complete && evaluated.result == State::Complete {
+        return DocsExecution::Admitted;
+    }
+    DocsExecution::Defect(Admission::issue(
+        evaluated.result,
+        format!("docs execution: {}", evaluated.gaps.join("; ")),
+    ))
+}
+
+fn docs_execution_fields(value: &serde_json::Value) -> Result<(), Admission> {
+    object_fields(
+        value,
+        &[
+            "schema_id",
+            "schema_version",
+            "binary_digest",
+            "installed_version_output",
+            "invocation_path",
+            "platform",
+            "toolchain",
+            "channel_claim",
+            "version_claim",
+            "rust_floor_claim",
+            "checks",
+            "limitations",
+            "claim_boundary",
+            "observed_at_unix_seconds",
+            "maximum_age_seconds",
+        ],
+        "docs execution",
+    )?;
+    if let Some(checks) = value.get("checks").and_then(serde_json::Value::as_array) {
+        for (index, check) in checks.iter().enumerate() {
+            object_fields(
+                check,
+                &[
+                    "id",
+                    "docs_name",
+                    "kind",
+                    "command",
+                    "argv",
+                    "exit_code",
+                    "expected_exit_code",
+                    "stdout_excerpt",
+                    "stderr_excerpt",
+                    "declared_writes",
+                    "observed_writes",
+                    "documented_claim",
+                    "observed_summary",
+                    "outcome",
+                ],
+                &format!("docs execution checks[{index}]"),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn apply(graph: &mut FinalEvidenceGraphV1, admission: &Admission) {
