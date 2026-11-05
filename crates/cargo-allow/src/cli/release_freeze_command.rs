@@ -149,6 +149,14 @@ pub(crate) enum FreezeEvidenceRole {
     /// Original CargoAllowReleaseExperienceV1, reconciled against its input.
     #[value(name = "release-experience")]
     ReleaseExperience,
+    /// Original native `cargo-allow.command-case-admission.v1` projection
+    /// retained for the executed command-case collection (#3149).
+    #[value(name = "command-case-admission")]
+    CommandCaseAdmission,
+    /// Original caller-pinned expected collection/binary/per-case context
+    /// (`cargo-allow.command-case-context.v1`) bound to that admission.
+    #[value(name = "command-case-context")]
+    CommandCaseContext,
     /// Exact-candidate interop smoke receipt.
     #[value(name = "interop")]
     Interop,
@@ -218,6 +226,16 @@ impl FreezeEvidenceRole {
                 FinalEvidenceNodeClassV1::InstalledJourney,
                 FinalEvidenceOriginV1::WorkflowArtifact,
                 "release-experience",
+            ),
+            Self::CommandCaseAdmission => (
+                FinalEvidenceNodeClassV1::InstalledJourney,
+                FinalEvidenceOriginV1::WorkflowArtifact,
+                "command-case-admission",
+            ),
+            Self::CommandCaseContext => (
+                FinalEvidenceNodeClassV1::InstalledJourney,
+                FinalEvidenceOriginV1::WorkflowArtifact,
+                "command-case-context",
             ),
             Self::Interop => (
                 FinalEvidenceNodeClassV1::PlatformReceipt,
@@ -931,6 +949,8 @@ fn collect_evidence(
                 | FreezeEvidenceRole::RegistryObservation
                 | FreezeEvidenceRole::ReleaseExperienceInput
                 | FreezeEvidenceRole::ReleaseExperience
+                | FreezeEvidenceRole::CommandCaseAdmission
+                | FreezeEvidenceRole::CommandCaseContext
         ) {
             rehearsal::decode(&bytes)
         } else {
@@ -1190,6 +1210,14 @@ fn bind_evidence(subject: &SubjectIdentity, role: FreezeEvidenceRole, value: &Js
                 "note:required installed-experience admission is evaluated separately".to_string(),
             );
         }
+        FreezeEvidenceRole::CommandCaseAdmission | FreezeEvidenceRole::CommandCaseContext => {
+            // The retained native originals are bound to the accepted
+            // catalogue, exact executable and freeze subject inside the
+            // installed-experience admission, never by these legacy probes.
+            notes.push(
+                "note:command-case originals join the installed-experience admission".to_string(),
+            );
+        }
         FreezeEvidenceRole::Controls => {
             let state = str_field(value, "state").unwrap_or_default();
             if state != "Feasible" {
@@ -1340,6 +1368,8 @@ fn build_evidence_graph(
             FreezeEvidenceRole::RegistryObservation
                 | FreezeEvidenceRole::ReleaseExperienceInput
                 | FreezeEvidenceRole::ReleaseExperience
+                | FreezeEvidenceRole::CommandCaseAdmission
+                | FreezeEvidenceRole::CommandCaseContext
         )
     }) {
         let (class, origin, id) = input.role.graph_shape();
@@ -1383,6 +1413,27 @@ fn build_evidence_graph(
             experience_admission.graph_result(),
             subject,
         ));
+    }
+
+    // Retained command-case originals join the installed-experience admission
+    // itself; when supplied they keep a non-required supporting row so the
+    // qualifier's custody binding still finds their graph node.
+    for role in [
+        FreezeEvidenceRole::CommandCaseAdmission,
+        FreezeEvidenceRole::CommandCaseContext,
+    ] {
+        let Some(input) = evidence_role(evidence, role) else {
+            continue;
+        };
+        let (class, origin, id) = role.graph_shape();
+        let result = if input.bound_ok() {
+            FinalEvidenceNodeResultV1::Complete
+        } else {
+            FinalEvidenceNodeResultV1::Mismatch
+        };
+        let mut node = node_for(id, class, origin, &input.sha256, result, subject);
+        node.required = false;
+        nodes.push(node);
     }
 
     // Registry admission is required even when no input was supplied. Its

@@ -11,12 +11,12 @@ pub(crate) fn reconcile(
     member_root: &Path,
 ) -> Admission {
     let mut result = Admission {
-        schema_id: ADMISSION_SCHEMA, schema_version: 1,
+        schema_id: ADMISSION_SCHEMA.to_string(), schema_version: 1,
         catalogue_digest: allow_core::sha256_v1_bytes(catalogue_bytes),
         context_digest: allow_core::sha256_v1_bytes(context_bytes),
         bundle_digest: allow_core::sha256_v1_bytes(bundle_bytes),
         collection_id: String::new(), semantic_validity: SemanticValidity::Invalid,
-        qualification: "partial", cases: Vec::new(), missing_cases: Vec::new(),
+        qualification: "partial".to_string(), cases: Vec::new(), missing_cases: Vec::new(),
         dimensions: Vec::new(), errors: Vec::new(),
         qualification_gaps: vec![
             "the first-family reader cannot satisfy the full A-C, diff-D and #3882 denominator".to_string(),
@@ -26,7 +26,7 @@ pub(crate) fn reconcile(
             "source-generation and candidate/install mappings are caller-pinned declarations; binary digest readback alone does not authenticate a build or installation".to_string(),
             "before/after snapshots cover the controlled fixture outside target and the blocked-output canary; they are not a sandbox or a claim about all host filesystem effects".to_string(),
         ],
-        claim_boundary: "Native readback checks retained bytes, expected context, selected fixture facts and the existing typed command projections. It does not rerun the scan, install or execute a candidate, authenticate a worker, select policy, authorize publication, or establish complete release qualification. A valid selected observation can coexist with Partial qualification.",
+        claim_boundary: "Native readback checks retained bytes, expected context, selected fixture facts and the existing typed command projections. It does not rerun the scan, install or execute a candidate, authenticate a worker, select policy, authorize publication, or establish complete release qualification. A valid selected observation can coexist with Partial qualification.".to_string(),
     };
     if let Err(error) = reconcile_inner(
         catalogue_bytes,

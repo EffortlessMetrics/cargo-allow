@@ -76,7 +76,7 @@ path, bytes, checksum, or retention interval.
 | `experience:package-candidate` | `ExperienceReference` | Package candidate V2 |
 | `experience:isolated-install` | `ExperienceReference` | Isolated install V2 |
 | `experience:exact-candidate` | `ExperienceReference` | Exact candidate V2 |
-| `experience:migration-denominator` | `ExperienceReference` | Original referenced bytes; semantic producer still required |
+| `experience:migration-denominator` | `ExperienceReference` | The accepted #3149 case catalogue, bound to the retained native command-case admission |
 | `experience:docs:<name>` | `ExperienceReference` | Every declared documentation identity's original bytes |
 | `experience:clean-pilot`, `experience:clean-pilot-friction` | `ExperienceReference` | Required when the input references a clean pilot |
 | `experience:brownfield-pilot` | `ExperienceReference` | Required when the input references a brownfield receipt |
@@ -138,11 +138,36 @@ remain visible and cannot waive a required experience node. The published
 command registry remains on its existing published version; candidate-only
 commands are not promoted by this adapter.
 
+#### The #3149 command-case join (#4705)
+
+The executed-denominator hold is no longer unconditional in the face of
+retained evidence. The composer accepts two optional evidence roles,
+`command-case-admission=path` (the original native
+`cargo-allow.command-case-admission.v1` projection) and
+`command-case-context=path` (its caller-pinned expected context). The join
+admits the retained admission for exactly its covered cases only after it
+binds, independently: the accepted case catalogue (the referenced
+`experience:migration-denominator` bytes must hash to the native reader's
+pinned catalogue digest), the exact retained expected-context bytes, the
+experience input's installed-executable digest, and the freeze subject's
+source generation. Only a supplied-installed-candidate collection that covers
+the entire accepted denominator with every selected case semantically valid
+discharges the #3149 hold; a source-build collection never does. Partial
+coverage keeps the hold `NotProven` with the covered/uncovered counts in the
+claim boundary — absent cases stay visible and are never silently admitted.
+Duplicate originals or rows, foreign executables or subjects, wrong or opaque
+catalogue bytes, unbound context bytes, and admissions reporting collection
+errors all keep the hold with a specific defect. The retained originals are
+never re-serialized replacements; custody and serialized replay keep their
+exact bytes like every other evidence role.
+
 The next implementation sequence is the #3149 executed catalogue and summary
 validation, #3151 installed documentation observations, and #2466's separately
-owned pilot producer/reader after target selection. Their reviewed consumers
-must replace the corresponding missing-producer holds before production
-experience admission can become `Complete`.
+owned pilot producer/reader after target selection. The #3149 admission
+consumer now exists (#4705); only a genuinely executed installed denominator
+admitted through it can discharge that hold, while #3151 and #2466 keep their
+missing-producer holds until their own reviewed producers land. Production
+experience admission becomes `Complete` only when no required hold remains.
 
 ### Focused admission controls
 
