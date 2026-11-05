@@ -128,6 +128,41 @@ Hard failures with absent detail retain their native error classification and
 error-receipt readback as incomplete observations; a process that never
 started is a separate incomplete observation.
 
+## Read-only A presentation and human-receipt routes (#4724)
+
+Five A cases require separate actual invocations per presentation route
+instead of one JSON execution: `A.check.human_receipt` owns the receipt-only
+human check route (`receipt_only`, `receipt_only_tty`) plus its JSON-route
+receipt/detail correspondence authority, and the four `*.presentation` cases
+own `human`, `json`, `quiet`, `file`, and `tty` routes. Every route is a
+separate actual invocation of the supplied binary against the same committed
+fixture, with its own before/after snapshots, retained streams and artifacts.
+The `tty` routes run on a real pseudo-terminal; a host without a working
+terminal relay records the invocation faithfully and its retained empty
+console stream stays an unproven terminal observation rather than terminal
+evidence. Non-TTY `tty`-flag invocations and pipe fallbacks are refused.
+
+Native presentation admission checks the exact accepted route set per case,
+per-invocation source immutability, exit agreement across routes, and typed
+common-summary equality across routes: subject, result class, completeness,
+posture, currentness, reason, primary action, next proof and effect flags.
+The JSON route's detail is projected through the existing first-family
+projections; a hard failure without detail caps the case at incomplete. For
+`A.check.human_receipt`, each receipt-only receipt is validated against the
+JSON route's retained evaluated detail. Receipt-only and file routes keep
+stdout clean; human routes stay bounded. Parity is claimed only under the
+pinned `NO_COLOR` child environment; styled color output is not exercised,
+and TTY parity claims never rest on byte equality across the terminal
+boundary. Missing, failed, or relay-unproven routes stay incomplete, and the
+107-case denominator is never marked complete by this reader.
+
+The retained public-prerelease run for these five cases, its digests, and its
+typed rc.1 findings are recorded in
+[evidence/core-command-presentation-4724.v1.json](evidence/core-command-presentation-4724.v1.json).
+The retained collections stay outside any repository checkout; the record's
+digests make them auditable, and version disagreements with the public
+`0.2.0-rc.1` prerelease are retained as-is rather than normalized.
+
 ## Semantic validity and qualification
 
 The admission result distinguishes `valid`, `incomplete`, and `invalid`

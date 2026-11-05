@@ -8,7 +8,8 @@ macro-expansion, or proof-level coverage.
 
 The [command-case evidence family](cargo-allow.command-case-evidence.v1.schema.json)
 contains the #3149 migration catalogue, caller-pinned expected context, retained
-first-family bundle, and native admission projection. See the
+first-family bundle, the #4724 read-only presentation invocations, and native
+admission projection. See the
 [collection and readback contract](../release/core-command-migration-evidence.md).
 It preserves the complete denominator and distinguishes semantic validity from
 Partial qualification; neither collection nor readback establishes installation,

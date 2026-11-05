@@ -1754,6 +1754,26 @@
       "parse_errors": 1,
       "policy_valid": true,
       "check_fails": true
+    },
+    "human_receipt": {
+      "source": "pub fn fixture() {}\n",
+      "policy": "schema_version = \"0.1\"\npolicy = \"cargo-allow\"\nowner = \"core/policy\"\nstatus = \"active\"\n\n[workspace]\nroot = \".\"\ninventory = \"git-tracked\"\ndefault_mode = \"no-new\"\nignored = [\".git/**\", \"target/**\"]\ngenerated = [\"target/**\", \"vendor/**\"]\n\n[requirements]\nowner_required = true\nreason_required = true\nclassification_required = true\nevidence_required = false\nexpires_or_review_after_required = true\nallow_bare_allow_attributes = false\nlint_policy_id_required = false\nstale_entries_fail = false\n\n[requirements.unsafe]\nevidence_required = true\nverified_evidence_required = false\nsafety_comment_required = false\n\n[[allow]]\nid = \"allow-0001\"\nkind = \"non_rust_file\"\nfamily = \"configuration\"\npath = \"policy/allow.toml\"\nowner = \"core/policy\"\nclassification = \"source_exception_policy\"\nreason = \"Canonical source-exception ledger for this repository's own source-tree policy receipts.\"\ncreated = \"2000-01-01\"\nreview_after = \"2099-01-01\"\n\n[allow.selector]\nast_kind = \"tracked_file\"\ntarget_fingerprint = \"toml\"\nglob = \"policy/allow.toml\"\n\n[allow.last_seen]\nline = 1\ncolumn = 1\n",
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 0,
+      "parse_errors": 0,
+      "policy_valid": true,
+      "check_fails": false
+    },
+    "presentation": {
+      "source": "pub fn fixture(value: Option<u8>) -> u8 { value.unwrap() }\n",
+      "policy": null,
+      "require_clean": false,
+      "output_failure": false,
+      "source_findings": 1,
+      "parse_errors": 0,
+      "policy_valid": null,
+      "check_fails": false
     }
   }
 }
