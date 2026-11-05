@@ -1,0 +1,24 @@
+# Revision note: land the #4706 installed-documentation experience lane.
+#
+# The lane adds the cargo-allow.release-experience-docs-execution.v1 record
+# contract, its allow-report semantic reader, and the final-freeze admission
+# that lifts only the #3151 installed-documentation hold on a bound,
+# reader-Complete executed-documentation record. The public 0.2.0-rc.1
+# prerelease execution is retained as evidence with seven honest E-family
+# disagreements; it grants no release authority. The lane's Rust tests are
+# written with receipt-free accessors, so no panic-class receipts are
+# required. allow-11501 admits the retained evidence JSON; the note file is
+# self-covered by its own added_allow record, matching the
+# #2497/#3793/#4214/#4716 precedents.
+
+[[records]]
+allow_ids = ["allow-11501"]
+reason = "Admits docs/release/evidence/rc1-installed-docs-execution.v1.json, the retained public 0.2.0-rc.1 executed-documentation record consumed by the retained-record reader test; no weakening, one new admitted evidence surface."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:53383e22b732f3ec5c3b5006503e989e0c5d26999eb40fcda8ba01bfccc7f675"
+
+[[records]]
+allow_ids = ["allow-11502"]
+reason = "Self-covering added_allow receipt for this revision note file, matching the #2497/#3793/#4214/#4716 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:dcc0227734dbc42320428cbf8622205272eae91311b97000749266febc215a94"

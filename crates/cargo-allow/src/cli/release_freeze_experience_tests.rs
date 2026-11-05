@@ -1180,6 +1180,18 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
 
 // ---- Installed executed-documentation admission (#4706) ----
 
+/// Receipt-free positional accessor over recorded docs checks: no bracket
+/// indexing, no `unwrap`.
+fn docs_check_at<'a>(
+    checks: &'a mut [ReleaseExperienceDocsCheckV1],
+    index: usize,
+    label: &'static str,
+) -> &'a mut ReleaseExperienceDocsCheckV1 {
+    checks
+        .get_mut(index)
+        .unwrap_or_else(|| std::panic::panic_any(label))
+}
+
 fn docs_check(
     id: &str,
     docs_name: &str,
@@ -1209,9 +1221,13 @@ fn executed_docs_check(
     argv: &[&str],
     stdout: &str,
 ) -> ReleaseExperienceDocsCheckV1 {
+    let command_head = argv
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("executed docs check requires an argv head"))
+        .to_string();
     ReleaseExperienceDocsCheckV1 {
         kind: ReleaseExperienceDocsCheckKindV1::SurfaceGeneration,
-        command: Some(argv[0].to_string()),
+        command: Some(command_head),
         argv: argv.iter().map(|argument| argument.to_string()).collect(),
         exit_code: Some(0),
         expected_exit_code: Some(0),
@@ -1298,7 +1314,8 @@ impl OriginalBundle {
         }
         // The root help surface's argv head is `--help`; the advertised
         // command the output must name is `help`.
-        checks[0].command = Some("help".to_string());
+        docs_check_at(&mut checks, 0, "help surface check present").command =
+            Some("help".to_string());
         ReleaseExperienceDocsExecutionV1 {
             schema_id: "cargo-allow.release-experience-docs-execution.v1".to_string(),
             schema_version: 1,
@@ -1460,7 +1477,13 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
                     .experience_member("experience:docs-execution")?
                     .ok_or("record missing")?;
                 let mut value: serde_json::Value = serde_json::from_slice(bytes)?;
-                value["toolchain"] = serde_json::json!("changed-toolchain");
+                let Some(object) = value.as_object_mut() else {
+                    std::panic::panic_any("changed record bytes must stay an object");
+                };
+                object.insert(
+                    "toolchain".to_string(),
+                    serde_json::json!("changed-toolchain"),
+                );
                 original.put(
                     "experience:docs-execution",
                     "ExperienceReference",
@@ -1469,21 +1492,25 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
             }
             "forged_claim" => {
                 let mut record = original.docs_execution_record();
-                record.checks[0].outcome = ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
-                record.checks[0].observed_summary =
+                docs_check_at(&mut record.checks, 0, "help surface check present").outcome =
+                    ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
+                docs_check_at(&mut record.checks, 0, "help surface check present")
+                    .observed_summary =
                     "the documented group headers are absent from the installed help".to_string();
                 original.install_docs_execution(&record, State::Complete)?;
             }
             "honest_incomplete" => {
                 let mut record = original.docs_execution_record();
-                record.checks[7].outcome = ReleaseExperienceDocsCheckOutcomeV1::NotExecuted;
-                record.checks[7].observed_summary =
+                docs_check_at(&mut record.checks, 7, "readme claim check present").outcome =
+                    ReleaseExperienceDocsCheckOutcomeV1::NotExecuted;
+                docs_check_at(&mut record.checks, 7, "readme claim check present")
+                    .observed_summary =
                     "rustdoc cannot be executed by the docs producer".to_string();
                 original.install_docs_execution(&record, State::Incomplete)?;
             }
             "undeclared_write" => {
                 let mut record = original.docs_execution_record();
-                record.checks[4]
+                docs_check_at(&mut record.checks, 4, "journey check present")
                     .observed_writes
                     .push("untracked/leak.txt".to_string());
                 original.install_docs_execution(&record, State::Complete)?;
@@ -1505,13 +1532,17 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
             }
             "unbound_identity" => {
                 let mut record = original.docs_execution_record();
-                record.checks[0].docs_name = "blog".to_string();
+                docs_check_at(&mut record.checks, 0, "help surface check present").docs_name =
+                    "blog".to_string();
                 original.install_docs_execution(&record, State::Complete)?;
             }
             _ => {
                 let record = original.docs_execution_record();
                 let mut value = serde_json::to_value(&record)?;
-                value["extra_observation"] = serde_json::json!(true);
+                let Some(object) = value.as_object_mut() else {
+                    std::panic::panic_any("record JSON must stay an object");
+                };
+                object.insert("extra_observation".to_string(), serde_json::json!(true));
                 let record_digest = original.put(
                     "experience:docs-execution",
                     "ExperienceReference",
@@ -1573,8 +1604,9 @@ fn complete_model_input_cannot_override_a_failed_docs_observation() -> Experienc
     original.input.not_proven_reason.clear();
     original.input.narrowed_claims.clear();
     let mut record = original.docs_execution_record();
-    record.checks[0].outcome = ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
-    record.checks[0].observed_summary =
+    docs_check_at(&mut record.checks, 0, "help surface check present").outcome =
+        ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
+    docs_check_at(&mut record.checks, 0, "help surface check present").observed_summary =
         "the installed first screen is an ungrouped flat command list".to_string();
     original.install_docs_execution(&record, State::Complete)?;
     if evaluate_release_experience_v1(&original.input).result != State::Complete {

@@ -7,6 +7,17 @@ type TestResult = Result<(), Box<dyn std::error::Error>>;
 
 const BINARY: &str = "sha256:71bfd25a06dfa8fb14c7ee820ed9bce7f30ee84feef71a483c09274e3e7df86c";
 
+/// Receipt-free positional accessor: no bracket indexing, no `unwrap`.
+fn check_at<'a>(
+    checks: &'a mut [ReleaseExperienceDocsCheckV1],
+    index: usize,
+    label: &'static str,
+) -> &'a mut ReleaseExperienceDocsCheckV1 {
+    checks
+        .get_mut(index)
+        .unwrap_or_else(|| std::panic::panic_any(label))
+}
+
 fn claim_check(id: &str, docs_name: &str) -> ReleaseExperienceDocsCheckV1 {
     ReleaseExperienceDocsCheckV1 {
         id: id.to_string(),
@@ -120,8 +131,7 @@ fn complete_checks() -> Vec<ReleaseExperienceDocsCheckV1> {
     let journey = checks
         .iter_mut()
         .find(|check| check.id == "docs.first-hour.journey-green")
-        .ok_or("journey check missing")
-        .unwrap();
+        .unwrap_or_else(|| std::panic::panic_any("journey check missing"));
     journey.declared_writes = vec![
         "policy/allow.toml".to_string(),
         "target/cargo-allow/check.receipt.json".to_string(),
@@ -143,8 +153,8 @@ fn complete_record_with_all_identities_reads_complete() -> TestResult {
 fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResult {
     let honest_disagreement = {
         let mut checks = complete_checks();
-        checks[0].outcome = Outcome::Mismatched;
-        checks[0].observed_summary =
+        check_at(&mut checks, 0, "help surface check present").outcome = Outcome::Mismatched;
+        check_at(&mut checks, 0, "help surface check present").observed_summary =
             "the documented flag is absent from the installed surface".to_string();
         record(checks)
     };
@@ -190,7 +200,7 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "undeclared write",
             {
                 let mut checks = complete_checks();
-                checks[4]
+                check_at(&mut checks, 4, "journey check present")
                     .observed_writes
                     .push("untracked/leak.txt".to_string());
                 record(checks)
@@ -202,7 +212,9 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "absolute write path",
             {
                 let mut checks = complete_checks();
-                checks[4].observed_writes.push("C:/abs/path".to_string());
+                check_at(&mut checks, 4, "journey check present")
+                    .observed_writes
+                    .push("C:/abs/path".to_string());
                 record(checks)
             },
             State::Malformed,
@@ -212,7 +224,7 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "nonzero exit claimed matched",
             {
                 let mut checks = complete_checks();
-                checks[0].exit_code = Some(2);
+                check_at(&mut checks, 0, "help surface check present").exit_code = Some(2);
                 record(checks)
             },
             State::Mismatch,
@@ -222,7 +234,9 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "matched without output",
             {
                 let mut checks = complete_checks();
-                checks[0].stdout_excerpt.clear();
+                check_at(&mut checks, 0, "help surface check present")
+                    .stdout_excerpt
+                    .clear();
                 record(checks)
             },
             State::Incomplete,
@@ -232,7 +246,8 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "surface output missing the command",
             {
                 let mut checks = complete_checks();
-                checks[0].stdout_excerpt = "unrelated banner".to_string();
+                check_at(&mut checks, 0, "help surface check present").stdout_excerpt =
+                    "unrelated banner".to_string();
                 record(checks)
             },
             State::Mismatch,
@@ -242,7 +257,9 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "snippet without argv",
             {
                 let mut checks = complete_checks();
-                checks[4].argv.clear();
+                check_at(&mut checks, 4, "journey check present")
+                    .argv
+                    .clear();
                 record(checks)
             },
             State::Incomplete,
@@ -252,7 +269,7 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "executed without captured exit",
             {
                 let mut checks = complete_checks();
-                checks[0].exit_code = None;
+                check_at(&mut checks, 0, "help surface check present").exit_code = None;
                 record(checks)
             },
             State::Incomplete,
@@ -262,7 +279,7 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "claim inspection with exit but no argv",
             {
                 let mut checks = complete_checks();
-                checks[5].exit_code = Some(0);
+                check_at(&mut checks, 5, "channel claim check present").exit_code = Some(0);
                 record(checks)
             },
             State::Malformed,
@@ -272,8 +289,9 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "not-executed check keeps the aggregate incomplete",
             {
                 let mut checks = complete_checks();
-                checks[7].outcome = Outcome::NotExecuted;
-                checks[7].observed_summary =
+                check_at(&mut checks, 7, "readme claim check present").outcome =
+                    Outcome::NotExecuted;
+                check_at(&mut checks, 7, "readme claim check present").observed_summary =
                     "rustdoc cannot be executed by the docs producer".to_string();
                 record(checks)
             },
