@@ -355,8 +355,10 @@ assert manifest["payload"]["publication_posture"] == "unpublished"
 assert len(manifest["payload"]["package_rows"]) == len(candidate)
 PY
 
-# The compiled authorization digest propagates verbatim when supplied (#3790);
-# historical manifests without the gate carry no digest key.
+# The typed envelope records the authorization provenance reference (#3790):
+# the compiled gate digest itself stays in the publication receipts, where
+# the workflow verifies its agreement with the authorize gate; the governed
+# release-manifest-v2 schema allows no digest key on the envelope.
 AUTHORIZATION_DIGEST="sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" \
 VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
   COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
@@ -369,7 +371,8 @@ import json
 import sys
 
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
-assert manifest["authorization_digest"] == "sha256:" + ("e" * 64), manifest.get("authorization_digest")
+assert manifest["authorization_reference"] == "workflow/123/crates-io", manifest.get("authorization_reference")
+assert "authorization_digest" not in manifest, "the governed schema allows no envelope digest key"
 PY
 python3 - "${work}/complete-manifest.json" <<'PY'
 import json
@@ -378,7 +381,7 @@ import sys
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
 assert "authorization_digest" not in manifest, "historical manifests must not gain digest keys"
 PY
-printf 'ok compiled authorization digest propagates to the manifest\n'
+printf 'ok typed manifest records the authorization provenance reference\n'
 
 manifest_checksum="${work}/complete-manifest.sha256"
 sha256sum "${work}/complete-manifest.json" | awk '{print $1 "  complete-manifest.json"}' >"${manifest_checksum}"

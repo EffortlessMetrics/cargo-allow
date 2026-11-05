@@ -1,31 +1,40 @@
 #!/usr/bin/env bash
-# Generate a cargo-allow.release-manifest.v2 envelope from release
-# workflow context. Runs after publish + install-smoke succeed.
+# Thin local convenience wrapper for the typed release-manifest command
+# (#2497). The semantic authority is `cargo-allow release-manifest`: this
+# script only translates the documented environment contract into typed
+# arguments and invokes the Rust command. It performs no version, channel,
+# equality, or result decisions of its own.
 #
-# Inputs (environment / arguments):
-#   VERSION        workspace version (e.g. 0.2.0)
-#   REPOSITORY     GitHub repository full name (e.g. EffortlessMetrics/cargo-allow)
-#   TAG            git tag ref (e.g. v0.2.0)
-#   COMMIT         commit SHA
-#   TREE           tree SHA (optional; derived from commit if absent)
-#   AUTH_SOURCE    "crates_io_api_token"
-#   AUTHORIZATION_DIGEST  canonical digest of the compiled one-use
-#     authorization (optional; recorded verbatim when present)
-#   WORKFLOW_RUN_ID  GitHub Actions run ID (optional)
-#   MSRV           minimum supported Rust version
-#   PLATFORMS      space-separated proven platforms (e.g. "linux")
-#   BINARY_PACKAGE_RECEIPT  verified binary package receipt (optional)
-#   BINARY_INSTALL_RECEIPT  clean-install receipt (optional)
+# Inputs (environment):
+#   VERSION        workspace version (e.g. 0.2.0)            [required]
+#   REPOSITORY     GitHub repository full name                [required]
+#   TAG            git tag ref (e.g. v0.2.0)                  [required]
+#   COMMIT         commit SHA                                 [required]
+#   TREE           tree SHA                                   [required]
+#   AUTH_SOURCE    authentication class (crates_io_api_token) [required]
+#   AUTHORIZATION_DIGEST  compiled one-use authorization digest
+#   WORKFLOW_RUN_ID  GitHub Actions run id
+#   PLATFORMS      space-separated proven platforms (default: linux)
 #   RUST_TOOLCHAIN  toolchain used for the binary (default: stable)
 #   RUNNER          runner used for the binary (default: ubuntu-latest)
+#   BINARY_PACKAGE_RECEIPT  verified binary package receipt
+#   BINARY_INSTALL_RECEIPT  clean-install receipt
 #   TOPOLOGY_RECEIPT  exact topology publisher receipt
-#   REQUIRE_PUBLISHED_TOPOLOGY  true for the public release entry (default: false)
-#   EXPECTED_TOPOLOGY_RECEIPT_SHA256  digest bound at download; required for public entry
+#   REQUIRE_PUBLISHED_TOPOLOGY  true for the public release entry
+#   EXPECTED_TOPOLOGY_RECEIPT_SHA256  digest bound at download
+#   REQUIRED_RESULT  typed result name the command must produce (e.g.
+#                    complete); the command fails closed otherwise
 #   OUTPUT         output path (default: target/cargo-allow/release-manifest-v2.json)
+#   RESULT_OUT     typed result receipt path
+#   GITHUB_OUTPUT  GitHub Actions output file; receives result=<name>
+#   MSRV           retained as release evidence for
+#                  scripts/check-msrv-consistency.sh; the typed manifest
+#                  does not consume it
 #
 # Outputs:
-#   release-manifest-v2.json — the typed manifest envelope
-#   release-manifest-v2.sha256 — SHA-256 of the manifest bytes
+#   <OUTPUT> — the typed ReleaseManifestV2 envelope
+#   <OUTPUT>.sha256 — SHA-256 checksum record of the manifest bytes
+#   <RESULT_OUT> — cargo-allow.release-manifest-result.v1 typed receipt
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -35,451 +44,35 @@ version="${VERSION:?VERSION is required}"
 repository="${REPOSITORY:?REPOSITORY is required}"
 tag="${TAG:?TAG is required}"
 commit="${COMMIT:?COMMIT is required}"
+tree="${TREE:?TREE is required}"
 auth_source="${AUTH_SOURCE:?AUTH_SOURCE is required}"
-authorization_digest="${AUTHORIZATION_DIGEST:-}"
 msrv="${MSRV:?MSRV is required}"
-tree="${TREE:-$(git rev-parse "${commit}^{tree}" 2>/dev/null || echo "")}"
-workflow_run_id="${WORKFLOW_RUN_ID:-}"
-platforms="${PLATFORMS:-linux}"
-binary_package_receipt="${BINARY_PACKAGE_RECEIPT:-}"
-binary_install_receipt="${BINARY_INSTALL_RECEIPT:-}"
-rust_toolchain="${RUST_TOOLCHAIN:-stable}"
-runner="${RUNNER:-ubuntu-latest}"
-topology_receipt="${TOPOLOGY_RECEIPT:-target/cargo-allow/topology-publish.receipt.json}"
-output="${OUTPUT:-target/cargo-allow/release-manifest-v2.json}"
-generated_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-if [[ -n "${binary_package_receipt}" && -z "${binary_install_receipt}" ]] || \
-   [[ -z "${binary_package_receipt}" && -n "${binary_install_receipt}" ]]; then
-  printf 'release-manifest: error: BINARY_PACKAGE_RECEIPT and BINARY_INSTALL_RECEIPT must be supplied together\n' >&2
-  exit 1
-fi
-command -v python3 >/dev/null 2>&1 || {
-  printf 'release-manifest: error: python3 is required\n' >&2
+command -v cargo >/dev/null 2>&1 || {
+  printf 'release-manifest: error: cargo is required to run the typed authority\n' >&2
   exit 1
 }
 
-# JSON construction and receipt reconciliation stay in one bounded encoder.
-# Workflow strings and receipt values are never interpolated as JSON. A binary
-# asset remains Incomplete until its attestation verification receipt is green.
-mkdir -p "$(dirname "${output}")"
-
-python3 - "${output}" "${version}" "${repository}" "${tag}" "${commit}" \
-  "${tree}" "${auth_source}" "${workflow_run_id}" "${msrv}" "${platforms}" \
-  "${generated_at}" "${binary_package_receipt}" "${binary_install_receipt}" \
-  "${rust_toolchain}" "${runner}" "${topology_receipt}" <<'PY'
-import functools
-import hashlib
-import json
-import os
-import pathlib
-import subprocess
-import sys
-
-(
-    output, version, repository, tag, commit, tree, auth_source, workflow_run_id,
-    msrv, platforms_text, generated_at, package_path, install_path,
-    rust_toolchain, runner, topology_receipt_path,
-) = sys.argv[1:]
-CLAIM_BOUNDARY = "topology-derived package identity and release evidence only; this manifest does not authorize publication or claim source, runtime, platform, or support completeness"
-LIMITATIONS = ["candidate rows come from the exact topology publisher receipt", "binary evidence is limited to the referenced receipt and verified target"]
-
-
-def file_digest(path):
-    digest = hashlib.sha256()
-    with pathlib.Path(path).open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return "sha256:" + digest.hexdigest()
-
-
-def receipt(path, schema):
-    receipt_path = pathlib.Path(path)
-    try:
-        data = receipt_path.read_bytes()
-        payload = json.loads(data)
-        if not isinstance(payload, dict):
-            raise ValueError("JSON payload is not an object")
-    except (OSError, json.JSONDecodeError, ValueError) as error:
-        raise SystemExit(f"release-manifest: invalid receipt {path}: {error}")
-    if payload.get("schema_id") != schema or payload.get("schema_version") != 1:
-        raise SystemExit(f"release-manifest: unsupported receipt schema in {path}")
-    return receipt_path, payload, "sha256:" + hashlib.sha256(data).hexdigest()
-
-
-topology_file, topology, topology_digest = receipt(
-    topology_receipt_path, "cargo-allow.topology-publish-receipt.v1"
+args=(
+  release-manifest
+  --version "${version}"
+  --repository "${repository}"
+  --tag "${tag}"
+  --commit "${commit}"
+  --tree "${tree}"
+  --auth-source "${auth_source}"
 )
-topology_file = topology_file.resolve()
-require_published = os.environ.get("REQUIRE_PUBLISHED_TOPOLOGY", "false")
-if require_published not in {"true", "false"}:
-    raise SystemExit("release-manifest: REQUIRE_PUBLISHED_TOPOLOGY must be true or false")
-expected_topology_digest = os.environ.get("EXPECTED_TOPOLOGY_RECEIPT_SHA256", "")
-if require_published == "true" and not expected_topology_digest:
-    raise SystemExit("release-manifest: public release requires the downloaded topology receipt digest")
-if expected_topology_digest and expected_topology_digest != topology_digest:
-    raise SystemExit("release-manifest: topology receipt digest differs from the downloaded evidence")
-if topology.get("commit") != commit or topology.get("tree") != tree:
-    raise SystemExit("release-manifest: topology receipt identity disagrees with release")
-if topology.get("mode") != "cargo-allow" or topology.get("complete") is not True:
-    raise SystemExit("release-manifest: topology receipt is not a complete cargo-allow candidate")
-raw_rows = topology.get("rows")
-if not isinstance(raw_rows, list) or not raw_rows:
-    raise SystemExit("release-manifest: topology receipt has no package rows")
-publish = topology.get("publish")
-if not isinstance(publish, bool):
-    raise SystemExit("release-manifest: topology receipt publish field must be a Boolean")
-if require_published == "true" and not publish:
-    raise SystemExit("release-manifest: public release requires published topology evidence")
-if publish:
-    if topology.get("complete") is not True:
-        raise SystemExit("release-manifest: published topology receipt is not complete")
-    if topology.get("incident_state") != "none":
-        raise SystemExit("release-manifest: published topology receipt records an incident")
-    if "first_irreversible_row" not in topology:
-        raise SystemExit(
-            "release-manifest: published topology receipt lacks an irreversible-row marker"
-        )
-    first_irreversible_row = topology["first_irreversible_row"]
-    if first_irreversible_row is None:
-        if not all(isinstance(row, dict) and row.get("state") == "verified_existing" for row in raw_rows):
-            raise SystemExit(
-                "release-manifest: newly published rows require an irreversible-row marker"
-            )
-    elif type(first_irreversible_row) is not int or first_irreversible_row <= 0:
-        raise SystemExit(
-            "release-manifest: published topology receipt has an invalid irreversible-row marker"
-        )
+[ -n "${WORKFLOW_RUN_ID:-}" ] && args+=(--workflow-run-id "${WORKFLOW_RUN_ID}")
+[ -n "${BINARY_PACKAGE_RECEIPT:-}" ] && args+=(--binary-package-receipt "${BINARY_PACKAGE_RECEIPT}")
+[ -n "${BINARY_INSTALL_RECEIPT:-}" ] && args+=(--binary-install-receipt "${BINARY_INSTALL_RECEIPT}")
+[ -n "${TOPOLOGY_RECEIPT:-}" ] && args+=(--topology-receipt "${TOPOLOGY_RECEIPT}")
+[ "${REQUIRE_PUBLISHED_TOPOLOGY:-false}" = "true" ] && args+=(--require-published-topology)
+[ -n "${EXPECTED_TOPOLOGY_RECEIPT_SHA256:-}" ] && args+=(--expected-topology-receipt-sha256 "${EXPECTED_TOPOLOGY_RECEIPT_SHA256}")
+[ -n "${PLATFORMS:-}" ] && args+=(--platforms "${PLATFORMS}")
+[ -n "${RUST_TOOLCHAIN:-}" ] && args+=(--rust-toolchain "${RUST_TOOLCHAIN}")
+[ -n "${RUNNER:-}" ] && args+=(--runner "${RUNNER}")
+[ -n "${REQUIRED_RESULT:-}" ] && args+=(--require-result "${REQUIRED_RESULT}")
+[ -n "${OUTPUT:-}" ] && args+=(--output "${OUTPUT}")
+[ -n "${RESULT_OUT:-}" ] && args+=(--result-out "${RESULT_OUT}")
+[ -n "${GITHUB_OUTPUT:-}" ] && args+=(--github-output "${GITHUB_OUTPUT}")
 
-
-def valid_digest(value):
-    return (
-        isinstance(value, str)
-        and value.startswith("sha256:")
-        and len(value) == len("sha256:") + 64
-        and all(char in "0123456789abcdef" for char in value[len("sha256:"):])
-    )
-
-
-def valid_unprefixed_digest(value):
-    return (
-        isinstance(value, str)
-        and len(value) == 64
-        and all(char in "0123456789abcdef" for char in value)
-    )
-
-
-@functools.lru_cache(maxsize=None)
-def typed_publication_ready(row_class: str, state: str, expected: str,
-                            observed: str) -> tuple[bool, str]:
-    """Manifest-entry law via the typed authority (#3761): a publication is
-    manifest-ready only when its classification is complete_exact."""
-    probe = subprocess.run(
-        [
-            "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
-            "reconcile-package-publication",
-            "--logical-id", "manifest-row",
-            "--package-name", "manifest-row",
-            "--package-version", "0.0.0",
-            "--release-order", "1",
-            "--row-class", row_class,
-            "--state", state,
-            "--expected-checksum", expected,
-            "--observed-registry-checksum", observed,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    if probe.returncode != 0:
-        return False, "projection failed"
-    projection = json.loads(probe.stdout)
-    return (
-        bool(projection["manifest_ready"]),
-        projection["classification"],
-    )
-
-
-@functools.lru_cache(maxsize=None)
-def typed_release_version_accepted(value):
-    # Release-version grammar is owned by the typed Rust authority (#3752);
-    # the manifest never accepts a form the authority rejects, including
-    # SemVer build metadata and unsupported prerelease spellings.
-    probe = subprocess.run(
-        [
-            "cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
-            "release-identity", "--version", value,
-        ],
-        capture_output=True,
-        text=True,
-    )
-    return probe.returncode == 0 and '"result": "validated"' in probe.stdout
-
-
-if not valid_unprefixed_digest(topology.get("topology_sha256")):
-    raise SystemExit("release-manifest: malformed topology digest")
-if not valid_unprefixed_digest(topology.get("cargo_lock_sha256")):
-    raise SystemExit("release-manifest: malformed Cargo.lock digest")
-if require_published == "true":
-    authorization = os.environ.get("AUTHORIZATION_DIGEST", "")
-    if not valid_digest(authorization) or topology.get("authorization") != authorization:
-        raise SystemExit("release-manifest: publication authorization differs from the release gate")
-
-
-def artifact_reference(path):
-    candidate = pathlib.Path(path)
-    if not candidate.is_absolute():
-        return candidate.as_posix()
-    try:
-        return candidate.resolve().relative_to(pathlib.Path.cwd()).as_posix()
-    except ValueError:
-        # Fixture and downloaded-artifact callers may stage the receipt outside
-        # the checkout. Keep the envelope repository/artifact-relative without
-        # leaking an absolute runner path.
-        return f"artifact/{candidate.name}"
-
-
-rows = []
-seen_names = set()
-seen_logical_ids = set()
-seen_orders = set()
-for raw in raw_rows:
-    required = ("logical_id", "name", "version", "release_order", "local_checksum")
-    if any(not isinstance(raw.get(field), (str, int)) or str(raw.get(field)).strip() == "" for field in required):
-        raise SystemExit("release-manifest: topology receipt row is incomplete")
-    if not isinstance(raw["logical_id"], str) or not isinstance(raw["name"], str):
-        raise SystemExit("release-manifest: topology receipt identity fields must be strings")
-    if not isinstance(raw["version"], str) or not typed_release_version_accepted(raw["version"]):
-        raise SystemExit(
-            f"release-manifest: package version {raw['version']} for {raw['name']} is not a validated typed release identity"
-        )
-    if raw["version"] != version:
-        raise SystemExit(
-            f"release-manifest: package version {raw['version']} for {raw['name']} is not the selected release identity {version}"
-        )
-    name = raw["name"]
-    order = int(raw["release_order"])
-    if order <= 0 or name in seen_names or raw["logical_id"] in seen_logical_ids or order in seen_orders:
-        raise SystemExit("release-manifest: topology receipt contains duplicate package identity")
-    seen_names.add(name)
-    seen_logical_ids.add(raw["logical_id"])
-    seen_orders.add(order)
-    if not valid_digest(raw["local_checksum"]):
-        raise SystemExit(f"release-manifest: malformed crate digest for {name}")
-    if publish:
-        if raw.get("state") not in {"published_verified", "verified_existing"}:
-            raise SystemExit(
-                f"release-manifest: published topology row {name} is not registry-verified"
-            )
-        registry_checksum = raw.get("registry_checksum")
-        if not registry_checksum or not valid_digest(registry_checksum):
-            raise SystemExit(
-                f"release-manifest: registry checksum missing or malformed for published row {name}"
-            )
-        # Registry equality is required for every published row state, and
-        # the entry law is the typed reconciliation classification (#3761):
-        # a row enters the manifest only as complete_exact.
-        if registry_checksum != raw["local_checksum"]:
-            raise SystemExit(
-                f"release-manifest: registry checksum disagrees with the candidate package for {name} ({raw.get('state')})"
-            )
-        if require_published == "true":
-            # The publisher pins package_target_dir() to this checkout's target;
-            # ambient Cargo settings cannot select different evidence bytes.
-            package_directory = pathlib.Path("target/package").resolve()
-            crate_file = (package_directory / f"{name}-{raw['version']}.crate").resolve()
-            if crate_file.parent != package_directory:
-                raise SystemExit("release-manifest: invalid package archive identity")
-            try:
-                crate_digest = file_digest(crate_file)
-            except OSError as error:
-                raise SystemExit(f"release-manifest: package archive unavailable for {name}: {error}")
-            if crate_digest != registry_checksum:
-                raise SystemExit(f"release-manifest: package archive differs from publication for {name}")
-        ready, classification = typed_publication_ready(
-            "cargo_allow_candidate",
-            raw.get("state", ""),
-            raw["local_checksum"],
-            registry_checksum,
-        )
-        if not ready:
-            raise SystemExit(
-                f"release-manifest: row {name} classified {classification}; "
-                "only complete_exact publications may enter the manifest"
-            )
-    row = {
-        "logical_id": raw["logical_id"],
-        "package_name": name,
-        "package_version": raw["version"],
-        "release_order": order,
-        "crate_digest": raw.get("registry_checksum") or raw["local_checksum"],
-    }
-    registry_checksum = raw.get("registry_checksum")
-    if registry_checksum is not None:
-        if not valid_digest(registry_checksum):
-            raise SystemExit(f"release-manifest: malformed registry checksum for {name}")
-        row["registry_checksum"] = registry_checksum
-    rows.append(row)
-rows.sort(key=lambda row: row["release_order"])
-
-platforms = platforms_text.split()
-binary_assets = []
-binary_attestation_verified = True
-if package_path and install_path:
-    package_file, package, package_receipt_digest = receipt(
-        package_path, "cargo-allow.release-binary-package.v1"
-    )
-    install_file, install, install_receipt_digest = receipt(
-        install_path, "cargo-allow.release-binary-install.v1"
-    )
-    fields = (
-        "version", "target_triple", "archive_name", "archive_sha256",
-        "executable_sha256", "tag", "commit", "tree",
-    )
-    if any(field not in package or field not in install for field in fields):
-        raise SystemExit("release-manifest: binary receipt is missing a required field")
-    for field in fields:
-        if package[field] != install[field]:
-            raise SystemExit(f"release-manifest: binary receipt disagreement in {field}")
-    if package["version"] != version:
-        raise SystemExit("release-manifest: binary receipt version disagrees with manifest")
-    for field, expected in (("tag", tag), ("commit", commit), ("tree", tree)):
-        if package[field] != expected:
-            raise SystemExit(
-                f"release-manifest: binary receipt {field} disagrees with manifest identity"
-            )
-    if package["target_triple"] != "x86_64-unknown-linux-gnu":
-        raise SystemExit("release-manifest: unsupported binary target")
-    if "linux" not in platforms:
-        raise SystemExit("release-manifest: Linux binary asset requires linux in PLATFORMS")
-    expected_archive = f"cargo-allow-v{version}-x86_64-unknown-linux-gnu.tar.gz"
-    if package["archive_name"] != expected_archive:
-        raise SystemExit("release-manifest: binary archive name is not the stable Linux name")
-    if package.get("archive_format") != "tar.gz":
-        raise SystemExit("release-manifest: Linux binary archive format must be tar.gz")
-    if package.get("executable_name") != "cargo-allow":
-        raise SystemExit("release-manifest: binary executable name must be cargo-allow")
-    if not rust_toolchain or not runner:
-        raise SystemExit("release-manifest: binary toolchain and runner are required")
-    for field in ("archive_sha256", "executable_sha256"):
-        value = package[field]
-        if not valid_digest(value):
-            raise SystemExit(f"release-manifest: malformed binary digest {field}")
-
-    archive_sha = package["archive_sha256"]
-    binary_attestation_verified = install.get("attestation_verified") is True
-    binary_assets.append({
-        "platform": "linux",
-        "target_triple": package["target_triple"],
-        "version": version,
-        "tag": tag,
-        "commit": commit,
-        "tree": tree,
-        "executable_version": version,
-        "archive_name": package["archive_name"],
-        "archive_format": package.get("archive_format", "tar.gz"),
-        "archive_sha256": archive_sha,
-        "executable_name": package.get("executable_name", "cargo-allow"),
-        "executable_sha256": package["executable_sha256"],
-        "rust_toolchain": rust_toolchain,
-        "runner": runner,
-        "candidate_receipt_digest": package_receipt_digest,
-        "installed_smoke_receipt_digest": install_receipt_digest,
-        "attestation_subject_sha256": archive_sha,
-        "limitations": [
-            "x86_64-unknown-linux-gnu proof only; no universal Linux or CPU compatibility claim",
-            "the archive is only release-complete after the workflow verifies its attestation",
-        ],
-    })
-
-consumed_evidence = [
-    {
-        "schema_id": topology.get("schema_id"),
-        "path": artifact_reference(topology_file),
-        "sha256": topology_digest,
-        "producer": "scripts/release-topology-publisher.py",
-        "result_class": (
-            "complete" if topology.get("complete") is True else "incomplete"
-        ),
-    },
-]
-if package_path and install_path:
-    consumed_evidence.extend(
-        [
-            {
-                "schema_id": package["schema_id"],
-                "path": artifact_reference(package_file),
-                "sha256": package_receipt_digest,
-                "producer": "scripts/package-release-binary.sh",
-                "result_class": "verified",
-            },
-            {
-                "schema_id": install["schema_id"],
-                "path": artifact_reference(install_file),
-                "sha256": install_receipt_digest,
-                "producer": "scripts/verify-release-binary.sh",
-                "result_class": (
-                    "verified"
-                    if install.get("attestation_verified") is True
-                    else "attestation_unverified"
-                ),
-            },
-        ]
-    )
-
-if auth_source != "crates_io_api_token":
-    raise SystemExit("release-manifest: only crates_io_api_token is supported")
-manifest = {
-    "payload": {
-        "schema_id": "cargo-allow.release-manifest.v2",
-        "schema_version": 2,
-        "operation": "cargo_allow_release",
-        "repository": repository,
-        "tag_or_authorization": tag,
-        "commit": commit,
-        "tree": tree,
-        "cargo_lock_digest": "sha256:" + topology["cargo_lock_sha256"],
-        "architecture_digest": "sha256:" + topology["topology_sha256"],
-        "candidate_digest": topology_digest,
-        "package_rows": rows,
-        "authentication": "crates_io_api_token",
-        "publication_posture": "published" if publish else "unpublished",
-        "support_posture": "experimental",
-        "limitations": LIMITATIONS,
-        "claim_boundary": CLAIM_BOUNDARY,
-        "consumed_evidence": consumed_evidence,
-    },
-    "generated_at": generated_at,
-    "workflow_path": ".github/workflows/release.yml",
-    "workflow_run_id": int(workflow_run_id) if workflow_run_id else None,
-    "event": "release",
-    "github_ref": tag,
-    "artifact_references": [
-        artifact_reference(topology_file),
-        *(
-            [artifact_reference(package_path), artifact_reference(install_path)]
-            if package_path and install_path
-            else []
-        ),
-    ],
-    "authorization_reference": f"workflow/{workflow_run_id}/crates-io" if workflow_run_id else "workflow/crates-io",
-    # #3790: canonical digest of the compiled one-use authorization that gated
-    # token access. Absent (None) for historical manifests predating the gate.
-    "authorization_digest": os.environ.get("AUTHORIZATION_DIGEST") or None,
-    "instrument_diagnostics": [] if binary_attestation_verified else ["binary attestation is not verified"],
-}
-manifest = {key: value for key, value in manifest.items() if value is not None}
-if workflow_run_id:
-    try:
-        manifest["workflow_run_id"] = int(workflow_run_id)
-    except ValueError:
-        raise SystemExit(f"release-manifest: invalid workflow_run_id: {workflow_run_id}")
-pathlib.Path(output).write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-PY
-
-# Compute a sha256sum-compatible checksum record for the manifest.  The
-# release workflow verifies this file from the artifact directory, so record
-# the manifest basename rather than the generator's possibly absolute path.
-sha256sum "${output}" | awk -v file="$(basename "${output}")" '{print $1 "  " file}' > "${output%.json}.sha256"
-
-echo "release-manifest: ${output}"
-echo "sha256: $(cat "${output%.json}.sha256")"
+cargo run --quiet -p cargo-allow --locked -- "${args[@]}"

@@ -160,11 +160,11 @@ claim_boundary = "Tag-prefix stripping is delegated to Changie's VersionNoPrefix
 [[consumers]]
 id = "generate-release-manifest"
 path = "scripts/generate-release-manifest.sh"
-role = "release-manifest-v2 envelope builder"
+role = "thin wrapper over the typed cargo-allow release-manifest command (#2497)"
 disposition = "typed-consumer"
-marker_classes = ["prerelease-posture"]
-sites = ["\"release-identity\", \"--version\""]
-claim_boundary = "Every topology receipt row version is validated through the typed Rust release-identity authority (memoized per distinct version), so the manifest never accepts a form the authority rejects — the former embedded full-SemVer regex, which accepted build metadata and unsupported prerelease spellings, is deleted. The one detected prerelease-posture line is this row's own documented boundary comment inside the script."
+marker_classes = []
+sites = ["release-manifest"]
+claim_boundary = "The wrapper translates the documented environment contract one-to-one into typed arguments for `cargo-allow release-manifest` and decides nothing itself: version grammar, publication equality, and the typed result all live in the Rust authority (crates/cargo-allow/src/cli/release_manifest_command.rs). The former embedded shell+Python encoder — with its SemVer regex history and prerelease-posture comment — is deleted from the authoritative path; the workflow invokes the typed command directly."
 
 [[consumers]]
 id = "install-action-version-gate"

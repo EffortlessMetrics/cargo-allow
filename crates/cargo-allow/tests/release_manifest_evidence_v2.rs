@@ -220,3 +220,23 @@ fn publication_cli_requires_observed_publication_for_manifest_readiness()
         Err(failures.join("\n").into())
     }
 }
+
+#[test]
+fn release_manifest_cli_registration_routes_the_subcommand() -> Result<(), Box<dyn Error>> {
+    // The typed manifest command is registered on the hidden release surface:
+    // invoking it without required inputs must reach the command's own input
+    // law and refuse with a structured usage error (exit 2).
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .args(["release-manifest"])
+        .output()?;
+    if output.status.success() {
+        return Err("release-manifest without required inputs must not succeed".into());
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if !stderr.contains("--version is required in generate mode") {
+        return Err(
+            format!("expected the release-manifest input law refusal, got: {stderr}").into(),
+        );
+    }
+    Ok(())
+}
