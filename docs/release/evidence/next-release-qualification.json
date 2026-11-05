@@ -1,0 +1,1232 @@
+{
+  "schema": "cargo-allow.release-qualification.v1",
+  "schema_version": 1,
+  "binding": {
+    "repository": "EffortlessMetrics/cargo-allow",
+    "basis_commit": "8685db060a141ce0d9b5d7d13111ed02ab6c9742",
+    "basis_tree": "245ffae54565bef1e06462ccbd953ea820dd5172",
+    "workspace_version": "0.2.0",
+    "declared_msrv": "1.95",
+    "qualification_umbrella": 2262,
+    "ledger_issue": 2263,
+    "release_controller": 2258,
+    "release_train": 2371,
+    "selection_controlling_issue": 3737,
+    "support_matrix_selection_digest": "sha256:v1:00906ac64c1e951a822ef0eef951983a94a8161d177d98c09c51d315e533a988",
+    "issue_snapshot_utc": "2026-11-05T11:45:46Z"
+  },
+  "vocabularies": {
+    "qualification_disposition": [
+      "BlockerBeforeCandidate",
+      "BlockerBeforeTag",
+      "SupportedLimitation",
+      "ExperimentalCapabilityLimit",
+      "PostReleaseHardening",
+      "StaleOrAlreadyFixed",
+      "NeedsRepositoryDecision"
+    ],
+    "reproduction_result": [
+      "Reproduced",
+      "NotReproduced",
+      "AlreadyFixed",
+      "NeedsOperatorProof",
+      "UnsupportedEnvironment",
+      "AmbiguousPremise"
+    ],
+    "timing_gate": [
+      "candidate_bytes",
+      "source_candidate_freeze",
+      "tag",
+      "post_publication",
+      "none"
+    ],
+    "obligation": [
+      "implementation_contract",
+      "rehearsal_evidence",
+      "live_operator_evidence",
+      "public_observation",
+      "incident_lineage"
+    ],
+    "severity": [
+      "none",
+      "low",
+      "medium",
+      "high"
+    ],
+    "capability": [
+      "base-exception-ledger",
+      "no-new-ratchet",
+      "mutation-lifecycle",
+      "structured-queries",
+      "issue-first-journey",
+      "ci-deployment",
+      "package-install",
+      "platform-linux",
+      "platform-windows",
+      "platform-macos",
+      "rust-toolchain",
+      "provenance-manifest",
+      "publication-auth",
+      "repository-controls",
+      "release-operation-authority",
+      "release-namespace",
+      "release-freeze",
+      "release-closeout",
+      "upgrade-rollback",
+      "installed-experience",
+      "pilot-adoption"
+    ]
+  },
+  "staleness_law": "This report is stale against any head other than binding.basis_commit. A later load-bearing merge must stale or regenerate the affected rows, and the #2501 refreeze must consume a refresh bound to the exact freeze head or an explicit input-identity check proving the affected rows are unaffected. candidate_ready and tag_ready are derived from the rows: candidate_ready is true only when no BlockerBeforeCandidate row remains and the basis commit equals the current head; tag_ready additionally requires no BlockerBeforeTag row.",
+  "derived": {
+    "blocker_before_candidate_count": 10,
+    "blocker_before_tag_count": 5,
+    "candidate_ready": false,
+    "tag_ready": false
+  },
+  "claim_boundary": "A current-main, exact-basis release blocker ledger and go/no-go input for the prospective 0.2.0 final release. It classifies evidence and routes work; it does not fix defects, prove unavailable operator settings or live repository settings, authorize a release, or change product behavior, versions, credentials, or publication state. Unavailable source, live settings, unexecuted operator queries, and ambiguous premises stay explicit and never count as NotReproduced. The release gate belongs to the owner under #3760.",
+  "rows": [
+    {
+      "id": "R01",
+      "issues": [
+        1840
+      ],
+      "umbrella": 2262,
+      "title": "Evidence-path metadata and symlink error classification",
+      "capability": "base-exception-ledger",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-files/src/changie_lint.rs",
+        "crates/allow-inventory/src/filesystem.rs",
+        "crates/allow-inventory/src/tests.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"Symlink\" crates/allow-files/src/changie_lint.rs; grep -n \"recursive_inventory_skips_symlinked_directories\" crates/allow-inventory/src/tests.rs",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner reconciles #1840 against the current classification surfaces and closes it with these citations.",
+      "closure_proof_required": "Issue closed citing the named classification surfaces on the exact current head.",
+      "claim_boundary": "Typed symlink/reparse classification exists in the changie-lint error taxonomy and the inventory skips symlinked directories with Windows reparse-point handling; no open source defect is claimed."
+    },
+    {
+      "id": "R02",
+      "issues": [
+        1857,
+        1915,
+        2264,
+        2296,
+        2320,
+        2321
+      ],
+      "umbrella": 2262,
+      "title": "Git revision/object boundary and Windows caller-path handling",
+      "capability": "base-exception-ledger",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-diff/src/revision.rs",
+        "crates/allow-diff/src/revision_git.rs",
+        "crates/allow-core/src/source_tree_path.rs",
+        "crates/cargo-allow/tests/diff_revision_boundary.rs",
+        "crates/cargo-allow/tests/diff_revision_bytes.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"strip_verbatim_prefix\" crates/allow-core/src/source_tree_path.rs; ls crates/cargo-allow/tests/diff_revision_boundary.rs crates/cargo-allow/tests/diff_revision_bytes.rs",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner reconciles the #1857/#1915 family against the merged #2264/#2320/#2296/#2321 fixes and closes the row.",
+      "closure_proof_required": "All owning issues closed with the revision/revision_git surfaces and their boundary tests cited.",
+      "claim_boundary": "Revision scan, git object reads, and Windows verbatim caller-path prefix handling are typed surfaces with dedicated boundary tests on the current head."
+    },
+    {
+      "id": "R03",
+      "issues": [
+        1916
+      ],
+      "umbrella": 2262,
+      "title": "Source-file size/read bounds",
+      "capability": "base-exception-ledger",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-core/src/capped_read.rs",
+        "crates/allow-files/src/finding_workflow.rs",
+        "crates/allow-files/src/finding_generated_executable.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"SOURCE_FILE_READ_MAX_BYTES\" crates/allow-core/src/capped_read.rs; grep -rn \"read_text_file_capped\" crates/allow-files/src/finding_workflow.rs | head -2",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #1916 against the shared capped reader and its oversized-file tests.",
+      "closure_proof_required": "Issue closed citing capped_read.rs and the oversized-file tests.",
+      "claim_boundary": "All loader paths go through the shared capped reader (SOURCE_FILE_READ_MAX_BYTES) with oversized-file tests; unbounded reads no longer reproduce on the current head."
+    },
+    {
+      "id": "R04",
+      "issues": [
+        1917
+      ],
+      "umbrella": 2262,
+      "title": "Recursive inventory depth/entry bounds",
+      "capability": "base-exception-ledger",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-inventory/src/filesystem.rs",
+        "crates/allow-inventory/src/tests.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"INVENTORY_MAX_DEPTH\\|INVENTORY_MAX_ENTRIES\" crates/allow-inventory/src/filesystem.rs | head -4; grep -n \"depth_capped_fallback_inventory_reports_partial_with_skip_disclosure\" crates/allow-inventory/src/tests.rs",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #1917 against the bounded traversal and its partial-inventory disclosure tests.",
+      "closure_proof_required": "Issue closed citing INVENTORY_MAX_DEPTH/INVENTORY_MAX_ENTRIES and the skip-disclosure tests.",
+      "claim_boundary": "Traversal is bounded by depth and entry count and reports partial inventory with explicit skip disclosure when a limit is hit; call-stack recursion is capped, not unbounded."
+    },
+    {
+      "id": "R05",
+      "issues": [
+        1924
+      ],
+      "umbrella": 2262,
+      "title": "Wildcard matcher complexity",
+      "capability": "base-exception-ledger",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-core/src/source_tree_path.rs",
+        "crates/allow-core/src/tests/source_tree_path.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"GLOB_MATCH_MAX_STEPS\" crates/allow-core/src/source_tree_path.rs | head -3; grep -n \"glob_match_budget_fails_closed_on_pathological_stars\" crates/allow-core/src/tests/source_tree_path.rs",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #1924 against the budgeted matcher and its adversarial tests.",
+      "closure_proof_required": "Issue closed citing GLOB_MATCH_MAX_STEPS and the pathological-star tests.",
+      "claim_boundary": "Glob matching carries a deterministic 10_000-step budget that fails closed on pathological * / ** patterns; the bound is budgeted backtracking with adversarial unit tests, not a formal polynomial-complexity proof."
+    },
+    {
+      "id": "R06",
+      "issues": [
+        2335
+      ],
+      "umbrella": 2262,
+      "title": "Repair guidance interpolating repository-controlled paths into executable-looking text",
+      "capability": "issue-first-journey",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-core/src/actionable_diagnostic.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"command_argv\" crates/allow-core/src/actionable_diagnostic.rs | head -3",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #2335 against the typed argv guidance surface.",
+      "closure_proof_required": "Issue closed citing RequiredProof.command_argv and its no-shell-split contract.",
+      "claim_boundary": "Repair/proof guidance carries an authoritative program plus ordered argv vector whose contract states consumers must not shell-split; no interpolated executable-looking command text is produced by this surface."
+    },
+    {
+      "id": "R07",
+      "issues": [
+        2336
+      ],
+      "umbrella": 2262,
+      "title": "Unique-strongest matching diverging from the single-candidate path",
+      "capability": "structured-queries",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-match/src/evaluation.rs",
+        "crates/allow-match/src/tests/parity.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"assert_parity\\|single_view\" crates/allow-match/src/tests/parity.rs | head -4",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #2336 against the landed parity tests.",
+      "closure_proof_required": "Issue closed citing the single-vs-paired strong-entry parity tests.",
+      "claim_boundary": "Strong-entry evaluation carries dedicated parity tests comparing the single-candidate and lifecycle-consuming paths; the divergence the issue described is not reproduced by the current parity suite."
+    },
+    {
+      "id": "R08",
+      "issues": [
+        2340
+      ],
+      "umbrella": 2262,
+      "title": "Structured Usage errors lacking one documented real-binary exit mapping",
+      "capability": "issue-first-journey",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/cargo-allow/tests/exit_code_matrix.rs"
+      ],
+      "reproduction_command_or_query": "head -5 crates/cargo-allow/tests/exit_code_matrix.rs",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #2340 against the real-binary exit-code matrix.",
+      "closure_proof_required": "Issue closed citing the real-binary exit-code matrix test.",
+      "claim_boundary": "A real-binary exit-code matrix proves Clap usage and structured Usage errors exit 2, config/policy/runtime errors exit 1, and success exits 0, without calling the mapping helper."
+    },
+    {
+      "id": "R09",
+      "issues": [
+        2252
+      ],
+      "umbrella": 2262,
+      "title": "Authoritative fast/full proof composition",
+      "capability": "no-new-ratchet",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-core/src/actionable_diagnostic.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "reproduction_command_or_query": "grep -n \"RequiredProof\" crates/allow-core/src/actionable_diagnostic.rs | head -2; grep -n \"source-candidate-smoke\\|msrv:\" .github/workflows/ci.yml | head -4",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #2252 against the typed proof-plan composition and the hosted proof lanes.",
+      "closure_proof_required": "Issue closed citing the typed proof surface and the CI lanes it names.",
+      "claim_boundary": "Proof plans name an authoritative program plus argv and the hosted lanes carry the full/contract proof split; composition is typed, not prose."
+    },
+    {
+      "id": "R10",
+      "issues": [
+        1901
+      ],
+      "umbrella": 2262,
+      "title": "Declared MSRV has no dedicated proof lane",
+      "capability": "rust-toolchain",
+      "platform": "rust-1.95",
+      "evidence_current_main": [
+        "Cargo.toml",
+        ".github/workflows/ci.yml",
+        "scripts/check-msrv-consistency.sh"
+      ],
+      "reproduction_command_or_query": "grep -n \"rust-version\" Cargo.toml; grep -n \"RUSTUP_TOOLCHAIN: \\\"1.95.0\\\"\" .github/workflows/ci.yml; grep -n \"msrv:\" .github/workflows/ci.yml | head -2",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #1901 against the dedicated msrv lane and its consistency guard.",
+      "closure_proof_required": "Issue closed citing the msrv job, the pinned 1.95.0 toolchain, and check-msrv-consistency.sh.",
+      "claim_boundary": "The declared MSRV is Rust 1.95 with a dedicated ci.yml msrv lane, a fail-closed consistency guard, and workspace rust-version pinned to 1.95; the issue's 1.85-era premise is invalidated on the current head."
+    },
+    {
+      "id": "R11",
+      "issues": [
+        1896
+      ],
+      "umbrella": 2262,
+      "title": "Release-critical third-party actions referenced by mutable tags",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [
+        ".github/workflows/release.yml",
+        ".github/workflows/release-authorized.yml"
+      ],
+      "reproduction_command_or_query": "grep -ho \"uses: [^ ]*\" .github/workflows/release.yml | sort -u",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #1896 against the SHA-pinned release surfaces.",
+      "closure_proof_required": "Issue closed citing the unique uses: inventory of the release workflows.",
+      "claim_boundary": "release.yml and release-authorized.yml pin every third-party action to a provider commit SHA with a version comment (checkout, rust-toolchain, upload/download-artifact, attest-build-provenance, action-gh-release, setup-python); ordinary ci.yml lanes retain dtolnay toolchain-selector refs, which select toolchain versions and are outside the release-surface pin claim."
+    },
+    {
+      "id": "R12",
+      "issues": [
+        1780,
+        2265
+      ],
+      "umbrella": 2262,
+      "title": "Cross-platform semantic proof lane",
+      "capability": "ci-deployment",
+      "platform": null,
+      "evidence_current_main": [
+        ".github/workflows/ci.yml"
+      ],
+      "reproduction_command_or_query": "grep -n \"test-core-platforms:\" .github/workflows/ci.yml; grep -n \"cross_platform_semantics\" .github/workflows/ci.yml",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner reconciles #1780/#2265 against the landed test-core-platforms lane and closes or re-scopes the remainder.",
+      "closure_proof_required": "Issues closed or re-scoped citing the test-core-platforms job and the cross_platform_semantics fixture.",
+      "claim_boundary": "ci.yml runs the release-set suite plus the cross_platform_semantics fixture on Linux x86_64, Windows x86_64, macOS ARM64, and macOS Intel with retained per-target proof receipts; hosted currentness is proven by the lane on every PR and is not re-run by this ledger."
+    },
+    {
+      "id": "R13",
+      "issues": [
+        2256,
+        2277,
+        2278,
+        2924,
+        2925,
+        2926
+      ],
+      "umbrella": 2262,
+      "title": "Exact packaged candidate and isolated-install proof for the frozen 0.2.0 candidate",
+      "capability": "package-install",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/exact-candidate-package-set.sh",
+        "scripts/exact-candidate-isolated-install.py",
+        "crates/allow-report/src/artifacts/package_candidate_v2.rs",
+        "crates/allow-report/src/artifacts/isolated_install_receipt_v2.rs",
+        "crates/allow-report/src/artifacts/exact_candidate_receipt_v2.rs"
+      ],
+      "reproduction_command_or_query": "query: no frozen-candidate receipt exists because the #2501 freeze has not been performed on any 0.2.0 head",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "source_candidate_freeze",
+      "obligation": "implementation_contract",
+      "severity": "high",
+      "failure_class": "release-sequencing",
+      "next_action": "#2256 runs the exact packaged-candidate proof, isolated install, and candidate receipt against the exact frozen head.",
+      "closure_proof_required": "CargoAllowExactCandidateReceiptV2, CargoAllowIsolatedInstallReceiptV2, and CargoAllowPackageCandidateV2 complete for the exact frozen candidate head/tree.",
+      "claim_boundary": "The Stage A packaging harness, isolated-install journey, and typed V2 receipt contracts are landed; the receipts themselves cannot exist before the freeze, so the blocking condition is present on every current head."
+    },
+    {
+      "id": "R14",
+      "issues": [
+        3389
+      ],
+      "umbrella": 2262,
+      "title": "Exact package rows published from GitHub Actions with a fail-closed token gate",
+      "capability": "publication-auth",
+      "platform": null,
+      "evidence_current_main": [
+        ".github/workflows/release.yml",
+        "docs/release/0.2.0-rc.1.md",
+        "docs/release/publication-journal-v1.md"
+      ],
+      "reproduction_command_or_query": "grep -n \"Require crates.io API token for publication\" .github/workflows/release.yml; grep -n \"3389\" docs/release/0.2.0-rc.1.md",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #3389 against the landed token gate, journal, and the rc.1 record.",
+      "closure_proof_required": "Issue closed citing the release.yml token gate and the publication journal contract.",
+      "claim_boundary": "The publish job refuses absent tokens, is gated behind the authorize outputs, and every published row lands in the typed publication journal; rc.1 exercised this path publicly."
+    },
+    {
+      "id": "R15",
+      "issues": [
+        1903,
+        2115,
+        2281,
+        2282
+      ],
+      "umbrella": 2262,
+      "title": "Live publication credential/provider selection",
+      "capability": "publication-auth",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-report/src/artifacts/crates_io_trusted_publishing_receipt_v1.rs",
+        ".github/workflows/release.yml"
+      ],
+      "reproduction_command_or_query": "grep -n \"TrustedPublishingOidc\\|CratesIoApiToken\" crates/allow-report/src/artifacts/crates_io_trusted_publishing_receipt_v1.rs | head -4",
+      "reproduction_result": "NeedsOperatorProof",
+      "qualification_disposition": "BlockerBeforeTag",
+      "timing_gate": "tag",
+      "obligation": "live_operator_evidence",
+      "severity": "medium",
+      "failure_class": "credential-availability",
+      "next_action": "The #2502 publication preflight selects and observes the live credential/provider; the effective class is recorded through the typed receipt.",
+      "closure_proof_required": "A real CratesIoTrustedPublishingReceiptV1 from the actual publication whose authentication class is supported and whose producer identity matches the workflow.",
+      "claim_boundary": "The typed receipt contract supports keyless OIDC trusted publishing and the repository-secret API token class, and rejects everything else; which class the final publication actually uses is live provider evidence that source inspection cannot decide."
+    },
+    {
+      "id": "R16",
+      "issues": [
+        1900,
+        2272,
+        2283,
+        2284,
+        3747
+      ],
+      "umbrella": 2262,
+      "title": "Live main-branch and v* tag authorization controls",
+      "capability": "repository-controls",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/observe-live-release-controls.sh",
+        "crates/cargo-allow/tests/repository_release_controls.rs"
+      ],
+      "reproduction_command_or_query": "query: live GitHub repository settings are not observable from source; operator runs scripts/observe-live-release-controls.sh and retains the readback",
+      "reproduction_result": "NeedsOperatorProof",
+      "qualification_disposition": "BlockerBeforeTag",
+      "timing_gate": "tag",
+      "obligation": "live_operator_evidence",
+      "severity": "high",
+      "failure_class": "repository-settings",
+      "next_action": "#2284 applies and receipts the effective GitHub main and v* tag rules after the #2283 contract; #3747 readiness controls chain into the same live readback.",
+      "closure_proof_required": "A current live-control readback receipt showing the effective main/tag protection matches the ratified contract (#2283/#2272).",
+      "claim_boundary": "The observation script and its characterization test are landed; the effective live settings are operator-owned evidence and stay explicitly non-green here."
+    },
+    {
+      "id": "R17",
+      "issues": [
+        2047,
+        2279,
+        2280
+      ],
+      "umbrella": 2262,
+      "title": "Signed exact multi-crate manifest",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/generate-release-manifest.sh",
+        "crates/allow-report/src/artifacts/release_manifest_v2.rs",
+        "crates/cargo-allow/tests/release_manifest_evidence_v2.rs",
+        "crates/cargo-allow/tests/release_manifest_golden.rs"
+      ],
+      "reproduction_command_or_query": "grep -in \"signature\\|minisign\\|sigstore\" scripts/generate-release-manifest.sh crates/allow-report/src/artifacts/release_manifest_v2.rs; echo \"expected: no matches\"",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeTag",
+      "timing_gate": "tag",
+      "obligation": "implementation_contract",
+      "severity": "medium",
+      "failure_class": "missing-signature-capability",
+      "next_action": "#2047 implements the signed exact multi-crate manifest over the landed ReleaseManifestV2 payload.",
+      "closure_proof_required": "Signature verification proof bound to the exact manifest digest and a retained verification path.",
+      "claim_boundary": "ReleaseManifestV2 payload/envelope generation and its evidence tests are landed, but no signature machinery exists in the manifest producer or model; the signed-manifest capability is absent on the current head."
+    },
+    {
+      "id": "R18",
+      "issues": [
+        3692,
+        3719,
+        3720,
+        3721
+      ],
+      "umbrella": 2262,
+      "title": "Writer closure fixes that can change shipped package bytes",
+      "capability": "mutation-lifecycle",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows the writer-closure family open; no in-tree closure surface exists yet",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "candidate_bytes",
+      "obligation": "implementation_contract",
+      "severity": "high",
+      "failure_class": "open-implementation",
+      "next_action": "Land the writer-closure family; every merge that changes package bytes refreshes this row.",
+      "closure_proof_required": "Writer-closure issues closed with the package-byte delta accounted against the exact candidate digest.",
+      "claim_boundary": "Open writer work can alter candidate bytes; the candidate digest is not meaningful for the final freeze until this family closes."
+    },
+    {
+      "id": "R19",
+      "issues": [
+        3733,
+        3734
+      ],
+      "umbrella": 2262,
+      "title": "Namespace truth and source/V2 reconciliation feeding shared evidence",
+      "capability": "release-namespace",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #3733 observation and #3734 source/V2 reconciliation open",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "candidate_bytes",
+      "obligation": "implementation_contract",
+      "severity": "high",
+      "failure_class": "open-implementation",
+      "next_action": "#3734 reconciles namespace truth with the source/V2 records that the shared release evidence consumes.",
+      "closure_proof_required": "Namespace observation and reconciliation receipts current for the selected identity.",
+      "claim_boundary": "Shared evidence depends on namespace truth; a mismatch between the public namespace and the typed records invalidates downstream receipts."
+    },
+    {
+      "id": "R20",
+      "issues": [
+        3725
+      ],
+      "umbrella": 2262,
+      "title": "Exact RC.1 Changie/package-doc corpus",
+      "capability": "release-freeze",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/0.2.0-rc.1.md"
+      ],
+      "reproduction_command_or_query": "query: premise is RC.1-specific and rc.1 shipped; reconcile against the landed RC.1 run/package-row/asset reconciliation",
+      "reproduction_result": "AmbiguousPremise",
+      "qualification_disposition": "NeedsRepositoryDecision",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "medium",
+      "failure_class": "ambiguous-premise",
+      "next_action": "Owner reconciles #3725 against the landed #3785 RC.1 reconciliation (main 33be1a54) and closes or re-scopes it for the final cut.",
+      "closure_proof_required": "Owner decision recorded on the issue with the reconciled corpus citation.",
+      "claim_boundary": "rc.1 is published and its run/package-row/asset reconciliation landed; the remaining acceptance of this RC.1-specific issue is not decidable from source inspection alone."
+    },
+    {
+      "id": "R21",
+      "issues": [
+        3746
+      ],
+      "umbrella": 2262,
+      "title": "Exact typed RC document/version selection",
+      "capability": "release-freeze",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/support-matrix.toml"
+      ],
+      "reproduction_command_or_query": "query: premise is RC-specific; the final 0.2.0 selection freeze exists in the support matrix and the final cut selection belongs to #2501/#2502",
+      "reproduction_result": "AmbiguousPremise",
+      "qualification_disposition": "NeedsRepositoryDecision",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "medium",
+      "failure_class": "ambiguous-premise",
+      "next_action": "Owner re-scopes #3746 onto the final 0.2.0 document/version selection consumed by #2501/#2502, or closes it as RC-satisfied.",
+      "closure_proof_required": "Owner decision recorded on the issue naming the owning final-cut issue.",
+      "claim_boundary": "The machine-readable final-selection freeze (controlling issue #3737) already binds version 0.2.0, tag v0.2.0, channel stable, and prerelease=false; the RC-specific selection premise does not classify itself."
+    },
+    {
+      "id": "R22",
+      "issues": [
+        3735
+      ],
+      "umbrella": 2262,
+      "title": "V1-era release evidence requirements mapped onto the ReleaseManifestV2 authority",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #3735 open; no V1-to-V2 evidence mapping document exists in docs/release/",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "source_candidate_freeze",
+      "obligation": "implementation_contract",
+      "severity": "medium",
+      "failure_class": "open-implementation",
+      "next_action": "#3735 lands the V1-to-V2 evidence mapping so prepublication manifest results consume the current authority.",
+      "closure_proof_required": "Mapping merged on an exact current basis and referenced by the manifest evidence consumers.",
+      "claim_boundary": "Older V1-era evidence expectations must map onto ReleaseManifestV2 before the prepublication result is consumed; the mapping is absent on the current head."
+    },
+    {
+      "id": "R23",
+      "issues": [
+        3151,
+        2466,
+        3150
+      ],
+      "umbrella": 2262,
+      "title": "Installed experience receipt and clean-pilot evidence for the frozen candidate",
+      "capability": "installed-experience",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/release-experience-v1.md",
+        "docs/support-matrix.toml",
+        "crates/allow-report/src/artifacts/release_experience_v1.rs"
+      ],
+      "reproduction_command_or_query": "query: the experience contract requires Complete (completed clean pilot) for #2501 consumption while the final-selection freeze records the clean pilot as not_proven",
+      "reproduction_result": "NeedsOperatorProof",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "source_candidate_freeze",
+      "obligation": "live_operator_evidence",
+      "severity": "high",
+      "failure_class": "operator-pilot-evidence",
+      "next_action": "Select the pilot target (#3150), complete the clean pilot (#2466), and produce the ReleaseExperienceReceiptV1; alternatively the owner reconciles the NotProven exception law before the freeze.",
+      "closure_proof_required": "ReleaseExperienceReceiptV1 Complete for the frozen candidate, or a recorded owner decision reconciling the NotProven path with the contract that currently rejects it.",
+      "claim_boundary": "The typed experience evaluator requires a completed clean pilot for Complete and #2501 consumes only Complete, while the #3737 selection freeze makes no pilot claim; this mismatch is itself a release blocker until the owner reconciles it."
+    },
+    {
+      "id": "R24",
+      "issues": [
+        2485,
+        3727
+      ],
+      "umbrella": 2262,
+      "title": "Exact 0.1.11 to final 0.2.0 upgrade and rollback receipt",
+      "capability": "upgrade-rollback",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/exact-upgrade-rollback-journey.sh",
+        "scripts/validate-upgrade-rollback-journey.py",
+        "crates/cargo-allow/tests/release_upgrade_011_to_020.rs",
+        "docs/support-matrix.toml"
+      ],
+      "reproduction_command_or_query": "query: no UpgradeRollbackReceiptV1 exists for a 0.2.0 frozen candidate because the freeze has not been performed",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "source_candidate_freeze",
+      "obligation": "rehearsal_evidence",
+      "severity": "medium",
+      "failure_class": "release-sequencing",
+      "next_action": "Run the exact upgrade/rollback journey against the frozen candidate per the selected support-matrix row.",
+      "closure_proof_required": "UpgradeRollbackReceiptV1 current for the exact frozen candidate identity.",
+      "claim_boundary": "The journey scripts and their characterization test are landed and the claim is selected in the support matrix; the receipt itself cannot exist before the freeze, so the blocking condition is present."
+    },
+    {
+      "id": "R25",
+      "issues": [
+        2509
+      ],
+      "umbrella": 2262,
+      "title": "Exact publish-recovery implementation contract and hostile fixtures",
+      "capability": "release-operation-authority",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/publication-recovery-v1.md",
+        "crates/allow-report/src/artifacts/publication_recovery_v1.rs"
+      ],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #2509 open; the typed recovery contract doc and model are landed",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "source_candidate_freeze",
+      "obligation": "implementation_contract",
+      "severity": "medium",
+      "failure_class": "open-implementation",
+      "next_action": "#2509 binds publish recovery to the exact tagged version and source candidate and lands the hostile fixtures.",
+      "closure_proof_required": "Recovery decision contract proven against hostile fixtures for the exact operation identity.",
+      "claim_boundary": "The typed publication-recovery contract exists; the remaining exact-recovery binding and hostile fixtures are open implementation work that must settle before tag."
+    },
+    {
+      "id": "R26",
+      "issues": [
+        3751
+      ],
+      "umbrella": 2262,
+      "title": "Hostile publisher rehearsal",
+      "capability": "release-operation-authority",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/release-rehearsal.py",
+        "docs/release/README.md"
+      ],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #3751 open; the rehearsal producer emits Incomplete with all zero-mutation flags false",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "source_candidate_freeze",
+      "obligation": "rehearsal_evidence",
+      "severity": "medium",
+      "failure_class": "missing-rehearsal",
+      "next_action": "#3751 executes the hostile publisher rehearsal and retains its receipts.",
+      "closure_proof_required": "Rehearsal receipts demonstrating the publisher rejects hostile inputs on the exact candidate composition.",
+      "claim_boundary": "The rehearsal harness is landed but deliberately emits Incomplete; the hostile rehearsal evidence does not exist yet."
+    },
+    {
+      "id": "R27",
+      "issues": [
+        2269
+      ],
+      "umbrella": 2262,
+      "title": "Compatibility, capability, platform, and package inventory compilation",
+      "capability": "release-freeze",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #2269 open; this ledger provides the qualification half of the compilation",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "candidate_bytes",
+      "obligation": "implementation_contract",
+      "severity": "medium",
+      "failure_class": "open-implementation",
+      "next_action": "#2269 compiles the compatibility/capability/platform/package inventory before version selection, consuming this ledger's rows.",
+      "closure_proof_required": "Inventory compilation merged and cross-linked to this ledger's basis.",
+      "claim_boundary": "This ledger is the qualification go/no-go input; #2269 owns the remaining inventory compilation and both must agree on capability vocabulary."
+    },
+    {
+      "id": "R28",
+      "issues": [
+        3710
+      ],
+      "umbrella": 2262,
+      "title": "Phase A packaged metadata/docs/support inputs",
+      "capability": "package-install",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #3710 open; Phase A inputs are package-byte prerequisites",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeCandidate",
+      "timing_gate": "candidate_bytes",
+      "obligation": "implementation_contract",
+      "severity": "low",
+      "failure_class": "open-implementation",
+      "next_action": "#3710 lands Phase A packaged metadata/docs/support inputs before the candidate bytes freeze.",
+      "closure_proof_required": "Phase A inputs present in the candidate bytes for the exact frozen head.",
+      "claim_boundary": "Phase B docs.rs/support/announcement reconciliation is post-publication; Phase A inputs are candidate-byte prerequisites tracked here."
+    },
+    {
+      "id": "R29",
+      "issues": [
+        2501
+      ],
+      "umbrella": 2262,
+      "title": "Exact final candidate refreeze on the selected head",
+      "capability": "release-freeze",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/final-freeze-qualification-v1.md",
+        "scripts/qualify-release-freeze.py",
+        "crates/allow-report/src/artifacts/final_freeze_replay_v1.rs"
+      ],
+      "reproduction_command_or_query": "query: no final-freeze receipt exists for a 0.2.0 head; the freeze driver is prepare/qualify with authenticated read-only I/O",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "BlockerBeforeTag",
+      "timing_gate": "tag",
+      "obligation": "implementation_contract",
+      "severity": "high",
+      "failure_class": "release-sequencing",
+      "next_action": "#2501 freezes the exact final mixed-version candidate on the selected current head and stops for authorization.",
+      "closure_proof_required": "Freeze qualification Complete on the exact head with replay inputs retained.",
+      "claim_boundary": "The freeze producer/consumer boundary is landed; the actual freeze on an exact head has not happened and cannot happen before the candidate blockers close."
+    },
+    {
+      "id": "R30",
+      "issues": [
+        2502,
+        3760
+      ],
+      "umbrella": 2262,
+      "title": "Authorized final publication",
+      "capability": "release-operation-authority",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/release-authorization-v1.md",
+        "docs/release/release-authorization-custody-v1.md",
+        ".github/workflows/release-authorized.yml",
+        "release/authorize-v0.2.0.json"
+      ],
+      "reproduction_command_or_query": "query: publication authorization is owner authority under #3760; this ledger records the disposition law only",
+      "reproduction_result": "NeedsOperatorProof",
+      "qualification_disposition": "BlockerBeforeTag",
+      "timing_gate": "tag",
+      "obligation": "live_operator_evidence",
+      "severity": "high",
+      "failure_class": "authorization-boundary",
+      "next_action": "The owner grants explicit release authorization under #3760 and the authorized publication executes under #2502 through the custody protocol (#3927).",
+      "closure_proof_required": "The owner's explicit authorization event and the typed authorization records consumed by the custody protocol for the exact operation identity.",
+      "claim_boundary": "This ledger classifies and routes work; it cannot create, validate, modify, or convey release authorization. Authorization belongs to the owner under #3760; existing authorization surfaces were referenced read-only."
+    },
+    {
+      "id": "R31",
+      "issues": [
+        2268,
+        3932
+      ],
+      "umbrella": 2262,
+      "title": "Exact published-version registry install matrix",
+      "capability": "package-install",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-report/src/artifacts/crates_io_registry_install_journey_receipt_v1.rs",
+        ".github/workflows/release.yml"
+      ],
+      "reproduction_command_or_query": "query: the real crates.io run cannot exist before publication; the typed journey receipt contract is landed",
+      "reproduction_result": "NeedsOperatorProof",
+      "qualification_disposition": "PostReleaseHardening",
+      "timing_gate": "post_publication",
+      "obligation": "public_observation",
+      "severity": "medium",
+      "failure_class": "post-publication-observation",
+      "next_action": "After publication, run the exact-version install matrix on the selected platforms and retain the typed journey receipts.",
+      "closure_proof_required": "Typed registry-install journey receipts from the real published version.",
+      "claim_boundary": "The install-smoke workflow step and typed receipt contract are landed; the real external receipts are post-publication evidence and do not block freeze."
+    },
+    {
+      "id": "R32",
+      "issues": [
+        2499
+      ],
+      "umbrella": 2262,
+      "title": "Exact provenance and complete asset set at publication",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-report/src/artifacts/release_artifact_transfer_v1.rs",
+        ".github/workflows/release.yml"
+      ],
+      "reproduction_command_or_query": "grep -n \"attest-build-provenance\" .github/workflows/release.yml | head -3",
+      "reproduction_result": "NeedsOperatorProof",
+      "qualification_disposition": "PostReleaseHardening",
+      "timing_gate": "post_publication",
+      "obligation": "public_observation",
+      "severity": "medium",
+      "failure_class": "post-publication-observation",
+      "next_action": "Verify exact provenance and the complete asset set at the real publication under #2502.",
+      "closure_proof_required": "Complete-asset-set verification over the real publication artifacts.",
+      "claim_boundary": "Build-provenance attestation steps exist in the release workflow; the real asset-set verification happens at publication and is post-publication evidence."
+    },
+    {
+      "id": "R33",
+      "issues": [
+        2500
+      ],
+      "umbrella": 2262,
+      "title": "Public artifact catalog from typed producer contracts",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/cargo-allow/tests/artifact_set_contract.rs"
+      ],
+      "reproduction_command_or_query": "query: issue state at the snapshot shows #2500 open; the catalog generator/checker is a contract deliverable",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "PostReleaseHardening",
+      "timing_gate": "post_publication",
+      "obligation": "implementation_contract",
+      "severity": "low",
+      "failure_class": "open-implementation",
+      "next_action": "#2500 lands the artifact catalog generator and checker over the typed producer contracts.",
+      "closure_proof_required": "Catalog generated from typed producers and checked against the real asset set.",
+      "claim_boundary": "The artifact-set contract tests exist; the public catalog deliverable remains open and is consumed at closeout."
+    },
+    {
+      "id": "R34",
+      "issues": [
+        1781
+      ],
+      "umbrella": 2262,
+      "title": "Receipt artifact integrity, JSON escaping, and schema versioning umbrella",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: umbrella issue; subclaims must be reproduced individually before any fix or classification change",
+      "reproduction_result": "AmbiguousPremise",
+      "qualification_disposition": "NeedsRepositoryDecision",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "low",
+      "failure_class": "ambiguous-premise",
+      "next_action": "Reproduce #1781's remaining subclaims individually against the current typed receipt schemas, then file targeted fixes or close.",
+      "closure_proof_required": "Per-subclaim reproduction results recorded on the issue.",
+      "claim_boundary": "Typed receipt schemas with deny_unknown_fields validators are the current posture; this umbrella is not counted as a shipped-capability blocker until a concrete subclaim reproduces."
+    },
+    {
+      "id": "R35",
+      "issues": [
+        2457,
+        2464
+      ],
+      "umbrella": 2262,
+      "title": "Prebuilt binary archives for claimed platforms",
+      "capability": "platform-linux",
+      "platform": "x86_64-unknown-linux-gnu",
+      "evidence_current_main": [
+        "docs/support-matrix.toml",
+        ".github/workflows/release.yml"
+      ],
+      "reproduction_command_or_query": "query: the final-selection freeze marks the prebuilt-binary-archive channel not_included; attached assets are convenience artifacts only",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "SupportedLimitation",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "low",
+      "failure_class": "claim-narrowing",
+      "next_action": "Optional: #2464 promotes the Linux archive experience; until then no archive-install claim exists.",
+      "closure_proof_required": "Not applicable: the release claims no archive installation channel.",
+      "claim_boundary": "The selected release claims no archive installation channel and no cargo-binstall channel; the tagged Linux archive and its attestation are convenience assets, so the missing prebuilt-binary claims do not block freeze or tag."
+    },
+    {
+      "id": "R36",
+      "issues": [
+        2356,
+        2467,
+        3150
+      ],
+      "umbrella": 2262,
+      "title": "Clean and brownfield adoption pilots",
+      "capability": "pilot-adoption",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/support-matrix.toml"
+      ],
+      "reproduction_command_or_query": "query: the final-selection freeze marks the clean pilot not_proven and the brownfield pilot not_included",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "SupportedLimitation",
+      "timing_gate": "none",
+      "obligation": "live_operator_evidence",
+      "severity": "low",
+      "failure_class": "claim-narrowing",
+      "next_action": "Optional: select the clean-pilot target (#3150) and run the pilot (#2466); brownfield stays excluded before the first final.",
+      "closure_proof_required": "Not applicable: the release makes no pilot adoption claim.",
+      "claim_boundary": "No pilot claim is made by the selected release; NotProven and not_included narrow the claims and never inherit success. The pilot/experience chain is separately blocking under R23 because the experience contract currently requires it."
+    },
+    {
+      "id": "R37",
+      "issues": [
+        3785
+      ],
+      "umbrella": 2262,
+      "title": "0.2.0-rc.1 moved-tag publication incident lineage",
+      "capability": "release-closeout",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/incidents/2026-08-24-rc1-tag-movement.md",
+        "docs/release/evidence/rc1-publication-incident.v1.json",
+        "docs/release/0.2.0-rc.1.md"
+      ],
+      "reproduction_command_or_query": "query: read the incident record; rc.1 packages were published across moving commits and the tag is immutable",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "SupportedLimitation",
+      "timing_gate": "none",
+      "obligation": "incident_lineage",
+      "severity": "medium",
+      "failure_class": "recorded-incident",
+      "next_action": "Retain the incident record unchanged; the final cut requires a fresh freeze and separate authorization.",
+      "closure_proof_required": "Not applicable: recorded lineage with the tag immutable.",
+      "claim_boundary": "rc.1 bytes, freeze evidence, and authorization are NotReusable for final 0.2.0; rc.1 remains usable pilot evidence and 0.1.11 stays the stable rollback baseline."
+    },
+    {
+      "id": "R38",
+      "issues": [
+        3693,
+        3694,
+        3724,
+        3787,
+        3788
+      ],
+      "umbrella": 2262,
+      "title": "Typed release identity and workflow cutover",
+      "capability": "release-operation-authority",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/release-operation-authority-v1.md",
+        "docs/release/release-operation-child-inventory-v1.md",
+        ".github/workflows/release-authorized.yml",
+        "crates/allow-report/src/artifacts/release_identity_v1.rs",
+        "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"operation_identity_digest\" docs/release/release-operation-child-inventory-v1.md | head -3",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes the landed identity/cutover issues against the operation authority and child inventory.",
+      "closure_proof_required": "Issues closed citing the authority, child inventory, and the release-authorized workflow.",
+      "claim_boundary": "The canonical operation identity, child bindings (custody, journal, checkpoint, lease, tag transaction), and the workflow cutover are landed; release-sensitive PRs route through the exact-subject rehearsal."
+    },
+    {
+      "id": "R39",
+      "issues": [
+        3913,
+        3914,
+        3916,
+        3917,
+        3919,
+        3921,
+        3922,
+        3924,
+        3925,
+        3927,
+        3929,
+        3930,
+        3931,
+        3933,
+        3934,
+        3935,
+        3936,
+        3938,
+        3940
+      ],
+      "umbrella": 2262,
+      "title": "Release control-train typed contracts (#3913-#3940 family)",
+      "capability": "release-operation-authority",
+      "platform": null,
+      "evidence_current_main": [
+        "docs/release/publication-journal-v1.md",
+        "docs/release/publication-checkpoint-v1.md",
+        "docs/release/release-operation-lease-v1.md",
+        "docs/release/release-authorization-custody-v1.md",
+        "docs/release/final-tag-transaction-v1.md",
+        "docs/release/publication-recovery-v1.md",
+        "docs/release/github-release-transaction-v1.md"
+      ],
+      "reproduction_command_or_query": "query: all family issues closed at the snapshot; typed models, schemas, and contract docs are landed",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Real receipts remain post-publication under #2502; operator custody is unchanged under #3760.",
+      "closure_proof_required": "Real IrreversibleOperationReceipts at the authorized publication; implementation readiness is landed.",
+      "claim_boundary": "The control train's implementation contracts (journal, checkpoint, lease, custody, tag transaction, recovery, GitHub Release transaction) are landed with hostile fixtures; their real receipts are post-publication closeout evidence and their execution remains owner authority."
+    },
+    {
+      "id": "R40",
+      "issues": [
+        2496,
+        2497
+      ],
+      "umbrella": 2262,
+      "title": "Typed crates.io trust-chain receipts",
+      "capability": "publication-auth",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-report/src/artifacts/crates_io_trusted_publishing_receipt_v1.rs",
+        "crates/allow-report/src/artifacts/crates_io_first_publication_bootstrap_receipt_v1.rs",
+        "crates/allow-report/src/artifacts/crates_io_registry_install_journey_receipt_v1.rs",
+        "crates/allow-report/src/artifacts/reconciled_package_publication_v1.rs",
+        "crates/cargo-allow/tests/crates_io_release_receipts.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"CRATES_IO_TRUSTED_PUBLISHING_RECEIPT_SCHEMA_ID\" crates/allow-report/src/artifacts/crates_io_trusted_publishing_receipt_v1.rs | head -2",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes the receipt-contract issues; real receipts are produced at the authorized publication.",
+      "closure_proof_required": "Issues closed citing the typed receipt surfaces and their characterization test.",
+      "claim_boundary": "Trusted-publishing, bootstrap, install-journey, and reconciled-publication receipts are typed with fail-closed validators; they record posture and never grant publication authority."
+    },
+    {
+      "id": "R41",
+      "issues": [
+        2267,
+        3737
+      ],
+      "umbrella": 2262,
+      "title": "Prepublication cross-platform source-candidate smoke and support selection",
+      "capability": "ci-deployment",
+      "platform": null,
+      "evidence_current_main": [
+        ".github/workflows/release.yml",
+        "scripts/release-source-candidate-smoke-gate.py",
+        "docs/support-matrix.toml"
+      ],
+      "reproduction_command_or_query": "grep -n \"source-candidate-smoke:\" .github/workflows/release.yml; grep -n \"NotIncluded\" scripts/release-source-candidate-smoke-gate.py | head -3",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes #2267; the gate runs at every publication attempt on the exact release identity.",
+      "closure_proof_required": "Issue closed citing the smoke matrix, gate script, and the selection freeze.",
+      "claim_boundary": "Publication is gated on the cross-platform source-candidate smoke with required Linux/Windows x86_64 rows on Rust 1.95 per the #3737 selection; macOS and the 1.85 rollback-guidance lane are explicitly NotIncluded in the gate script, never inferred from absent YAML."
+    },
+    {
+      "id": "R42",
+      "issues": [
+        3744,
+        3755
+      ],
+      "umbrella": 2262,
+      "title": "Shared prerequisite checksum authority and exact registry-row contracts",
+      "capability": "provenance-manifest",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/exact-candidate-index-checksum.py",
+        "crates/allow-report/src/artifacts/crates_io_first_publication_bootstrap_receipt_v1.rs",
+        "crates/allow-report/src/artifacts/isolated_install_receipt_v2.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"checksum\" crates/allow-report/src/artifacts/crates_io_first_publication_bootstrap_receipt_v1.rs | head -3",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "implementation_contract",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Owner closes the checksum-contract issues; the ten-registry-row exactness is observed post-publication.",
+      "closure_proof_required": "Issues closed citing the checksum surfaces; real row observation remains under R31.",
+      "claim_boundary": "Checksum authority and the receipt-level row-checksum contracts are landed; the real ten-row registry observation is post-publication evidence."
+    },
+    {
+      "id": "R43",
+      "issues": [
+        3726
+      ],
+      "umbrella": 2262,
+      "title": "ReleaseCloseoutReceiptV1 implementation and real closeout",
+      "capability": "release-closeout",
+      "platform": null,
+      "evidence_current_main": [
+        "crates/allow-report/src/artifacts/github_release_journal_v1.rs",
+        "crates/allow-report/src/artifacts/github_release_checkpoint_v1.rs",
+        "crates/cargo-allow/tests/release_closeout_contract.rs"
+      ],
+      "reproduction_command_or_query": "grep -n \"ReleaseCloseoutReceiptV1\\|closeout\" crates/cargo-allow/tests/release_closeout_contract.rs | head -3",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "PostReleaseHardening",
+      "timing_gate": "post_publication",
+      "obligation": "public_observation",
+      "severity": "medium",
+      "failure_class": "post-publication-observation",
+      "next_action": "After publication, reconcile actual GitHub draft assets and emit the real closeout receipt; source/fixture reachability is landed.",
+      "closure_proof_required": "ReleaseCloseoutReceiptV1 Complete from the real closeout reconciliation.",
+      "claim_boundary": "The closeout contract tests and the GitHub Release journal/checkpoint models are landed; the real receipts (actual draft assets, public prerelease) are post-publication closeout evidence."
+    },
+    {
+      "id": "R44",
+      "issues": [
+        2364
+      ],
+      "umbrella": 2262,
+      "title": "Published-command-registry promotion with the next crates.io cut",
+      "capability": "package-install",
+      "platform": null,
+      "evidence_current_main": [],
+      "reproduction_command_or_query": "query: policy/published-command-registry.toml is absent on the current head; promotion happens with the next cut",
+      "reproduction_result": "Reproduced",
+      "qualification_disposition": "PostReleaseHardening",
+      "timing_gate": "post_publication",
+      "obligation": "implementation_contract",
+      "severity": "low",
+      "failure_class": "open-implementation",
+      "next_action": "#2364 promotes the published-command-registry with the next crates.io cut.",
+      "closure_proof_required": "Registry promoted and its consumers refreshed at the cut.",
+      "claim_boundary": "The registry file is absent on the current head; promotion is a post-publication docs deliverable, not a freeze blocker."
+    },
+    {
+      "id": "R45",
+      "issues": [
+        1904
+      ],
+      "umbrella": 2262,
+      "title": "Post-publication installed version verification",
+      "capability": "package-install",
+      "platform": null,
+      "evidence_current_main": [
+        "scripts/verify-crate-registry-version.sh",
+        ".github/workflows/release.yml"
+      ],
+      "reproduction_command_or_query": "grep -n \"verify-crate-registry-version\" .github/workflows/release.yml scripts/verify-crate-registry-version.sh | head -3",
+      "reproduction_result": "AlreadyFixed",
+      "qualification_disposition": "StaleOrAlreadyFixed",
+      "timing_gate": "none",
+      "obligation": "public_observation",
+      "severity": "none",
+      "failure_class": "stale-issue-premise",
+      "next_action": "Real observation of the published version stays with R31 (#2268); the verification path is landed.",
+      "closure_proof_required": "Real observation under R31.",
+      "claim_boundary": "The registry-version verification script and its workflow usage are landed; the issue's implementation premise is satisfied and the live observation belongs to the post-publication row."
+    }
+  ]
+}
