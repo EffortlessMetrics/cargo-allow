@@ -874,3 +874,20 @@ required_stronger_owner = "#2282/#3145/#2268 release workflow producers"
 may_satisfy_release_gate = false
 last_reconciled_commit = "branch-under-review"
 claim_boundary = "Synthetic typed-model validation only; no registry call, no token read, no tag, and no publication occurs, and no live release-authorization surface is created or modified."
+
+[[surfaces]]
+id = "release-qualification-ledger"
+owner_issue = 2263
+semantic_authority = "release qualification ledger"
+path = "crates/cargo-allow/tests/release_qualification.rs"
+subject = "docs/release/evidence/next-release-qualification.json"
+producer = "Rust integration test"
+consumer = "#2262/#2269/#2501 release qualification"
+claimed_acceptance_row = "the ReleaseQualificationV1 ledger satisfies its closed row contract and its projection agrees"
+assertion_mechanism = "typed JSON validation with recomputed readiness derivation, cross-file #3737 support-matrix binding, and projection regeneration"
+evidence_class = "TypedModelValidation"
+disposition = "bounded projection"
+required_stronger_owner = "#2262"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The checker validates the ledger's internal contract and derivation; hosted qualification runs, live repository controls, operator pilots, and real registry receipts remain operator or post-publication evidence."
