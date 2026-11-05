@@ -58,7 +58,10 @@ match the audit report after excluding the command name and the audit-only
 remediation roadmap; no finding/outcome fields, array order, links, messages or
 scanner context are discarded for comparison. A comparable attempt adds no
 further command invocation or sample row. Missing controls, malformed details, substituted content or an
-exceeded ceiling produce an instrument-failure receipt. These checks and
+exceeded ceiling produce an instrument-failure receipt. A missing field
+already fails the instrument this way; the retained NonBlocking follow-up
+under #4374 is that an explicit exception type in the refusal path would
+improve triage, changing no measured row, ceiling or admission rule. These checks and
 artifact hashing occur after the timed child exits; the sample measures command
 execution and output production.
 

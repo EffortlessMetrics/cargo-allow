@@ -124,6 +124,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Bind the review lane to the submitted head, not GitHub's
+          # synthetic merge commit: the post transaction re-verifies the
+          # PR head and a merge-ref checkout reads as a head change.
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Report unavailable review lane
         if: env.UB_REVIEW_AVAILABLE != 'yes'
         run: |
