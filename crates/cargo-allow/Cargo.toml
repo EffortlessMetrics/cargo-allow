@@ -10,6 +10,13 @@ homepage.workspace = true
 readme = "README.md"
 keywords.workspace = true
 categories = ["command-line-utilities", "development-tools"]
+# The cross_platform_semantics fixture (#2276) is a self-contained test-only
+# mini repository: it must stay in the source checkout for the integration
+# test but never ship in the packaged crate. The release smoke harness
+# (#2402) omits the crate-root README.md and rebuilds the archive expecting
+# it to be the only README.md-named asset, so a packaged fixture README.md
+# fails that law.
+exclude = ["tests/fixtures/cross_platform_semantics"]
 
 [package.metadata.cargo-allow.reference]
 # Package-facing projection of docs/support-matrix.toml. The reference tests

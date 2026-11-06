@@ -891,3 +891,20 @@ required_stronger_owner = "#2262"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "The checker validates the ledger's internal contract and derivation; hosted qualification runs, live repository controls, operator pilots, and real registry receipts remain operator or post-publication evidence."
+
+[[surfaces]]
+id = "cross-platform-semantic-determinism"
+owner_issue = 2276
+semantic_authority = "one normalized semantic determinism fixture for Linux, Windows, and macOS"
+path = "crates/cargo-allow/tests/release_platform_semantics.rs"
+subject = "tests/fixtures/cross_platform_semantics fixture tree and the pinned canonical projection golden"
+producer = "Rust integration test running the real inventory/scan/match/render pipeline over the checked-in fixture"
+consumer = "#2265 test-core-platforms matrix / #2262 release qualification platform evidence"
+claimed_acceptance_row = "one fixture produces the same canonical semantic result on every claimed platform, with finding identity, match posture, inventory completeness, canonical ordering, and JSON/Markdown rendering as load-bearing assertions"
+assertion_mechanism = "byte-pinned canonical projection golden over the fixture tree, five independent negative controls, and allow-core normalization-seam assertions (separators, drive/UNC, NFC/NFD, case sensitivity)"
+evidence_class = "TypedModelValidation"
+disposition = "bounded per-host determinism oracle over the real pipeline"
+required_stronger_owner = "#2265 hosted Linux/Windows/macOS matrix equality run"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "Per-host deterministic reproduction of the pinned projection; cross-platform equality is proven only by the hosted test-core-platforms runs. Deleted-tracked inventory stays owned by the retained inventory_deleted_tracked test, and no release-authorization surface is created or modified."
