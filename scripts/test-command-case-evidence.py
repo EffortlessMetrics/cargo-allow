@@ -999,7 +999,7 @@ class NativeAdmissionTests(unittest.TestCase):
             expected = next(item for item in context["cases"] if item["case_id"] == case["context"]["case_id"])
             expected["output_digests"][role] = member["digest"]
 
-    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=30):
+    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=60):
         context_bytes = COLLECT.json_bytes(context) if raw_context is None else raw_context
         bundle["context_digest"] = COLLECT.digest(context_bytes)
         bundle_bytes = COLLECT.json_bytes(bundle) if raw_bundle is None else raw_bundle

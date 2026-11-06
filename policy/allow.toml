@@ -28934,3 +28934,24 @@ glob = ".allow/revisions/4725-4725-experience-mutation-1.toml"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-11501"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/core-command-presentation-4724.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained #4724 read-only A presentation experience record for the public 0.2.0-rc.1: collection digests, typed per-case admission and rc.1 version-drift findings; observation only, no release authority."
+evidence = ["issue:4724"]
+created = "2026-11-06"
+review_after = "2027-02-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/core-command-presentation-4724.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/core-command-presentation-4724.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1

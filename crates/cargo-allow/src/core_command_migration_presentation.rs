@@ -53,7 +53,23 @@ fn route_member_prefix(case_id: &str, route: &str, stage: &str) -> String {
     format!("presentation/{case_id}/{route}/{stage}")
 }
 
-#[allow(clippy::too_many_arguments)]
+/// Accumulated cross-route observation state for one presentation case.
+struct RouteObservations {
+    observed_summaries: Vec<(String, CoreCommandSummaryV1)>,
+    observed_exits: BTreeSet<i32>,
+    shared_snapshot: Option<LogicalSnapshot>,
+    json_route: Option<(String, CoreCommandSummaryV1, i32)>,
+    json_detail: Option<Vec<u8>>,
+    receipt_only_receipts: Vec<(String, Vec<u8>, InvocationContext)>,
+}
+
+/// The catalogue-side facts one invocation is admitted against.
+struct InvocationInputs<'a> {
+    spec: &'a CaseSpec,
+    fixture: &'a FixtureSpec,
+    binary: &'a BinaryContext,
+}
+
 pub(super) fn admit_presentation_case(
     spec: &CaseSpec,
     fixture: &FixtureSpec,
@@ -73,12 +89,19 @@ pub(super) fn admit_presentation_case(
         case.invocations.len() == expected.invocations.len(),
         "retained invocation count contradicts the expected presentation context",
     )?;
-    let mut observed_summaries: Vec<(String, CoreCommandSummaryV1)> = Vec::new();
-    let mut observed_exits: BTreeSet<i32> = BTreeSet::new();
-    let mut shared_snapshot: Option<LogicalSnapshot> = None;
-    let mut json_route: Option<(String, CoreCommandSummaryV1, i32)> = None;
-    let mut json_detail: Option<Vec<u8>> = None;
-    let mut receipt_only_receipts: Vec<(String, Vec<u8>, InvocationContext)> = Vec::new();
+    let mut observations = RouteObservations {
+        observed_summaries: Vec::new(),
+        observed_exits: BTreeSet::new(),
+        shared_snapshot: None,
+        json_route: None,
+        json_detail: None,
+        receipt_only_receipts: Vec::new(),
+    };
+    let inputs = InvocationInputs {
+        spec,
+        fixture,
+        binary,
+    };
     for (expected_invocation, case_invocation) in
         expected.invocations.iter().zip(case.invocations.iter())
     {
@@ -105,19 +128,12 @@ pub(super) fn admit_presentation_case(
             binding_gaps: Vec::new(),
         };
         match admit_invocation(
-            spec,
-            fixture,
+            &inputs,
             expected_invocation,
-            binary,
             case_invocation,
             reader,
             &mut route_admission,
-            &mut observed_summaries,
-            &mut observed_exits,
-            &mut shared_snapshot,
-            &mut json_route,
-            &mut json_detail,
-            &mut receipt_only_receipts,
+            &mut observations,
         ) {
             Ok(()) => {}
             Err(error) => {
@@ -146,26 +162,29 @@ pub(super) fn admit_presentation_case(
         "expected presentation route set contradicts the accepted obligation",
     )?;
     // Parity: every completed route shares one exit code and one typed summary.
-    if observed_exits.len() > 1 {
+    if observations.observed_exits.len() > 1 {
         return Err("presentation routes disagree on the observed exit code".to_string());
     }
-    if observed_summaries.len() > 1 {
-        let first = &observed_summaries[0].1;
-        if observed_summaries
+    let parity_first = observations
+        .observed_summaries
+        .first()
+        .map(|(_, summary)| summary);
+    if parity_first.is_some_and(|first| {
+        observations
+            .observed_summaries
             .iter()
             .any(|(_, summary)| summary != first)
-        {
-            return Err(
-                "presentation routes disagree on the typed common summary result, action, effects or proof"
-                    .to_string(),
-            );
-        }
+    }) {
+        return Err(
+            "presentation routes disagree on the typed common summary result, action, effects or proof"
+                .to_string(),
+        );
     }
-    if let Some((route, summary, exit)) = &json_route {
+    if let Some((route, summary, exit)) = &observations.json_route {
         admission.detail_reconciled = true;
         admission.observed_result_class = Some(enum_text(&summary.result_class)?);
         admission.observed_completeness = Some(enum_text(&summary.completeness)?);
-        if let Some(observed_exit) = observed_exits.iter().next() {
+        if let Some(observed_exit) = observations.observed_exits.iter().next() {
             need(
                 observed_exit == exit,
                 "JSON-route typed projection and observed exit disagree with the other routes",
@@ -191,10 +210,10 @@ pub(super) fn admit_presentation_case(
         // route's retained evaluated detail of the same fixture state; the
         // JSON route's own receipt/detail correspondence is validated inside
         // its projection.
-        let detail = json_detail.as_ref().ok_or(
+        let detail = observations.json_detail.as_ref().ok_or(
             "human-receipt case lacks its JSON-route receipt/detail correspondence authority",
         )?;
-        for (route, receipt, invocation) in &receipt_only_receipts {
+        for (route, receipt, invocation) in &observations.receipt_only_receipts {
             let context = case_context_for(spec, invocation);
             super::detail::validate_receipt_against_detail(
                 receipt, fixture, &context, binary, detail,
@@ -202,7 +221,7 @@ pub(super) fn admit_presentation_case(
             .map_err(|error| format!("route {route}: {error}"))?;
         }
         need(
-            !receipt_only_receipts.is_empty(),
+            !observations.receipt_only_receipts.is_empty(),
             "human-receipt case retained no receipt-only route receipt",
         )?;
     }
@@ -264,22 +283,17 @@ fn case_context_for(spec: &CaseSpec, invocation: &InvocationContext) -> CaseCont
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn admit_invocation(
-    spec: &CaseSpec,
-    fixture: &FixtureSpec,
+    inputs: &InvocationInputs<'_>,
     expected: &InvocationContext,
-    binary: &BinaryContext,
     case: &InvocationExecution,
     reader: &mut MemberReader,
     route_admission: &mut RouteAdmission,
-    observed_summaries: &mut Vec<(String, CoreCommandSummaryV1)>,
-    observed_exits: &mut BTreeSet<i32>,
-    shared_snapshot: &mut Option<LogicalSnapshot>,
-    json_route: &mut Option<(String, CoreCommandSummaryV1, i32)>,
-    json_detail: &mut Option<Vec<u8>>,
-    receipt_only_receipts: &mut Vec<(String, Vec<u8>, InvocationContext)>,
+    observations: &mut RouteObservations,
 ) -> Result<(), String> {
+    let spec = inputs.spec;
+    let fixture = inputs.fixture;
+    let binary = inputs.binary;
     need(
         case.context == *expected,
         "retained invocation context contradicts the expected observation",
@@ -309,9 +323,9 @@ fn admit_invocation(
         before == after,
         "unexpected source, policy, Git, path or mode mutation",
     )?;
-    match shared_snapshot {
-        None => *shared_snapshot = Some(before),
-        Some(shared) => need(
+    match observations.shared_snapshot {
+        None => observations.shared_snapshot = Some(before),
+        Some(ref shared) => need(
             *shared == before,
             "invocation snapshots disagree across presentation routes",
         )?,
@@ -384,7 +398,7 @@ fn admit_invocation(
         return Ok(());
     }
     route_admission.observed_exit_code = Some(exit_code);
-    observed_exits.insert(exit_code);
+    observations.observed_exits.insert(exit_code);
     // Terminal-safety of the selected routes: file/JSON routes and the
     // non-TTY receipt-only human check routes keep stdout clean; interactive
     // human routes stay bounded. Byte equality across the TTY boundary is
@@ -459,7 +473,9 @@ fn admit_invocation(
         "A-family summary claims an unexpected effect",
     )?;
     binding_gaps(&summary, route_admission);
-    observed_summaries.push((expected.route.clone(), summary.clone()));
+    observations
+        .observed_summaries
+        .push((expected.route.clone(), summary.clone()));
     if expected.route == "json" {
         if let Some(detail_bytes) = detail.as_ref() {
             let context = case_context_for(spec, expected);
@@ -480,12 +496,12 @@ fn admit_invocation(
                 "typed detail and observed exit disagree",
             )?;
             route_admission.binding_gaps.extend(projection.binding_gaps);
-            *json_route = Some((
+            observations.json_route = Some((
                 expected.route.clone(),
                 summary.clone(),
                 projection.exit_code,
             ));
-            *json_detail = Some(detail_bytes.clone());
+            observations.json_detail = Some(detail_bytes.clone());
         } else {
             // Native typed hard failure with no detail artifact: the selected
             // presentation fixture refused or failed before emitting detail.
@@ -517,7 +533,7 @@ fn admit_invocation(
         let route_receipt = receipt
             .as_ref()
             .ok_or("human-receipt route omitted its requested check receipt")?;
-        receipt_only_receipts.push((
+        observations.receipt_only_receipts.push((
             expected.route.clone(),
             route_receipt.clone(),
             expected.clone(),
