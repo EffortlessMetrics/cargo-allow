@@ -28668,3 +28668,136 @@ glob = ".allow/revisions/2263-2263-qualification-materialization.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-11495"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Fixture policy of the #2276 cross-platform semantic determinism scenario: the checked-in policy text pins matched/review-due/expired/new postures for the fixture scan; it decides no product policy semantics."
+evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
+target_fingerprint = "toml"
+glob = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11496"
+kind = "panic"
+family = "unwrap"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/alpha.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Forward-spelled LF unwrap fixture finding of the #2276 semantic determinism scenario; its normalized snippet hash must equal the CRLF twin's (allow-11497) on every platform."
+evidence = ['issue:2276', 'test:cross_platform_semantics_newline_handling_is_identity_invariant']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:3e906e44fd8d34ac"
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-11497"
+kind = "panic"
+family = "unwrap"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/alpha_crlf.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "CRLF twin of the #2276 LF unwrap fixture finding; identical code text and normalized snippet hash prove newline handling is identity-invariant across platforms."
+evidence = ['issue:2276', 'test:cross_platform_semantics_newline_handling_is_identity_invariant']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:3e906e44fd8d34ac"
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-11498"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/nested/gamma.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Nested-path expect fixture finding of the #2276 semantic determinism scenario, pinning repository-relative normalization and the param:0 slot fingerprint for the deeper fixture directory."
+evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "chosen"
+callee = "expect"
+normalized_snippet_hash = "fnv1a64:216308e073e2c641"
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-11499"
+kind = "panic"
+family = "unreachable"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/nested/gamma.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Deliberately unmatched unreachable fixture finding of the #2276 semantic determinism scenario: it carries the new posture in the canonical projection while the fixture policy stays silent."
+evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "guard"
+macro_name = "unreachable"
+target_fingerprint = "unreachable"
+normalized_snippet_hash = "fnv1a64:9059f89f8c5ac8ee"
+
+[allow.last_seen]
+line = 7
+column = 14
+
+[[allow]]
+id = "allow-11500"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2276-2276-determinism-fixture.toml"
+owner = "core/test-platform"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #2276 semantic-determinism lane's added allow-11495 through allow-11499 receipts; note retention only, no new scanned surface beyond this file."
+evidence = ['issue:2276']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2276-2276-determinism-fixture.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2276-2276-determinism-fixture.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
