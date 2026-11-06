@@ -1,0 +1,2442 @@
+{
+  "binary": {
+    "candidate_identity": "sha256:v1:2b3a31dc6538bcd61bbc74cd471ec8e31bc7ac32526996b928bb83dbfb8dc792",
+    "digest": "sha256:v1:2b3a31dc6538bcd61bbc74cd471ec8e31bc7ac32526996b928bb83dbfb8dc792",
+    "install_identity": "sha256:v1:2b3a31dc6538bcd61bbc74cd471ec8e31bc7ac32526996b928bb83dbfb8dc792",
+    "path": "F:\\Temp\\cargo-allow-rc1-lane-4725\\bin\\cargo-allow.exe",
+    "provenance": "supplied_installed_candidate",
+    "size_bytes": 13736448,
+    "source_generation": "8bdabcd18723e36bbcfada423fa44779eefa599c",
+    "tool_version": "0.2.0-rc.1"
+  },
+  "cases": [
+    {
+      "case_id": "C.init.preview",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "dry-run reports would-create guidance on a clean tree",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would create policy/allow.toml",
+            "Next: cargo-allow init --config policy/allow.toml",
+            "Writes: nothing in this operation; selected next action may write policy/allow.toml",
+            "Then: no follow-up proof command selected",
+            "would create policy/allow.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:61a563f1ae86d83633c16c70e86f898963767f70c9dc16e4318727a4b12e669b",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:eebbfacd464010a796580a499fffe737f4eea8893efe34a35fcb70cb7ed6a8ac",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.candidate.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "selected alternate candidate bootstrap",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: created F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml",
+            "Then: no follow-up proof command selected",
+            "created F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml"
+          ],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:6e050d2a73a721d10d88899a03f165199cdd4f9fbed4e584b3d15a492df26e6a",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "dry-run over an existing selected target keeps bytes and shows guidance",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would keep F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml",
+            "Next: cargo-allow init --config F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml",
+            "Writes: nothing in this operation; selected next action may write F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml",
+            "Then: no follow-up proof command selected",
+            "would keep F:/Temp/cme-final-4725/fixtures/C.init.preview/policy/allow.candidate.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:c8b16961997d608a442faca5f88d16a361eab0835168825c038ca8a17bfcb9a0",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.init.alternate_config",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:eebbfacd464010a796580a499fffe737f4eea8893efe34a35fcb70cb7ed6a8ac",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.candidate.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "alternate-path bootstrap writes exactly the selected new path",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: created F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml",
+            "Then: no follow-up proof command selected",
+            "created F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml"
+          ],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:b038fcd6c8e196371421f2a9f3a38e8c9c0bdff95a099cf02036a9c94733da02",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "re-running bootstrap over the existing alternate refuses without --force",
+          "retained_stderr": [
+            "error[E0001_USAGE]: F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:158322bc57212a0bcebf52b51d7655c55e6d47fea4d112b309511abc677c39af",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "dry-run over the existing alternate target preserves bytes",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would keep F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml",
+            "Next: cargo-allow init --config F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml",
+            "Writes: nothing in this operation; selected next action may write F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml",
+            "Then: no follow-up proof command selected",
+            "would keep F:/Temp/cme-final-4725/fixtures/C.init.alternate_config/policy/allow.candidate.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:c97ca6120096c8832f49300e3d4cb62a6bd5f719c9ec9b4c4db94f46bc30c813",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.init.apply",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:498bb83b01fe764d83349335637586686cbf150ccc93cd46f36a2b2317515b19",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "strict init creation seeds distinct live policy bytes",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: created policy/allow.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: policy/allow.toml",
+            "Then: no follow-up proof command selected",
+            "created policy/allow.toml"
+          ],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:f708dede678b9e856833f2d73cac40c8648be3351e7f7df7af7ab43c1b8c36ac",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {
+            "summary": "sha256:v1:7d881036b88c09174eaabf3a2295c2c34091ba2605c4add1163c5e9d3249f7f1"
+          },
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": "sha256:v1:498bb83b01fe764d83349335637586686cbf150ccc93cd46f36a2b2317515b19",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            },
+            {
+              "after_digest": "sha256:v1:498bb83b01fe764d83349335637586686cbf150ccc93cd46f36a2b2317515b19",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "--force replacement with backup and typed summary receipt",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: overwrote policy/allow.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: policy/allow.toml",
+            "Then: no follow-up proof command selected"
+          ],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:8faf33e60b190971ac421fe92619776c809c8f7f265f7d1a604541389bf86b8b",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:498bb83b01fe764d83349335637586686cbf150ccc93cd46f36a2b2317515b19",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "fixture_control",
+          "purpose": "supported rollback restores ledger from retained backup bytes",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_rollback",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "the ordinary gate re-exposes the unreceipted finding after the restore",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: 2 blocking or review outcome(s) require attention",
+            "Next: cargo-allow worklist --format json",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "Result: failed (1 new)"
+          ],
+          "route": "proof",
+          "started": true,
+          "stderr_digest": "sha256:v1:645662abf0c9a24d83f38e0b9c2d297974ead5c77a8fd5acf466fd26dc9715e6",
+          "stdout_digest": "sha256:v1:03bea72ddd846705a19df5b1c0714c94fb6d19e6c19d848116af66f86b715e81",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.init.stale_conflict",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "existing ledger refuses init without --force and preserves bytes",
+          "retained_stderr": [
+            "error[E0001_USAGE]: policy/allow.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:44d463cd1dd62102f47e0abf25cb7872d37b510593b59d6befbbc5aaaec6725b",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "selected existing config target refuses without --force",
+          "retained_stderr": [
+            "error[E0001_USAGE]: F:/Temp/cme-final-4725/fixtures/C.init.stale_conflict/policy/allow.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:6ceae5c3ecc017eda7df9d27f0fccfc35e3a878d63a87e05214331e1fc891d10",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "strict bootstrap over the existing ledger refuses",
+          "retained_stderr": [
+            "error[E0001_USAGE]: F:/Temp/cme-final-4725/fixtures/C.init.stale_conflict/policy/allow.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:6ceae5c3ecc017eda7df9d27f0fccfc35e3a878d63a87e05214331e1fc891d10",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.init.presentation",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "human dry-run route over an existing ledger keeps bytes",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Next: cargo-allow init --config F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Writes: nothing in this operation; selected next action may write F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Then: no follow-up proof command selected",
+            "would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:e3458989a4d8db78d782a0d7a2409b9dfe7d7bea3fda0cca0166faf429aa6a8a",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {
+            "summary": "sha256:v1:333a9ea8d79b1711593c828a5417c5297ca178a16889d43d76f9cf763f7150c9"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "typed common-summary route evaluates the same outcome",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Next: cargo-allow init --config F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Writes: nothing in this operation; selected next action may write F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Then: no follow-up proof command selected",
+            "would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:e3458989a4d8db78d782a0d7a2409b9dfe7d7bea3fda0cca0166faf429aa6a8a",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "quiet human route evaluates the same outcome",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Next: cargo-allow init --config F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Writes: nothing in this operation; selected next action may write F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Then: no follow-up proof command selected",
+            "would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:e3458989a4d8db78d782a0d7a2409b9dfe7d7bea3fda0cca0166faf429aa6a8a",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "explicit color styling changes presentation, not evaluation",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: completed (advisory)",
+            "Why: would keep F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Next: cargo-allow init --config F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Writes: nothing in this operation; selected next action may write F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml",
+            "Then: no follow-up proof command selected",
+            "would \u001b[33mkeep\u001b[0m F:/Temp/cme-final-4725/fixtures/C.init.presentation/policy/allow.toml"
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:12bf39daa58fad58bf324408ea59c54d832f336022e9ace928b0fcc0440d4c6f",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 4,
+          "observation_class": "outcome",
+          "purpose": "unsupported profile value is refused without mutation",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:74586a98985b98f389508751349dfed1bba6d608730f1a2dbae8e497c47a8201",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.propose.preview",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "proposal without --write streams candidate bytes with no mutation",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: generated 1 candidate baseline_debt entry for review",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:74159a67a959dfca8298940e75af32563edbe72f6faba5e595e9d8a0640341ea",
+          "stdout_digest": "sha256:v1:6699e7842a4b1c0b04e17e4547a7ff50b55395100e76f4365fec477a271d913f",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "quiet proposal route evaluates the same outcome",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: generated 1 candidate baseline_debt entry for review",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:74159a67a959dfca8298940e75af32563edbe72f6faba5e595e9d8a0640341ea",
+          "stdout_digest": "sha256:v1:6699e7842a4b1c0b04e17e4547a7ff50b55395100e76f4365fec477a271d913f",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.propose.candidate",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:0863533c1950afe8f071ddb620ae4e0f0de71c9df354208e13f3648a5270b5d7",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/candidate.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "candidate write owns exactly the requested new path",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote a candidate policy with 1 baseline_debt entry at policy/candidate.toml (create-only)",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: policy/candidate.toml",
+            "Then: cargo-allow check --mode no-new --config policy/candidate.toml",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:a2bf760c9ad22eb56e4d595720c20b3f1637d8a5d9100985a736ba49ff170f88",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {
+            "summary": "sha256:v1:a78cc5893e4268dee77d452b109f88f7f55bf032d36eefc229040402486b48ea"
+          },
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:cb846178bd111e083146abc8b7780f49cacf6f485a8117520973b1f8c2c0ba57",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/candidate-2.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "second candidate path with typed JSON summary ownership",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.propose.replacement_boundary",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:0863533c1950afe8f071ddb620ae4e0f0de71c9df354208e13f3648a5270b5d7",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/candidate.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "seed candidate file for the replacement boundary",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote a candidate policy with 1 baseline_debt entry at policy/candidate.toml (create-only)",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: policy/candidate.toml",
+            "Then: cargo-allow check --mode no-new --config policy/candidate.toml",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:8888c8e24142b7f19bbec5a0082697619bb29b395c9f3045b232370ac05e4dd1",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "existing candidate refuses replacement without --force",
+          "retained_stderr": [
+            "error[E0007_ARTIFACT]: <repository-root>\\policy\\candidate.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:a292ae9c6d3695844704356a5283db589057ec162a628be29cd26a3733790f62",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:0863533c1950afe8f071ddb620ae4e0f0de71c9df354208e13f3648a5270b5d7",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/candidate.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "--force replaces the non-ledger candidate and retains recovery bytes",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote a candidate policy with 1 baseline_debt entry at policy/candidate.toml (overwrite allowed)",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: policy/candidate.toml",
+            "Then: cargo-allow check --mode no-new --config policy/candidate.toml",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:7dd37c41cb69797f724c3c6393b8a842fb3b2d2c8432ef93d798dee43957a0b9",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:46399f3d786a0023eb381dcc6e8137e59d53e124fd7e334d77ac8e86c57fb49a",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            },
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "--force at the live ledger path replaces the current ledger itself",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote a candidate policy with 1 baseline_debt entry at policy/allow.toml (overwrite allowed)",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --config policy/allow.toml",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:abdc9c9f032ac2e4cb288daab0fadef11837e079dfc43dc2d1736e8f2d713b64",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": "sha256:v1:46399f3d786a0023eb381dcc6e8137e59d53e124fd7e334d77ac8e86c57fb49a",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 4,
+          "observation_class": "fixture_control",
+          "purpose": "supported rollback restores the ledger from its retained backup",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_rollback",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 5,
+          "observation_class": "outcome",
+          "purpose": "the ordinary gate re-exposes the unreceipted finding after the restore",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: 2 blocking or review outcome(s) require attention",
+            "Next: cargo-allow worklist --format json",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "Result: failed (1 new)"
+          ],
+          "route": "proof",
+          "started": true,
+          "stderr_digest": "sha256:v1:645662abf0c9a24d83f38e0b9c2d297974ead5c77a8fd5acf466fd26dc9715e6",
+          "stdout_digest": "sha256:v1:7fcdb70f1f404c994757a438519baa2b487fe297cf0b90f04ac6ec5f5b68d377",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.propose.stale_conflict",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "live ledger path refuses create-only candidate write",
+          "retained_stderr": [
+            "error[E0007_ARTIFACT]: <repository-root>\\policy\\allow.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:8832540e3a2f60d8d400a6a9caacac3e3d2a595c70414a2c415cf9ee10e84994",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "missing instrument config refuses with no mutation",
+          "retained_stderr": [
+            "error[E0002_INVALID_CONFIG]: could not read policy F:\\Temp\\cme-final-4725\\fixtures\\C.propose.stale_conflict\\policy\\missing.toml: The system cannot find the file specified. (os error 2)"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:ed9258b27bebac0fc00165949318502c9e719f7e771c8104d07c643df91c6281",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.propose.presentation",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "human proposal route",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: generated 1 candidate baseline_debt entry for review",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:0bcc46763852d0279340a3a6e1b6ca7908c22c940f336b0d882dbcbe6df97f29",
+          "stdout_digest": "sha256:v1:6699e7842a4b1c0b04e17e4547a7ff50b55395100e76f4365fec477a271d913f",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {
+            "summary": "sha256:v1:e6a21aa1760406c93819ca0cdf312297e37fe86310b283616ed6d5e66ed0b11a"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "typed JSON summary route evaluates the same outcome",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:6699e7842a4b1c0b04e17e4547a7ff50b55395100e76f4365fec477a271d913f",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "quiet proposal route evaluates the same outcome",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: generated 1 candidate baseline_debt entry for review",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:0bcc46763852d0279340a3a6e1b6ca7908c22c940f336b0d882dbcbe6df97f29",
+          "stdout_digest": "sha256:v1:6699e7842a4b1c0b04e17e4547a7ff50b55395100e76f4365fec477a271d913f",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "unsupported summary format value is refused without mutation",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:7c0874237f80ab223ef8dbb4d0d2b86f22c1675f8c093c7bccd682ee68825a4d",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add.preview",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "dry-run previews the candidate entry without any mutation",
+          "retained_stderr": [
+            "dry-run: no files written (--dry-run)",
+            "Result: completed (advisory)",
+            "Why: would add panic entry allow-0002 for src/lib.rs",
+            "Next: Review the generated policy entry before relying on it",
+            "Writes: nothing in this operation; selected next action may write policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --config policy/allow.toml"
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:fa4cbf64f5d4677094199efbc77c62d04c371a6c9d48e443b63423879e98f287",
+          "stdout_digest": "sha256:v1:764db82bb1c4a96a08ab5d59d4a191056a6787fd77a29eb4ec7351afd29e2193",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "contract_probe",
+          "purpose": "probe: dry-run plus candidate path must not write",
+          "retained_stderr": [
+            "dry-run: no files written (--dry-run)",
+            "Result: completed (advisory)",
+            "Why: would add panic entry allow-0002 for src/lib.rs",
+            "Next: Review the generated policy entry before relying on it",
+            "Writes: nothing in this operation; selected next action may write policy/add-candidate.toml",
+            "Then: cargo-allow check --mode no-new --config policy/add-candidate.toml"
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:2cea6d31051bd60042daa57e78c70d512879491355f0ef9b907221c01a17530a",
+          "stdout_digest": "sha256:v1:764db82bb1c4a96a08ab5d59d4a191056a6787fd77a29eb4ec7351afd29e2193",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add.candidate",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/add-candidate.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "candidate write owns exactly the requested new path",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote candidate panic entry allow-0002 for src/lib.rs",
+            "Next: Review the generated policy entry before relying on it",
+            "Writes: policy/add-candidate.toml",
+            "Then: cargo-allow check --mode no-new --config policy/add-candidate.toml",
+            "matched finding: src/lib.rs:2:5",
+            "claim boundary: generated policy entry requires human review before merge."
+          ],
+          "retained_stdout": [],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:4a73590ba01686499c077da800c46653c6c14790925104b5e787f23b65661f96",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "existing candidate refuses replacement without --force",
+          "retained_stderr": [
+            "error[E0007_ARTIFACT]: <repository-root>\\policy\\add-candidate.toml already exists; use --force to overwrite"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:a79903cc6564a31f9b64b1a07d31615c5f6efd95e643b798c3c1e65bc1132b5b",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/add-candidate.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "--force replaces the candidate with recovery bytes",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote candidate panic entry allow-0002 for src/lib.rs",
+            "Next: Review the generated policy entry before relying on it",
+            "Writes: policy/add-candidate.toml",
+            "Then: cargo-allow check --mode no-new --config policy/add-candidate.toml",
+            "matched finding: src/lib.rs:2:5",
+            "claim boundary: generated policy entry requires human review before merge."
+          ],
+          "retained_stdout": [],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:4a73590ba01686499c077da800c46653c6c14790925104b5e787f23b65661f96",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add.apply",
+      "disposition": "admitted",
+      "fixture_commit": "2f050af52fa0e31024491f964e046cc250a489aa",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "live apply adds the reviewed entry to the ledger",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: added panic entry allow-0002 for src/lib.rs",
+            "Next: cargo-allow explain allow-0002",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new",
+            "matched finding: src/lib.rs:2:5",
+            "claim boundary: generated policy entry requires human review before merge."
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:0b6e65bed9b46ee76cabd05d0836d018b95013f39ef381010979b121eac31b33",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "full no-new gate after the targeted apply",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (advisory)",
+            "Why: 1 advisory or review outcome(s) remain",
+            "Next: cargo-allow worklist --format json",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "Result: passed (enforcing)"
+          ],
+          "route": "proof",
+          "started": true,
+          "stderr_digest": "sha256:v1:645662abf0c9a24d83f38e0b9c2d297974ead5c77a8fd5acf466fd26dc9715e6",
+          "stdout_digest": "sha256:v1:b7924633c995764b5ac1361f7e5384f7815f354cdd135be3d23cfa7c57f2a2a8",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:ee211693eb6805e7057e029c3f49ad150a99d4fc76062a3b91b04220786efd04",
+              "before_digest": "sha256:v1:07be0f34993977a395b3c77dc10e2ea1b08626b20d4fbf46f7fdcc6591e2e618",
+              "change": "modified",
+              "declared": true,
+              "path": ".git/index"
+            },
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "fixture_control",
+          "purpose": "fixture-level rollback restores the committed ledger bytes",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_rollback",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "the ordinary gate re-exposes the finding after rollback",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: 2 blocking or review outcome(s) require attention",
+            "Next: cargo-allow worklist --format json",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "Result: failed (1 new)"
+          ],
+          "route": "proof",
+          "started": true,
+          "stderr_digest": "sha256:v1:645662abf0c9a24d83f38e0b9c2d297974ead5c77a8fd5acf466fd26dc9715e6",
+          "stdout_digest": "sha256:v1:813877a603b1684ff516db951f617129fa255b3d8d8ed426cf2f44eb46eaa047",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add.stale_conflict",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "selector for a path without findings refuses mutation",
+          "retained_stderr": [
+            "error[E0001_USAGE]: no current panic finding found near src/nonexistent.rs:2; run `cargo-allow check --kind panic --format json` to list current findings, or use `--include-untracked` if the source fi"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:a40822fc2af94af546f053b45e804690de3fc06b15ca20e95b101cd633466abf",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "observed: --update with --dry-run previews; dry-run wins and no bytes are written",
+          "retained_stderr": [
+            "dry-run: no files written (--dry-run)",
+            "Result: completed (advisory)",
+            "Why: would add panic entry allow-0002 for src/lib.rs",
+            "Next: cargo-allow explain allow-0002",
+            "Writes: nothing in this operation; selected next action may write policy/allow.toml",
+            "Then: cargo-allow check --mode no-new"
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:42c1c8cb6ca35ca6fd38a7ff6f5ab6d25e7c95e81fd132ab0ca72032c9465968",
+          "stdout_digest": "sha256:v1:764db82bb1c4a96a08ab5d59d4a191056a6787fd77a29eb4ec7351afd29e2193",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "first valid apply seeds the replay state",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: added panic entry allow-0002 for src/lib.rs",
+            "Next: cargo-allow explain allow-0002",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new",
+            "matched finding: src/lib.rs:2:5",
+            "claim boundary: generated policy entry requires human review before merge."
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:8a9c4a1f25f9bdeac2e3d96931b53c11c3cef1afb9baca5b901c9e042d43152a",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "replaying a receipted finding refuses and preserves bytes",
+          "retained_stderr": [
+            "error[E0001_USAGE]: selected finding is already receipted or blocked with status `matched`; use list or explain before editing policy"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:25387818a26c8a4621a763fea8c1516b421fea3681f6993b9c7471f7d6fe9342",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add.presentation",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "human dry-run route",
+          "retained_stderr": [
+            "dry-run: no files written (--dry-run)",
+            "Result: completed (advisory)",
+            "Why: would add panic entry allow-0002 for src/lib.rs",
+            "Next: Review the generated policy entry before relying on it",
+            "Writes: nothing in this operation; selected next action may write policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --config policy/allow.toml"
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:fa4cbf64f5d4677094199efbc77c62d04c371a6c9d48e443b63423879e98f287",
+          "stdout_digest": "sha256:v1:764db82bb1c4a96a08ab5d59d4a191056a6787fd77a29eb4ec7351afd29e2193",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {
+            "summary": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "typed JSON summary route evaluates the same outcome",
+          "retained_stderr": [
+            "dry-run: no files written (--dry-run)"
+          ],
+          "retained_stdout": [],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:9d7d6b83da0faecb71f3c4bbe104be67727ac03f6b00f408a17d7efddf76be99",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "quiet dry-run route evaluates the same outcome",
+          "retained_stderr": [
+            "dry-run: no files written (--dry-run)",
+            "Result: completed (advisory)",
+            "Why: would add panic entry allow-0002 for src/lib.rs",
+            "Next: Review the generated policy entry before relying on it",
+            "Writes: nothing in this operation; selected next action may write policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --config policy/allow.toml"
+          ],
+          "retained_stdout": [
+            "created = \"2026-11-05\"",
+            "created = \"2026-11-05\""
+          ],
+          "route": "preview",
+          "started": true,
+          "stderr_digest": "sha256:v1:fa4cbf64f5d4677094199efbc77c62d04c371a6c9d48e443b63423879e98f287",
+          "stdout_digest": "sha256:v1:764db82bb1c4a96a08ab5d59d4a191056a6787fd77a29eb4ec7351afd29e2193",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "unsupported summary format value is refused without mutation",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:7c0874237f80ab223ef8dbb4d0d2b86f22c1675f8c093c7bccd682ee68825a4d",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add_from_plan.unsupported_preview",
+      "disposition": "admitted_with_contract_gap_observation",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {
+            "plan": "sha256:v1:066f452bbf97ee817df022c112424a5ed941f552b5bcc147c870df1cacee7567"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "plan producer retains the linked candidate plan",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: no allow entry matches the finding at src/lib.rs:2",
+            "Next: Review the add-finding plan written to target/add-plan.json",
+            "Writes: target/add-plan.json",
+            "Then: cargo-allow check --mode no-new"
+          ],
+          "route": "plan_generation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:9e350bba5c5ae5ac68588376cba4bc2c41db56e5bba7d5ac9a72cd5f9a16cc06",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "from-plan without --update is an explicit unsupported refusal",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:66c6e1d7c955ff32b564894e551f19b0fe31f2684c5c6049cb74edaaa3502fc8",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:454d9497949fd0fb285be760a5ff77faaed9e9d0d940ce6764137b9ee1fed755",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "contract_probe",
+          "purpose": "probe: --dry-run with --update must not silently apply",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: applied plan for allow-0002; targeted recheck matched the selected finding",
+            "Next: no deterministic safe action selected",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --root F:/Temp/cme-final-4725/fixtures/C.add_from_plan.unsupported_preview --config policy/allow.toml"
+          ],
+          "retained_stdout": [],
+          "route": "unsupported_preview_probe",
+          "started": true,
+          "stderr_digest": "sha256:v1:75f40a23c934fc90ddad95a7f969b41438123f989af394d8aa2ee9da535c138e",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add_from_plan.plan_linkage",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {
+            "plan": "sha256:v1:d505d7c9996f671eb21d9c7221e6b9b8517b661811a26ff74bc493e5fb1c003c"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "why --plan retains the candidate plan and its identity",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: no allow entry matches the finding at src/lib.rs:2",
+            "Next: Review the add-finding plan written to target/add-plan.json",
+            "Writes: target/add-plan.json",
+            "Then: cargo-allow check --mode no-new"
+          ],
+          "route": "plan_generation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:9e350bba5c5ae5ac68588376cba4bc2c41db56e5bba7d5ac9a72cd5f9a16cc06",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:454d9497949fd0fb285be760a5ff77faaed9e9d0d940ce6764137b9ee1fed755",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "the linked add --from-plan --update consumes that exact plan",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: applied plan for allow-0002; targeted recheck matched the selected finding",
+            "Next: no deterministic safe action selected",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --root F:/Temp/cme-final-4725/fixtures/C.add_from_plan.plan_linkage --config policy/allow.toml"
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:5387e237ff12e65e2c94cfdc5948f9ce5a545dc5fb65eb1587bad3277d66475a",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "from-plan conflicts with --write and preserves bytes",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:313f29c8975cf41a6abd2e13a98ae465937d07a309c1c0fca67ad0774724fa83",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add_from_plan.apply",
+      "disposition": "admitted",
+      "fixture_commit": "2f050af52fa0e31024491f964e046cc250a489aa",
+      "steps": [
+        {
+          "artifact_digests": {
+            "plan": "sha256:v1:cad7c43f8fbbe218df9babc9c42de6b68dedd4dde9f6832bfb330b697901dee7"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "plan generation for the linked apply",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: no allow entry matches the finding at src/lib.rs:2",
+            "Next: Review the add-finding plan written to target/add-plan.json",
+            "Writes: target/add-plan.json",
+            "Then: cargo-allow check --mode no-new"
+          ],
+          "route": "plan_generation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:9e350bba5c5ae5ac68588376cba4bc2c41db56e5bba7d5ac9a72cd5f9a16cc06",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:454d9497949fd0fb285be760a5ff77faaed9e9d0d940ce6764137b9ee1fed755",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "live apply of the linked plan with targeted recheck",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: applied plan for allow-0002; targeted recheck matched the selected finding",
+            "Next: no deterministic safe action selected",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --root F:/Temp/cme-final-4725/fixtures/C.add_from_plan.apply --config policy/allow.toml"
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:b804cbc0df3d07e7b8b381dfc98752937465f674ac5b2717897f827bfa9b64f5",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "full no-new gate after the targeted plan apply",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (advisory)",
+            "Why: 2 advisory or review outcome(s) remain",
+            "Next: cargo-allow worklist --format json",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "Result: passed (enforcing)"
+          ],
+          "route": "proof",
+          "started": true,
+          "stderr_digest": "sha256:v1:645662abf0c9a24d83f38e0b9c2d297974ead5c77a8fd5acf466fd26dc9715e6",
+          "stdout_digest": "sha256:v1:e746902201d6c87650613fad425e7b0e47bb28817b991299107d0621c287d109",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:b0a50d93888ef175ee9d9f41c9397fb76211655c79b317e5b3d510db3e2c3c0c",
+              "before_digest": "sha256:v1:f19833bb0c3904ff1ae870cbd1372b734468ebcd556f6345ab706da441640e30",
+              "change": "modified",
+              "declared": true,
+              "path": ".git/index"
+            },
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": "sha256:v1:454d9497949fd0fb285be760a5ff77faaed9e9d0d940ce6764137b9ee1fed755",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 3,
+          "observation_class": "fixture_control",
+          "purpose": "fixture-level rollback restores the committed ledger bytes",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_rollback",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 4,
+          "observation_class": "outcome",
+          "purpose": "the ordinary gate re-exposes the finding after rollback",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: 2 blocking or review outcome(s) require attention",
+            "Next: cargo-allow worklist --format json",
+            "Writes: nothing in this operation",
+            "Then: no follow-up proof command selected",
+            "Result: failed (1 new)"
+          ],
+          "route": "proof",
+          "started": true,
+          "stderr_digest": "sha256:v1:645662abf0c9a24d83f38e0b9c2d297974ead5c77a8fd5acf466fd26dc9715e6",
+          "stdout_digest": "sha256:v1:ce447a7f1ea4f0c50a54af8326afcdfd627ca025495559ba7d42f1d02feb0608",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add_from_plan.stale_conflict",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {
+            "plan": "sha256:v1:29af04b2f873f9bc9ad6d8356e4b9e5d40569d551a03063c8fb13defe7230f88"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "plan generation for the stale routes",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: no allow entry matches the finding at src/lib.rs:2",
+            "Next: Review the add-finding plan written to target/add-plan.json",
+            "Writes: target/add-plan.json",
+            "Then: cargo-allow check --mode no-new"
+          ],
+          "route": "plan_generation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:9e350bba5c5ae5ac68588376cba4bc2c41db56e5bba7d5ac9a72cd5f9a16cc06",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:454d9497949fd0fb285be760a5ff77faaed9e9d0d940ce6764137b9ee1fed755",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "first apply seeds the consumed-plan state",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: applied plan for allow-0002; targeted recheck matched the selected finding",
+            "Next: no deterministic safe action selected",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new --root F:/Temp/cme-final-4725/fixtures/C.add_from_plan.stale_conflict --config policy/allow.toml"
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:8fd40e443bd1742ea97ccbd3a81486549276ceca766ebf8fd0752ccc8b3ff42d",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "replaying the consumed plan refuses and preserves bytes",
+          "retained_stderr": [
+            "error[E0001_USAGE]: add --from-plan rejected: selected finding is already receipted or blocked with status `matched`; use list or explain before editing policy (policy unchanged); regenerate with carg"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:0f12dfb7884fbbbfc8c3883bc81459c000f30b82ef24d2f3bb8ab427133e49ec",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": {
+            "action": "edit_json",
+            "error": null,
+            "performed": true
+          },
+          "exit_code": 0,
+          "index": 3,
+          "observation_class": "fixture_control",
+          "purpose": "harness edits the retained plan to a stale location",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_control",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 4,
+          "observation_class": "outcome",
+          "purpose": "stale plan location refuses with the ledger unchanged",
+          "retained_stderr": [
+            "error[E0001_USAGE]: add --from-plan rejected: selected finding is already receipted or blocked with status `matched`; use list or explain before editing policy (policy unchanged); regenerate with carg"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:aa57329a5f31337b9c0e281312e4f7e8b7f93748aebaf3a834f32a5a6d7988eb",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 5,
+          "observation_class": "outcome",
+          "purpose": "missing plan file refuses with no mutation",
+          "retained_stderr": [
+            "error[E0001_USAGE]: failed to read add-finding plan F:\\Temp\\cme-final-4725\\fixtures\\C.add_from_plan.stale_conflict\\target\\missing-plan.json for add-finding plan: The system cannot find the file specif"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:a677fba29d7689eac198c7523770a0c6cb40b39e0f4726aa525416f4fcc496c5",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "C.add_from_plan.presentation",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {
+            "plan": "sha256:v1:973dc4dc5f2880ce6b41d5694176a95f240f28f855e84cdadfe3b01b287d8294"
+          },
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "plan generation for the presentation parity routes",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: findings (blocking)",
+            "Why: no allow entry matches the finding at src/lib.rs:2",
+            "Next: Review the add-finding plan written to target/add-plan.json",
+            "Writes: target/add-plan.json",
+            "Then: cargo-allow check --mode no-new"
+          ],
+          "route": "plan_generation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:9e350bba5c5ae5ac68588376cba4bc2c41db56e5bba7d5ac9a72cd5f9a16cc06",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "missing-plan refusal on the human route",
+          "retained_stderr": [
+            "error[E0001_USAGE]: failed to read add-finding plan F:\\Temp\\cme-final-4725\\fixtures\\C.add_from_plan.presentation\\target\\missing-plan.json for add-finding plan: The system cannot find the file specifie"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:3bb56e2f28be937a9dbe7f3ab6da238bb59d772d5a5ba9842c10a50de783eb0b",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "missing-plan refusal on the typed JSON summary route",
+          "retained_stderr": [
+            "error[E0001_USAGE]: failed to read add-finding plan F:\\Temp\\cme-final-4725\\fixtures\\C.add_from_plan.presentation\\target\\missing-plan.json for add-finding plan: The system cannot find the file specifie"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:3bb56e2f28be937a9dbe7f3ab6da238bb59d772d5a5ba9842c10a50de783eb0b",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 3,
+          "observation_class": "outcome",
+          "purpose": "missing-plan refusal on the quiet route",
+          "retained_stderr": [
+            "error[E0001_USAGE]: failed to read add-finding plan F:\\Temp\\cme-final-4725\\fixtures\\C.add_from_plan.presentation\\target\\missing-plan.json for add-finding plan: The system cannot find the file specifie"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:3bb56e2f28be937a9dbe7f3ab6da238bb59d772d5a5ba9842c10a50de783eb0b",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 2,
+          "index": 4,
+          "observation_class": "outcome",
+          "purpose": "unsupported summary format value is refused without mutation",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:7c0874237f80ab223ef8dbb4d0d2b86f22c1675f8c093c7bccd682ee68825a4d",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.init-summary-backup-collision",
+      "disposition": "observed_installed_defect",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "seed a recovery backup with a --force replacement",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: overwrote policy/allow.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: policy/allow.toml",
+            "Then: no follow-up proof command selected"
+          ],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:8faf33e60b190971ac421fe92619776c809c8f7f265f7d1a604541389bf86b8b",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:7d881036b88c09174eaabf3a2295c2c34091ba2605c4add1163c5e9d3249f7f1",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "contract_probe",
+          "purpose": "probe: summary destination at the backup path must not destroy recovery bytes",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: overwrote policy/allow.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: policy/allow.toml",
+            "Then: no follow-up proof command selected"
+          ],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:8faf33e60b190971ac421fe92619776c809c8f7f265f7d1a604541389bf86b8b",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.outside-root-refusal",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "init refuses a config target outside the source-tree root",
+          "retained_stderr": [
+            "error[E0002_INVALID_CONFIG]: output path F:\\Temp\\cme-final-4725\\fixtures\\control.outside-root-refusal\\..\\outside-candidate.toml is outside the source-tree root \\\\?\\F:\\Temp\\cme-final-4725\\fixtures\\cont"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:577e5af92a034359a2d8d32522f3381db168f95320dfd2c6285748419c648c23",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "propose refuses a candidate target outside the source-tree root",
+          "retained_stderr": [
+            "error[E0002_INVALID_CONFIG]: output path F:\\Temp\\cme-final-4725\\fixtures\\control.outside-root-refusal\\..\\outside-candidate.toml is outside the source-tree root \\\\?\\F:\\Temp\\cme-final-4725\\fixtures\\cont"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:577e5af92a034359a2d8d32522f3381db168f95320dfd2c6285748419c648c23",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.target-collision-refusal",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "candidate target under a file parent is refused",
+          "retained_stderr": [
+            "error[E0007_ARTIFACT]: failed to create <repository-root>\\src\\lib.rs: Cannot create a file when that file already exists. (os error 183)"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:01b419ace42a27486b0f0c90ab28a12284242cb4d1cc87e4b66421decf5a481b",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "candidate target that is an existing directory is refused",
+          "retained_stderr": [
+            "error[E0007_ARTIFACT]: failed to read <repository-root>\\src before apply: Access is denied. (os error 5)"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:bac35bd88b7ac21081dc5c631ad32853ce89aa6061e3609317d70fb6d158d5a9",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.in-root-subdirectory-write",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:8a5303bf7b9df2af28a3653ff3fb20dca1f711392af288e99e24aa4b7495b9ea",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "src/deeper/candidate.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "in-root selected subdirectory creation is retained as observed scope",
+          "retained_stderr": [
+            "Result: completed (advisory)",
+            "Why: wrote a candidate policy with 1 baseline_debt entry at src/deeper/candidate.toml (create-only)",
+            "Next: Review the generated candidate policy before relying on it",
+            "Writes: src/deeper/candidate.toml",
+            "Then: cargo-allow check --mode no-new --config src/deeper/candidate.toml",
+            "claim boundary: proposal only; generated debt still requires human review and evidence."
+          ],
+          "retained_stdout": [],
+          "route": "candidate_write",
+          "started": true,
+          "stderr_digest": "sha256:v1:e449e16d5d9b1b81532b25d8a208c3ea674e053ce4b87ca27aa1df0e89a1a8f1",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.invalid-policy-refusal",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:d61deb07ebb2f9248f0b636bf692587e0604d0b52cf825579e15bc4bbcb930b7",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": {
+            "action": "write_bytes",
+            "error": null,
+            "performed": true
+          },
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "fixture_control",
+          "purpose": "harness corrupts the ledger into invalid bytes",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_control",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "add refuses mutation against an invalid ledger",
+          "retained_stderr": [
+            "error[E0003_INVALID_POLICY]: failed to parse policy TOML in F:\\Temp\\cme-final-4725\\fixtures\\control.invalid-policy-refusal\\policy\\allow.toml: TOML parse error at line 1, column 13"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:269963d6baf2c61f9b3aff88454775411583d186dcf9d5049233b2aaa8019db6",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": 1,
+          "index": 2,
+          "observation_class": "outcome",
+          "purpose": "no-new gate refuses against an invalid ledger",
+          "retained_stderr": [
+            "error[E0003_INVALID_POLICY]: failed to parse policy TOML in F:\\Temp\\cme-final-4725\\fixtures\\control.invalid-policy-refusal\\policy\\allow.toml: TOML parse error at line 1, column 13"
+          ],
+          "retained_stdout": [],
+          "route": "refusal",
+          "started": true,
+          "stderr_digest": "sha256:v1:9a4a4c130bdf12db85c643df93b2b6bcda5bfef997d7969a10b7e0d41df8a034",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.renamed-target-alias",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow-moved.toml"
+            },
+            {
+              "after_digest": null,
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "removed",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": {
+            "action": "rename",
+            "error": null,
+            "performed": true
+          },
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "fixture_control",
+          "purpose": "harness renames the ledger to a supported alias path",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_control",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow-moved.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "outcome",
+          "purpose": "mutation via the moved alias path owns that exact file",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: added panic entry allow-0002 for src/lib.rs",
+            "Next: cargo-allow explain allow-0002",
+            "Writes: policy/allow-moved.toml",
+            "Then: cargo-allow check --mode no-new",
+            "matched finding: src/lib.rs:2:5",
+            "claim boundary: generated policy entry requires human review before merge."
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:78e1157e79c0ca9a7bd33973aebdb79ecded8c99e1ea270bf379b2c818f9e6a7",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": null,
+              "before_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "change": "removed",
+              "declared": true,
+              "path": "policy/allow-moved.toml"
+            },
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": {
+            "action": "rename",
+            "error": null,
+            "performed": true
+          },
+          "exit_code": 0,
+          "index": 2,
+          "observation_class": "fixture_control",
+          "purpose": "harness restores the canonical ledger name",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_control",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.symlink-alias",
+      "disposition": "not_proven_platform",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": {
+            "action": "symlink",
+            "error": "[WinError 1314] A required privilege is not held by the client: 'allow.toml' -> 'F:\\\\Temp\\\\cme-final-4725\\\\fixtures\\\\control.symlink-alias\\\\policy\\\\allow-link.toml'",
+            "performed": false
+          },
+          "exit_code": null,
+          "index": 0,
+          "observation_class": "platform_probe",
+          "purpose": "reparse-point alias creation attempt is observed on its real platform terms",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_control",
+          "started": false,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": null,
+          "index": 1,
+          "observation_class": "platform_probe",
+          "purpose": "when the alias exists, mutation through it is observed",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": false,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.selector-line-not-matching",
+      "disposition": "admitted",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:431f09a78a59b9f4b1f9a6c4df7a6d114f57b9ea241442a26f5684e37697d0e5",
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "modified",
+              "declared": true,
+              "path": "policy/allow.toml"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "observed: the add selector line is not part of matching; a line matching no finding still receipts the located finding",
+          "retained_stderr": [
+            "Result: satisfied",
+            "Why: added panic entry allow-0002 for src/lib.rs",
+            "Next: cargo-allow explain allow-0002",
+            "Writes: policy/allow.toml",
+            "Then: cargo-allow check --mode no-new",
+            "matched finding: src/lib.rs:2:5",
+            "claim boundary: generated policy entry requires human review before merge."
+          ],
+          "retained_stdout": [],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:85fe696673637a946540d4a27020fde48d5ccf273e0be1cd37ce8b5652d6b918",
+          "stdout_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "timed_out": false
+        }
+      ]
+    },
+    {
+      "case_id": "control.missing-rollback-state",
+      "disposition": "incomplete",
+      "fixture_commit": "27c4b6a21526c9bd4c71359c861f05592e9c9399",
+      "steps": [
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "before_digest": null,
+              "change": "added",
+              "declared": true,
+              "path": "policy/allow.toml.bak"
+            }
+          ],
+          "control_outcome": null,
+          "exit_code": 0,
+          "index": 0,
+          "observation_class": "outcome",
+          "purpose": "seed a backup for the rollback state",
+          "retained_stderr": [],
+          "retained_stdout": [
+            "Result: satisfied",
+            "Why: overwrote policy/allow.toml",
+            "Next: cargo-allow check --mode no-new",
+            "Writes: policy/allow.toml",
+            "Then: no follow-up proof command selected"
+          ],
+          "route": "mutation",
+          "started": true,
+          "stderr_digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout_digest": "sha256:v1:8faf33e60b190971ac421fe92619776c809c8f7f265f7d1a604541389bf86b8b",
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [
+            {
+              "after_digest": null,
+              "before_digest": "sha256:v1:c654e10289e69395b7ae92b6fe056ece335e90beb163bdfb79cb54b122b7e2f0",
+              "change": "removed",
+              "declared": true,
+              "path": "policy/allow.toml.bak"
+            }
+          ],
+          "control_outcome": {
+            "action": "remove",
+            "error": null,
+            "performed": true
+          },
+          "exit_code": 0,
+          "index": 1,
+          "observation_class": "fixture_control",
+          "purpose": "harness removes the rollback state bytes",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_control",
+          "started": true,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        },
+        {
+          "artifact_digests": {},
+          "changed_paths": [],
+          "control_outcome": null,
+          "exit_code": null,
+          "index": 2,
+          "observation_class": "fixture_control",
+          "purpose": "rollback without retained state fails instead of declaring success",
+          "retained_stderr": [],
+          "retained_stdout": [],
+          "route": "fixture_rollback",
+          "started": false,
+          "stderr_digest": null,
+          "stdout_digest": null,
+          "timed_out": false
+        }
+      ]
+    }
+  ],
+  "catalogue_digest": "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08",
+  "claim_boundary": "Committed retained records of executed C-family mutation cases against one absolute public 0.2.0-rc.1 candidate in disposable fixtures outside any checkout. Observed installed-candidate contract gaps and defects are retained as-is; no case approves an exception, qualifies a release, or replaces native A-family admission.",
+  "collection_bundle_digest": "sha256:v1:13dfbc5a88cee1a5d88e057d0ef6f24eab5aacff71c57d53deb4ca7ffd86fd75",
+  "collection_id": "cme-4725-rc1-20261105",
+  "lane_issue": 4725,
+  "schema_id": "cargo-allow.command-mutation-manifest.v1",
+  "schema_version": 1
+}
