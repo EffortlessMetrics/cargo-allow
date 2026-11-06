@@ -1,0 +1,63 @@
+{
+  "schema": "cargo-allow.live-release-controls-observation.v1",
+  "generated_at_utc": "2026-11-06T04:10:55Z",
+  "repository": "EffortlessMetrics/cargo-allow",
+  "commit": "fd0ed4a22db4c72b135bceadae1b464708c8fea2",
+  "tree": "0409bddcce275e4ad13f6f29f531c1789357fdad",
+  "default_branch": "main",
+  "checks": {
+    "main_deletion_denied": true,
+    "main_force_push_denied": true,
+    "main_pull_request_rule_present": true,
+    "main_is_default_branch": true,
+    "main_extra_approval_for_unattributed_changes": true,
+    "ruleset_details_retrieved": true
+  },
+  "main_rule_types": [
+    "deletion",
+    "non_fast_forward",
+    "pull_request"
+  ],
+  "ruleset_ids": [
+    16868781,
+    16868781,
+    16868781
+  ],
+  "ruleset_details": [
+    {
+      "ruleset_id": 16868781,
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active",
+      "rule_types": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request"
+      ]
+    },
+    {
+      "ruleset_id": 16868781,
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active",
+      "rule_types": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request"
+      ]
+    },
+    {
+      "ruleset_id": 16868781,
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active",
+      "rule_types": [
+        "deletion",
+        "non_fast_forward",
+        "pull_request"
+      ]
+    }
+  ],
+  "observation_digest": "sha256:v1:edf31d0e6f2d8745b45baed8ed35d174468a5df05336b6561dd16087e6f0035e",
+  "state": "Feasible"
+}

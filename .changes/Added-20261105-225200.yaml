@@ -1,0 +1,13 @@
+kind: Added
+body: >-
+  Regenerate the mechanical freeze-evidence receipts at the current subject
+  fd0ed4a22db4c72b135bceadae1b464708c8fea2 and retain them under
+  docs/dogfood/receipts/final-freeze-current/ for the #2501 prepare/retain
+  phase: the candidate-preparation typed no-op parity row, the
+  ExactCandidatePackageSetV1 receipt, the final-package-docs receipt with its
+  regenerated basis, the release-rehearsal eight-phase aggregate, the
+  exact-candidate install journey, the exact upgrade/rollback journey, the
+  live release-control observation, and the exact-candidate interop smoke.
+  The qualified prepare/qualify pipeline, the four remaining owner-gated
+  evidence roles, and any release-freeze composition remain post-landing
+  work under #2501 and stop at #3760 authorization.

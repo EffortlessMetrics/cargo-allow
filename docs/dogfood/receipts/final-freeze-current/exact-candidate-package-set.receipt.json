@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.exact-candidate-package-set.v1",
+  "tool": "cargo-allow",
+  "result": "Passed",
+  "claim_boundary": [
+    "exact_thirteen_crate_package_graph",
+    "classic_transitive_local_registry_offline_install",
+    "source_checkout_denied_during_decisive_install",
+    "source_candidate_not_published_install_journey"
+  ],
+  "candidate": {
+    "workspace_version": "0.2.0",
+    "crate_set_schema_id": "cargo-allow.candidate-crate-set.v1",
+    "git_head": "fd0ed4a22db4c72b135bceadae1b464708c8fea2"
+  },
+  "environment": {
+    "os": "windows",
+    "arch": "x86_64",
+    "rustc_version": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "cargo_version": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "network_posture": "fetch_warm_may_use_crates_io_then_offline_install",
+    "isolation_mechanism": "local_registry"
+  },
+  "package_set": {
+    "order": [
+      "allow-core",
+      "allow-policy",
+      "allow-inventory",
+      "allow-files",
+      "allow-rust",
+      "allow-match",
+      "allow-report",
+      "allow-policy-legacy",
+      "allow-diff",
+      "effortless-repo-protocol",
+      "effortless-repo-snapshot",
+      "effortless-repo-edit",
+      "cargo-allow"
+    ],
+    "crates": [
+      {
+        "name": "allow-core",
+        "version": "0.2.0",
+        "crate_file": "allow-core-0.2.0.crate",
+        "sha256": "e2498c41602f8d931340611d0f83d8181e377c3a09c8ad7bbf97473f599a8468",
+        "size_bytes": 56394,
+        "extracted_dir": "allow-core-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-policy",
+        "version": "0.2.0",
+        "crate_file": "allow-policy-0.2.0.crate",
+        "sha256": "bedca9cc9aa79a36556edfe74d1ca0ff71bf87be055eda2f814588519191df56",
+        "size_bytes": 217363,
+        "extracted_dir": "allow-policy-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-inventory",
+        "version": "0.2.0",
+        "crate_file": "allow-inventory-0.2.0.crate",
+        "sha256": "4983e6d70bd2880aa285200ccc514eabf69ee2117f12d6a586d097303c59fb68",
+        "size_bytes": 85551,
+        "extracted_dir": "allow-inventory-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-files",
+        "version": "0.2.0",
+        "crate_file": "allow-files-0.2.0.crate",
+        "sha256": "d6b875cb0545073f892e270f347a56dec454f96f7297141026a80ac41387fb74",
+        "size_bytes": 69588,
+        "extracted_dir": "allow-files-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-rust",
+        "version": "0.2.0",
+        "crate_file": "allow-rust-0.2.0.crate",
+        "sha256": "c741f25a37f8aaab9e6c9b2c26ba15d0e71d3a50cb3fd6cf18f64758a32bd97e",
+        "size_bytes": 110452,
+        "extracted_dir": "allow-rust-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-match",
+        "version": "0.2.0",
+        "crate_file": "allow-match-0.2.0.crate",
+        "sha256": "a604c5f9d397821cfd322d374ee962903d1a7b8855bff5d81b7e1f6231f57fa0",
+        "size_bytes": 47119,
+        "extracted_dir": "allow-match-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-report",
+        "version": "0.2.0",
+        "crate_file": "allow-report-0.2.0.crate",
+        "sha256": "4fd08a4fb4290dec9721a24743e6b7bab01962cb34844fd1d97fb9869abd93ee",
+        "size_bytes": 563107,
+        "extracted_dir": "allow-report-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-policy-legacy",
+        "version": "0.2.0",
+        "crate_file": "allow-policy-legacy-0.2.0.crate",
+        "sha256": "24ad331e3307aa71d3f0c6bc9cd96d447d517364553d03cc16c7cf9254c4e12f",
+        "size_bytes": 94767,
+        "extracted_dir": "allow-policy-legacy-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "allow-diff",
+        "version": "0.2.0",
+        "crate_file": "allow-diff-0.2.0.crate",
+        "sha256": "4a919b9595683369f5dfd1b01f250241841416e8b1d493c772c5e69c62565b33",
+        "size_bytes": 101954,
+        "extracted_dir": "allow-diff-0.2.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "effortless-repo-protocol",
+        "version": "0.1.0",
+        "crate_file": "effortless-repo-protocol-0.1.0.crate",
+        "sha256": "a9934fc14713894cb9243c6fe1b606781591c58c79dd60d7bb42e2b4cba8e96e",
+        "size_bytes": 12261,
+        "extracted_dir": "effortless-repo-protocol-0.1.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "effortless-repo-snapshot",
+        "version": "0.1.0",
+        "crate_file": "effortless-repo-snapshot-0.1.0.crate",
+        "sha256": "352e1edd0777579e3a5615a58021c0c1f0a8fe8f564e2ce97172ce193f95d24e",
+        "size_bytes": 46226,
+        "extracted_dir": "effortless-repo-snapshot-0.1.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "effortless-repo-edit",
+        "version": "0.1.0",
+        "crate_file": "effortless-repo-edit-0.1.0.crate",
+        "sha256": "359f5deced3c77ed2e19d8a9d80930aaadfde8fbf75ef2949aa649342dbe2800",
+        "size_bytes": 27632,
+        "extracted_dir": "effortless-repo-edit-0.1.0",
+        "no_path_deps": true
+      },
+      {
+        "name": "cargo-allow",
+        "version": "0.2.0",
+        "crate_file": "cargo-allow-0.2.0.crate",
+        "sha256": "1b53e8be08ab609e989143edb19d2ec8d42dc21a1487163ddf454c0b820ca95c",
+        "size_bytes": 1546824,
+        "extracted_dir": "cargo-allow-0.2.0",
+        "no_path_deps": true
+      }
+    ]
+  },
+  "isolation": {
+    "fresh_cargo_home": true,
+    "install_from_extracted_package": true,
+    "internal_deps_patched": false,
+    "workspace_paths_absent": true,
+    "source_checkout_denied": true
+  },
+  "install": {
+    "binary_sha256": "d648976a842d9693c37fbc31714f74fc0635ddd9074c56ba5cdab5ccb28663d3",
+    "method": "cargo_install_path_extracted_with_local_registry",
+    "version_output": "cargo-allow 0.2.0",
+    "exit_code": 0
+  },
+  "negative_controls": [
+    {
+      "id": "omit_internal_crate_from_patch",
+      "result_class": "PackageMissing",
+      "passed": true,
+      "detail": "omitting allow-core from [patch.crates-io] must fail closed or detect crates.io fallback"
+    },
+    {
+      "id": "workspace_path_install_rejected",
+      "result_class": "WorkspacePathLeak",
+      "passed": true,
+      "detail": "decisive install uses extracted package path, not crates/cargo-allow"
+    },
+    {
+      "id": "package_checksum_mutation_after_inventory",
+      "result_class": "PackageChecksumMismatch",
+      "passed": true,
+      "detail": "mutating allow-core.crate after inventory changes sha256 vs recorded digest"
+    },
+    {
+      "id": "injected_normalized_path_dependency",
+      "result_class": "WorkspacePathLeak",
+      "passed": true,
+      "detail": "path= dependency injected into normalized allow-core manifest is detected"
+    },
+    {
+      "id": "older_internal_package_version",
+      "result_class": "InternalVersionConflict",
+      "passed": true,
+      "detail": "patching allow-core to an incompatible version yields InternalVersionConflict"
+    },
+    {
+      "id": "omit_candidate_from_local_registry",
+      "result_class": "PackageMissing",
+      "passed": true,
+      "detail": "removing allow-core from local-registry fails offline resolve (PackageMissing)"
+    },
+    {
+      "id": "candidate_commit_or_version_mismatch",
+      "result_class": "CandidateStale",
+      "passed": true,
+      "detail": "forged candidate git_head/version vs packaged set classifies CandidateStale"
+    },
+    {
+      "id": "missing_required_package_metadata_or_file",
+      "result_class": "ManifestMalformed",
+      "passed": true,
+      "detail": "stripped license and missing README.md in normalized allow-core classifies ManifestMalformed"
+    },
+    {
+      "id": "decisive_install_source_checkout_denied",
+      "result_class": "CheckoutIsolated",
+      "passed": true,
+      "detail": "decisive offline install succeeds while workspace crates/ is renamed away (CheckoutIsolated)"
+    }
+  ],
+  "limitations": [
+    "fetch_warm_may_use_crates_io",
+    "linux_hosted_claim_only"
+  ]
+}

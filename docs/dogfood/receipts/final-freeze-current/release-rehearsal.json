@@ -1,0 +1,313 @@
+{
+  "aggregate_status": "Incomplete",
+  "authorization_boundary": {
+    "authorization_artifact": "release/authorize-v0.2.0.json",
+    "candidate_commit": "970fd5edf6fb345f2bf0ea9eb8111fde93b85258",
+    "named_release": "v0.2.0",
+    "phase_status_note": "deliberately Incomplete: the rehearsal never consumes authorization; #3760/#2502 gate the authorized run",
+    "schema": "cargo-allow.release-authorization.v1",
+    "token_present": false
+  },
+  "candidate_package_set": {
+    "rows": [
+      {
+        "name": "allow-core",
+        "release_order": 10,
+        "sha256": "sha256:e2498c41602f8d931340611d0f83d8181e377c3a09c8ad7bbf97473f599a8468",
+        "size_bytes": 56394,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-policy",
+        "release_order": 20,
+        "sha256": "sha256:bedca9cc9aa79a36556edfe74d1ca0ff71bf87be055eda2f814588519191df56",
+        "size_bytes": 217363,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-inventory",
+        "release_order": 30,
+        "sha256": "sha256:4983e6d70bd2880aa285200ccc514eabf69ee2117f12d6a586d097303c59fb68",
+        "size_bytes": 85551,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-files",
+        "release_order": 40,
+        "sha256": "sha256:d6b875cb0545073f892e270f347a56dec454f96f7297141026a80ac41387fb74",
+        "size_bytes": 69588,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-rust",
+        "release_order": 50,
+        "sha256": "sha256:c741f25a37f8aaab9e6c9b2c26ba15d0e71d3a50cb3fd6cf18f64758a32bd97e",
+        "size_bytes": 110452,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-match",
+        "release_order": 60,
+        "sha256": "sha256:a604c5f9d397821cfd322d374ee962903d1a7b8855bff5d81b7e1f6231f57fa0",
+        "size_bytes": 47119,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-report",
+        "release_order": 70,
+        "sha256": "sha256:4fd08a4fb4290dec9721a24743e6b7bab01962cb34844fd1d97fb9869abd93ee",
+        "size_bytes": 563107,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-policy-legacy",
+        "release_order": 75,
+        "sha256": "sha256:24ad331e3307aa71d3f0c6bc9cd96d447d517364553d03cc16c7cf9254c4e12f",
+        "size_bytes": 94767,
+        "version": "0.2.0"
+      },
+      {
+        "name": "allow-diff",
+        "release_order": 95,
+        "sha256": "sha256:4a919b9595683369f5dfd1b01f250241841416e8b1d493c772c5e69c62565b33",
+        "size_bytes": 101954,
+        "version": "0.2.0"
+      },
+      {
+        "name": "cargo-allow",
+        "release_order": 100,
+        "sha256": "sha256:1b53e8be08ab609e989143edb19d2ec8d42dc21a1487163ddf454c0b820ca95c",
+        "size_bytes": 1546824,
+        "version": "0.2.0"
+      }
+    ]
+  },
+  "claim_boundary": "Phases release_identity, candidate_package_set, shared_prerequisites, publisher_state_machine, docs_and_support_identity, manifest_and_assets, and workflow_graph_permissions prove typed semantics (typed identity validation; offline candidate packaging with exact internal requirements; read-only shared registry equality; the publisher fixture state-machine matrix; changelog-corpus identity plus exact release-record/note and support-doc binding; the manifest/asset surface fixture matrix; the release workflow graph permission inventory). The escaped_defect_corpus phase carries the #3793 RC.1 escaped-defect corpus: landed seams are gripped by discriminating zero-upload fixtures, pending seams are recorded with their owner issues. The authorization_boundary phase deliberately stays Incomplete: the rehearsal checks the selected CARGO_REGISTRY_TOKEN environment entry without reading its value and records the checked authorization artifact's identity but never consumes authorization. Other credential sources and whole-workflow mutation prevention remain unproven, so the aggregate cannot satisfy a release gate.",
+  "commit_sha": "fd0ed4a22db4c72b135bceadae1b464708c8fea2",
+  "docs_and_support_identity": {
+    "getting_started": "F:/Temp/wt-freeze-evidence/docs/getting-started.md",
+    "github_note": "F:/Temp/wt-freeze-evidence/docs/release/github/v0.2.0.md",
+    "history_check": "scripts/generate-changie-history.py --check",
+    "release_record": "F:/Temp/wt-freeze-evidence/docs/release/0.2.0.md",
+    "support_matrix": "F:/Temp/wt-freeze-evidence/docs/support-matrix.toml"
+  },
+  "escaped_defect_corpus": {
+    "claim_boundary": "Per-row owner status at this subject: fault_injected and typed_identity rows prove their historical rejection against the landed production adapter; phase_binding rows bind to the named phase's recorded proof; pending_upstream rows carry no proof and name their owner. Full corpus completion tracks the owner issues; this phase never proves publication readiness.",
+    "fixture_matrix": "scripts/test-release-escaped-defect-corpus.py",
+    "rows": [
+      {
+        "claim_boundary": "Binds to the docs_and_support_identity phase's recorded release-record/github-note binding of the typed identity; the pinned-Changie history check rides the same phase.",
+        "defect": "package cut without release records",
+        "incident_id": "RC1-ESCAPE-001",
+        "owner": "#3786/#3787",
+        "result": "proven",
+        "seam": "typed identity -> selected record/note/Changie preflight",
+        "status": "phase_binding"
+      },
+      {
+        "claim_boundary": "Invokes the typed authority on 0.2.0-rc.10 (integer ordinal ordering) and 0.2.0-rc.0 (rejection); no Python-side grammar.",
+        "defect": "one parser rejects or misorders numbered RC",
+        "incident_id": "RC1-ESCAPE-002",
+        "owner": "#3786/#3787",
+        "result": "proven",
+        "seam": "cargo-allow release-identity typed authority",
+        "status": "typed_identity"
+      },
+      {
+        "claim_boundary": "The preflight must decide on registry-versus-retained evidence; local repackage drift alone must not block the shared rows.",
+        "defect": "shared VCS repackage differs while registry equals retained expected",
+        "incident_id": "RC1-ESCAPE-003",
+        "owner": "#3744",
+        "result": "proven",
+        "seam": "shared_registry_preflight in release-topology-publisher.py",
+        "status": "fault_injected"
+      },
+      {
+        "claim_boundary": "A conflicting shared observation must be recorded and block a publishing run before the first upload.",
+        "defect": "shared registry checksum conflict",
+        "incident_id": "RC1-ESCAPE-004",
+        "owner": "#3744",
+        "result": "proven",
+        "seam": "shared_registry_preflight in release-topology-publisher.py",
+        "status": "fault_injected"
+      },
+      {
+        "claim_boundary": "An existing row that differs from the local candidate must raise a release incident and stop before any upload.",
+        "defect": "existing cargo-allow row with wrong checksum",
+        "incident_id": "RC1-ESCAPE-005",
+        "owner": "#3744",
+        "result": "proven",
+        "seam": "publisher existing-row reconciliation loop",
+        "status": "fault_injected"
+      },
+      {
+        "claim_boundary": "A newly uploaded row that becomes visible with a conflicting checksum must retain a partial incident with the irreversible boundary and stop before the next row.",
+        "defect": "post-upload checksum conflict",
+        "incident_id": "RC1-ESCAPE-006",
+        "owner": "#3744",
+        "result": "proven",
+        "seam": "publisher visibility/equality loop",
+        "status": "fault_injected"
+      },
+      {
+        "claim_boundary": "Recovery admits only the incomplete incident receipt bound to the exact original commit, tree, authorization, and posture.",
+        "defect": "partial run resumed from moving main",
+        "incident_id": "RC1-ESCAPE-007",
+        "owner": "#3791",
+        "result": "proven",
+        "seam": "load_recovery_receipt exact-candidate custody",
+        "status": "fault_injected"
+      },
+      {
+        "claim_boundary": "Imported once #2498's immutable action inventory lands; this row carries no proof.",
+        "defect": "floating release action",
+        "incident_id": "RC1-ESCAPE-008",
+        "owner": "#2498",
+        "result": "recorded_pending",
+        "seam": "immutable action inventory/workflow checker",
+        "status": "pending_upstream"
+      },
+      {
+        "claim_boundary": "Binds to the workflow_graph_permissions phase's recorded github-release id-token scoping proof.",
+        "defect": "missing id-token: write for attestation",
+        "incident_id": "RC1-ESCAPE-009",
+        "owner": "#3726/#3792",
+        "result": "proven",
+        "seam": "release workflow permission graph",
+        "status": "phase_binding"
+      },
+      {
+        "claim_boundary": "The publisher's canonical-form authority rejects every noncanonical encoding; the typed-manifest adapter leg remains with #2496.",
+        "defect": "noncanonical checksum encoding",
+        "incident_id": "RC1-ESCAPE-010",
+        "owner": "#3761/#2496",
+        "result": "proven",
+        "seam": "canonical_receipt_checksum canonical-form authority",
+        "status": "fault_injected"
+      },
+      {
+        "claim_boundary": "The typed authority must project an RC version with github_prerelease true; the workflow-output leg remains with #3788.",
+        "defect": "RC release uses prerelease=false",
+        "incident_id": "RC1-ESCAPE-011",
+        "owner": "#3788/#3726",
+        "result": "proven",
+        "seam": "typed identity projection -> draft adapter",
+        "status": "typed_identity"
+      },
+      {
+        "claim_boundary": "Binds to the publisher_state_machine phase, whose fixture matrix pins the authorize-gated publish workflow contract; the typed final-tag bridge keeps its own #3790 fixtures.",
+        "defect": "tag push treated as authority",
+        "incident_id": "RC1-ESCAPE-012",
+        "owner": "#3790",
+        "result": "proven",
+        "seam": "pre-tag authorization graph",
+        "status": "phase_binding"
+      },
+      {
+        "claim_boundary": "Imported once the incident evidence adapter lands; this row carries no proof.",
+        "defect": "moved tag presented as original package producer",
+        "incident_id": "RC1-ESCAPE-013",
+        "owner": "#3759/#3761",
+        "result": "recorded_pending",
+        "seam": "RC incident model/evidence adapter",
+        "status": "pending_upstream"
+      },
+      {
+        "claim_boundary": "Imported once the draft-fixture adapter lands; this row carries no proof.",
+        "defect": "actual asset set differs from the manifest",
+        "incident_id": "RC1-ESCAPE-014",
+        "owner": "#3726",
+        "result": "recorded_pending",
+        "seam": "GitHub draft fixture adapter + closeout validator",
+        "status": "pending_upstream"
+      },
+      {
+        "claim_boundary": "Imported once the incident evidence denominator (#3785) lands; this row carries no proof.",
+        "defect": "later green retry erases the incident",
+        "incident_id": "RC1-ESCAPE-015",
+        "owner": "#2496/#2497/#3785",
+        "result": "recorded_pending",
+        "seam": "typed manifest/incident aggregation",
+        "status": "pending_upstream"
+      },
+      {
+        "claim_boundary": "A narration-only close and lexical-only acceptance backing must be rejected; typed evidence is admitted.",
+        "defect": "issue closed from narration",
+        "incident_id": "RC1-ESCAPE-016",
+        "owner": "#3780",
+        "result": "proven",
+        "seam": "campaign-issue-closeout evidence checker",
+        "status": "fault_injected"
+      }
+    ],
+    "schema": "cargo-allow.release-rehearsal-escaped-defect-corpus.v1"
+  },
+  "manifest_and_assets": {
+    "fixture_matrix": "scripts/test-final-packaged-surface.py"
+  },
+  "phases": {
+    "authorization_boundary": "Incomplete",
+    "candidate_package_set": "Complete",
+    "docs_and_support_identity": "Complete",
+    "escaped_defect_corpus": "Complete",
+    "manifest_and_assets": "Complete",
+    "publisher_state_machine": "Complete",
+    "release_identity": "Complete",
+    "shared_prerequisites": "Complete",
+    "workflow_graph_permissions": "Complete"
+  },
+  "publisher_state_machine": {
+    "fixture_matrix": "scripts/test-release-topology-publisher.py"
+  },
+  "receipt_id": "REHEARSAL-fd0ed4a2",
+  "release_identity": {
+    "channel": "stable",
+    "github_prerelease": false,
+    "rc_ordinal": null,
+    "schema": "cargo-allow.release-identity.v1",
+    "tag": "v0.2.0",
+    "tag_source": "derived",
+    "version": "0.2.0"
+  },
+  "schema_version": "1.0",
+  "shared_prerequisites": [
+    {
+      "name": "effortless-repo-protocol",
+      "registry_checksum": "sha256:7755a359aa0a21d0a3258510b64bb26af35e88fbc8b6061a18798d8384a20008",
+      "state": "already_published_exact",
+      "version": "0.1.0"
+    },
+    {
+      "name": "effortless-repo-snapshot",
+      "registry_checksum": "sha256:e5988b678ce9abb5dc6ad920e497aa16d86e23f587bfcf05c52345717c997c4f",
+      "state": "already_published_exact",
+      "version": "0.1.0"
+    },
+    {
+      "name": "effortless-repo-edit",
+      "registry_checksum": "sha256:c911da1ad15af64b3cd6c2d1a8ba7fd838a6da58c2e345d6f41ca8a349889728",
+      "state": "already_published_exact",
+      "version": "0.1.0"
+    }
+  ],
+  "subject_lockfile_digest": "sha256:v1:0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c",
+  "subject_topology_digest": "sha256:v1:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
+  "workflow_graph_permissions": {
+    "authorized_namespace_mode": true,
+    "github_release_scoped": true,
+    "mode": "text",
+    "privileged_jobs": [],
+    "release_jobs": [],
+    "top_level_read_scoped": true,
+    "top_level_write_scoped": true
+  },
+  "zero_mutation_proof": {
+    "cargo_publish_prevented": false,
+    "external_repository_mutation_prevented": false,
+    "github_release_mutation_prevented": false,
+    "live_setting_mutation_prevented": false,
+    "registry_mutation_prevented": false,
+    "tag_mutation_prevented": false,
+    "token_read_prevented": false
+  }
+}

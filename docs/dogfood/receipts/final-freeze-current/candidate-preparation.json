@@ -1,0 +1,61 @@
+{
+  "schema": "cargo-allow.candidate-preparation-result.v1",
+  "readiness": "stale",
+  "reasons": [
+    "target version 0.2.0 equals the current source line; there is no transition to prepare"
+  ],
+  "input_identity": {
+    "repository": "EffortlessMetrics/cargo-allow",
+    "branch": "feat/freeze-evidence-current-subject",
+    "head_commit": "fd0ed4a22db4c72b135bceadae1b464708c8fea2",
+    "tree": "0409bddcce275e4ad13f6f29f531c1789357fdad",
+    "dirty_state": {
+      "class": "clean"
+    },
+    "cargo_lock_digest": "sha256:v1:0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c",
+    "workspace_manifest_digest": "sha256:v1:b8af414f555e2a879ea5d8e641c0ddf951a341728d200e0f8fc5f1e16aac852a",
+    "member_manifest_digests": {
+      "crates/allow-core": "sha256:v1:5ed7736022f1e53beb09bc570b133d65c2d8949202bddf4590154cbe47397354",
+      "crates/allow-diff": "sha256:v1:57b6c6459bcf42bc59844f5fae943d4955b368001851c437333840849e5ccc36",
+      "crates/allow-files": "sha256:v1:7333e0feabab1ded3f7cca3e913ccfb981ddff396b0b4215f6de47c998b61f4a",
+      "crates/allow-inventory": "sha256:v1:ca73b07a4f0f52ce5c33dfcc708292bf17ee3f988db3bd139dc4682a2f22a3af",
+      "crates/allow-match": "sha256:v1:fdd6095fc4201f40a7755d3d52680ed9a2af6c3647c04e9c0eacc274f751e8bc",
+      "crates/allow-policy": "sha256:v1:92dfa976e87a84e03eecb06eca59983c916708708bae66ad2b7e7bbba2ba1069",
+      "crates/allow-policy-legacy": "sha256:v1:dd3f9600196f33b55c405163cedc5b22f1606c15e138d55312dd3c0234926ccd",
+      "crates/allow-report": "sha256:v1:0b93a2b1276c367f23fae9fd2a2ffa8de93388fa5ea010fee4934a1e5fc22c9c",
+      "crates/allow-rust": "sha256:v1:0d0a11055f5ff96c917bf5d83969bbe0755662f2e74e4a6484624225b2ea6c8d",
+      "crates/cargo-allow": "sha256:v1:696c348a8a1064f029114b7bf9171652f769b64f0d419b6b2f4a17bcfd00c61d",
+      "crates/cargo-intent": "sha256:v1:35907d16a0bfe8880d420da2507c080efe0b2fcccfc21053204f5f7f9216aa28",
+      "crates/cargo-proof": "sha256:v1:ad6bbd19c37bcd907fb3509bd1f9aeeec48eaac1f2811205be76faaeb43e8c1a",
+      "crates/effortless-repo-edit": "sha256:v1:a6b728062fb70b6a18dad817383e78889785d57b5bdc08f3c5ff97f1c846340e",
+      "crates/effortless-repo-protocol": "sha256:v1:b913ef371a3e980e83399d76edfbcf9a84d4d5fbafc50076438685e2f40c82fa",
+      "crates/effortless-repo-snapshot": "sha256:v1:0a6f9daf68a05d2ad21faf138a4731ab3c71e458a2db997391306becc22c121f",
+      "crates/effortless-rust-source-index": "sha256:v1:ad8679c82e44969458646204472cacda9884f878d8beecc86b91fb9cd7b5fa44",
+      "crates/intent-edit": "sha256:v1:192f0e92a110064cd585bb98cf5a3aded2a75ce1a9f1c67f4573b2a75933942f",
+      "crates/intent-engine": "sha256:v1:0ab8f21ed5bc8cd627058610f87e0b7e4f9a9385b1cf366ad7afa766f357e93e",
+      "crates/intent-model": "sha256:v1:477a9057d668d6fc517be93f4486398964bc2cd5b408b513e7a3922b4917d2d7",
+      "crates/intent-protocol": "sha256:v1:f75b9a42b0929c6bc72c03f18cc0ac65a6de38d8ca069853dd04c8a77ce6a92d",
+      "crates/proof-engine": "sha256:v1:f0df29eaeebd2ab843c44540ef7eb9b2cdc5d10aad13dae0610d9dca19b12520",
+      "crates/proof-protocol": "sha256:v1:bd0ea86eed5f383cb47f816e66b4952ce8b7d4e580df7da63103ee6819921498"
+    },
+    "topology_generation": 2,
+    "topology_digest": "sha256:v1:15e45b4a4ac566bfdff34b3b83bc634d596c1d4c65cdd0056f95b87d2ab70ff9",
+    "source_release_identity_digest": "sha256:v1:df9ee4dff6d5385936e54efdd7061f6caa12627178ab7634ee58554fe3a5de1e",
+    "support_selection_digest": "sha256:v1:86347a99dda2893dbb4f021489c7d6592bed4805e3ba1b964ac3ae8a6a4b0922",
+    "changie_config_digest": "sha256:v1:d7f4369c299f09b17fae9bde2166de33870ad361016cf1255f73a7d747d79d7f",
+    "changie_history_digest": "sha256:v1:1d62ff169b5e288b4f768092747d399abc530a81b5c02eff7f569f736f8471c6",
+    "release_record": {
+      "path": "docs/release/0.2.0.md",
+      "digest": "sha256:v1:95ae27c3dbbc920c6236585c0d9e6eb7048f417e083908efaadf81cf0c389cb4"
+    },
+    "github_release_note": {
+      "path": "docs/release/github/v0.2.0.md",
+      "digest": "sha256:v1:546e1064a612ed76c3566633ce4157b0b66d5b7bf1fff8d873f79bdc294ba5cc"
+    },
+    "source_exception_policy_schema_version": "0.1",
+    "source_exception_policy_digest": "sha256:v1:09b7b5bd74d491d13d10db71dcfb208224512775cbf735e62eed5ec11103cfae"
+  },
+  "plan": null,
+  "operations": null,
+  "human_summary": "candidate preparation is stale for the requested inputs"
+}

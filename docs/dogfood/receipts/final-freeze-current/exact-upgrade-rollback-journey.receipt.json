@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.exact-upgrade-rollback-journey.v1",
+  "tool": "cargo-allow",
+  "result": "Passed",
+  "claim_boundary": [
+    "exact_public_0.1.11",
+    "exact_candidate_0.2.0",
+    "isolated_three_leg_journey",
+    "bounded_repository_state_restore"
+  ],
+  "from": {
+    "version": "cargo-allow 0.1.11",
+    "binary_sha256": "b01893d804c0cb85c3b271f6943bebc84d68c892ce90215f555e3f49e118df67",
+    "install_root_id": "old-install"
+  },
+  "candidate": {
+    "version": "cargo-allow 0.2.0",
+    "binary_sha256": "d648976a842d9693c37fbc31714f74fc0635ddd9074c56ba5cdab5ccb28663d3",
+    "package_set_receipt_sha256": "fdebb8f9ba272e73d975fdea64a74d13611d5c843b2a5d2ea139564aa3944f5a",
+    "git_head": "fd0ed4a22db4c72b135bceadae1b464708c8fea2"
+  },
+  "rollback": {
+    "version": "cargo-allow 0.1.11",
+    "binary_sha256": "b01893d804c0cb85c3b271f6943bebc84d68c892ce90215f555e3f49e118df67",
+    "restored_preimage": true
+  },
+  "repository": {
+    "fixture_sha256": "abeb6cc60df317d0b66acb3976ef94ad4a38a16c69d68b3b25b3d90f286fbc3a",
+    "unrelated_file_preserved": true,
+    "source_checkout_not_used_as_binary": true
+  },
+  "steps": [
+    {
+      "leg": "from",
+      "id": "old-0.1.11:doctor"
+    },
+    {
+      "leg": "from",
+      "id": "old-0.1.11:audit"
+    },
+    {
+      "leg": "from",
+      "id": "old-0.1.11:check"
+    },
+    {
+      "leg": "candidate",
+      "id": "candidate-0.2.0:doctor"
+    },
+    {
+      "leg": "candidate",
+      "id": "candidate-0.2.0:audit"
+    },
+    {
+      "leg": "candidate",
+      "id": "candidate-0.2.0:check"
+    },
+    {
+      "leg": "rollback",
+      "id": "rollback-0.1.11:doctor"
+    },
+    {
+      "leg": "rollback",
+      "id": "rollback-0.1.11:audit"
+    },
+    {
+      "leg": "rollback",
+      "id": "rollback-0.1.11:check"
+    }
+  ],
+  "negative_controls": [
+    {
+      "id": "old_binary_exact_version",
+      "result_class": "ExactVersion",
+      "passed": true
+    },
+    {
+      "id": "candidate_binary_exact_version",
+      "result_class": "ExactVersion",
+      "passed": true
+    },
+    {
+      "id": "checkout_binary_not_used",
+      "result_class": "CheckoutIsolated",
+      "passed": true
+    },
+    {
+      "id": "unrelated_file_survives_rollback",
+      "result_class": "UnrelatedStatePreserved",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "candidate_leg_consumes_the_existing_exact_candidate_package_receipt",
+    "migration_write_surfaces_are_not_claimed_by_this_read_only_slice"
+  ]
+}

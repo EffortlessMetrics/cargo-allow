@@ -1,0 +1,17 @@
+{
+  "schema": "cargo-allow.candidate-apply-receipt.v1",
+  "plan_digest": "",
+  "before_identity_digest": "",
+  "locks": [],
+  "operations": [],
+  "staged_validation": false,
+  "transaction_result": "not_attempted",
+  "rollback_result": "not_attempted",
+  "decision_acknowledgements": {},
+  "remaining_obligations": [],
+  "state": "conflict",
+  "reasons": [
+    "the plan file carries no projected plan"
+  ],
+  "claim_boundary": "Atomic, stale-safe application of one exact reviewed candidate-preparation plan using the repository's shared write-safety authorities. It changes only the declared source state; it does not determine release meaning, qualify bytes, authorize, or publish."
+}
