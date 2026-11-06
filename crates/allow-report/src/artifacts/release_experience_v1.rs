@@ -9,6 +9,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::release_experience_docs_execution_v1::ReleaseExperienceDocsExecutionClaimV1;
+
 mod evaluate;
 #[cfg(test)]
 mod tests;
@@ -96,6 +98,12 @@ pub struct ReleaseExperienceInputV1 {
     pub brownfield_posture: ReleaseExperienceBrownfieldPostureV1,
     pub brownfield_receipt_digest: Option<String>,
     pub docs_identities: Vec<ReleaseExperienceDocsIdentityV1>,
+    /// Original executed-documentation record pointer (#4706). Absent means
+    /// the installed-documentation hold stays; a present claim never
+    /// discharges anything by itself — the admission recomputes the reader
+    /// from the referenced original bytes before the hold can lift.
+    #[serde(default)]
+    pub docs_execution: Option<ReleaseExperienceDocsExecutionClaimV1>,
     pub frictions: Vec<ReleaseExperienceFrictionV1>,
     /// Claimed outcome. `Complete` requires pilot proof; `NotProven`
     /// requires an explicit reason and narrowed claims.
