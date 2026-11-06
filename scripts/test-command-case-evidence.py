@@ -52,7 +52,7 @@ def arguments(root, binary, cases=None):
         output_dir=root / "collection", collection_id="command-case-test",
         tool_version="0.2.0", source_generation=SOURCE_GENERATION or "1" * 40,
         provenance="source_build", candidate_identity=None, install_identity=None,
-        case=cases, timeout=30.0,
+        case=cases, timeout=60.0,
     )
 
 
@@ -77,7 +77,10 @@ def preserve_candidate_profiles(collection, runner_profile):
     test harness exports completed files before deleting that fixture;
     tarpaulin recursively collects its runner-owned profile directory.
     """
-    profiles = sorted((collection / "fixtures").glob("*/target/command-case/profiles/*"))
+    profiles = sorted(
+        list((collection / "fixtures").glob("*/target/command-case/profiles/*"))
+        + list((collection / "fixtures").glob("*/target/command-case/*/profiles/*"))
+    )
     if not profiles:
         return None
     if runner_profile is None:
@@ -831,7 +834,8 @@ class TransportTests(unittest.TestCase):
         self.assertIsNone(timeout["launch_error"])
 
     def test_case_and_provenance_rejections_happen_before_root_allocation(self):
-        for cases in (["unknown"], ["A.audit.clean_no_policy"] * 2, ["D.diff.exact_range"]):
+        for cases in (["unknown"], ["A.audit.clean_no_policy"] * 2, ["D.diff.exact_range"],
+                      ["B.list.presentation"], ["A.adopt.human_receipt"]):
             args = arguments(self.root, Path(sys.executable).resolve(), cases)
             with self.subTest(cases=cases), self.assertRaises(ValueError):
                 COLLECT.collect(args)
@@ -995,7 +999,7 @@ class NativeAdmissionTests(unittest.TestCase):
             expected = next(item for item in context["cases"] if item["case_id"] == case["context"]["case_id"])
             expected["output_digests"][role] = member["digest"]
 
-    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=30):
+    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=60):
         context_bytes = COLLECT.json_bytes(context) if raw_context is None else raw_context
         bundle["context_digest"] = COLLECT.digest(context_bytes)
         bundle_bytes = COLLECT.json_bytes(bundle) if raw_bundle is None else raw_bundle
@@ -1625,6 +1629,281 @@ class NativeAdmissionTests(unittest.TestCase):
         self.invalid(context, bundle, "unexpected source file")
 
 
+PRESENTATION_CASE_IDS = [
+    "A.check.human_receipt",
+    "A.adopt.presentation",
+    "A.doctor.presentation",
+    "A.audit.presentation",
+    "A.check.presentation",
+]
+
+
+class PresentationAdmissionTests(unittest.TestCase):
+    """Read-only #4724 presentation transport and native admission controls."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root = Path(tempfile.mkdtemp(prefix="command-case-presentation-tests-")).resolve()
+        cls.root_identity = cls.root.lstat()
+        args = arguments(cls.root, NATIVE, cases=list(PRESENTATION_CASE_IDS))
+        with redirect_stdout(io.StringIO()):
+            COLLECT.collect(args)
+        cls.collection = args.output_dir
+        cls.context = json.loads((cls.collection / "expected-context.json").read_bytes())
+        cls.bundle = json.loads((cls.collection / "bundle.json").read_bytes())
+
+    @classmethod
+    def tearDownClass(cls):
+        preserve_candidate_profiles(cls.collection, os.environ.get("LLVM_PROFILE_FILE"))
+        remove_owned_fixture(cls.root, cls.root_identity)
+
+    def setUp(self):
+        self.restore = {}
+        self.remove = []
+
+    def tearDown(self):
+        for path in self.remove:
+            path.unlink(missing_ok=True)
+        for path, data in self.restore.items():
+            path.write_bytes(data)
+
+    def selected(self, case_id):
+        context = copy.deepcopy(self.context)
+        bundle = copy.deepcopy(self.bundle)
+        context["cases"] = []
+        bundle["cases"] = []
+        context["presentation_cases"] = [
+            case for case in context["presentation_cases"] if case["case_id"] == case_id
+        ]
+        bundle["presentation_cases"] = [
+            case for case in bundle["presentation_cases"] if case["case_id"] == case_id
+        ]
+        return context, bundle
+
+    def route(self, case, route):
+        # Context invocations carry `route` directly; retained executions
+        # carry it under their pinned context.
+        return next(
+            item for item in case["invocations"]
+            if item.get("context", item)["route"] == route
+        )
+
+    def read_member(self, member):
+        return (self.collection / member["path"]).read_bytes()
+
+    def repin(self, member, data):
+        """Persist new member bytes and refresh the member identity in place."""
+        path = self.collection / member["path"]
+        self.restore.setdefault(path, path.read_bytes())
+        path.write_bytes(data)
+        member["size_bytes"], member["digest"] = len(data), COLLECT.digest(data)
+        return member
+
+    def expected_case(self, context, case_id):
+        return next(
+            case for case in context["presentation_cases"] if case["case_id"] == case_id
+        )
+
+    def repin_route_output(self, bundle, context, case_id, route, role, data):
+        """Rewrite a route output member and repin every pinned digest."""
+        execution = self.route(bundle["presentation_cases"][0], route)
+        expected = self.route(context["presentation_cases"][0], route)
+        self.repin(execution[role], data)
+        digest = execution[role]["digest"]
+        execution["context"]["output_digests"][role] = digest
+        expected["output_digests"][role] = digest
+
+    def admit(self, context, bundle):
+        context_bytes = COLLECT.json_bytes(context)
+        bundle["context_digest"] = COLLECT.digest(context_bytes)
+        context_path = self.collection / "presentation-test-context.json"
+        bundle_path = self.collection / "presentation-test-bundle.json"
+        context_path.write_bytes(context_bytes)
+        bundle_path.write_bytes(COLLECT.json_bytes(bundle))
+        self.remove.extend([context_path, bundle_path])
+        argv = [str(NATIVE), "command-migration-evidence", "--catalogue", str(CATALOGUE),
+                "--expected-context", str(context_path), "--bundle", str(bundle_path)]
+        env = dict(os.environ)
+        for key in list(env):
+            if key.startswith("GIT_") or key.startswith("CARGO_ALLOW"):
+                del env[key]
+        observed = subprocess.run(argv, cwd=self.collection, env=env, capture_output=True, timeout=60)
+        self.assertTrue(observed.stdout, observed.stderr.decode(errors="replace"))
+        return observed, json.loads(observed.stdout)
+
+    def invalid(self, context, bundle, text=None):
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 1, result)
+        self.assertEqual(result["semantic_validity"], "invalid", result)
+        if text:
+            self.assertIn(text, json.dumps(result))
+        return result
+
+    def test_valid_presentation_observations_never_become_complete(self):
+        observed, result = self.admit(self.context, self.bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        self.assertEqual(result["qualification"], "partial")
+        # A host whose terminal relay works admits valid routes; a host
+        # without one retains unproven terminal observations. Neither can
+        # mark the 107-case denominator complete.
+        self.assertIn(result["semantic_validity"], ("valid", "incomplete"))
+        self.assertGreaterEqual(len(result["missing_cases"]), 102)
+        by_id = {case["case_id"]: case for case in result["cases"]}
+        for case_id in PRESENTATION_CASE_IDS:
+            routes = by_id[case_id]["routes"]
+            self.assertEqual(
+                [route["route"] for route in routes],
+                [route for route, _ in COLLECT.PRESENTATION_ROUTES[
+                    "human_receipt" if case_id.endswith("human_receipt") else "presentation"
+                ][case_id.split(".")[1]]],
+                case_id,
+            )
+            for route in routes:
+                if route["tty"]:
+                    self.assertIn(route["semantic_validity"], ("valid", "incomplete"))
+                else:
+                    self.assertEqual(route["semantic_validity"], "valid", (case_id, route))
+        # First-family cases stay missing: this collection never executed them.
+        self.assertIn("A.audit.healthy_policy", result["missing_cases"])
+        unexecuted = [case_id for case_id in result["missing_cases"]
+                      if case_id.startswith("B.")]
+        self.assertGreaterEqual(len(unexecuted), 16)
+
+    def test_missing_invocation_and_route_set_members_are_rejected(self):
+        for case_id, route in (("A.adopt.presentation", "human"),
+                               ("A.check.human_receipt", "receipt_only_tty")):
+            context, bundle = self.selected(case_id)
+            bundle["presentation_cases"][0]["invocations"] = [
+                item for item in bundle["presentation_cases"][0]["invocations"]
+                if item["context"]["route"] != route
+            ]
+            self.invalid(context, bundle, "retained invocation count")
+            context, bundle = self.selected(case_id)
+            bundle["presentation_cases"][0]["invocations"] = [
+                item for item in bundle["presentation_cases"][0]["invocations"]
+                if item["context"]["route"] != route
+            ]
+            context["presentation_cases"][0]["invocations"] = [
+                item for item in context["presentation_cases"][0]["invocations"]
+                if item["route"] != route
+            ]
+            self.invalid(context, bundle, "accepted obligation")
+
+    def test_unknown_and_duplicated_routes_are_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        context["presentation_cases"][0]["invocations"][0]["route"] = "human2"
+        bundle["presentation_cases"][0]["invocations"][0]["context"]["route"] = "human2"
+        self.invalid(context, bundle, "accepted obligation set")
+        context, bundle = self.selected("A.adopt.presentation")
+        context["presentation_cases"][0]["invocations"][1]["route"] = "human"
+        bundle["presentation_cases"][0]["invocations"][1]["context"]["route"] = "human"
+        self.invalid(context, bundle, "duplicate expected presentation route")
+
+    def test_tty_flag_lie_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        expected = self.route(context["presentation_cases"][0], "tty")
+        expected["tty"] = False
+        retained = self.route(bundle["presentation_cases"][0], "tty")
+        retained["context"]["tty"] = False
+        self.invalid(context, bundle, "terminal binding")
+
+    def test_receipt_only_route_cannot_gain_stdout_detail(self):
+        context, bundle = self.selected("A.check.human_receipt")
+        self.repin_route_output(
+            bundle, context, "A.check.human_receipt", "receipt_only", "stdout",
+            b"unexpected human report detail\n",
+        )
+        self.invalid(context, bundle, "receipt-only human route unexpectedly added stdout detail")
+
+    def test_route_summary_parity_mismatch_is_rejected(self):
+        # An internally valid but different typed claim must not pass parity:
+        # every route of a case carries the same result class and coverage.
+        context, bundle = self.selected("A.adopt.presentation")
+        human = self.route(bundle["presentation_cases"][0], "human")
+        summary = json.loads(self.read_member(human["summary"]))
+        summary["completeness"] = "partial"
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "tty", "summary",
+            COLLECT.json_bytes(summary),
+        )
+        self.invalid(context, bundle, "disagree on the typed common summary")
+
+    def test_exit_disagreement_is_rejected(self):
+        context, bundle = self.selected("A.check.presentation")
+        quiet = self.route(bundle["presentation_cases"][0], "quiet")
+        self.assertNotEqual(quiet["process"]["exit_code"], 7)
+        quiet["process"]["exit_code"] = 7
+        self.invalid(context, bundle, "disagree on the observed exit code")
+
+    def test_unrequested_receipt_on_non_check_route_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        data = b"unexpected receipt\n"
+        member_path = self.collection / "presentation/A.adopt.presentation/human/receipt.json"
+        member_path.parent.mkdir(parents=True, exist_ok=True)
+        member_path.write_bytes(data)
+        self.remove.append(member_path)
+        member = {"path": "presentation/A.adopt.presentation/human/receipt.json",
+                  "size_bytes": len(data), "digest": COLLECT.digest(data)}
+        bundle["presentation_cases"][0]["invocations"][0]["receipt"] = member
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "human", "receipt", data
+        )
+        self.invalid(context, bundle, "unrequested receipt")
+
+    def test_invocation_source_mutation_is_not_accepted(self):
+        context, bundle = self.selected("A.audit.presentation")
+        case = bundle["presentation_cases"][0]
+        invocation = self.route(case, "human")
+        snapshot = json.loads(self.read_member(invocation["after"]))
+        source = next(item for item in snapshot["entries"] if item["path"] == "src/lib.rs")
+        source["mode"] ^= 0o100
+        data = COLLECT.json_bytes(snapshot)
+        self.repin(invocation["after"], data)
+        self.invalid(context, bundle, "mutation")
+
+    def test_false_no_write_claim_is_rejected(self):
+        context, bundle = self.selected("A.doctor.presentation")
+        case = bundle["presentation_cases"][0]
+        invocation = self.route(case, "human")
+        summary = json.loads(self.read_member(invocation["summary"]))
+        summary["operation_effects"]["writes_repository"] = True
+        self.repin_route_output(
+            bundle, context, "A.doctor.presentation", "human", "summary",
+            COLLECT.json_bytes(summary),
+        )
+        self.invalid(context, bundle, "writing operation must name its write paths")
+
+    def test_environment_selector_escape_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        expected = self.route(context["presentation_cases"][0], "human")
+        expected["environment"]["NO_COLOR"] = "0"
+        retained = self.route(bundle["presentation_cases"][0], "human")
+        retained["context"]["environment"]["NO_COLOR"] = "0"
+        self.invalid(context, bundle, "escaped the controlled invocation environment")
+
+    def test_empty_human_presentation_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "human", "stdout", b""
+        )
+        self.invalid(context, bundle, "lost its expected human presentation")
+
+    def test_unproven_terminal_relay_is_never_valid(self):
+        # A retained empty TTY stream cannot satisfy the terminal obligation:
+        # force the tty route's stdout member empty and repin.
+        context, bundle = self.selected("A.adopt.presentation")
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "tty", "stdout", b""
+        )
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        tty_route = next(
+            route for route in result["cases"][0]["routes"] if route["route"] == "tty"
+        )
+        self.assertEqual(tty_route["semantic_validity"], "incomplete", result)
+        self.assertTrue(any("terminal" in gap for gap in tty_route["binding_gaps"]), result)
+
+
 def main():
     global NATIVE, SOURCE_GENERATION, EXPORT
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1636,9 +1915,11 @@ def main():
     SOURCE_GENERATION = args.source_generation
     EXPORT = args.export_observations
     NativeAdmissionTests.__unittest_skip__ = NATIVE is None
+    PresentationAdmissionTests.__unittest_skip__ = NATIVE is None
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(TransportTests)
     if NATIVE is not None:
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(NativeAdmissionTests))
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(PresentationAdmissionTests))
     return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
 
 

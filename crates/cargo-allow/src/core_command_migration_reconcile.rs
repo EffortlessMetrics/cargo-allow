@@ -1,3 +1,4 @@
+use super::presentation;
 use super::readback::{MemberReader, safe_relative, valid_digest};
 use super::*;
 use crate::core_command_summary::{CoreCommandSummaryV1, validate_core_command_summary};
@@ -19,8 +20,8 @@ pub(crate) fn reconcile(
         qualification: "partial", cases: Vec::new(), missing_cases: Vec::new(),
         dimensions: Vec::new(), errors: Vec::new(),
         qualification_gaps: vec![
-            "the first-family reader cannot satisfy the full A-C, diff-D and #3882 denominator".to_string(),
-            "JSON/detail/sidecar readback does not execute human, quiet, file, TTY or installed-entrypoint parity cases".to_string(),
+            "the admitted reader cannot satisfy the full A-C, diff-D and #3882 denominator".to_string(),
+            "human/quiet/file/TTY parity is admitted only for the five #4724 A presentation/human-receipt cases under the pinned NO_COLOR child environment via the collector's pseudo-terminal relay; B diagnostics and installed-entrypoint parity remain unexecuted".to_string(),
             "runtime resolved-configuration, selected sensor-profile and same-evaluation artifact-set bindings remain incomplete (#3876/#3880/#3885)".to_string(),
             "expected-context custody, installation authority and final experience/qualification consumption remain outside this reader (#3151/#2501)".to_string(),
             "source-generation and candidate/install mappings are caller-pinned declarations; binary digest readback alone does not authenticate a build or installation".to_string(),
@@ -93,8 +94,13 @@ fn reconcile_inner(
         .map(|spec| (spec.id.as_str(), spec))
         .collect::<BTreeMap<_, _>>();
     let mut expected_ids = BTreeSet::new();
+    let presentation_selected = expected
+        .presentation_cases
+        .as_ref()
+        .is_some_and(|cases| !cases.is_empty());
     need(
-        !expected.cases.is_empty() && expected.cases.len() <= catalogue.cases.len(),
+        (!expected.cases.is_empty() || presentation_selected)
+            && expected.cases.len() <= catalogue.cases.len(),
         "expected case selection is empty or oversized",
     )?;
     for context in &expected.cases {
@@ -140,6 +146,7 @@ fn reconcile_inner(
             observed_completeness: None,
             errors: Vec::new(),
             binding_gaps: Vec::new(),
+            routes: Vec::new(),
         };
         match observed.get(context.case_id.as_str()) {
             None => admission
@@ -164,6 +171,7 @@ fn reconcile_inner(
     }
     // A failed, partial or merely observed case remains an unsatisfied catalogue
     // obligation. No automatic N/A declaration exists in this format.
+    reconcile_presentation_cases(&catalogue, &expected, &bundle, &specs, &mut reader, result)?;
     let valid_ids = result
         .cases
         .iter()
@@ -197,6 +205,85 @@ fn reconcile_inner(
         );
     } else {
         result.qualification_gaps.push("supplied candidate/install identities are bound declarations; their existing installation receipt and custody authorities were not replayed".to_string());
+    }
+    Ok(())
+}
+
+/// Admit the read-only A presentation/human-receipt cases (#4724). The
+/// expected and retained presentation case lists must correspond exactly;
+/// first-family cases must not appear here, and presentation cases must not
+/// appear in the first-family expected list.
+fn reconcile_presentation_cases(
+    catalogue: &Catalogue,
+    expected: &ExpectedContext,
+    bundle: &Bundle,
+    specs: &BTreeMap<&str, &CaseSpec>,
+    reader: &mut MemberReader,
+    result: &mut Admission,
+) -> Result<(), String> {
+    let expected_cases = expected.presentation_cases.as_deref().unwrap_or(&[]);
+    let bundle_cases = bundle.presentation_cases.as_deref().unwrap_or(&[]);
+    need(
+        expected_cases.len() == bundle_cases.len(),
+        "expected/retained presentation case counts disagree",
+    )?;
+    for (expected_case, bundle_case) in expected_cases.iter().zip(bundle_cases.iter()) {
+        need(
+            expected_case.case_id == bundle_case.case_id,
+            "expected/retained presentation case identity mismatch",
+        )?;
+        let spec = specs
+            .get(expected_case.case_id.as_str())
+            .ok_or("unknown expected presentation case")?;
+        need(
+            !spec.first_family_collector,
+            "first-family case cannot be admitted through the presentation reader",
+        )?;
+        need(
+            presentation::presentation_routes(spec).is_some(),
+            "expected presentation case has no implemented read-only reader",
+        )?;
+        let fixture = catalogue
+            .first_family_fixtures
+            .get(&spec.scenario)
+            .ok_or("selected presentation case has no fixture specification")?;
+        let mut admission = CaseAdmission {
+            case_id: expected_case.case_id.clone(),
+            semantic_validity: SemanticValidity::Invalid,
+            process_observed: false,
+            detail_reconciled: false,
+            observed_result_class: None,
+            observed_completeness: None,
+            errors: Vec::new(),
+            binding_gaps: Vec::new(),
+            routes: Vec::new(),
+        };
+        if let Err(error) = presentation::admit_presentation_case(
+            spec,
+            fixture,
+            expected_case,
+            &expected.binary,
+            bundle_case,
+            reader,
+            &mut admission,
+        ) {
+            admission.errors.push(error);
+            admission.semantic_validity = SemanticValidity::Invalid;
+        }
+        result.cases.push(admission);
+    }
+    // Any first-family case smuggled into the presentation lists, or any
+    // presentation case smuggled into the first-family list, is rejected by
+    // the per-list gates above before any admission decision is reached.
+    let presentation_ids = expected_cases
+        .iter()
+        .map(|case| case.case_id.as_str())
+        .collect::<BTreeSet<_>>();
+    for context in &expected.cases {
+        need(
+            !presentation_ids.contains(context.case_id.as_str()),
+            "case cannot be both a first-family and a presentation observation",
+        )?;
     }
     Ok(())
 }
@@ -545,7 +632,8 @@ fn validate_case_context(
     Ok(())
 }
 
-type LogicalSnapshot = BTreeMap<String, (String, u32, u64, Option<String>, Option<String>)>;
+pub(super) type LogicalSnapshot =
+    BTreeMap<String, (String, u32, u64, Option<String>, Option<String>)>;
 
 fn snapshot(
     reader: &mut MemberReader,
@@ -632,7 +720,7 @@ fn snapshot(
     Ok(logical)
 }
 
-fn optional_member(
+pub(super) fn optional_member(
     reader: &mut MemberReader,
     member: Option<&Member>,
 ) -> Result<Option<Vec<u8>>, String> {
@@ -701,21 +789,21 @@ fn validate_error_summary(
     )
 }
 
-fn enum_text(value: &impl Serialize) -> Result<String, String> {
+pub(super) fn enum_text(value: &impl Serialize) -> Result<String, String> {
     let text = serde_json::to_value(value).map_err(|error| error.to_string())?;
     text.as_str()
         .map(str::to_string)
         .ok_or("expected a typed string result".to_string())
 }
 
-fn git_identity(value: &str) -> bool {
+pub(super) fn git_identity(value: &str) -> bool {
     matches!(value.len(), 40 | 64)
         && value
             .bytes()
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-fn utc_parts(value: &str) -> Option<(allow_core::SimpleDate, u8, u8, u8, u32)> {
+pub(super) fn utc_parts(value: &str) -> Option<(allow_core::SimpleDate, u8, u8, u8, u32)> {
     let (date, time) = value.strip_suffix('Z')?.split_once('T')?;
     let date = allow_core::SimpleDate::parse(date)?;
     let (clock, fraction) = time.split_once('.').unwrap_or((time, ""));
@@ -746,7 +834,7 @@ fn utc_parts(value: &str) -> Option<(allow_core::SimpleDate, u8, u8, u8, u32)> {
     Some((date, hour, minute, second, nanos))
 }
 
-fn need(condition: bool, message: &str) -> Result<(), String> {
+pub(super) fn need(condition: bool, message: &str) -> Result<(), String> {
     if condition {
         Ok(())
     } else {
