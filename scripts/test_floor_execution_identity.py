@@ -15,6 +15,44 @@ def verbose(version="1.95.0", host=HOST):
 
 
 class ExecutionIdentityTests(unittest.TestCase):
+    def test_pregate_grades_floor_freshness_before_heavy_jobs(self):
+        workflow = Path(__file__).resolve().parent.parent.joinpath(
+            ".github/workflows/ci.yml"
+        ).read_text(encoding="utf-8")
+        pregate = workflow.split("  pregate:\n", 1)[1].split(
+            "\n  workflow-syntax:", 1
+        )[0]
+        self.assertIn(
+            "run: cargo run -p cargo-allow --locked -- min-version-drift check --format human",
+            pregate,
+        )
+        self.assertIn("id: floor_freshness", pregate)
+        self.assertIn(
+            "FLOOR_FRESHNESS_OUTCOME: ${{ steps.floor_freshness.outcome || 'skipped' }}",
+            pregate,
+        )
+        self.assertIn('"floor-freshness:$FLOOR_FRESHNESS_OUTCOME"', pregate)
+        self.assertNotIn("continue-on-error:", pregate)
+        self.assertNotIn("cache-hit", pregate)
+        for job in ("msrv", "test-core-platforms", "coverage"):
+            block = workflow.split(f"\n  {job}:\n", 1)[1]
+            declaration = block.split("steps:", 1)[0]
+            self.assertIn("pregate", declaration)
+
+    def test_pregate_cache_matches_its_pinned_toolchain(self):
+        workflow = Path(__file__).resolve().parent.parent.joinpath(
+            ".github/workflows/ci.yml"
+        ).read_text(encoding="utf-8")
+        pregate = workflow.split("  pregate:\n", 1)[1].split(
+            "\n  workflow-syntax:", 1
+        )[0]
+        toolchain = pregate.index("uses: dtolnay/rust-toolchain@1.95.0")
+        cache = pregate.index("uses: ./.github/actions/rust-cache")
+        proof = pregate.index("id: no_new")
+        self.assertLess(toolchain, cache)
+        self.assertLess(cache, proof)
+        self.assertIn("lane: pregate\n          toolchain: 1.95.0", pregate)
+
     def test_bootstrap_excludes_only_retained_output_graders(self):
         source = Path(__file__).with_name("proof-direct-floors.sh").read_text(encoding="utf-8")
         array = source.split("DRIFT_TEST_SKIPS=(", 1)[1].split(")", 1)[0]
