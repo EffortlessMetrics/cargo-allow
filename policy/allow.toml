@@ -28687,6 +28687,24 @@ symbol = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml
 target_fingerprint = "toml"
 glob = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
 
+[[allow]]
+id = "allow-11486"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/command-mutation-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Collect the #4725 C-family mutation obligations once per supplied-binary invocation in owned disposable Git fixtures with closed child environment, retained argv/exit/streams, per-step snapshots and declared-write reconciliation; no semantic, installation or release authority is delegated to Python."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/command-mutation-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/command-mutation-evidence.py"
+
 [allow.last_seen]
 line = 1
 column = 1
@@ -28797,6 +28815,121 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/2276-2276-determinism-fixture.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/2276-2276-determinism-fixture.toml"
+
+
+[[allow]]
+id = "allow-11487"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/verify-command-mutation-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Admit retained mutation collections by recomputing member digests, snapshot diffs, argv templates, exit expectations and declared-write boundaries against a caller-pinned expected context, and replay the committed manifest; the reader grants no qualification or release authority."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/verify-command-mutation-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/verify-command-mutation-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11488"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-command-mutation-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Hermetic negative controls constructing synthetic collections and manifests so the admission reader rejects wrong subject, wrong family, duplicate or missing cases, replacement bytes, undeclared writes, stale values, fake successes and probe escapes; assertions are not qualification evidence."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-command-mutation-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/test-command-mutation-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11489"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/command-mutation-1/manifest.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Committed retained record of one executed 0.2.0-rc.1 mutation collection: per-step exits, changed paths, dispositions and digest bindings to the out-of-tree collection; observations only, no exception approval or release qualification."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/command-mutation-1/manifest.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/command-mutation-1/manifest.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11490"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/command-mutation-1/README.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Claim-boundary document for the executed mutation evidence slice: exact installed identity, retained findings, admission and replay routes; prose only."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/command-mutation-1/README.md"
+target_fingerprint = "md"
+glob = "docs/release/evidence/command-mutation-1/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11491"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4725-4725-experience-mutation-1.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for this lane's added allow-11386 through allow-11491 receipts; note retention only, no new scanned surface beyond this file, matching the #3793/#4214/#4716/#2497 precedents."
+evidence = ["issue:4725"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4725-4725-experience-mutation-1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4725-4725-experience-mutation-1.toml"
 
 [allow.last_seen]
 line = 1
