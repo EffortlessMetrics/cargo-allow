@@ -17,8 +17,8 @@
    "tested_floor": "4.6.1",
    "resolved_version": "4.6.1",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "clap_complete",
@@ -26,8 +26,8 @@
    "tested_floor": "4.6.8",
    "resolved_version": "4.6.8",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "rayon",
@@ -35,8 +35,8 @@
    "tested_floor": "1.12.0",
    "resolved_version": "1.12.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "same-file",
@@ -44,8 +44,8 @@
    "tested_floor": "1.0.6",
    "resolved_version": "1.0.6",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "serde",
@@ -53,8 +53,8 @@
    "tested_floor": "1.0.228",
    "resolved_version": "1.0.228",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "serde_json",
@@ -62,8 +62,8 @@
    "tested_floor": "1.0.150",
    "resolved_version": "1.0.150",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "sha2",
@@ -71,8 +71,8 @@
    "tested_floor": "0.11.0",
    "resolved_version": "0.11.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "terminal_size",
@@ -80,8 +80,8 @@
    "tested_floor": "0.4.4",
    "resolved_version": "0.4.4",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "toml",
@@ -89,8 +89,8 @@
    "tested_floor": "1.1.4",
    "resolved_version": "1.1.4+spec-1.1.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "tree-sitter",
@@ -98,8 +98,8 @@
    "tested_floor": "0.27.0",
    "resolved_version": "0.27.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "tree-sitter-rust",
@@ -107,8 +107,8 @@
    "tested_floor": "0.24.2",
    "resolved_version": "0.24.2",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "unicode-normalization",
@@ -116,8 +116,8 @@
    "tested_floor": "0.1.0",
    "resolved_version": "0.1.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "unicode-segmentation",
@@ -125,8 +125,8 @@
    "tested_floor": "1.13.3",
    "resolved_version": "1.13.3",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "unicode-width",
@@ -134,8 +134,8 @@
    "tested_floor": "0.2.2",
    "resolved_version": "0.2.2",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   },
   {
    "package": "yaml-rust2",
@@ -143,8 +143,8 @@
    "tested_floor": "0.13.0",
    "resolved_version": "0.13.0",
    "source_identity": "registry:crates.io",
-   "result": "proven",
-   "limitation": null
+   "result": "instrument_failure",
+   "limitation": "a bounded proof class failed at the floors; see the proof output"
   }
  ],
  "commands": [
@@ -153,13 +153,13 @@
   "cargo test --locked --target x86_64-pc-windows-msvc -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean --skip minimum_direct_version_products_retained_advisory_receipts_are_clean --skip minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure --skip ci_lane_topology_tests::crate_sets_partition_the_workspace_exactly --skip package_topology_enforcement_tests::topology_classifies_every_workspace_package_exactly --skip product_package_topology_tests::current_v2_authorities_drive_package_candidate --skip publish_order_validation_tests::publish_order_covers_all_workspace_members --skip release_prep_tests::published_release_versions_match_workspace",
   "cargo package -p allow-core --locked --target x86_64-pc-windows-msvc --no-verify --allow-dirty --target-dir target/package-proof"
  ],
- "floor_lock_digest": "sha256:v1:274546f36481c80381238729447e65f0916df01c921dfa829a0ddbda24ff2fa4",
+ "floor_lock_digest": "sha256:v1:fc17f95e14e4ad3674fe699a631bebec8ad1087cefbaadbe4837bd95f30aafee",
  "execution_provenance": {
   "command": "bash scripts/proof-direct-floors.sh",
-  "working_directory": "F:/Temp/wt-2276",
-  "source_commit": "69111433bf744736c276e810d7dd0a71c3471e58",
-  "source_tree": "647e4a00aac084b6a7ab8b91a1048eddf3d7de78",
-  "selected_source_digest": "468e3aa78e7ddad6d1dd6c86926acb09b7ef831bc382cc9dc9f576081b12512c",
+  "working_directory": "F:/Temp/wt-4725",
+  "source_commit": "d22e1336848311fc125f49d1cbc2390f0161872b",
+  "source_tree": "704781ddf07dc17d16b0a6e0bfd99f39eca2493b",
+  "selected_source_digest": "0ce7aef874edf318b154faddb1df75562466dc2d1fa0851111201f1da2762ed6",
   "selected_source_scope": [
    "crates/**/*.rs: every workspace Rust source, CR-stripped, framed path<NUL>content<NUL> in sorted path order"
   ],
@@ -183,8 +183,8 @@
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-pc-windows-msvc; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "package is a single-package --no-verify archive sample; see its exact command",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:87bd2c9bbcf9e089fa8b0134e829de5710ecf607c9c1678a1864a50cdbb758ca; certified members crates/cargo-allow, crates/allow-core, crates/allow-policy, crates/allow-inventory, crates/allow-files, crates/allow-rust, crates/allow-match, crates/allow-report, crates/allow-diff, crates/allow-policy-legacy, crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit; execution members crates/cargo-allow, crates/allow-core, crates/allow-policy, crates/allow-inventory, crates/allow-files, crates/allow-rust, crates/allow-match, crates/allow-report, crates/allow-diff, crates/allow-policy-legacy, crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine",
-  "local floor subject: source a9e4d9a1fe16719a7c4dea0cf2711f436cf2fb17; executed commit 69111433bf744736c276e810d7dd0a71c3471e58; tree 647e4a00aac084b6a7ab8b91a1048eddf3d7de78; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit",
-  "original-workspace topology preflight: source a9e4d9a1fe16719a7c4dea0cf2711f436cf2fb17; tree ff691d589c0d1103825c7eaaf3ba7c8b9d7e8b09; 5 passed; stdout sha256:v1:1f7bb72ae4654c5a6012bfade6a0f528e875dcecefcce3c733111fc6eabbc9e8; stderr sha256:v1:143cb0bc9e5c872358ffba0135d3c27bd6d1106a1ed948fa2c3569289bf9234f; the selection companion records its command and tests; current-lock repository contracts are not direct-floor compatibility evidence"
+  "local floor subject: source 366be272672ae3ef2b1960632dfe7668d594556d; executed commit d22e1336848311fc125f49d1cbc2390f0161872b; tree 704781ddf07dc17d16b0a6e0bfd99f39eca2493b; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit",
+  "original-workspace topology preflight: source 366be272672ae3ef2b1960632dfe7668d594556d; tree 446d82e664ec7ac06e390b0c9589d8c6647da0eb; 5 passed; stdout sha256:v1:be714b8f3d181b028b01805f08b45e935469917b3e7f29abb98090f3436d31da; stderr sha256:v1:cd039a3ceec352de6056bc9f2dd7b975a71b19317266474f6b37936725bee872; the selection companion records its command and tests; current-lock repository contracts are not direct-floor compatibility evidence"
  ],
  "claim_boundary": "Exact selected proof of the cargo-allow release set's declared direct dependency floors at the claimed MSRV, over the release set's package closure under the bounded classes: check, test, package (package is a single-package archive sample, not closure packaging). Transitive minimal combinations are not certified."
 }
