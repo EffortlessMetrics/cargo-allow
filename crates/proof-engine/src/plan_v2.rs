@@ -196,6 +196,7 @@ fn build_item(
                     request_digest,
                 }),
                 Some(ExpectedReceiptContractV1 {
+                    state_machine: None,
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
@@ -463,6 +464,50 @@ mod tests {
                 statement: "evidence review".to_string(),
             }],
         )
+    }
+
+    #[test]
+    fn state_machine_binding_changes_plan_identity() -> Result<(), String> {
+        let receipts = CapturedReceiptStoreV1::new();
+        let original = plan_proof_v2_from_intent(&envelope(), &[catalog()], &receipts)?;
+        let catalogs = canonical_catalogs(&[catalog()])?;
+        let mut items = original.items.clone();
+        let binding: proof_protocol::StateMachineEvidenceBindingV1 = serde_json::from_str(
+            include_str!(
+                "../../../tests/fixtures/proof-protocol/state-machine-evidence-binding-v1.json"
+            ),
+        )
+        .map_err(|error| error.to_string())?;
+        items
+            .first_mut()
+            .and_then(|item| item.expected_receipt.as_mut())
+            .ok_or_else(|| "fixture receipt contract missing".to_string())?
+            .state_machine = Some(binding);
+        let bound = semantic_plan_id(
+            &original.intent_plan_digest,
+            &original.snapshot_identity,
+            &catalogs,
+            &items,
+        )?;
+        if bound == original.plan_id {
+            return Err("state-machine binding was omitted from plan identity".to_string());
+        }
+        items
+            .first_mut()
+            .and_then(|item| item.expected_receipt.as_mut())
+            .and_then(|contract| contract.state_machine.as_mut())
+            .ok_or_else(|| "fixture state-machine binding missing".to_string())?
+            .property_digest = effortless_repo_protocol::stable_digest_hex(b"changed property");
+        if semantic_plan_id(
+            &original.intent_plan_digest,
+            &original.snapshot_identity,
+            &catalogs,
+            &items,
+        )? == bound
+        {
+            return Err("property-only change retained a stale plan identity".to_string());
+        }
+        Ok(())
     }
 
     #[test]

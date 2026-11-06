@@ -692,6 +692,7 @@ mod tests {
                 }),
                 current_receipt: None,
                 expected_receipt: Some(ExpectedReceiptContractV1 {
+                    state_machine: None,
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
@@ -720,6 +721,7 @@ mod tests {
         let manifest = CapturedReceiptManifestV1::new(
             "plan-1",
             vec![CapturedReceiptManifestRowV1 {
+                state_machine: None,
                 proof_item_id: "item-1".to_string(),
                 plan_id: "plan-1".to_string(),
                 provider_id: "provider-1".to_string(),
@@ -733,6 +735,237 @@ mod tests {
             }],
         );
         (plan, manifest)
+    }
+
+    #[cfg(feature = "provider-ripr")]
+    fn state_machine_cli_fixture() -> Result<(ProofPlanV2, CapturedReceiptManifestV1), String> {
+        use effortless_repo_protocol::stable_digest_hex;
+        let binding = proof_protocol::StateMachineEvidenceBindingV1 {
+            schema_id: proof_protocol::STATE_MACHINE_EVIDENCE_BINDING_SCHEMA_ID.to_string(),
+            machine_id: "fixture.repair-attempt".to_string(),
+            property_id: "finish-requires-current-snapshot".to_string(),
+            evidence_kind: proof_protocol::StateMachineEvidenceKindV1::ImplementationConformance,
+            model_digest: stable_digest_hex(b"synthetic model fixture"),
+            property_digest: stable_digest_hex(b"synthetic property fixture"),
+            assumptions_digest: stable_digest_hex(b"synthetic assumptions fixture"),
+            scope_digest: stable_digest_hex(b"fixture-only bounded scope: two states, one step"),
+            toolchain_digest: stable_digest_hex(b"fixture only; no native proof tool executed"),
+            implementation_digest: Some(stable_digest_hex(b"synthetic implementation fixture")),
+            adapter_digest: Some(stable_digest_hex(b"synthetic adapter fixture")),
+        };
+        let (mut plan, mut manifest) = receipt_cli_fixture();
+        let item = plan
+            .items
+            .first_mut()
+            .ok_or_else(|| "fixture item missing".to_string())?;
+        item.required_capability_class = "ripr.grip-receipt.validate".to_string();
+        item.subject.body_identity = binding.implementation_digest.clone();
+        let selection = item
+            .selection
+            .as_mut()
+            .ok_or_else(|| "fixture selection missing".to_string())?;
+        selection.provider_id = "proof.ripr.v1".to_string();
+        selection.capability_id = "ripr.grip-receipt.validate".to_string();
+        item.expected_receipt
+            .as_mut()
+            .ok_or_else(|| "fixture receipt contract missing".to_string())?
+            .state_machine = Some(binding.clone());
+        let row = manifest
+            .rows
+            .first_mut()
+            .ok_or_else(|| "fixture row missing".to_string())?;
+        row.provider_id = "proof.ripr.v1".to_string();
+        row.capability_id = "ripr.grip-receipt.validate".to_string();
+        row.subject_identity = binding
+            .implementation_digest
+            .clone()
+            .ok_or_else(|| "fixture source digest missing".to_string())?;
+        row.state_machine = Some(binding);
+        row.receipt.provider = row.provider_id.clone();
+        row.receipt.result_class = ResultClassV1::Completed;
+        row.receipt.provider_payload_schema =
+            cargo_proof::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID.to_string();
+        row.receipt.provider_payload = serde_json::json!({
+            "schema_id": cargo_proof::providers::ripr::RIPR_GRIP_RECEIPT_SCHEMA_ID,
+            "receipt_id": "synthetic-currentness-fixture-not-native-proof",
+            "ripr_provider_id": "ripr",
+            "ripr_schema_generation": "fixture-generation",
+            "analyzer_generation": "fixture-analyzer",
+            "config_fingerprint": "config:test",
+            "snapshot_digest": row.snapshot_identity,
+            "subject_ref": row.subject_identity,
+            "seam_ref": "fixture-seam",
+            "requirement_id": "obligation-1",
+            "execution_mode": "captured_receipt",
+            "completeness": "complete",
+            "grip_disposition": "likely_discriminating",
+            "receipt_digest": stable_digest_hex(b"synthetic native-shaped payload; no provider ran")
+        });
+        Ok((plan, manifest))
+    }
+
+    #[cfg(feature = "provider-ripr")]
+    #[test]
+    fn state_machine_receipt_commands_preserve_binding_and_native_refusal() -> Result<(), String> {
+        use proof_engine::ProofItemReceiptStatusV1;
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(|error| error.to_string())?
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "cargo-proof-state-machine-{}-{nonce}",
+            std::process::id()
+        ));
+        std::fs::create_dir(&root).map_err(|error| error.to_string())?;
+        let outcome = (|| {
+            let plan_path = root.join("plan.json");
+            let manifest_path = root.join("manifest.json");
+            let (original_plan, original_manifest) = state_machine_cli_fixture()?;
+            for (case, expected) in [
+                ("matching", ProofItemReceiptStatusV1::CurrentNotProven),
+                ("property_only", ProofItemReceiptStatusV1::ReceiptStale),
+                (
+                    "missing_binding",
+                    ProofItemReceiptStatusV1::ReceiptMalformed,
+                ),
+                (
+                    "model_only",
+                    ProofItemReceiptStatusV1::ReceiptForDifferentItem,
+                ),
+                (
+                    "native_malformed",
+                    ProofItemReceiptStatusV1::ReceiptMalformed,
+                ),
+            ] {
+                let mut plan = original_plan.clone();
+                let mut manifest = original_manifest.clone();
+                match case {
+                    "property_only" => {
+                        plan.items
+                            .first_mut()
+                            .and_then(|item| item.expected_receipt.as_mut())
+                            .and_then(|contract| contract.state_machine.as_mut())
+                            .ok_or_else(|| "fixture expected binding missing".to_string())?
+                            .property_digest =
+                            effortless_repo_protocol::stable_digest_hex(b"stronger property");
+                    }
+                    "missing_binding" => {
+                        manifest
+                            .rows
+                            .first_mut()
+                            .ok_or_else(|| "fixture row missing".to_string())?
+                            .state_machine = None;
+                    }
+                    "model_only" => {
+                        let binding = manifest
+                            .rows
+                            .first_mut()
+                            .and_then(|row| row.state_machine.as_mut())
+                            .ok_or_else(|| "fixture captured binding missing".to_string())?;
+                        binding.evidence_kind =
+                            proof_protocol::StateMachineEvidenceKindV1::ModelCheck;
+                        binding.implementation_digest = None;
+                        binding.adapter_digest = None;
+                    }
+                    "native_malformed" => {
+                        manifest
+                            .rows
+                            .first_mut()
+                            .ok_or_else(|| "fixture row missing".to_string())?
+                            .receipt
+                            .provider_payload = serde_json::json!({});
+                    }
+                    _ => {}
+                }
+                let plan_bytes = serde_json::to_vec(&plan).map_err(|error| error.to_string())?;
+                let manifest_bytes =
+                    serde_json::to_vec(&manifest).map_err(|error| error.to_string())?;
+                std::fs::write(&plan_path, &plan_bytes).map_err(|error| error.to_string())?;
+                std::fs::write(&manifest_path, &manifest_bytes).map_err(|error| error.to_string())?;
+                let inputs =
+                    cargo_proof::captured_receipt_inputs_from_paths(&plan_path, &manifest_path)
+                        .map_err(|error| error.message().to_string())?;
+                let row = inputs
+                    .report
+                    .items
+                    .first()
+                    .ok_or_else(|| "status row missing".to_string())?;
+                if row.status != expected {
+                    return Err(format!(
+                        "{case} status {:?}, expected {expected:?}: {}",
+                        row.status, row.reason
+                    ));
+                }
+                if case == "matching"
+                    && !row.reason.contains("RIPR native currentness is not proven")
+                {
+                    return Err(
+                        "matching binding did not reach the native currentness refusal".to_string(),
+                    );
+                }
+                let registry = cargo_proof::StaticProviderRegistryV1::selected()
+                    .map_err(|error| error.as_str().to_string())?;
+                let reconcile =
+                    cargo_proof::reconcile_receipts(&inputs.plan, &inputs.report, &registry)
+                        .map_err(|error| error.message().to_string())?;
+                if reconcile.status_counts.get(expected.as_str()) != Some(&1)
+                    || reconcile.outstanding.len() != 1
+                {
+                    return Err(format!("{case} disappeared from reconcile outstanding work"));
+                }
+                let explained = cargo_proof::explain_receipt_item(
+                    &inputs.plan,
+                    &inputs.report,
+                    &registry,
+                    "item-1",
+                )
+                .map_err(|error| error.message().to_string())?;
+                let expected_binding = plan
+                    .items
+                    .first()
+                    .and_then(|item| item.expected_receipt.as_ref())
+                    .and_then(|contract| contract.state_machine.as_ref());
+                if explained.item.state_machine.as_ref() != expected_binding {
+                    return Err("explain lost the expected machine/property identity".to_string());
+                }
+                for action in [
+                    ReceiptAction::Status,
+                    ReceiptAction::Validate,
+                    ReceiptAction::Explain,
+                    ReceiptAction::Reconcile,
+                ] {
+                    let expected_exit = if matches!(action, ReceiptAction::Validate) {
+                        ProcessExitFamilyV1::Blocking
+                    } else {
+                        ProcessExitFamilyV1::Success
+                    };
+                    let exit = run_receipts(
+                        ReceiptsArgs {
+                            plan: plan_path.clone(),
+                            receipts: manifest_path.clone(),
+                            action,
+                            item: Some("item-1".to_string()),
+                        },
+                        cargo_proof::OutputFormat::Json,
+                    )?;
+                    if exit != expected_exit {
+                        return Err(format!(
+                            "{case} receipt command returned {exit:?}, expected {expected_exit:?}"
+                        ));
+                    }
+                }
+                if std::fs::read(&plan_path).map_err(|error| error.to_string())? != plan_bytes
+                    || std::fs::read(&manifest_path).map_err(|error| error.to_string())?
+                        != manifest_bytes
+                {
+                    return Err("read-only ingestion changed its input artifacts".to_string());
+                }
+            }
+            Ok(())
+        })();
+        let cleanup = std::fs::remove_dir_all(&root).map_err(|error| error.to_string());
+        outcome?;
+        cleanup
     }
 
     #[test]

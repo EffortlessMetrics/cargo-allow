@@ -55,6 +55,8 @@ pub struct ReceiptExplainItemV1 {
     pub subject: ProofSubjectV1,
     pub snapshot_identity: String,
     pub expected_currentness_dimensions: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_machine: Option<proof_protocol::StateMachineEvidenceBindingV1>,
     pub captured_status: ProofItemReceiptStatusV1,
     pub reason: String,
     pub limitations: Vec<String>,
@@ -160,7 +162,7 @@ pub fn render_receipt_explain(
             .map(|json| format!("{json}\n"))
             .map_err(|error| error.to_string()),
         crate::OutputFormat::Human => Ok(format!(
-            "proof item {}\nobligation: {}\nphase: {}\nblocking: {}\ndisposition: {}\nprovider: {}\ncapability: {}\nprovider availability: {}\nsubject: {:?}\nsnapshot: {}\nexpected currentness: {:?}\ncaptured status: {}\nreason: {}\nlimitations: {:?}\nnext action: {}\nitem claim boundary: {}\nclaim boundary: {}\n",
+            "proof item {}\nobligation: {}\nphase: {}\nblocking: {}\ndisposition: {}\nprovider: {}\ncapability: {}\nprovider availability: {}\nsubject: {:?}\nsnapshot: {}\nexpected currentness: {:?}\n{}captured status: {}\nreason: {}\nlimitations: {:?}\nnext action: {}\nitem claim boundary: {}\nclaim boundary: {}\n",
             projection.item.proof_item_id,
             projection.item.intent_obligation_id,
             projection.item.phase,
@@ -176,6 +178,15 @@ pub fn render_receipt_explain(
             projection.item.subject,
             projection.item.snapshot_identity,
             projection.item.expected_currentness_dimensions,
+            projection
+                .item
+                .state_machine
+                .as_ref()
+                .map(|binding| format!(
+                    "state machine: {} / {} / {:?}\n",
+                    binding.machine_id, binding.property_id, binding.evidence_kind
+                ))
+                .unwrap_or_default(),
             projection.item.captured_status.as_str(),
             projection.item.reason,
             projection.item.limitations,
@@ -335,6 +346,10 @@ fn explain_item(
             .map(|expected| expected.currentness_dimensions.clone())
             .unwrap_or_default(),
         captured_status: row.status,
+        state_machine: item
+            .expected_receipt
+            .as_ref()
+            .and_then(|expected| expected.state_machine.clone()),
         reason: row.reason.clone(),
         limitations: item.limitations.clone(),
         next_action: next_action_for(item.disposition, row.status).to_string(),
@@ -723,6 +738,7 @@ mod tests {
                 }),
                 current_receipt: None,
                 expected_receipt: Some(ExpectedReceiptContractV1 {
+                    state_machine: None,
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
@@ -746,6 +762,7 @@ mod tests {
         let manifest = CapturedReceiptManifestV1::new(
             "plan-selected",
             vec![CapturedReceiptManifestRowV1 {
+                state_machine: None,
                 proof_item_id: "item-selected".to_string(),
                 plan_id: "plan-selected".to_string(),
                 provider_id: "provider-captured".to_string(),

@@ -1,0 +1,13 @@
+{
+  "schema_id": "proof.state-machine-evidence-binding.v1",
+  "machine_id": "fixture.repair-attempt",
+  "property_id": "finish-requires-current-snapshot",
+  "evidence_kind": "implementation_conformance",
+  "model_digest": "sha256:v1:fcc6597b173398fa2ad752b5ca4d5ebbb1a5e347cf95756ddb9c06619032f3b7",
+  "property_digest": "sha256:v1:1ba428dddc979a50bc413067de8b85457e95a3d60aeb96c6253defc697ead970",
+  "assumptions_digest": "sha256:v1:94c8b5f636297338937899f790f8408ea69aec3b6343229afce27163c2da619e",
+  "scope_digest": "sha256:v1:8980210f4517084d07296bf25896d9a68b64a483b4b7c95bcb26e6fb6b8afaee",
+  "toolchain_digest": "sha256:v1:04e518bf2d43c728ba91ceef3bd088f9d2cd24525c2300353cae0a9401043ae4",
+  "implementation_digest": "sha256:v1:7c625cb5f63e2ecb25730443b89ee09e83d766d6b44d25850bdd8a1322506d51",
+  "adapter_digest": "sha256:v1:72f470860f67fdbd567a25c04f49edfb085cc10d1344e2483da69bb5711dc1c0"
+}

@@ -21,5 +21,12 @@ current `ProofPlanV2` and `ReceiptStatusReportV1`, describe captured evidence
 and outstanding work, and do not execute providers, discover live tools,
 modify source, or authorize a phase gate.
 
+Optional [state-machine bindings](state-machine-evidence.md) compare declared
+model/property/assumption/scope/toolchain and implementation/adapter identities.
+They do not verify digest preimages or replace native-provider currentness,
+execution and result validation. A matching model-check binding cannot become
+production conformance or implementation proof; current native-provider
+limitations remain not proven.
+
 See the shared [claim-boundary guide](../../claim-boundaries.md) for
 the complete vocabulary and evidence rules.

@@ -59,6 +59,9 @@ pub struct CapturedReceiptManifestRowV1 {
     pub provider_request_identity: String,
     pub config_identity: String,
     pub receipt_generation: u32,
+    /// Observed state-machine identity. Presence alone is not native evidence.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_machine: Option<crate::StateMachineEvidenceBindingV1>,
     pub receipt: AnalysisReceiptEnvelopeV1,
 }
 
@@ -91,6 +94,11 @@ pub fn validate_captured_receipt_manifest(
     }
     let mut seen = std::collections::BTreeSet::new();
     for row in &manifest.rows {
+        if let Some(binding) = row.state_machine.as_ref() {
+            binding.validate().map_err(|error| {
+                format!("receipt row {} state-machine binding: {error}", row.proof_item_id)
+            })?;
+        }
         if row.proof_item_id.trim().is_empty()
             || row.plan_id.trim().is_empty()
             || row.provider_id.trim().is_empty()
@@ -151,6 +159,7 @@ mod tests {
         CapturedReceiptManifestV1::new(
             "plan-1",
             vec![CapturedReceiptManifestRowV1 {
+                state_machine: None,
                 proof_item_id: "item-1".to_string(),
                 plan_id: "plan-1".to_string(),
                 provider_id: "provider-1".to_string(),

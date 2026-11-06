@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "proof.state-machine-evidence-binding.v1",
+  "title": "State-machine evidence identity binding",
+  "description": "Expected or observed identities only. Validation does not establish native execution, proof, refinement, or currentness.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "machine_id",
+    "property_id",
+    "evidence_kind",
+    "model_digest",
+    "property_digest",
+    "assumptions_digest",
+    "scope_digest",
+    "toolchain_digest"
+  ],
+  "properties": {
+    "schema_id": { "const": "proof.state-machine-evidence-binding.v1" },
+    "machine_id": { "$ref": "#/$defs/stable_identifier" },
+    "property_id": { "$ref": "#/$defs/stable_identifier" },
+    "evidence_kind": {
+      "enum": [
+        "model_check",
+        "model_proof",
+        "implementation_conformance",
+        "implementation_proof",
+        "schedule_exploration"
+      ]
+    },
+    "model_digest": { "$ref": "#/$defs/digest" },
+    "property_digest": { "$ref": "#/$defs/digest" },
+    "assumptions_digest": { "$ref": "#/$defs/digest" },
+    "scope_digest": { "$ref": "#/$defs/digest" },
+    "toolchain_digest": { "$ref": "#/$defs/digest" },
+    "implementation_digest": {
+      "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+    },
+    "adapter_digest": {
+      "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "evidence_kind": { "enum": ["model_check", "model_proof"] } },
+        "required": ["evidence_kind"]
+      },
+      "then": {
+        "properties": {
+          "implementation_digest": { "type": "null" },
+          "adapter_digest": { "type": "null" }
+        }
+      },
+      "else": {
+        "required": ["implementation_digest", "adapter_digest"],
+        "properties": {
+          "implementation_digest": { "$ref": "#/$defs/digest" },
+          "adapter_digest": { "$ref": "#/$defs/digest" }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "stable_identifier": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "[^A-Za-z0-9_.:/-]" }
+    },
+    "digest": {
+      "type": "string",
+      "minLength": 74,
+      "maxLength": 74,
+      "pattern": "^sha256:v1:[0-9a-f]{64}$"
+    }
+  }
+}

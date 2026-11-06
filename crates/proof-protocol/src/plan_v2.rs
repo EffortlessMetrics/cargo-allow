@@ -122,6 +122,10 @@ pub struct ExpectedReceiptContractV1 {
     /// subject, provider request, config); reuse requires exact
     /// currentness, never filename or exit-code matching.
     pub currentness_dimensions: Vec<String>,
+    /// Additional expected identity for one state-machine property. Native
+    /// receipt validation remains required even when this binding matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub state_machine: Option<crate::StateMachineEvidenceBindingV1>,
 }
 
 /// Execution posture of an item.
@@ -293,6 +297,25 @@ impl ProofPlanV2 {
                     "item {} is selected without an expected-receipt contract",
                     item.proof_item_id
                 ));
+            }
+            if let Some(expected) = item.expected_receipt.as_ref()
+                && let Some(binding) = expected.state_machine.as_ref()
+            {
+                binding.validate().map_err(|error| {
+                    format!("item {} state-machine binding: {error}", item.proof_item_id)
+                })?;
+                for dimension in ["snapshot", "subject", "provider_request", "config"] {
+                    let bound = expected.currentness_dimensions.iter().any(|declared| {
+                        declared == dimension
+                            || (dimension == "snapshot" && declared == "snapshot_identity")
+                    });
+                    if !bound {
+                        return Err(format!(
+                            "item {} state-machine binding requires snapshot, subject, provider_request and config currentness",
+                            item.proof_item_id
+                        ));
+                    }
+                }
             }
             let posture_allowed = match item.execution_posture {
                 ProofItemExecutionPostureV1::Execute => item.disposition.lowers_to_command(),
@@ -557,6 +580,7 @@ mod tests {
             request_digest: "sha256:v1:req".to_string(),
         });
         selected.expected_receipt = Some(ExpectedReceiptContractV1 {
+            state_machine: None,
             receipt_schema: "cargo-allow.analysis-receipt.v1".to_string(),
             receipt_generation: 1,
             config_identity: "config:test".to_string(),

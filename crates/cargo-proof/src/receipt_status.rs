@@ -464,6 +464,7 @@ mod tests {
                 }),
                 current_receipt: None,
                 expected_receipt: Some(ExpectedReceiptContractV1 {
+                    state_machine: None,
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
@@ -492,6 +493,7 @@ mod tests {
         let manifest = CapturedReceiptManifestV1::new(
             "plan-1",
             vec![CapturedReceiptManifestRowV1 {
+                state_machine: None,
                 proof_item_id: "item-1".to_string(),
                 plan_id: "plan-1".to_string(),
                 provider_id: "provider-1".to_string(),

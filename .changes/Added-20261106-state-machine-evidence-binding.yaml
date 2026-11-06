@@ -1,0 +1,9 @@
+kind: Added
+body: >-
+  Add optional typed state-machine evidence bindings to cargo-proof V2 plans
+  and captured receipt manifests. Machine/property identity and claim kind
+  remain distinct from model, property, assumption, scope, toolchain,
+  implementation and adapter content identities. Missing bindings fail closed;
+  changed inputs remain stale even at an unchanged snapshot. Existing
+  status, validate, explain and reconcile consume the binding without
+  executing providers or bypassing native-currentness refusals.

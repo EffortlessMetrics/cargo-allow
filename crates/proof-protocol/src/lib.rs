@@ -35,6 +35,9 @@ mod plan_v2;
 mod proof_corpus;
 mod receipt_dtos;
 mod receipt_status;
+mod state_machine;
+#[cfg(test)]
+mod state_machine_tests;
 
 #[cfg(test)]
 mod tests;
@@ -72,4 +75,8 @@ pub use receipt_dtos::{
 pub use receipt_status::{
     CapturedReceiptManifestRowV1, CapturedReceiptManifestV1, PROOF_RECEIPT_MANIFEST_SCHEMA_ID,
     ProofItemReceiptStatusV1, validate_captured_receipt_manifest,
+};
+pub use state_machine::{
+    STATE_MACHINE_EVIDENCE_BINDING_SCHEMA_ID, StateMachineEvidenceBindingV1,
+    StateMachineEvidenceKindV1,
 };

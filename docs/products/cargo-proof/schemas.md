@@ -5,6 +5,7 @@ The product's current artifact contracts are experimental:
 | Artifact | Producer |
 | --- | --- |
 | `proof.plan.v1` | `plan --obligation-plan` (input to `dry-run`) |
+| `proof.plan.v2` | Evidence-oriented exact-snapshot plan consumed by dry-run and captured receipt commands. |
 | `intent.obligation-plan.v1` | consumed input produced by the intent side |
 | `cargo-proof.identity.v1` | `identity --format json` |
 | `cargo-proof.provider-registry.v1` | `providers --format json` |
@@ -13,6 +14,7 @@ The product's current artifact contracts are experimental:
 | `proof.receipt-validation.v1` | `receipts --action validate` output. |
 | `proof.receipt-explain.v1` | `receipts --action explain` output for one selected item. |
 | `proof.receipt-reconcile.v1` | `receipts --action reconcile` output for the complete plan. |
+| `proof.state-machine-evidence-binding.v1` | Optional expected/observed machine-property input identity in a V2 plan and captured manifest. |
 
 `proof.plan.v1` is structured-argv only: it names the provider request
 and its arguments, and `dry-run` validates shape without executing.
@@ -47,3 +49,11 @@ receipt-status report. Explain adds plan-item context and a bounded next
 action; reconcile adds deterministic status counts, provider availability, and
 outstanding work. Neither projection opens a phase gate or treats receipt
 presence as execution proof.
+
+[State-machine evidence bindings](state-machine-evidence.md) distinguish model
+checking, model proof, implementation conformance, implementation proof and
+schedule exploration. Their model/property/assumption/scope/toolchain and
+applicable implementation/adapter digests participate in the existing receipt
+currentness path. The binding's [JSON schema](../../schemas/proof-state-machine-evidence-binding-v1.schema.json)
+does not certify native execution or production correspondence. Existing
+provider-native currentness refusals remain authoritative after identity matches.

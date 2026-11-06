@@ -109,6 +109,16 @@ pub fn evaluate_captured_receipt_status(
                 };
             }
 
+            if let Some((status, reason)) = state_machine_binding_mismatch(item, row) {
+                return ProofItemReceiptStatusRowV1 {
+                    proof_item_id: item.proof_item_id.clone(),
+                    status,
+                    provider_id: Some(row.provider_id.clone()),
+                    capability_id: Some(row.capability_id.clone()),
+                    reason,
+                };
+            }
+
             if let Some(reason) = receipt_contract_mismatch(item, row) {
                 return ProofItemReceiptStatusRowV1 {
                     proof_item_id: item.proof_item_id.clone(),
@@ -138,6 +148,45 @@ pub fn evaluate_captured_receipt_status(
             "Captured provider evidence was validated and classified; no provider executed and no phase gate was opened."
                 .to_string(),
     })
+}
+
+fn state_machine_binding_mismatch(
+    item: &proof_protocol::ProofItemV1,
+    row: &proof_protocol::CapturedReceiptManifestRowV1,
+) -> Option<(ProofItemReceiptStatusV1, String)> {
+    let expected = item
+        .expected_receipt
+        .as_ref()
+        .and_then(|contract| contract.state_machine.as_ref());
+    let observed = row.state_machine.as_ref();
+    match (expected, observed) {
+        (None, None) => None,
+        (Some(_), None) => Some((
+            ProofItemReceiptStatusV1::ReceiptMalformed,
+            "expected state-machine evidence binding is missing from the receipt".to_string(),
+        )),
+        (None, Some(_)) => Some((
+            ProofItemReceiptStatusV1::ReceiptMalformed,
+            "receipt carries state-machine evidence not requested by this plan item".to_string(),
+        )),
+        (Some(expected), Some(observed))
+            if expected.machine_id != observed.machine_id
+                || expected.property_id != observed.property_id
+                || expected.evidence_kind != observed.evidence_kind =>
+        {
+            Some((
+                ProofItemReceiptStatusV1::ReceiptForDifferentItem,
+                "captured state-machine machine, property or evidence kind differs from the requested claim"
+                    .to_string(),
+            ))
+        }
+        (Some(expected), Some(observed)) if expected != observed => Some((
+            ProofItemReceiptStatusV1::ReceiptStale,
+            "captured state-machine model, property, assumptions, scope, toolchain, implementation or adapter identity has changed"
+                .to_string(),
+        )),
+        (Some(_), Some(_)) => None,
+    }
 }
 
 fn receipt_contract_mismatch(
@@ -326,6 +375,7 @@ mod tests {
                 }),
                 current_receipt: None,
                 expected_receipt: Some(ExpectedReceiptContractV1 {
+                    state_machine: None,
                     receipt_schema: effortless_repo_protocol::ANALYSIS_RECEIPT_SCHEMA_ID
                         .to_string(),
                     receipt_generation: 1,
@@ -358,6 +408,7 @@ mod tests {
         CapturedReceiptManifestV1::new(
             "plan-1",
             vec![proof_protocol::CapturedReceiptManifestRowV1 {
+                state_machine: None,
                 proof_item_id: "item-1".to_string(),
                 plan_id: "plan-1".to_string(),
                 provider_id: "provider-1".to_string(),
@@ -386,6 +437,206 @@ mod tests {
 
     fn snapshot_identity() -> String {
         stable_digest_json(&snapshot()).unwrap_or_else(|_| "invalid-snapshot".to_string())
+    }
+
+    fn state_machine_fixture() -> Result<(ProofPlanV2, CapturedReceiptManifestV1), String> {
+        use effortless_repo_protocol::stable_digest_hex;
+        let binding = proof_protocol::StateMachineEvidenceBindingV1 {
+            schema_id: proof_protocol::STATE_MACHINE_EVIDENCE_BINDING_SCHEMA_ID.to_string(),
+            machine_id: "fixture.repair-attempt".to_string(),
+            property_id: "finish-requires-current-snapshot".to_string(),
+            evidence_kind: proof_protocol::StateMachineEvidenceKindV1::ImplementationConformance,
+            model_digest: stable_digest_hex(b"synthetic model"),
+            property_digest: stable_digest_hex(b"synthetic property"),
+            assumptions_digest: stable_digest_hex(b"synthetic assumptions"),
+            scope_digest: stable_digest_hex(b"synthetic scope: two states, one step"),
+            toolchain_digest: stable_digest_hex(b"synthetic toolchain; no native tool ran"),
+            implementation_digest: Some(stable_digest_hex(b"synthetic implementation")),
+            adapter_digest: Some(stable_digest_hex(b"synthetic driver")),
+        };
+        let mut plan = plan();
+        plan.items
+            .first_mut()
+            .and_then(|item| item.expected_receipt.as_mut())
+            .ok_or_else(|| "fixture expected receipt missing".to_string())?
+            .state_machine = Some(binding.clone());
+        let mut manifest = manifest(ResultClassV1::Completed);
+        manifest
+            .rows
+            .first_mut()
+            .ok_or_else(|| "fixture captured row missing".to_string())?
+            .state_machine = Some(binding);
+        Ok((plan, manifest))
+    }
+
+    fn state_machine_status(
+        plan: &ProofPlanV2,
+        manifest: &CapturedReceiptManifestV1,
+    ) -> Result<ProofItemReceiptStatusV1, String> {
+        evaluate_captured_receipt_status(plan, manifest)?
+            .items
+            .first()
+            .map(|row| row.status)
+            .ok_or_else(|| "state-machine fixture produced no result".to_string())
+    }
+
+    #[test]
+    fn state_machine_matching_binding_preserves_result_class() -> Result<(), String> {
+        let (plan, mut manifest) = state_machine_fixture()?;
+        if state_machine_status(&plan, &manifest)?
+            != ProofItemReceiptStatusV1::SatisfiedByCurrentReceipt
+        {
+            return Err("matching binding did not reach captured result evaluation".to_string());
+        }
+        for (result, expected) in [
+            (
+                ResultClassV1::Findings,
+                ProofItemReceiptStatusV1::CurrentFindings,
+            ),
+            (
+                ResultClassV1::PartialData,
+                ProofItemReceiptStatusV1::CurrentPartial,
+            ),
+            (
+                ResultClassV1::Unsupported,
+                ProofItemReceiptStatusV1::CurrentUnsupported,
+            ),
+            (
+                ResultClassV1::NotProven,
+                ProofItemReceiptStatusV1::CurrentNotProven,
+            ),
+            (
+                ResultClassV1::InstrumentFailure,
+                ProofItemReceiptStatusV1::CurrentInstrumentFailure,
+            ),
+        ] {
+            manifest
+                .rows
+                .first_mut()
+                .ok_or_else(|| "fixture row missing".to_string())?
+                .receipt
+                .result_class = result;
+            if state_machine_status(&plan, &manifest)? != expected {
+                return Err(format!("matching binding promoted {result:?} to success"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn state_machine_each_input_change_invalidates_receipt() -> Result<(), String> {
+        let (original_plan, manifest) = state_machine_fixture()?;
+        for field in [
+            "model_digest",
+            "property_digest",
+            "assumptions_digest",
+            "scope_digest",
+            "toolchain_digest",
+            "implementation_digest",
+            "adapter_digest",
+        ] {
+            let mut value =
+                serde_json::to_value(&original_plan).map_err(|error| error.to_string())?;
+            let binding = value
+                .get_mut("items")
+                .and_then(serde_json::Value::as_array_mut)
+                .and_then(|items| items.first_mut())
+                .and_then(|item| item.get_mut("expected_receipt"))
+                .and_then(|expected| expected.get_mut("state_machine"))
+                .ok_or_else(|| "fixture binding missing".to_string())?;
+            *binding
+                .get_mut(field)
+                .ok_or_else(|| format!("fixture {field} missing"))? = serde_json::Value::String(
+                effortless_repo_protocol::stable_digest_hex(b"changed input"),
+            );
+            let changed_plan: ProofPlanV2 =
+                serde_json::from_value(value).map_err(|error| error.to_string())?;
+            if state_machine_status(&changed_plan, &manifest)?
+                != ProofItemReceiptStatusV1::ReceiptStale
+            {
+                return Err(format!("changed {field} with unchanged snapshot reused old evidence"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn state_machine_wrong_subject_and_kind_are_rejected() -> Result<(), String> {
+        let (plan, original_manifest) = state_machine_fixture()?;
+        for changed in ["machine", "property", "kind", "model_only"] {
+            let mut manifest = original_manifest.clone();
+            let binding = manifest
+                .rows
+                .first_mut()
+                .and_then(|row| row.state_machine.as_mut())
+                .ok_or_else(|| "fixture binding missing".to_string())?;
+            match changed {
+                "machine" => binding.machine_id = "another-machine".to_string(),
+                "property" => binding.property_id = "another-property".to_string(),
+                "kind" => {
+                    binding.evidence_kind =
+                        proof_protocol::StateMachineEvidenceKindV1::ImplementationProof;
+                }
+                _ => {
+                    binding.evidence_kind = proof_protocol::StateMachineEvidenceKindV1::ModelCheck;
+                    binding.implementation_digest = None;
+                    binding.adapter_digest = None;
+                }
+            }
+            if state_machine_status(&plan, &manifest)?
+                != ProofItemReceiptStatusV1::ReceiptForDifferentItem
+            {
+                return Err(format!("wrong state-machine {changed} satisfied the requested claim"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn state_machine_binding_cannot_be_missing_or_unsolicited() -> Result<(), String> {
+        let (original_plan, original_manifest) = state_machine_fixture()?;
+        for missing in ["expected", "observed"] {
+            let mut plan = original_plan.clone();
+            let mut manifest = original_manifest.clone();
+            if missing == "expected" {
+                plan.items
+                    .first_mut()
+                    .and_then(|item| item.expected_receipt.as_mut())
+                    .ok_or_else(|| "fixture contract missing".to_string())?
+                    .state_machine = None;
+            } else {
+                manifest
+                    .rows
+                    .first_mut()
+                    .ok_or_else(|| "fixture row missing".to_string())?
+                    .state_machine = None;
+            }
+            if state_machine_status(&plan, &manifest)?
+                != ProofItemReceiptStatusV1::ReceiptMalformed
+            {
+                return Err(format!("missing {missing} state-machine identity was accepted"));
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn state_machine_binding_does_not_replace_base_currentness_dimensions() -> Result<(), String> {
+        let (original_plan, manifest) = state_machine_fixture()?;
+        for dimension in ["snapshot_identity", "subject", "provider_request", "config"] {
+            let mut plan = original_plan.clone();
+            plan.items
+                .first_mut()
+                .and_then(|item| item.expected_receipt.as_mut())
+                .ok_or_else(|| "fixture contract missing".to_string())?
+                .currentness_dimensions
+                .retain(|declared| declared != dimension);
+            match state_machine_status(&plan, &manifest) {
+                Err(reason) if reason.contains("state-machine binding requires") => {}
+                other => return Err(format!("missing {dimension} produced {other:?}")),
+            }
+        }
+        Ok(())
     }
 
     #[test]
