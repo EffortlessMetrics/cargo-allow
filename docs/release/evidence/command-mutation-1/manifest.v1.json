@@ -2432,7 +2432,7 @@
       ]
     }
   ],
-  "catalogue_digest": "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08",
+  "catalogue_digest": "sha256:v1:c6be62242a03b520695f5e8ffa28530374042e6ab0ec6c3f0fc2e0a59143775a",
   "claim_boundary": "Committed retained records of executed C-family mutation cases against one absolute public 0.2.0-rc.1 candidate in disposable fixtures outside any checkout. Observed installed-candidate contract gaps and defects are retained as-is; no case approves an exception, qualifies a release, or replaces native A-family admission.",
   "collection_bundle_digest": "sha256:v1:13dfbc5a88cee1a5d88e057d0ef6f24eab5aacff71c57d53deb4ca7ffd86fd75",
   "collection_id": "cme-4725-rc1-20261105",
