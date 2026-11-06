@@ -16,3 +16,9 @@ allow_ids = ["allow-11501"]
 reason = "Receipt the retained #4724 public-prerelease experience record: collection digests, typed per-case presentation admission and rc.1 version-drift findings; observation only, no release authority."
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:6fa682bed48cebfda049f86cdd95f697c5aaf45cdc2925ee404d9b05b994d3c6"
+
+[[records]]
+allow_ids = ["allow-11502"]
+reason = "Self-covering receipt of this revision note file itself; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:923ba580bc65f5e332c3cd05633427eb57944fb8d1e64a126bfa10bf362ac80b"
