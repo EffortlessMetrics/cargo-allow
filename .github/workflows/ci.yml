@@ -12,7 +12,9 @@ jobs:
   # cheap source-controlled defects before the expensive proof jobs are
   # provisioned. The selected denominator is the #3835-measured cheap,
   # load-bearing set: workflow syntax (actionlint, pinned release +
-  # checksum), formatting, and the no-new source-exception guard. The
+  # checksum), formatting, the no-new source-exception guard, and retained
+  # direct-floor freshness. Stale receipts otherwise fail independently
+  # in each expensive test lane. The
   # typed result is emitted with `ci-pregate evaluate`; only a permit
   # state exits zero. This changes workflow reachability only — the
   # proof denominator stays #2569's, Clippy stays in Stage 2, and no
@@ -20,11 +22,37 @@ jobs:
   pregate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Same precedence law the msrv job documents: `rust-toolchain.toml`
+    # pins the floating `stable` channel and rustup ranks that file ABOVE
+    # `rustup default` (the only thing the dtolnay action changes), so the
+    # action tag below is inert on its own: cargo would resolve the
+    # runner's stable and this lane would prove a Rust version the
+    # workspace does not claim while the cache below keys on 1.95.0.
+    # `RUSTUP_TOOLCHAIN` outranks the toolchain file, so it is what
+    # actually pins the compiler and keeps the cache identity honest.
+    # Removing it silently unpins the pregate proof onto the runner's
+    # stable; the `test_pregate_cache_matches_its_pinned_toolchain`
+    # regression test fails closed if the pin goes missing.
+    env:
+      RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
+        # The RUSTUP_TOOLCHAIN pin above selects this exact toolchain, so
+        # the components the pregate needs must be installed here: the
+        # runner's stable toolchain (which rust-toolchain.toml would
+        # otherwise select) ships rustfmt, but a bare 1.95.0 install does
+        # not, and the Formatting step below would fail with
+        # "'cargo-fmt' is not installed for the toolchain". Clippy stays
+        # out: it runs in the Stage 2 heavy lanes, not in the pregate.
+        with:
+          components: rustfmt
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: pregate
+          toolchain: 1.95.0
       - name: Check workflow syntax (actionlint, pinned)
         id: actionlint
         env:
@@ -57,6 +85,11 @@ jobs:
       - name: Source-exception no-new guard
         id: no_new
         run: cargo run -p cargo-allow --locked -- check --mode no-new --format markdown
+      - name: Retained direct-floor freshness
+        id: floor_freshness
+        # Reuse the binary built by no-new. This grades retained evidence;
+        # it does not rerun or replace the direct-floor proof.
+        run: cargo run -p cargo-allow --locked -- min-version-drift check --format human
       - name: Emit and evaluate the typed pre-gate result
         if: always()
         env:
@@ -64,6 +97,7 @@ jobs:
           PR_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
           FMT_OUTCOME: ${{ steps.fmt.outcome || 'skipped' }}
           NO_NEW_OUTCOME: ${{ steps.no_new.outcome || 'skipped' }}
+          FLOOR_FRESHNESS_OUTCOME: ${{ steps.floor_freshness.outcome || 'skipped' }}
           ACTIONLINT_OUTCOME: ${{ steps.actionlint.outcome || 'skipped' }}
         run: |
           set -euo pipefail
@@ -75,7 +109,7 @@ jobs:
             esac
           }
           checks="[]"
-          for pair in "actionlint:$ACTIONLINT_OUTCOME" "fmt:$FMT_OUTCOME" "no-new:$NO_NEW_OUTCOME"; do
+          for pair in "actionlint:$ACTIONLINT_OUTCOME" "fmt:$FMT_OUTCOME" "no-new:$NO_NEW_OUTCOME" "floor-freshness:$FLOOR_FRESHNESS_OUTCOME"; do
             name="${pair%%:*}"
             outcome="${pair#*:}"
             checks="$(jq -c --arg n "$name" --arg s "$(outcome_to_state "$outcome")"               '. + [{name: $n, state: $s, not_applicable_reason: null}]' <<<"$checks")"
