@@ -19,6 +19,11 @@ use allow_report::{
 };
 use serde::de::DeserializeOwned;
 
+use crate::core_command_migration::{
+    ADMISSION_SCHEMA, Admission as NativeCaseAdmission, CATALOGUE_DIGEST, CATALOGUE_SCHEMA,
+    CONTEXT_SCHEMA, Catalogue, ExpectedContext, SemanticValidity,
+};
+
 use super::{EvidenceInput, FreezeEvidenceRole, SubjectIdentity, qualification::ReadbackInput};
 
 type State = ReleaseExperienceResultV1;
@@ -57,14 +62,247 @@ impl Admission {
         }
     }
 
-    fn retain_dependencies(&mut self) {
-        for note in [
+    fn retain_dependencies(&mut self, command_case: CommandCaseJoin) {
+        self.record(
+            State::NotProven,
             "#2466: the clean-pilot target/steps/friction producer and semantic reader are absent; retained opaque bytes do not prove a pilot",
-            "#3149: the executed supported-case denominator and human/machine parity producer are absent",
-            "#3151: installed help/reference/man/completion and selected documentation coherence production are absent",
-        ] {
-            self.record(State::NotProven, note);
+        );
+        match command_case {
+            CommandCaseJoin::Absent => self.record(
+                State::NotProven,
+                "#3149: the executed supported-case denominator and human/machine parity producer are absent",
+            ),
+            // Covered cases are admitted for exactly what the retained native
+            // admission proves; every uncovered selected case stays explicitly
+            // NotProven-visible instead of being silently admitted.
+            CommandCaseJoin::Partial(note) => self.record(State::NotProven, note),
+            CommandCaseJoin::Defect(result, note) => self.record(result, note),
+            // The full accepted denominator is admitted from the exact
+            // installed candidate, so this one hold discharges; the other
+            // producer dependencies keep their own required records.
+            CommandCaseJoin::Discharged(note) => self.notes.push(note),
         }
+        self.record(
+            State::NotProven,
+            "#3151: installed help/reference/man/completion and selected documentation coherence production are absent",
+        );
+    }
+}
+
+/// Outcome of joining the retained command-case originals into the #3149
+/// executed-denominator hold. Every note names the owning hold so the claim
+/// boundary always shows who is discharged, who is partially covered, and
+/// which retained original is defective.
+enum CommandCaseJoin {
+    /// No retained originals: the delivered absence hold stands unchanged.
+    Absent,
+    /// The retained native admission binds the accepted catalogue, the exact
+    /// installed executable and this subject, and covers the full accepted
+    /// denominator with every selected case semantically valid.
+    Discharged(String),
+    /// Retained originals admit their covered cases; the hold stays
+    /// NotProven-visible for the uncovered remainder.
+    Partial(String),
+    /// The retained originals carry a binding defect; the hold remains.
+    Defect(State, String),
+}
+
+/// Join the retained command-case admission and its expected context into the
+/// executed-denominator hold. The native admission is trusted for its per-case
+/// semantics only after it binds the accepted catalogue, the retained expected
+/// context, the exact installed executable and this subject; anything else
+/// keeps the hold with a specific defect.
+fn command_case_join(
+    subject: &SubjectIdentity,
+    input: &ReleaseExperienceInputV1,
+    evidence: &[EvidenceInput],
+    catalogue_bytes: Option<&[u8]>,
+) -> CommandCaseJoin {
+    let original = |role| {
+        let mut matching = evidence.iter().filter(|item| item.role == role);
+        let first = matching.next();
+        (first, matching.next().is_none())
+    };
+    let (admission_input, admission_unique) = original(FreezeEvidenceRole::CommandCaseAdmission);
+    let (context_input, context_unique) = original(FreezeEvidenceRole::CommandCaseContext);
+    if !admission_unique || !context_unique {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            "#3149: duplicate command-case admission or expected-context original".to_string(),
+        );
+    }
+    let (Some(admission_input), Some(context_input)) = (admission_input, context_input) else {
+        return match (admission_input, context_input) {
+            (None, None) => CommandCaseJoin::Absent,
+            _ => CommandCaseJoin::Defect(
+                State::Malformed,
+                "#3149: the native command-case admission and its expected context must be retained together".to_string(),
+            ),
+        };
+    };
+    let admission: NativeCaseAdmission = match serde_json::from_value(admission_input.value.clone())
+    {
+        Ok(value) => value,
+        Err(error) => {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!("#3149: command-case admission original contract: {error}"),
+            );
+        }
+    };
+    let context: ExpectedContext = match serde_json::from_value(context_input.value.clone()) {
+        Ok(value) => value,
+        Err(error) => {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!("#3149: command-case expected-context original contract: {error}"),
+            );
+        }
+    };
+    if admission.schema_id != ADMISSION_SCHEMA || admission.schema_version != 1 {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            format!(
+                "#3149: retained command-case admission is generation {} ({}), not the current native admission",
+                admission.schema_version, admission.schema_id
+            ),
+        );
+    }
+    if context.schema_id != CONTEXT_SCHEMA || context.schema_version != 1 {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            format!(
+                "#3149: retained command-case expected context is generation {} ({}), not the current context generation",
+                context.schema_version, context.schema_id
+            ),
+        );
+    }
+    if !same_digest(&admission.context_digest, &context_input.sha256) {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case admission does not bind the retained expected-context bytes".to_string(),
+        );
+    }
+    if !same_digest(&input.migration_denominator_digest, CATALOGUE_DIGEST)
+        || !same_digest(&context.catalogue_digest, CATALOGUE_DIGEST)
+        || !same_digest(&admission.catalogue_digest, CATALOGUE_DIGEST)
+    {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case originals or the experience denominator reference a different case catalogue".to_string(),
+        );
+    }
+    // The catalogue member bytes are checked only in a readback-bound
+    // admission; the compose-time pass conservatively keeps the hold.
+    let Some(catalogue_bytes) = catalogue_bytes else {
+        return CommandCaseJoin::Defect(
+            State::NotProven,
+            "#3149: retained command-case originals were not checked against the referenced accepted catalogue in this admission; the executed-denominator hold remains".to_string(),
+        );
+    };
+    let catalogue: Catalogue = match super::rehearsal::decode(catalogue_bytes) {
+        Ok(value) => match serde_json::from_value(value) {
+            Ok(catalogue) => catalogue,
+            Err(error) => {
+                return CommandCaseJoin::Defect(
+                    State::Malformed,
+                    format!("#3149: referenced accepted case catalogue original: {error}"),
+                );
+            }
+        },
+        Err(error) => {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!("#3149: referenced accepted case catalogue original: {error}"),
+            );
+        }
+    };
+    if catalogue.schema_id != CATALOGUE_SCHEMA || catalogue.schema_version != 1 {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            "#3149: referenced case catalogue is not the accepted generation".to_string(),
+        );
+    }
+    if !same_digest(&context.binary.digest, &input.binary_digest) {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case observations were executed by a different executable"
+                .to_string(),
+        );
+    }
+    if context.binary.source_generation != subject.commit {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case observations bind a different source generation"
+                .to_string(),
+        );
+    }
+    let installed = match context.binary.provenance {
+        crate::core_command_migration::BinaryProvenance::SourceBuild => false,
+        crate::core_command_migration::BinaryProvenance::SuppliedInstalledCandidate => {
+            context.binary.candidate_identity.is_some() && context.binary.install_identity.is_some()
+        }
+    };
+    let total = catalogue.cases.len();
+    let mut admitted_ids = BTreeSet::new();
+    for case in &admission.cases {
+        if !admitted_ids.insert(case.case_id.as_str()) {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!(
+                    "#3149: duplicate command-case admission row {}",
+                    case.case_id
+                ),
+            );
+        }
+        if !catalogue.cases.iter().any(|spec| spec.id == case.case_id) {
+            return CommandCaseJoin::Defect(
+                State::Mismatch,
+                format!(
+                    "#3149: command-case admission row {} is not an accepted catalogue case",
+                    case.case_id
+                ),
+            );
+        }
+    }
+    let covered = admission
+        .cases
+        .iter()
+        .filter(|case| case.semantic_validity == SemanticValidity::Valid)
+        .count();
+    let uncovered = total.saturating_sub(covered);
+    let collection: String = admission.collection_id.chars().take(100).collect();
+    if admission.errors.is_empty()
+        && admission.semantic_validity == SemanticValidity::Valid
+        && admission.missing_cases.is_empty()
+        && admitted_ids.len() == total
+        && covered == total
+    {
+        if !installed {
+            return CommandCaseJoin::Partial(format!(
+                "#3149: retained source-build command-case observations natively admit the full {total}-case accepted denominator; installed-candidate execution stays required"
+            ));
+        }
+        return CommandCaseJoin::Discharged(format!(
+            "#3149: the accepted {total}-case selected denominator is natively admitted from the exact installed candidate (collection {collection}); the executed supported-case denominator and human/machine parity producer are present"
+        ));
+    }
+    let errors = if admission.errors.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "; the retained native admission reports {} collection errors",
+            admission.errors.len()
+        )
+    };
+    if installed {
+        CommandCaseJoin::Partial(format!(
+            "#3149: retained command-case evidence natively admits {covered}/{total} accepted selected cases from the exact installed candidate{errors}; the remaining {uncovered} selected case executions stay unproven"
+        ))
+    } else {
+        CommandCaseJoin::Partial(format!(
+            "#3149: retained source-build command-case observations natively admit {covered}/{total} accepted selected cases{errors}; installed-candidate execution of the remaining {uncovered} selected cases stays unproven"
+        ))
     }
 }
 
@@ -156,7 +394,7 @@ pub(super) fn reconcile(
         Ok(pair) => pair,
         Err(problem) => {
             admission.record(problem.result, problem.notes.join("; "));
-            admission.retain_dependencies();
+            admission.retain_dependencies(CommandCaseJoin::Absent);
             return admission;
         }
     };
@@ -185,6 +423,7 @@ pub(super) fn reconcile(
             "duplicate experience documentation identity",
         );
     }
+    let mut catalogue_bytes = None;
     if let (Some(readback), Some(now)) = (readback, now) {
         if input.evaluated_at_unix_seconds > now
             || !now
@@ -198,13 +437,19 @@ pub(super) fn reconcile(
                 "experience is future-dated or expired at the checked provider observation",
             );
         }
-        if let Err(problem) = bind_references(subject, selected_packages, &input, readback) {
-            admission.record(problem.result, problem.notes.join("; "));
-        }
+        catalogue_bytes = match bind_references(subject, selected_packages, &input, readback) {
+            Ok(bytes) => Some(bytes),
+            Err(problem) => {
+                admission.record(problem.result, problem.notes.join("; "));
+                None
+            }
+        };
     }
     // An authentic download or matching model output is not a semantic proof.
-    // No supported producer/reader currently discharges these three obligations.
-    admission.retain_dependencies();
+    // The pilot and installed-documentation producers still have no supported
+    // discharge; the command-case join is bounded to its own retained pair.
+    let command_case = command_case_join(subject, &input, evidence, catalogue_bytes.as_deref());
+    admission.retain_dependencies(command_case);
     admission
 }
 
@@ -477,12 +722,14 @@ fn decode<T: DeserializeOwned>(
     })
 }
 
+/// Bind every referenced original member and predecessor, returning the
+/// migration-denominator member bytes for the command-case join.
 fn bind_references(
     subject: &SubjectIdentity,
     selected_packages: &[FinalEvidencePackageSubjectV1],
     input: &ReleaseExperienceInputV1,
     readback: &ReadbackInput,
-) -> Result<(), Admission> {
+) -> Result<Vec<u8>, Admission> {
     let candidate_bytes = reference(
         readback,
         "experience:package-candidate",
@@ -544,11 +791,12 @@ fn bind_references(
     // root locks. Their original validators/producers own those meanings; do
     // not equate either with the raw workspace lock or rewrite a receipt.
     bind_packages(selected_packages, &candidate, &install, &journey)?;
-    reference(
+    let migration_catalogue = reference(
         readback,
         "experience:migration-denominator",
         &input.migration_denominator_digest,
-    )?;
+    )?
+    .to_vec();
     for identity in &input.docs_identities {
         reference(
             readback,
@@ -567,7 +815,7 @@ fn bind_references(
     if let Some(digest) = &input.brownfield_receipt_digest {
         reference(readback, "experience:brownfield-pilot", digest)?;
     }
-    Ok(())
+    Ok(migration_catalogue)
 }
 
 fn validate_predecessors(

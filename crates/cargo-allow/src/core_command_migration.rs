@@ -194,7 +194,7 @@ pub(crate) struct Snapshot {
     pub(crate) entries: Vec<SnapshotEntry>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum SemanticValidity {
     Valid,
@@ -202,7 +202,7 @@ pub(crate) enum SemanticValidity {
     Invalid,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct CaseAdmission {
     pub(crate) case_id: String,
@@ -215,21 +215,25 @@ pub(crate) struct CaseAdmission {
     pub(crate) binding_gaps: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+/// The retained native command-case admission projection. Serialization keeps
+/// the exact emitted shape; deserialization admits only that shape, so the
+/// release-experience consumer can bind the original retained bytes without a
+/// second projection type.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Admission {
-    pub(crate) schema_id: &'static str,
+    pub(crate) schema_id: String,
     pub(crate) schema_version: u32,
     pub(crate) catalogue_digest: String,
     pub(crate) context_digest: String,
     pub(crate) bundle_digest: String,
     pub(crate) collection_id: String,
     pub(crate) semantic_validity: SemanticValidity,
-    pub(crate) qualification: &'static str,
+    pub(crate) qualification: String,
     pub(crate) cases: Vec<CaseAdmission>,
     pub(crate) missing_cases: Vec<String>,
     pub(crate) dimensions: Vec<Dimension>,
     pub(crate) errors: Vec<String>,
     pub(crate) qualification_gaps: Vec<String>,
-    pub(crate) claim_boundary: &'static str,
+    pub(crate) claim_boundary: String,
 }
