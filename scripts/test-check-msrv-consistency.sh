@@ -222,7 +222,55 @@ drift_case "attested release manifest drift" ".github/workflows/release.yml" \
 # The toolchain tag is applied via `rustup default`, which rust-toolchain.toml
 # outranks. RUSTUP_TOOLCHAIN is what actually pins the lane, so moving it off
 # the MSRV must fail even though the tag and cache key above still match.
-drift_case "rustup toolchain override drift" ".github/workflows/ci.yml" \
+#
+# The corruption is scoped to the msrv job block (the same `  msrv:`-to-next-
+# job-key window the guard extracts): other jobs carry their own legitimate
+# RUSTUP_TOOLCHAIN pins (pregate, coverage), and corrupting the file's first
+# occurrence instead would drift the wrong lane while the guard -- correctly
+# -- still passes on the intact msrv pin.
+msrv_block_case() {
+  local expect="$1" label="$2" from="$3" to="$4"
+  local dir="${work}/${label// /-}"
+  mkdir -p "${dir}/.github/workflows"
+  cp Cargo.toml "${dir}/Cargo.toml"
+  cp .github/workflows/ci.yml "${dir}/.github/workflows/ci.yml"
+  cp .github/workflows/release.yml "${dir}/.github/workflows/release.yml"
+  python3 - "${dir}/.github/workflows/ci.yml" "${from}" "${to}" <<'PY'
+import re
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+start = re.search(r"^  msrv:[ \t]*(#.*)?$", text, re.MULTILINE)
+if start is None:
+    sys.exit("fixture setup failed: no msrv job header")
+following = re.search(r"^  [A-Za-z0-9_-]+:[ \t]*(#.*)?$", text[start.end():], re.MULTILINE)
+if following is None:
+    sys.exit("fixture setup failed: no job header after msrv")
+block_start = start.end()
+block_end = start.end() + following.start()
+block = text[block_start:block_end]
+if old not in block:
+    sys.exit(f"fixture setup failed: {old!r} not present in the msrv job block")
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text[:block_start] + block.replace(old, new, 1) + text[block_end:])
+PY
+  if [[ "${expect}" == "failure" ]]; then
+    run_expect_failure "${label}" \
+      env CARGO_TOML="${dir}/Cargo.toml" \
+      CI_WORKFLOW="${dir}/.github/workflows/ci.yml" \
+      RELEASE_WORKFLOW="${dir}/.github/workflows/release.yml" \
+      bash scripts/check-msrv-consistency.sh
+  else
+    run_expect_success "${label}" \
+      env CARGO_TOML="${dir}/Cargo.toml" \
+      CI_WORKFLOW="${dir}/.github/workflows/ci.yml" \
+      RELEASE_WORKFLOW="${dir}/.github/workflows/release.yml" \
+      bash scripts/check-msrv-consistency.sh
+  fi
+}
+
+msrv_block_case "failure" "rustup toolchain override drift" \
   "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "RUSTUP_TOOLCHAIN: \"1.100.0\""
 
 # Reformatting a matching site must not be reported as drift. Without these,
@@ -265,12 +313,12 @@ if [[ "${dotted}" != "${msrv}" ]]; then
     "MSRV: \"${msrv}\"" "MSRV: \"${dotted}\""
 fi
 
-accepts_case "reformatted RUSTUP_TOOLCHAIN is still matched" ".github/workflows/ci.yml" \
+msrv_block_case "success" "reformatted RUSTUP_TOOLCHAIN is still matched" \
   "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "RUSTUP_TOOLCHAIN:   ${msrv}.0"
 
 # Deleting the pin outright, not just moving it, must also fail: the tag and
 # cache key stay correct, so nothing else in the guard would notice.
-drift_case "rustup toolchain override removed" ".github/workflows/ci.yml" \
+msrv_block_case "failure" "rustup toolchain override removed" \
   "RUSTUP_TOOLCHAIN: \"${msrv}.0\"" "UNRELATED_ENV: \"${msrv}.0\""
 
 # Relocating the pin to a different job must fail. A whole-file search would
