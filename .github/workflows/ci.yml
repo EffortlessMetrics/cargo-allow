@@ -22,6 +22,19 @@ jobs:
   pregate:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Same precedence law the msrv job documents: `rust-toolchain.toml`
+    # pins the floating `stable` channel and rustup ranks that file ABOVE
+    # `rustup default` (the only thing the dtolnay action changes), so the
+    # action tag below is inert on its own: cargo would resolve the
+    # runner's stable and this lane would prove a Rust version the
+    # workspace does not claim while the cache below keys on 1.95.0.
+    # `RUSTUP_TOOLCHAIN` outranks the toolchain file, so it is what
+    # actually pins the compiler and keeps the cache identity honest.
+    # Removing it silently unpins the pregate proof onto the runner's
+    # stable; the `test_pregate_cache_matches_its_pinned_toolchain`
+    # regression test fails closed if the pin goes missing.
+    env:
+      RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

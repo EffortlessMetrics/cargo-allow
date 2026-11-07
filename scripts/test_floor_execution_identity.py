@@ -52,6 +52,13 @@ class ExecutionIdentityTests(unittest.TestCase):
         self.assertLess(toolchain, cache)
         self.assertLess(cache, proof)
         self.assertIn("lane: pregate\n          toolchain: 1.95.0", pregate)
+        # rust-toolchain.toml pins the floating stable channel and ranks
+        # above `rustup default` (the only thing the dtolnay action
+        # changes), so without this override cargo would resolve the
+        # runner's stable while the cache keys on 1.95.0. The pin must be
+        # present and must equal the cache toolchain identity.
+        pin = pregate.index('RUSTUP_TOOLCHAIN: "1.95.0"')
+        self.assertLess(pin, toolchain)
 
     def test_bootstrap_excludes_only_retained_output_graders(self):
         source = Path(__file__).with_name("proof-direct-floors.sh").read_text(encoding="utf-8")
