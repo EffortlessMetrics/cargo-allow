@@ -2,6 +2,7 @@
 
 import unittest
 from pathlib import Path
+import re
 import shlex
 
 from floor_execution_identity import identity
@@ -37,7 +38,18 @@ class ExecutionIdentityTests(unittest.TestCase):
         for job in ("msrv", "test-core-platforms", "coverage"):
             block = workflow.split(f"\n  {job}:\n", 1)[1]
             declaration = block.split("steps:", 1)[0]
-            self.assertIn("pregate", declaration)
+            # Match an active `needs:` declaration, not any `pregate`
+            # substring: a commented-out needs line must not keep this
+            # green after the dependency is removed.
+            needs = [
+                line.split("#", 1)[0]
+                for line in declaration.splitlines()
+                if line.split("#", 1)[0].strip().startswith("needs:")
+            ]
+            self.assertTrue(
+                any(re.search(r"\bpregate\b", line) for line in needs),
+                f"{job} must declare needs: pregate",
+            )
 
     def test_pregate_cache_matches_its_pinned_toolchain(self):
         workflow = Path(__file__).resolve().parent.parent.joinpath(
@@ -56,9 +68,17 @@ class ExecutionIdentityTests(unittest.TestCase):
         # above `rustup default` (the only thing the dtolnay action
         # changes), so without this override cargo would resolve the
         # runner's stable while the cache keys on 1.95.0. The pin must be
-        # present and must equal the cache toolchain identity.
-        pin = pregate.index('RUSTUP_TOOLCHAIN: "1.95.0"')
-        self.assertLess(pin, toolchain)
+        # present as an active YAML entry -- comment text naming the pin
+        # must not satisfy this -- and must precede the toolchain install.
+        pin = re.search(
+            r'^[ \t]*RUSTUP_TOOLCHAIN:[ \t]*"1\.95\.0"[ \t]*$',
+            pregate,
+            re.MULTILINE,
+        )
+        self.assertIsNotNone(
+            pin, "pregate must set RUSTUP_TOOLCHAIN as an active entry"
+        )
+        self.assertLess(pin.start(), toolchain)
         # The pin selects the exact 1.95.0 toolchain, so the components
         # the pregate needs must be installed with it: a bare 1.95.0
         # install ships no rustfmt and the Formatting step fails closed
