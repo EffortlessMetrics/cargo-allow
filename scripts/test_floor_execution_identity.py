@@ -59,6 +59,13 @@ class ExecutionIdentityTests(unittest.TestCase):
         # present and must equal the cache toolchain identity.
         pin = pregate.index('RUSTUP_TOOLCHAIN: "1.95.0"')
         self.assertLess(pin, toolchain)
+        # The pin selects the exact 1.95.0 toolchain, so the components
+        # the pregate needs must be installed with it: a bare 1.95.0
+        # install ships no rustfmt and the Formatting step fails closed
+        # (proven by hosted run 42326701401). Clippy stays out of the
+        # pregate; it runs in the Stage 2 heavy lanes.
+        self.assertIn("components: rustfmt", pregate)
+        self.assertNotIn("clippy", pregate)
 
     def test_bootstrap_excludes_only_retained_output_graders(self):
         source = Path(__file__).with_name("proof-direct-floors.sh").read_text(encoding="utf-8")

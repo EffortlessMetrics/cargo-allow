@@ -40,6 +40,15 @@ jobs:
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
+        # The RUSTUP_TOOLCHAIN pin above selects this exact toolchain, so
+        # the components the pregate needs must be installed here: the
+        # runner's stable toolchain (which rust-toolchain.toml would
+        # otherwise select) ships rustfmt, but a bare 1.95.0 install does
+        # not, and the Formatting step below would fail with
+        # "'cargo-fmt' is not installed for the toolchain". Clippy stays
+        # out: it runs in the Stage 2 heavy lanes, not in the pregate.
+        with:
+          components: rustfmt
       - uses: ./.github/actions/rust-cache
         with:
           lane: pregate
