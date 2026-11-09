@@ -355,8 +355,10 @@ assert manifest["payload"]["publication_posture"] == "unpublished"
 assert len(manifest["payload"]["package_rows"]) == len(candidate)
 PY
 
-# The compiled authorization digest propagates verbatim when supplied (#3790);
-# historical manifests without the gate carry no digest key.
+# The typed envelope records the authorization provenance reference (#3790):
+# the compiled gate digest itself stays in the publication receipts, where
+# the workflow verifies its agreement with the authorize gate; the governed
+# release-manifest-v2 schema allows no digest key on the envelope.
 AUTHORIZATION_DIGEST="sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" \
 VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow TAG=v9.9.9 \
   COMMIT=fixture-commit TREE=fixture-tree AUTH_SOURCE=crates_io_api_token MSRV=1.95 \
@@ -369,7 +371,8 @@ import json
 import sys
 
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
-assert manifest["authorization_digest"] == "sha256:" + ("e" * 64), manifest.get("authorization_digest")
+assert manifest["authorization_reference"] == "workflow/123/crates-io", manifest.get("authorization_reference")
+assert "authorization_digest" not in manifest, "the governed schema allows no envelope digest key"
 PY
 python3 - "${work}/complete-manifest.json" <<'PY'
 import json
@@ -378,7 +381,7 @@ import sys
 manifest = json.loads(open(sys.argv[1], encoding="utf-8").read())
 assert "authorization_digest" not in manifest, "historical manifests must not gain digest keys"
 PY
-printf 'ok compiled authorization digest propagates to the manifest\n'
+printf 'ok typed manifest records the authorization provenance reference\n'
 
 manifest_checksum="${work}/complete-manifest.sha256"
 sha256sum "${work}/complete-manifest.json" | awk '{print $1 "  complete-manifest.json"}' >"${manifest_checksum}"
@@ -395,27 +398,48 @@ expect_failure env VERSION=9.9.9 REPOSITORY=EffortlessMetrics/cargo-allow \
 
 cp "${archive}.sha256" "${work}/missing.sha256"
 rm "${archive}.sha256"
-expect_failure bash scripts/verify-release-binary.sh "${archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${archive}"
 mv "${work}/missing.sha256" "${archive}.sha256"
 cp "${archive}.executable.sha256" "${work}/missing-executable.sha256"
 rm "${archive}.executable.sha256"
-expect_failure bash scripts/verify-release-binary.sh "${archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${archive}"
 mv "${work}/missing-executable.sha256" "${archive}.executable.sha256"
+
+# #3787: the exact projected release identity is a required input; the
+# version is never derived from the archive filename.
+expect_failure bash scripts/verify-release-binary.sh "${archive}"
 
 expect_failure bash scripts/verify-release-binary.sh --version 8.8.8 "${archive}"
 
-tampered_archive="${work}/tampered-archive.tar.gz"
+# A non-canonical archive name fails even when the derived name would
+# strip to the expected version.
+misnamed_archive="${work}/cargo-allow-vv9.9.9-x86_64-unknown-linux-gnu.tar.gz"
+cp "${archive}" "${misnamed_archive}"
+cp "${archive}.sha256" "${misnamed_archive}.sha256"
+printf '%s  %s\n' "$(sha256sum "${misnamed_archive}" | awk '{print $1}')" "$(basename "${misnamed_archive}")" >"${misnamed_archive}.sha256.new"
+mv "${misnamed_archive}.sha256.new" "${misnamed_archive}.sha256"
+cp "${archive}.executable.sha256" "${misnamed_archive}.executable.sha256"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${misnamed_archive}"
+
+# The tampered fixture keeps the canonical archive name in its own
+# directory so the failure is the archive digest mismatch, not the name.
+mkdir -p "${work}/tampered"
+tampered_archive="${work}/tampered/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
 cp "${archive}" "${tampered_archive}"
 printf '%s  %s\n' "$(sha256sum "${archive}" | awk '{print $1}')" "$(basename "${tampered_archive}")" >"${tampered_archive}.sha256"
 cp "${archive}.executable.sha256" "${tampered_archive}.executable.sha256"
 printf 'tampered\n' >>"${tampered_archive}"
-expect_failure bash scripts/verify-release-binary.sh "${tampered_archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${tampered_archive}"
 
-wrong_sidecar_archive="${work}/wrong-sidecar.tar.gz"
+# The wrong-sidecar fixture keeps the canonical archive name and writes a
+# sidecar naming a different canonical archive, so the failure is the
+# sidecar-name reconciliation, not the archive name.
+mkdir -p "${work}/wrong-sidecar"
+wrong_sidecar_archive="${work}/wrong-sidecar/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
 cp "${archive}" "${wrong_sidecar_archive}"
-cp "${archive}.sha256" "${wrong_sidecar_archive}.sha256"
+printf '%s  %s\n' "$(sha256sum "${wrong_sidecar_archive}" | awk '{print $1}')" "cargo-allow-v8.8.8-x86_64-unknown-linux-gnu.tar.gz" >"${wrong_sidecar_archive}.sha256"
 cp "${archive}.executable.sha256" "${wrong_sidecar_archive}.executable.sha256"
-expect_failure bash scripts/verify-release-binary.sh "${wrong_sidecar_archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${wrong_sidecar_archive}"
 
 mkdir -p "${work}/extra"
 extra_archive="${work}/extra/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
@@ -435,7 +459,7 @@ with tarfile.open(source, "r:gz") as source_tar, tarfile.open(destination, "w:gz
 PY
 printf '%s  %s\n' "$(sha256sum "${extra_archive}" | awk '{print $1}')" "$(basename "${extra_archive}")" >"${extra_archive}.sha256"
 cp "${archive}.executable.sha256" "${extra_archive}.executable.sha256"
-expect_failure bash scripts/verify-release-binary.sh "${extra_archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${extra_archive}"
 
 mkdir -p "${work}/duplicate"
 duplicate_archive="${work}/duplicate/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
@@ -455,7 +479,7 @@ with tarfile.open(source, "r:gz") as source_tar, tarfile.open(destination, "w:gz
 PY
 printf '%s  %s\n' "$(sha256sum "${duplicate_archive}" | awk '{print $1}')" "$(basename "${duplicate_archive}")" >"${duplicate_archive}.sha256"
 cp "${archive}.executable.sha256" "${duplicate_archive}.executable.sha256"
-expect_failure bash scripts/verify-release-binary.sh "${duplicate_archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${duplicate_archive}"
 
 mkdir -p "${work}/unsafe"
 unsafe_archive="${work}/unsafe/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu.tar.gz"
@@ -475,11 +499,11 @@ with tarfile.open(source, "r:gz") as source_tar, tarfile.open(destination, "w:gz
 PY
 printf '%s  %s\n' "$(sha256sum "${unsafe_archive}" | awk '{print $1}')" "$(basename "${unsafe_archive}")" >"${unsafe_archive}.sha256"
 cp "${archive}.executable.sha256" "${unsafe_archive}.executable.sha256"
-expect_failure bash scripts/verify-release-binary.sh "${unsafe_archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${unsafe_archive}"
 
 bad_archive="${work}/cargo-allow-v9.9.9-x86_64-unknown-linux-gnu-bad.tar.gz"
 cp "${archive}" "${bad_archive}"
-expect_failure bash scripts/verify-release-binary.sh "${bad_archive}"
+expect_failure bash scripts/verify-release-binary.sh --version 9.9.9 "${bad_archive}"
 
 python3 - "${receipt_path}" <<'PY'
 import json
@@ -494,7 +518,9 @@ receipt["negative_controls"] = [
     "candidate_requires_installed_binary_without_cargo_fallback",
     "missing_archive_checksum",
     "missing_executable_checksum",
+    "missing_version_input",
     "wrong_version",
+    "misnamed_archive",
     "tampered_archive",
     "wrong_sidecar_name",
     "unexpected_archive_entry",

@@ -1386,7 +1386,13 @@ def exercise_workflow_token_boundary(workflow: str | None = None) -> None:
     if workflow is None:
         workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     job = workflow.split("\n  publish:\n", 1)[1].split("\n  build:", 1)[0]
-    assert "    needs: [preflight, authorize]\n" in job
+    # #2267: publication additionally gates on the cross-platform
+    # source-candidate smoke aggregate. The original preflight/authorize
+    # execution gates must stay present in the chain either way.
+    assert (
+        "    needs: [preflight, authorize]\n" in job
+        or "    needs: [preflight, authorize, source-candidate-smoke-aggregate]\n" in job
+    )
     assert "    if:" not in job.split("    steps:\n", 1)[0]
     preflight_name = "Prove shared registry preflight before upload"
     token_name = "Require crates.io API token for publication"
@@ -1619,11 +1625,13 @@ def exercise_workflow_dispatch(workflow: str | None = None) -> None:
 def exercise_publication_handoff() -> None:
     """Execute the downloaded-receipt → package → manifest workflow handoff.
 
-    Cargo packaging, typed Cargo projections and Git identities are local
-    instruments. The actual publisher, workflow blocks and manifest encoder
-    run unchanged; an unexpected provider or process call fails the fixture.
-    This mode runs in the existing release-binary contract lane, whose normal
-    manifest cases also exercise the real typed Cargo authorities.
+    Cargo packaging, Git identities and registry observations are local
+    instruments. The actual publisher, workflow blocks and the typed
+    `cargo-allow release-manifest` authority (#2497) run unchanged; an
+    unexpected provider or process call fails the fixture. The harness
+    builds the real cargo-allow binary once and the `cargo` stub executes
+    it directly so the manifest step exercises the true typed producer
+    and validator instead of a fixture projection.
     """
     workflow = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
     names = (
@@ -1634,16 +1642,50 @@ def exercise_publication_handoff() -> None:
     scripts = {name: workflow_run_step(workflow, name) for name in names}
     bash = shutil.which("bash")
     python = shutil.which("python3")
+    cargo = shutil.which("cargo")
     utilities = {name: shutil.which(name) for name in
                  ("dirname", "mkdir", "date", "sha256sum", "awk", "basename", "cat")}
-    if bash is None or python is None or not all(utilities.values()):
-        raise AssertionError("manifest handoff requires Bash, Python and release-shell utilities")
+    if bash is None or python is None or cargo is None or not all(utilities.values()):
+        raise AssertionError(
+            "manifest handoff requires Bash, Python, Cargo and release-shell utilities"
+        )
+    # The manifest step is semantically owned by the typed Rust command
+    # (#2497). Build it once against the real workspace; the stub below
+    # refuses any other cargo invocation so no hidden Cargo operation runs.
+    build = subprocess.run(
+        [cargo, "build", "--manifest-path", str(ROOT / "Cargo.toml"),
+         "-p", "cargo-allow", "--locked", "--quiet"],
+        text=True, capture_output=True, timeout=1200,
+    )
+    if build.returncode != 0:
+        raise AssertionError("typed manifest authority failed to build: " + build.stderr)
+    harness_binary = ROOT / "target" / "debug" / (
+        "cargo-allow.exe" if os.name == "nt" else "cargo-allow"
+    )
+    if not harness_binary.is_file():
+        raise AssertionError("built cargo-allow binary is missing: " + str(harness_binary))
     commands = "\n".join(
         f'{name}() {{ {shlex.quote(Path(path).as_posix())} "$@"; }}'
         for name, path in utilities.items() if path is not None
     )
     commands += f'\npython3() {{ {shlex.quote(Path(python).as_posix())} scripts/workflow-python.py "$@"; }}\n'
     commands += 'bash() { ( source "$@" ); }\n'
+    commands += 'cargo() {\n'
+    commands += '  if [ "${1:-}" != "run" ]; then\n'
+    commands += '    printf "unexpected cargo invocation: %s\\n" "$*" >&2\n'
+    commands += '    return 97\n'
+    commands += '  fi\n'
+    commands += '  shift\n'
+    commands += '  while [ "${1:-}" != "--" ]; do\n'
+    commands += '    case "${1:-}" in\n'
+    commands += '      -p|--package|--manifest-path) shift 2 ;;\n'
+    commands += '      --locked|--quiet) shift ;;\n'
+    commands += '      *) printf "unexpected cargo run flag: %s\\n" "${1:-}" >&2; return 97 ;;\n'
+    commands += '    esac\n'
+    commands += '  done\n'
+    commands += '  shift\n'
+    commands += f'  {shlex.quote(harness_binary.resolve().as_posix())} "$@"\n'
+    commands += '}\n'
     commands += 'git() {\n'
     commands += '  if [ "$*" = "rev-parse $GITHUB_SHA^{tree}" ]; then printf "%s\\n" "$FIXTURE_TREE";\n'
     commands += '  else printf "unexpected Git operation\\n" >&2; return 97; fi\n}\n'
@@ -1739,22 +1781,6 @@ def exercise_publication_handoff() -> None:
         if command[0] == "-c":
             sys.argv = [command[0], *command[2:]]
             exec(compile(command[1], "checked-in workflow expression", "exec"))
-        elif command[0] == "-":
-            def typed_projection(args, **kwargs):
-                record(args)
-                if args[:7] != ["cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--"]:
-                    raise AssertionError("unexpected process in manifest encoder")
-                if os.environ.get("FAIL_TYPED_PROJECTION") == "true":
-                    return subprocess.CompletedProcess(args, 1, "", "fixture projection failed")
-                if args[7] == "release-identity" and args[8:] == ["--version", "0.2.0"]:
-                    return subprocess.CompletedProcess(args, 0, '{"result": "validated"}', "")
-                if args[7] == "reconcile-package-publication":
-                    assert args[args.index("--expected-checksum") + 1] == args[args.index("--observed-registry-checksum") + 1]
-                    return subprocess.CompletedProcess(args, 0, '{"manifest_ready": true, "classification": "complete_exact"}', "")
-                raise AssertionError("unexpected typed projection")
-            subprocess.run = typed_projection
-            sys.argv = command
-            exec(compile(sys.stdin.read(), "checked-in manifest encoder", "exec"))
         else:
             raise AssertionError("unexpected Python entrypoint: " + repr(command))
         """)
@@ -1767,7 +1793,6 @@ def exercise_publication_handoff() -> None:
             (directory / "scripts").mkdir(parents=True)
             (directory / "policy").mkdir()
             shutil.copy2(ROOT / "scripts/release-topology-publisher.py", directory / "scripts")
-            shutil.copy2(ROOT / "scripts/generate-release-manifest.sh", directory / "scripts")
             shutil.copy2(topology_path, directory / "policy")
             shutil.copy2(ROOT / "Cargo.lock", directory)
             (directory / "scripts/workflow-python.py").write_text(shim, encoding="utf-8")
@@ -1859,7 +1884,17 @@ def exercise_publication_handoff() -> None:
         assert result.returncode == 0, result.stdout + result.stderr
         manifest = json.loads((directory / "target/cargo-allow/release-manifest-v2.json").read_text())
         assert receipt.read_bytes() == original
-        assert manifest["authorization_digest"] == authorization
+        assert manifest["authorization_reference"] == "workflow/4427/crates-io"
+        assert "authorization_digest" not in manifest
+        result_receipt = json.loads(
+            (directory / "target/cargo-allow/release-manifest-v2.result.json").read_text()
+        )
+        assert result_receipt["schema"] == "cargo-allow.release-manifest-result.v1"
+        assert result_receipt["result"] == "complete"
+        assert result_receipt["required_result"] == "complete"
+        assert result_receipt["manifest_sha256"] == digest(
+            (directory / "target/cargo-allow/release-manifest-v2.json").read_bytes()
+        )
         assert manifest["payload"]["publication_posture"] == "published"
         assert manifest["payload"]["candidate_digest"] == digest(original)
         assert manifest["payload"]["consumed_evidence"][0]["sha256"] == digest(original)
@@ -2021,26 +2056,31 @@ def exercise_publication_handoff() -> None:
             ("missing-bound-digest", {"EXPECTED_TOPOLOGY_RECEIPT_SHA256": ""}, "public release requires the downloaded topology receipt digest"),
             ("wrong-authorization", {"AUTHORIZATION_DIGEST": "sha256:" + "f" * 64}, "publication authorization differs"),
             ("missing-authorization", {"AUTHORIZATION_DIGEST": ""}, "publication authorization differs"),
-            ("invalid-entry-mode", {"REQUIRE_PUBLISHED_TOPOLOGY": "unknown"}, "REQUIRE_PUBLISHED_TOPOLOGY must be true or false"),
         ):
             directory, receipt, context = fixture(name)
             context["steps.publication_receipt.outputs.topology_sha256"] = digest(receipt.read_bytes())
             fail_at(directory, context, names[2], expected, **overrides)
             scenarios += 1
 
-        for name, expected in (
-            ("archive-drift", "package archive differs from publication"),
-            ("typed-instrument-failure", "not a validated typed release identity"),
-        ):
-            directory, receipt, context = fixture(name)
-            bind(directory, context)
-            result = invoke(directory, context, names[1])
-            assert result.returncode == 0, result.stdout + result.stderr
-            if name == "archive-drift":
-                (directory / published["rows"][0]["crate"]).write_bytes(b"changed after packaging")
-            overrides = {"FAIL_TYPED_PROJECTION": "true"} if name == "typed-instrument-failure" else {}
-            fail_at(directory, context, names[2], expected, **overrides)
-            scenarios += 1
+        directory, receipt, context = fixture("archive-drift")
+        bind(directory, context)
+        result = invoke(directory, context, names[1])
+        assert result.returncode == 0, result.stdout + result.stderr
+        (directory / published["rows"][0]["crate"]).write_bytes(b"changed after packaging")
+        fail_at(directory, context, names[2], "package archive differs from publication")
+        scenarios += 1
+
+        # The selected release identity is manifest law (#3752/#2497): a
+        # --version that differs from the receipt rows must refuse the
+        # manifest gate before any attestation can run. The publisher never
+        # consumes the selected version, so only the typed authority sees it.
+        directory, receipt, context = fixture("wrong-selected-identity")
+        bind(directory, context)
+        result = invoke(directory, context, names[1])
+        assert result.returncode == 0, result.stdout + result.stderr
+        fail_at(directory, context, names[2], "is not the selected release identity",
+                RELEASE_VERSION="0.1.11")
+        scenarios += 1
 
         for name in ("same-output-path", "hard-linked-output"):
             directory, receipt, context = fixture(name)
@@ -2062,22 +2102,9 @@ def exercise_publication_handoff() -> None:
                 scripts[names[1]] = package_script
             scenarios += 1
 
-        directory, receipt, context = fixture("explicit-candidate-manifest")
-        bind(directory, context)
-        result = invoke(directory, context, names[1])
-        assert result.returncode == 0, result.stdout + result.stderr
-        candidate = directory / "target/cargo-allow/topology-repackage.receipt.json"
-        result = invoke(
-            directory, context, names[2], REQUIRE_PUBLISHED_TOPOLOGY="false",
-            EXPECTED_TOPOLOGY_RECEIPT_SHA256=digest(candidate.read_bytes()),
-            TOPOLOGY_RECEIPT="target/cargo-allow/topology-repackage.receipt.json",
-            AUTHORIZATION_DIGEST="",
-        )
-        assert result.returncode == 0, result.stdout + result.stderr
-        manifest = json.loads((directory / "target/cargo-allow/release-manifest-v2.json").read_text())
-        assert manifest["payload"]["publication_posture"] == "unpublished"
-        assert "authorization_digest" not in manifest
-        scenarios += 1
+        # The public-entry posture is pinned by the workflow itself (a typed
+        # flag, not an environment string), so a candidate receipt cannot be
+        # waved through here; candidate-at-public-entry proves the refusal.
 
     print(f"release publication handoff contract: {scenarios} scenarios passed")
 

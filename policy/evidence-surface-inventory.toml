@@ -260,6 +260,23 @@ last_reconciled_commit = "main@current"
 claim_boundary = "The classifier's local cases are checked; a real rehearsal is not observed."
 
 [[surfaces]]
+id = "release-impact-routing"
+owner_issue = 3794
+semantic_authority = "release-impact rehearsal routing"
+path = "crates/cargo-allow/tests/release_impact_routing.rs"
+subject = "allow_report release_impact_v1 classifier, observation, and terminal aggregate over the live checked denominator"
+producer = "Rust integration test"
+consumer = "ci.yml release-impact routing graph"
+claimed_acceptance_row = "production impact classification and routing-law acceptance"
+assertion_mechanism = "typed classifier fixtures, jsonschema binding, live CLI invocation, and workflow-source assertions"
+evidence_class = "TypedModelValidation"
+disposition = "typed contract validation"
+required_stronger_owner = "#3792 (rehearsal discriminating status) and #2283/#2284 (required-check selection)"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The ten packet fixtures, the schema binding, the live denominator load, and the workflow-source fragments are checked against the live tree; a hosted rehearsal execution and a live required-check readback are not observed here."
+
+[[surfaces]]
 id = "release-rehearsal-incident-corpus"
 owner_issue = 3751
 semantic_authority = "release rehearsal incident corpus"
@@ -423,11 +440,11 @@ consumer = "#3940 PR B child migration, PR C workflow cutover, #2502/#2509 execu
 claimed_acceptance_row = "exact subject identity, internally computed event chain, package/asset denominator byte binding, explicit irreversible-request correlation, predecessor-head proof for non-clean APIs, and externally observed containment-without-publication law"
 assertion_mechanism = "production pure model plus JSON Schema and round-trip validation over synthetic exact subjects"
 evidence_class = "TypedModelValidation"
-disposition = "canonical PR A contract; child migration and workflow cutover remain required"
-required_stronger_owner = "#3940 PR B/C + #2502/#2509"
+disposition = "canonical contract; PR B child migration and PR C workflow cutover landed on main (#3940)"
+required_stronger_owner = "#2502/#2509 execution"
 may_satisfy_release_gate = false
-last_reconciled_commit = "branch-under-review"
-claim_boundary = "PR A proves shared source-controlled operation semantics only. It does not migrate every child, persist provider state, execute workflows, read credentials, create tags, publish packages, mutate a GitHub Release, or establish final release readiness."
+last_reconciled_commit = "main@current"
+claim_boundary = "The canonical contract proves shared source-controlled operation semantics only. This surface does not persist provider state, execute workflows, read credentials, create tags, publish packages, mutate a GitHub Release, or establish final release readiness; child migration and workflow cutover are separately proved by their own surfaces."
 
 [[surfaces]]
 id = "release-operation-lease-v1"
@@ -590,14 +607,14 @@ path = "crates/cargo-allow/tests/rc_publication_incident.rs"
 subject = "docs/release/evidence/rc1-publication-incident.v1.json"
 producer = "Rust integration test"
 consumer = "release incident ledger / #2501 final refreeze"
-claimed_acceptance_row = "the retained incident record validates against the typed reconciliation law"
-assertion_mechanism = "typed validation plus provenance assertions (8/2 row split, ruling-fixed posture and eligibility, partial-observation limits)"
+claimed_acceptance_row = "the retained incident record validates against the typed reconciliation law over the full provider-observed run denominator (#3785)"
+assertion_mechanism = "typed validation plus provenance assertions (8-run provider denominator with pinned heads, trees, publication classes, publish receipts, and retained artifact sets; 8/2 row split with across-candidate law; release assets by provider asset ID and digest; install receipts bound to observed inner bytes; ruling-fixed posture and eligibility; partial-observation limits including the artifact-less run; record-generated chronology rows and correction-note markers the incident markdown must contain)"
 evidence_class = "StructuredShapeValidation"
 disposition = "typed record validation"
 required_stronger_owner = "#3759"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
-claim_boundary = "The retained record is checked against the typed contract and its internal consistency; external receipt bytes were byte-verified during the reconciliation observation and by independent review, not continuously re-verified here."
+claim_boundary = "The retained record is checked against the typed contract and its internal consistency, and the incident markdown is checked against the record; provider runs, artifacts, tag, release, assets, and registry rows were observed 2026-11-04 and key receipt bytes were digest-bound during this reconciliation, not continuously re-verified afterward."
 
 [[surfaces]]
 id = "release-authorization-custody-v1"
@@ -657,12 +674,12 @@ semantic_authority = "canonical release-operation identity shared across childre
 path = "crates/cargo-allow/tests/release_operation_composition.rs"
 subject = "CargoAllowReleaseOperationIdentityV1 across journal, checkpoint, lease, and tag"
 producer = "production child constructors with one synthetic canonical identity and head"
-consumer = "#3940 PR C workflow cutover and #2502 execution evidence"
+consumer = "#2502 execution evidence after the landed PR C workflow cutover"
 claimed_acceptance_row = "one canonical identity/head composes journal, checkpoint, lease, and tag bindings"
 assertion_mechanism = "cross-child digest equality plus foreign-operation rejection fixtures"
 evidence_class = "TypedModelValidation"
-disposition = "bounded local contract"
-required_stronger_owner = "#3940"
+disposition = "bounded local contract; PR C workflow cutover landed on main (#3940)"
+required_stronger_owner = "#2502/#2509 execution"
 may_satisfy_release_gate = false
 last_reconciled_commit = "main@current"
 claim_boundary = "Fixtures prove local cross-child binding only; no workflow transport, provider readback, tag, credential, or publication operation occurs."
@@ -841,3 +858,69 @@ may_satisfy_release_gate = false
 last_reconciled_commit = "branch-under-review"
 claim_boundary = "Workflow-content contract law only; provider completion and live-release proof are #3922's open acceptance slices."
 
+[[surfaces]]
+id = "crates-io-release-receipts-v1"
+owner_issue = 2496
+semantic_authority = "typed crates.io release receipt contracts: trusted-publishing posture (#2282), first-publication bootstrap (#3145), and registry-installed journey"
+path = "crates/cargo-allow/tests/crates_io_release_receipts.rs"
+subject = "CratesIoTrustedPublishingReceiptV1 / CratesIoFirstPublicationBootstrapReceiptV1 / CratesIoRegistryInstallJourneyReceiptV1"
+producer = "typed allow-report receipt validators with hostile synthetic fixtures"
+consumer = "release evidence reconciliation / #2501 final refreeze adapters"
+claimed_acceptance_row = "unsupported auth class, credential material, missing producer identity, mutable action pins, shared-version rewrite, generic package names, foreign packages, bootstrap promotion, checksum conflict, stale authority, skipped/cancelled producers, and unresolved install rows are named non-clean results; bootstrap evidence alone never completes the final release manifest"
+assertion_mechanism = "typed validators over synthetic receipt payloads plus schema-registration law assertions (schema_id const, cargo-allow title, $id file binding, required fields, closed additionalProperties, README catalog row)"
+evidence_class = "TypedModelValidation"
+disposition = "bounded local contract"
+required_stronger_owner = "#2282/#3145/#2268 release workflow producers"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "Synthetic typed-model validation only; no registry call, no token read, no tag, and no publication occurs, and no live release-authorization surface is created or modified."
+
+[[surfaces]]
+id = "release-qualification-ledger"
+owner_issue = 2263
+semantic_authority = "release qualification ledger"
+path = "crates/cargo-allow/tests/release_qualification.rs"
+subject = "docs/release/evidence/next-release-qualification.json"
+producer = "Rust integration test"
+consumer = "#2262/#2269/#2501 release qualification"
+claimed_acceptance_row = "the ReleaseQualificationV1 ledger satisfies its closed row contract and its projection agrees"
+assertion_mechanism = "typed JSON validation with recomputed readiness derivation, cross-file #3737 support-matrix binding, and projection regeneration"
+evidence_class = "TypedModelValidation"
+disposition = "bounded projection"
+required_stronger_owner = "#2262"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The checker validates the ledger's internal contract and derivation; hosted qualification runs, live repository controls, operator pilots, and real registry receipts remain operator or post-publication evidence."
+
+[[surfaces]]
+id = "cross-platform-semantic-determinism"
+owner_issue = 2276
+semantic_authority = "one normalized semantic determinism fixture for Linux, Windows, and macOS"
+path = "crates/cargo-allow/tests/release_platform_semantics.rs"
+subject = "tests/fixtures/cross_platform_semantics fixture tree and the pinned canonical projection golden"
+producer = "Rust integration test running the real inventory/scan/match/render pipeline over the checked-in fixture"
+consumer = "#2265 test-core-platforms matrix / #2262 release qualification platform evidence"
+claimed_acceptance_row = "one fixture produces the same canonical semantic result on every claimed platform, with finding identity, match posture, inventory completeness, canonical ordering, and JSON/Markdown rendering as load-bearing assertions"
+assertion_mechanism = "byte-pinned canonical projection golden over the fixture tree, five independent negative controls, and allow-core normalization-seam assertions (separators, drive/UNC, NFC/NFD, case sensitivity)"
+evidence_class = "TypedModelValidation"
+disposition = "bounded per-host determinism oracle over the real pipeline"
+required_stronger_owner = "#2265 hosted Linux/Windows/macOS matrix equality run"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "Per-host deterministic reproduction of the pinned projection; cross-platform equality is proven only by the hosted test-core-platforms runs. Deleted-tracked inventory stays owned by the retained inventory_deleted_tracked test, and no release-authorization surface is created or modified."
+[[surfaces]]
+id = "command-mutation-evidence-4725"
+owner_issue = 4725
+semantic_authority = "retained C-family mutation case evidence"
+path = "crates/cargo-allow/tests/release_command_mutation_evidence_cli.rs"
+subject = "scripts/command-mutation-evidence.py + scripts/verify-command-mutation-evidence.py + docs/release/evidence/command-mutation-1/manifest.v1.json"
+producer = "Rust integration test driving the hermetic Python admission controls and the committed manifest replay"
+consumer = "#4705 experience aggregation / #2501 final refreeze reviewers"
+claimed_acceptance_row = "committed mutation evidence replays through the production admission reader; wrong subject, wrong family, duplicate/unknown/missing cases, replacement bytes, undeclared writes, missing declared writes, stale snapshots, fake successes, contract-probe escapes and invalid dispositions are named rejections"
+assertion_mechanism = "manifest schema/provenance/denominator assertions plus production Python admission controls"
+evidence_class = "StructuredShapeValidation"
+disposition = "committed-record replay plus hermetic transport controls; the retained out-of-tree collection is bound by digest, not re-executed"
+required_stronger_owner = "#4705 aggregate experience owner; native Rust A-family reader admission remains #4723's lane"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "The committed manifest retains executed observations of one public 0.2.0-rc.1 candidate inside disposable fixtures; it does not qualify the installed release, approve exceptions, or rerun the collection in CI."

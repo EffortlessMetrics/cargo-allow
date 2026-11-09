@@ -923,6 +923,89 @@ fn release_packages_use_crate_local_readmes() {
     }
 }
 
+/// #3788: note selection is bound to the typed release-identity projection.
+/// The workflow consumes the projected exact note path and fails closed on
+/// absence; the file-existence fallback selection is deleted, so release
+/// notes can never be synthesized from locally assembled identity text.
+#[test]
+fn release_workflow_binds_note_selection_to_the_typed_projection() {
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    let projection_command = read_workspace_file(
+        &root,
+        "crates/cargo-allow/src/cli/release_identity_command.rs",
+    );
+
+    // The typed producer owns the exact evidence paths.
+    assert!(
+        projection_command.contains("format!(\"docs/release/{canonical_version}.md\")")
+            && projection_command
+                .contains("format!(\"docs/release/github/v{canonical_version}.md\")"),
+        "the release-identity projection should project the exact release-record and GitHub-note paths"
+    );
+
+    // The preflight job reads both paths from the validated projection file
+    // and exports them as job outputs.
+    assert!(
+        workflow.contains(
+            "release_record_path: ${{ steps.release_context.outputs.release_record_path }}"
+        ) && workflow
+            .contains("github_note_path: ${{ steps.release_context.outputs.github_note_path }}"),
+        "{RELEASE_WORKFLOW} preflight should export the typed release-record and note paths"
+    );
+    assert!(
+        workflow.contains("[\"release_record_path\"]")
+            && workflow.contains("[\"github_note_path\"]"),
+        "{RELEASE_WORKFLOW} preflight should read both paths from the validated projection file"
+    );
+
+    // Publish relays the note path; the GitHub Release job consumes it.
+    assert!(
+        workflow.contains("github_note_path: ${{ needs.preflight.outputs.github_note_path }}"),
+        "{RELEASE_WORKFLOW} publish should relay the typed note path"
+    );
+    assert!(
+        workflow.contains("RELEASE_NOTE_PATH: ${{ needs.publish.outputs.github_note_path }}"),
+        "{RELEASE_WORKFLOW} notes step should consume the typed note path from publish"
+    );
+
+    // #3788 graph negative: a missing note file is a typed missing-input
+    // error, never a synthesized fallback selected by file existence.
+    assert!(
+        !workflow.contains("/tmp/release-notes.md"),
+        "{RELEASE_WORKFLOW} must not synthesize fallback release notes; absence fails the release closed"
+    );
+    assert!(
+        !workflow.contains("notes_path=\"docs/release/github/"),
+        "{RELEASE_WORKFLOW} must not assemble the note path from version text; the projected exact path is the only selection"
+    );
+    assert!(
+        workflow.contains("::error::typed release note input missing"),
+        "{RELEASE_WORKFLOW} notes step should fail closed with a typed missing-input error"
+    );
+    assert!(
+        workflow.contains("body_path=${RELEASE_NOTE_PATH}"),
+        "{RELEASE_WORKFLOW} notes step should pass the exact projected path as the GitHub release body"
+    );
+
+    let notes = workflow
+        .find("      - name: Resolve release notes")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!("{RELEASE_WORKFLOW} should resolve release notes"))
+        });
+    let create = workflow
+        .find("      - name: Create GitHub Release (draft until manifest attached)")
+        .unwrap_or_else(|| {
+            std::panic::panic_any(format!(
+                "{RELEASE_WORKFLOW} should create the draft GitHub release"
+            ))
+        });
+    assert!(
+        notes < create,
+        "the typed note selection must precede the GitHub release creation"
+    );
+}
+
 #[test]
 fn release_recovery_binds_one_exact_candidate_context() {
     let root = workspace_root();

@@ -8,6 +8,14 @@
 //! - a missing or wrong-product receipt is `unproven`, never current;
 //! - MSRV, manifest-set, lock, or package-roots movement is `stale`
 //!   with the exact movement named;
+//! - a receipt execution-provenance row (#4214) whose selected-source
+//!   projection digest moved against the observation's digest is
+//!   `stale` even when the manifest-set and lock digests are equal: a
+//!   Rust-source-only edit cannot inherit the earlier proof. A receipt
+//!   predating the section stays decodable historical evidence graded
+//!   on the fields it carries, and a present-but-invalid provenance
+//!   row (blank identity fields, non-canonical digests, an executable
+//!   path without its digest) is a named `incomplete` failure;
 //! - coverage is graded only against an identity-current receipt: a
 //!   declared floor without a receipt row and a receipt row that is no
 //!   longer declared are both named;
@@ -21,7 +29,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::artifacts::minimum_direct_version_v1::{
     MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
-    MinimumVersionProofReceiptV1, target_matches_selection, toolchain_matches_msrv,
+    MinimumVersionExecutionProvenanceV1, MinimumVersionProofReceiptV1, target_matches_selection,
+    toolchain_matches_msrv,
 };
 
 pub const MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID: &str =
@@ -55,6 +64,12 @@ pub struct MinimumVersionDriftObservationV1 {
     pub target: String,
     pub manifest_set_digest: String,
     pub lock_digest: String,
+    /// The live selected-source projection digest (#4214), derived the
+    /// same way the producer derives the receipt's provenance digest.
+    /// `None` when the caller cannot derive it; a receipt provenance
+    /// row is then not source-graded rather than silently passed.
+    #[serde(default)]
+    pub selected_source_digest: Option<String>,
     pub floors: Vec<MinimumVersionDriftFloorRowV1>,
 }
 
@@ -149,6 +164,27 @@ pub fn evaluate_minimum_version_drift(
         reasons.push("Cargo.lock moved since the receipt".to_string());
         return finish(MinimumVersionDriftVerdictV1::Stale, reasons);
     }
+    // #4214: a present execution provenance binds the receipt to the
+    // executed selected-source projection. When the manifest and lock
+    // digests above are equal, a projection mismatch still stales the
+    // receipt — a Rust-source-only edit (for example, a new dependency
+    // API use above the recorded floor) must not inherit the earlier
+    // proof. A receipt predating the section carries no projection
+    // binding and stays graded on the fields it recorded; the missing
+    // section cannot manufacture missing current-source proof, and no
+    // source movement is invented for it.
+    if let (Some(provenance), Some(current_source)) = (
+        &receipt.execution_provenance,
+        &observation.selected_source_digest,
+    ) && provenance.selected_source_digest != *current_source
+    {
+        reasons.push(format!(
+            "selected source moved since the receipt: receipt projection {} vs current {} \
+             (manifests and Cargo.lock are unchanged; the selected Rust source inputs moved)",
+            provenance.selected_source_digest, current_source
+        ));
+        return finish(MinimumVersionDriftVerdictV1::Stale, reasons);
+    }
     // Receipts that predate root recording carry no roots binding; the
     // observation's roots then govern the coverage grading alone.
     if !receipt.package_roots.is_empty() && receipt.package_roots != observation.package_roots {
@@ -192,6 +228,11 @@ pub fn evaluate_minimum_version_drift(
     }
     if receipt.commands.is_empty() {
         reasons.push("receipt records no executed commands".to_string());
+    }
+    // #4214/#4225: a present-but-invalid provenance row is a named
+    // failure, never a silent pass. A missing row stays historical.
+    if let Some(provenance) = &receipt.execution_provenance {
+        reasons.extend(execution_provenance_shape_failures(provenance));
     }
     for floor in &observation.floors {
         let Some(row) = receipt.rows.iter().find(|row| row.package == floor.package) else {
@@ -256,6 +297,74 @@ pub fn evaluate_minimum_version_drift(
     } else {
         finish(MinimumVersionDriftVerdictV1::Incomplete, reasons)
     }
+}
+
+/// The #4214/#4225 provenance shape law: a present provenance row must
+/// be internally valid — identity fields non-empty, the selected-source
+/// digest bare sha256 hex, and an executable path never recorded
+/// without its canonical `sha256:v1:` digest. A malformed row is a
+/// named failure, never a silent pass; a missing row stays historical.
+fn execution_provenance_shape_failures(
+    provenance: &MinimumVersionExecutionProvenanceV1,
+) -> Vec<String> {
+    let mut failures = Vec::new();
+    for (field, value) in [
+        ("command", &provenance.command),
+        ("working directory", &provenance.working_directory),
+        ("source commit", &provenance.source_commit),
+        ("source tree", &provenance.source_tree),
+    ] {
+        if value.trim().is_empty() {
+            failures.push(format!(
+                "execution provenance is malformed: the {field} is empty"
+            ));
+        }
+    }
+    if !canonical_selected_source_digest(&provenance.selected_source_digest) {
+        failures.push(
+            "execution provenance is malformed: the selected-source digest is not bare sha256 hex"
+                .to_string(),
+        );
+    }
+    match (&provenance.executable_path, &provenance.executable_digest) {
+        (Some(path), Some(digest)) => {
+            if path.trim().is_empty() {
+                failures.push(
+                    "execution provenance is malformed: the executable path is empty".to_string(),
+                );
+            }
+            if !canonical_executable_digest(digest) {
+                failures.push(
+                    "execution provenance is malformed: the executable digest is not canonical sha256:v1: hex"
+                        .to_string(),
+                );
+            }
+        }
+        (Some(_), None) => failures.push(
+            "execution provenance is malformed: an executable path is recorded without its digest"
+                .to_string(),
+        ),
+        (None, Some(_)) => failures.push(
+            "execution provenance is malformed: an executable digest is recorded without its path"
+                .to_string(),
+        ),
+        (None, None) => {}
+    }
+    failures
+}
+
+/// The selected-source projection digest is bare sha256 hex: 64 hex
+/// digits with no prefix, matching the receipt's manifest and lock
+/// digest encoding.
+fn canonical_selected_source_digest(text: &str) -> bool {
+    text.len() == 64 && text.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+/// The executable digest follows the shared byte-identity law
+/// (`sha256:v1:` plus 64 hex digits) the tool-identity contract uses.
+fn canonical_executable_digest(text: &str) -> bool {
+    text.strip_prefix("sha256:v1:")
+        .is_some_and(canonical_selected_source_digest)
 }
 
 /// Human view of one drift evaluation.

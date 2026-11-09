@@ -1,0 +1,16 @@
+kind: Added
+body: >-
+  Type the three crates.io release receipt families issue #2496 found untyped:
+  CratesIoTrustedPublishingReceiptV1 for the publication authentication posture
+  (#2282), CratesIoFirstPublicationBootstrapReceiptV1 for shared-substrate
+  bootstrap bytes visible before the tag (#3145), and
+  CratesIoRegistryInstallJourneyReceiptV1 for the post-publication
+  registry-installed journey. Each receipt carries a derived, fail-closed
+  validator with named non-clean results (unsupported auth class, credential
+  material, mutable action pins, shared-version rewrite, generic package
+  names, foreign packages, bootstrap promotion, checksum conflict, stale
+  authority, skipped producers, unresolved install rows), JSON schemas
+  registered through the schema-index classification, the README catalog, and
+  the cargo-allow title law, and a contract test proving every rejection path.
+  Bootstrap evidence alone never completes the final release manifest.
+time: 2026-11-04T10:04:00Z

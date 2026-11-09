@@ -1,0 +1,49 @@
+# Revision note: land the #4725 C-family mutation evidence lane.
+#
+# The lane executes the 20 accepted C.init/C.propose/C.add/C.add_from_plan
+# obligations plus adversarial route controls once against the public
+# 0.2.0-rc.1 installed candidate, inside disposable Git fixtures outside any
+# checkout, and retains the committed evidence manifest, claim-boundary
+# document, transport/admission/control scripts, and changie fragment. The
+# receipts below cover those new non-Rust surfaces only; the new changie
+# fragment is covered by the existing allow-0312 fragment-family receipt.
+# The note file is self-covered by its own added_allow record, matching the
+# #3793/#4214/#4716/#2497 precedents. No entry loosens an existing receipt.
+
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-11486"]
+reason = "Receipt the #4725 mutation transport harness: one execution per supplied binary in owned disposable fixtures with closed child environment and retained argv/exit/streams/snapshots; no semantic or release authority is delegated to Python."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:acc4d9ab14a73583abef1147ae5cac7be74ac509dd2205f09a0ee8d139c09d9f"
+
+[[records]]
+allow_ids = ["allow-11487"]
+reason = "Receipt the #4725 admission reader: recomputed member digests, snapshot diffs, argv templates, exit expectations and declared-write boundaries against a caller-pinned expected context; it grants no qualification or release authority."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:81302f57e6467b35a57aa98ad83db1eb1cc8fe0cc35e5b190ac8cf164fba2763"
+
+[[records]]
+allow_ids = ["allow-11488"]
+reason = "Receipt the #4725 hermetic negative controls: synthetic collections and manifests prove named admission rejections; assertions are not qualification evidence."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4e3592f1dadce7ef456c5783ed751edcb889c599116d18a0cc8451a1121ee7e8"
+
+[[records]]
+allow_ids = ["allow-11489"]
+reason = "Receipt the committed evidence manifest: retained per-step exits, changed paths, dispositions and digest bindings for the executed 0.2.0-rc.1 collection; observations only, no exception approval or release qualification."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f92921b37157681e96f94e8e55ec3e4d7f531ae1c5cde5facc5b64bd14103d97"
+
+[[records]]
+allow_ids = ["allow-11490"]
+reason = "Receipt the claim-boundary document for the executed mutation evidence slice; prose only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b3d62bd02438346463607803d11f82155d7aff084bdbc64734e8939a37335f94"
+
+[[records]]
+allow_ids = ["allow-11491"]
+reason = "Self-covering revision note receipting this note file, matching the #3793, #4214, #4716, and #2497 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8cc81996078fa878680fce4bbae80756baa10da66566d73f7b05f4e38a2e02e8"

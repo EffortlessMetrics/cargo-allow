@@ -1,0 +1,20 @@
+# Revision note: land the #2497 typed release-manifest lane.
+#
+# The lane replaces shell manifest assembly with the typed
+# `cargo-allow release-manifest` command as the release workflow's
+# semantic authority: generation validates the exact retained receipts,
+# reconciles every published row through the typed publication adapter,
+# re-validates the exact written bytes with ReleaseManifestResultV2, and
+# emits a typed result receipt; the workflow requires result=complete
+# before attestation and gates attestation plus every GitHub Release
+# step on that typed result. generate-release-manifest.sh remains only
+# as a thin environment-to-argument wrapper. The command's tests live in
+# a finding-free `_tests.rs` module reporting through `Result`, so no
+# panic-class receipts are required. The note file is
+# self-covered by its own added_allow record, matching the #3793/#4214/#4716 precedents.
+
+[[records]]
+allow_ids = ["allow-11385"]
+reason = "Self-covering revision note receipting this note file, matching the #3793, #4214, and #4716 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:db036d239fe3a3f9bbe753a8425fd8709fa61bf0d1d36748f246bb869d887411"

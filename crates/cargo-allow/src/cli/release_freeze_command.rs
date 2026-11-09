@@ -2150,6 +2150,47 @@ mod tests {
         rehearsal_value_for(&subject(), phases, boundary)
     }
 
+    fn corpus_rows_value() -> serde_json::Value {
+        let statuses: [(u32, &str, &str); 16] = [
+            (1, "phase_binding", "#3786/#3787"),
+            (2, "typed_identity", "#3786/#3787"),
+            (3, "fault_injected", "#3744"),
+            (4, "fault_injected", "#3744"),
+            (5, "fault_injected", "#3744"),
+            (6, "fault_injected", "#3744"),
+            (7, "fault_injected", "#3791"),
+            (8, "pending_upstream", "#2498"),
+            (9, "phase_binding", "#3726/#3792"),
+            (10, "fault_injected", "#3761/#2496"),
+            (11, "typed_identity", "#3788/#3726"),
+            (12, "phase_binding", "#3790"),
+            (13, "pending_upstream", "#3759/#3761"),
+            (14, "pending_upstream", "#3726"),
+            (15, "pending_upstream", "#2496/#2497/#3785"),
+            (16, "fault_injected", "#3780"),
+        ];
+        serde_json::Value::Array(
+            statuses
+                .into_iter()
+                .map(|(number, status, owner)| {
+                    serde_json::json!({
+                        "incident_id": format!("RC1-ESCAPE-{number:03}"),
+                        "defect": "fixture escaped defect",
+                        "seam": "fixture production seam",
+                        "owner": owner,
+                        "status": status,
+                        "result": if status == "pending_upstream" {
+                            "recorded_pending"
+                        } else {
+                            "proven"
+                        },
+                        "claim_boundary": "fixture claim boundary",
+                    })
+                })
+                .collect(),
+        )
+    }
+
     fn rehearsal_value_for(
         subject: &SubjectIdentity,
         phases: u32,
@@ -2164,6 +2205,7 @@ mod tests {
             "docs_and_support_identity",
             "manifest_and_assets",
             "workflow_graph_permissions",
+            "escaped_defect_corpus",
         ]
         .into_iter()
         .take(phases.saturating_sub(1) as usize)
@@ -2201,6 +2243,12 @@ mod tests {
                 "github_release_mutation_prevented": false,
                 "live_setting_mutation_prevented": false,
                 "external_repository_mutation_prevented": false,
+            },
+            "escaped_defect_corpus": {
+                "schema": "cargo-allow.release-rehearsal-escaped-defect-corpus.v1",
+                "fixture_matrix": "scripts/test-release-escaped-defect-corpus.py",
+                "rows": corpus_rows_value(),
+                "claim_boundary": "fixture corpus claim boundary",
             },
         })
     }
@@ -2267,7 +2315,7 @@ mod tests {
         let full = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
-            &rehearsal_value(8, "Incomplete"),
+            &rehearsal_value(9, "Incomplete"),
         );
         if full.len() != 7
             || full
@@ -2290,7 +2338,7 @@ mod tests {
         let authorized = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
-            &rehearsal_value(8, "Complete"),
+            &rehearsal_value(9, "Complete"),
         );
         assert!(authorized.iter().any(|note| note.starts_with("fail:")));
 
@@ -2326,7 +2374,7 @@ mod tests {
                 .any(|note| note.contains("is not the selected subject commit")),
             "a foreign commit is rejected: {stranger:?}"
         );
-        let mut missing_commit = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut missing_commit = rehearsal_value_for(&subject, 9, "Incomplete");
         missing_commit
             .as_object_mut()
             .expect("object")
@@ -2337,7 +2385,7 @@ mod tests {
                 .any(|note| note.contains("records no commit_sha")),
             "a missing commit_sha fails closed"
         );
-        let mut wrong_lock = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut wrong_lock = rehearsal_value_for(&subject, 9, "Incomplete");
         wrong_lock.as_object_mut().expect("object").insert(
             "subject_lockfile_digest".to_string(),
             serde_json::json!(
@@ -2350,7 +2398,7 @@ mod tests {
                 .any(|note| note.contains("subject_lockfile_digest")),
             "a foreign lockfile digest is rejected"
         );
-        let mut malformed = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut malformed = rehearsal_value_for(&subject, 9, "Incomplete");
         malformed.as_object_mut().expect("object").insert(
             "subject_lockfile_digest".to_string(),
             serde_json::json!(
@@ -2363,7 +2411,7 @@ mod tests {
                 .any(|note| note.contains("is not a documented digest spelling")),
             "a repeated-prefix digest spelling fails closed"
         );
-        let mut missing_topology = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut missing_topology = rehearsal_value_for(&subject, 9, "Incomplete");
         missing_topology
             .as_object_mut()
             .expect("object")
@@ -2389,7 +2437,7 @@ mod tests {
                 serde_json::json!([subject.commit]),
             ),
         ] {
-            let mut non_string = rehearsal_value_for(&subject, 8, "Incomplete");
+            let mut non_string = rehearsal_value_for(&subject, 9, "Incomplete");
             non_string
                 .as_object_mut()
                 .ok_or("rehearsal fixture is not an object")?
@@ -2399,7 +2447,7 @@ mod tests {
 
         // A removed lockfile digest (not merely a wrong or malformed
         // value) fails closed under its exact missing-field note.
-        let mut removed_lock = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut removed_lock = rehearsal_value_for(&subject, 9, "Incomplete");
         removed_lock
             .as_object_mut()
             .ok_or("rehearsal fixture is not an object")?
@@ -2412,7 +2460,7 @@ mod tests {
         )?;
 
         // The topology digest varied alone to a well-formed foreign value.
-        let mut foreign_topology = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut foreign_topology = rehearsal_value_for(&subject, 9, "Incomplete");
         foreign_topology
             .as_object_mut()
             .ok_or("rehearsal fixture is not an object")?
@@ -2431,7 +2479,7 @@ mod tests {
 
         // A foreign topology with the commit held constant: the denial
         // must come from the topology field itself, never the commit check.
-        let mut constant_commit = rehearsal_value_for(&subject, 8, "Incomplete");
+        let mut constant_commit = rehearsal_value_for(&subject, 9, "Incomplete");
         {
             let object = constant_commit
                 .as_object_mut()
@@ -2759,7 +2807,7 @@ expected_registry_checksum = "sha256:cccc"
             path: std::path::PathBuf::from("rehearsal.json"),
             sha256: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
                 .to_string(),
-            value: rehearsal_value(8, "Incomplete"),
+            value: rehearsal_value(9, "Incomplete"),
             binding_notes: Vec::new(),
         };
         let evidence = vec![package_set, rehearsal];
@@ -2978,7 +3026,7 @@ expected_registry_checksum = "sha256:cccc"
         let binding_notes = bind_evidence(
             &subject,
             FreezeEvidenceRole::Rehearsal,
-            &rehearsal_value_for(&stranger_subject, 8, "Incomplete"),
+            &rehearsal_value_for(&stranger_subject, 9, "Incomplete"),
         );
         assert!(binding_notes.iter().any(|note| note.starts_with("fail:")));
 
@@ -2987,7 +3035,7 @@ expected_registry_checksum = "sha256:cccc"
             path: std::path::PathBuf::from("rehearsal.json"),
             sha256: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
                 .to_string(),
-            value: rehearsal_value_for(&stranger_subject, 8, "Incomplete"),
+            value: rehearsal_value_for(&stranger_subject, 9, "Incomplete"),
             binding_notes,
         };
         let package_set = super::EvidenceInput {

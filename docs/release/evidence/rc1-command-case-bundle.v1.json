@@ -1,0 +1,2680 @@
+{
+  "binary": {
+    "candidate_identity": "sha256:v1:212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143",
+    "digest": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+    "install_identity": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+    "path": "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+    "provenance": "supplied_installed_candidate",
+    "size_bytes": 13653504,
+    "source_generation": "8bdabcd18723e36bbcfada423fa44779eefa599c",
+    "tool_version": "0.2.0-rc.1"
+  },
+  "binary_digest_after": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+  "binary_member": {
+    "digest": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+    "path": "binary/cargo-allow",
+    "size_bytes": 13653504
+  },
+  "cases": [
+    {
+      "after": {
+        "digest": "sha256:v1:ea6b2059fb3910b644884ef527d7dd2392080932d38d27297793c66b2578e5ad",
+        "path": "cases/A.adopt.clean_no_policy/after/snapshot.json",
+        "size_bytes": 13756
+      },
+      "before": {
+        "digest": "sha256:v1:8ebc651c22a065e445fc23d604c14d903eb73dcae9e96b8315f65512d58b690c",
+        "path": "cases/A.adopt.clean_no_policy/before/snapshot.json",
+        "size_bytes": 13784
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.clean_no_policy\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.clean_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.clean_no_policy\\target\\command-case\\detail.json"
+        ],
+        "case_id": "A.adopt.clean_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.clean_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.clean_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.clean_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.clean_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.clean_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.clean_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.clean_no_policy"
+        },
+        "fixture_commit": "f2b05f80d95b24965887a6581fde03c0d4f0c139",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:d91e6be374e6e84a9923e62b323c853b83fce3713733d21667886e34e22c8a97",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:1f1b6cff422251586ef7f72ec09937f3e3415f241267f75a9986ff267f97c612"
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.clean_no_policy",
+        "source_snapshot_digest": "sha256:v1:8ebc651c22a065e445fc23d604c14d903eb73dcae9e96b8315f65512d58b690c"
+      },
+      "detail": {
+        "digest": "sha256:v1:d91e6be374e6e84a9923e62b323c853b83fce3713733d21667886e34e22c8a97",
+        "path": "cases/A.adopt.clean_no_policy/detail.json",
+        "size_bytes": 4064
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:06:49.050874Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:05:27.852555Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.clean_no_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.clean_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:1f1b6cff422251586ef7f72ec09937f3e3415f241267f75a9986ff267f97c612",
+        "path": "cases/A.adopt.clean_no_policy/summary.json",
+        "size_bytes": 2090
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:80dd88f091effb13126666e142ca2a7deebeddb6003f5722db947a99c2f2c1b6",
+        "path": "cases/A.adopt.findings_no_policy/after/snapshot.json",
+        "size_bytes": 13840
+      },
+      "before": {
+        "digest": "sha256:v1:cf50772463a04653d00410d7531451f68ab9287175d0dcee16a5bbe60b2abd86",
+        "path": "cases/A.adopt.findings_no_policy/before/snapshot.json",
+        "size_bytes": 13868
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.findings_no_policy\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.findings_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.findings_no_policy\\target\\command-case\\detail.json"
+        ],
+        "case_id": "A.adopt.findings_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.findings_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.findings_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.findings_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.findings_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.findings_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.findings_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.findings_no_policy"
+        },
+        "fixture_commit": "319b08a7197a210e4ff8a274484ae7a9c0088b99",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.findings_no_policy",
+        "source_snapshot_digest": "sha256:v1:cf50772463a04653d00410d7531451f68ab9287175d0dcee16a5bbe60b2abd86"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:12:51.046479Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:12:28.841964Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.findings_no_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.findings_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:1c1cd906985271da6fc0bdf8fbc1326ab4517a98a69c192307040dcb2474d8ea",
+        "path": "cases/A.adopt.healthy_policy/after/snapshot.json",
+        "size_bytes": 15463
+      },
+      "before": {
+        "digest": "sha256:v1:b575bb2612de8cf9ae85a955f3b84200825f668d8efe52d56497df84fa6cc773",
+        "path": "cases/A.adopt.healthy_policy/before/snapshot.json",
+        "size_bytes": 15494
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.healthy_policy\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.healthy_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.healthy_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.adopt.healthy_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.healthy_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.healthy_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.healthy_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.healthy_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.healthy_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.healthy_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.healthy_policy"
+        },
+        "fixture_commit": "5e4ed35c448b1cf21f8e2e8758dc00046777bddb",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+          "receipt": null,
+          "stderr": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.healthy_policy",
+        "source_snapshot_digest": "sha256:v1:b575bb2612de8cf9ae85a955f3b84200825f668d8efe52d56497df84fa6cc773"
+      },
+      "detail": {
+        "digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+        "path": "cases/A.adopt.healthy_policy/detail.json",
+        "size_bytes": 4213
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:16:31.405575Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:16:07.558507Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "path": "cases/A.adopt.healthy_policy/command.stderr",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.healthy_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "path": "cases/A.adopt.healthy_policy/summary.json",
+        "size_bytes": 2173
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:7a9112a82f20a3f94bb00e259d91f4c57c501abab45ef0ce353798071ba32725",
+        "path": "cases/A.adopt.new_finding/after/snapshot.json",
+        "size_bytes": 15370
+      },
+      "before": {
+        "digest": "sha256:v1:8b1b4eb0705db2689adaa78211fb203a3c6510d23af6bb728ced6ba161849643",
+        "path": "cases/A.adopt.new_finding/before/snapshot.json",
+        "size_bytes": 15401
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.new_finding\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.new_finding",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.new_finding\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.adopt.new_finding",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.new_finding",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.new_finding\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.new_finding",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.new_finding\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.new_finding",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.new_finding",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.new_finding"
+        },
+        "fixture_commit": "e57df3deeb1cc7a7820d8cc8e6b0255137a2003b",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+          "receipt": null,
+          "stderr": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.new_finding",
+        "source_snapshot_digest": "sha256:v1:8b1b4eb0705db2689adaa78211fb203a3c6510d23af6bb728ced6ba161849643"
+      },
+      "detail": {
+        "digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+        "path": "cases/A.adopt.new_finding/detail.json",
+        "size_bytes": 4213
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:19:11.049129Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:18:48.059634Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "path": "cases/A.adopt.new_finding/command.stderr",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.new_finding/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "path": "cases/A.adopt.new_finding/summary.json",
+        "size_bytes": 2173
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:e27582abd13fec89e6c27344a075a5089de399099820c2cc185c65629a3378c8",
+        "path": "cases/A.adopt.invalid_policy/after/snapshot.json",
+        "size_bytes": 15457
+      },
+      "before": {
+        "digest": "sha256:v1:2b8fe0a91f4c45f36fbc47df835a3851eb51dd5b69019dc8ef7072cf1453ae39",
+        "path": "cases/A.adopt.invalid_policy/before/snapshot.json",
+        "size_bytes": 15488
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.invalid_policy\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.invalid_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.invalid_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.adopt.invalid_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.invalid_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.invalid_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.invalid_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.invalid_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.invalid_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.invalid_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.invalid_policy"
+        },
+        "fixture_commit": "3c77f450adac248c8113c1cd9424f9ba0f5030fe",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:90834730746c9cb36b0a85453fae45d391d8ad6b9e5d87074cd7e9b72b7ac0a8",
+          "receipt": null,
+          "stderr": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:c53ea295fb3a15ca05dbeb3403acccda7a6b8e38f6faac41616d3cc54ef6ed18"
+        },
+        "policy_digest": "sha256:v1:d61deb07ebb2f9248f0b636bf692587e0604d0b52cf825579e15bc4bbcb930b7",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.invalid_policy",
+        "source_snapshot_digest": "sha256:v1:2b8fe0a91f4c45f36fbc47df835a3851eb51dd5b69019dc8ef7072cf1453ae39"
+      },
+      "detail": {
+        "digest": "sha256:v1:90834730746c9cb36b0a85453fae45d391d8ad6b9e5d87074cd7e9b72b7ac0a8",
+        "path": "cases/A.adopt.invalid_policy/detail.json",
+        "size_bytes": 4213
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:22:27.080178Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:22:07.952185Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "path": "cases/A.adopt.invalid_policy/command.stderr",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.invalid_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:c53ea295fb3a15ca05dbeb3403acccda7a6b8e38f6faac41616d3cc54ef6ed18",
+        "path": "cases/A.adopt.invalid_policy/summary.json",
+        "size_bytes": 2173
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:1e78069d805ca38e9158995ce634fcc6a3f20b535aa2889c66d94b03e17f1acc",
+        "path": "cases/A.adopt.partial_inventory/after/snapshot.json",
+        "size_bytes": 15556
+      },
+      "before": {
+        "digest": "sha256:v1:bab04dcafe8495ae80420debc1ade335b5a8b4eda782bb3098d0ff6c3065bf3a",
+        "path": "cases/A.adopt.partial_inventory/before/snapshot.json",
+        "size_bytes": 15587
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.partial_inventory\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.partial_inventory",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.partial_inventory\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.adopt.partial_inventory",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.partial_inventory",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.partial_inventory\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.partial_inventory",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.partial_inventory\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.partial_inventory",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.partial_inventory",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.partial_inventory"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+          "receipt": null,
+          "stderr": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.partial_inventory",
+        "source_snapshot_digest": "sha256:v1:bab04dcafe8495ae80420debc1ade335b5a8b4eda782bb3098d0ff6c3065bf3a"
+      },
+      "detail": {
+        "digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+        "path": "cases/A.adopt.partial_inventory/detail.json",
+        "size_bytes": 4213
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:25:05.815533Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:24:31.511110Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "path": "cases/A.adopt.partial_inventory/command.stderr",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.partial_inventory/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "path": "cases/A.adopt.partial_inventory/summary.json",
+        "size_bytes": 2173
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:6a66b79ae1d6e874cf6e406032cd86aa7ad8d88d2815a91f0e2e8a02b1f30c55",
+        "path": "cases/A.adopt.instrument_failure/after/snapshot.json",
+        "size_bytes": 15587
+      },
+      "before": {
+        "digest": "sha256:v1:2ba90efbf8c862cbf4bc4bfa8e17ff33b11f2e601859fefacd8715013923cdf9",
+        "path": "cases/A.adopt.instrument_failure/before/snapshot.json",
+        "size_bytes": 15618
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.instrument_failure\\target\\command-case\\summary.json",
+          "adopt",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.instrument_failure",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.instrument_failure\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.adopt.instrument_failure",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.instrument_failure",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.instrument_failure\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.instrument_failure",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.instrument_failure\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.instrument_failure",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.instrument_failure",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.adopt.instrument_failure"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:77d27450567e3edd15f1900acc782aaafca4917661d3b84de3810df956193bcc",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.adopt.instrument_failure",
+        "source_snapshot_digest": "sha256:v1:2ba90efbf8c862cbf4bc4bfa8e17ff33b11f2e601859fefacd8715013923cdf9"
+      },
+      "detail": null,
+      "output_guard": {
+        "after": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.adopt.instrument_failure/blocked-output-after.txt",
+          "size_bytes": 12
+        },
+        "before": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.adopt.instrument_failure/blocked-output-before.txt",
+          "size_bytes": 12
+        }
+      },
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:30:13.360886Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:29:36.570824Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:77d27450567e3edd15f1900acc782aaafca4917661d3b84de3810df956193bcc",
+        "path": "cases/A.adopt.instrument_failure/command.stderr",
+        "size_bytes": 191
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.adopt.instrument_failure/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "path": "cases/A.adopt.instrument_failure/summary.json",
+        "size_bytes": 2173
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:4eed3d42a25c07dc186924e9e07f362be23512adc4ffced1a8bb4e1243b3453d",
+        "path": "cases/A.doctor.clean_no_policy/after/snapshot.json",
+        "size_bytes": 13784
+      },
+      "before": {
+        "digest": "sha256:v1:58719ad59484f49c8f47fb9da2955df7c9c37cdbc813ad02ece06e7ce38b6df3",
+        "path": "cases/A.doctor.clean_no_policy/before/snapshot.json",
+        "size_bytes": 13812
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.clean_no_policy\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.clean_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.clean_no_policy\\target\\command-case\\detail.json"
+        ],
+        "case_id": "A.doctor.clean_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.clean_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.clean_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.clean_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.clean_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.clean_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.clean_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.clean_no_policy"
+        },
+        "fixture_commit": "f2b05f80d95b24965887a6581fde03c0d4f0c139",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:03e8508b44f45dd56af5399e1e312583cb076236c697e9e3d31f947965de77e4",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7"
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.clean_no_policy",
+        "source_snapshot_digest": "sha256:v1:58719ad59484f49c8f47fb9da2955df7c9c37cdbc813ad02ece06e7ce38b6df3"
+      },
+      "detail": {
+        "digest": "sha256:v1:03e8508b44f45dd56af5399e1e312583cb076236c697e9e3d31f947965de77e4",
+        "path": "cases/A.doctor.clean_no_policy/detail.json",
+        "size_bytes": 2195
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:32:01.128184Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:31:31.843112Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.clean_no_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.clean_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7",
+        "path": "cases/A.doctor.clean_no_policy/summary.json",
+        "size_bytes": 2641
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:11803831ac7b1f6cd58c638d9d68fff7453457fc7b6449f3b405b540d70cd4ac",
+        "path": "cases/A.doctor.findings_no_policy/after/snapshot.json",
+        "size_bytes": 13868
+      },
+      "before": {
+        "digest": "sha256:v1:bbe16653561bb2d1fa191234e5fa8412039e818ef169c4a15105949b7f4889b2",
+        "path": "cases/A.doctor.findings_no_policy/before/snapshot.json",
+        "size_bytes": 13896
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.findings_no_policy\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.findings_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.findings_no_policy\\target\\command-case\\detail.json"
+        ],
+        "case_id": "A.doctor.findings_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.findings_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.findings_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.findings_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.findings_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.findings_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.findings_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.findings_no_policy"
+        },
+        "fixture_commit": "319b08a7197a210e4ff8a274484ae7a9c0088b99",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:19fb34bff7fca6b8e6108c560f2eb6b2db9b6c3c6cd5cb067bfefbd51ccff5f3",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7"
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.findings_no_policy",
+        "source_snapshot_digest": "sha256:v1:bbe16653561bb2d1fa191234e5fa8412039e818ef169c4a15105949b7f4889b2"
+      },
+      "detail": {
+        "digest": "sha256:v1:19fb34bff7fca6b8e6108c560f2eb6b2db9b6c3c6cd5cb067bfefbd51ccff5f3",
+        "path": "cases/A.doctor.findings_no_policy/detail.json",
+        "size_bytes": 2204
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:32:51.118449Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:32:44.341074Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.findings_no_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.findings_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7",
+        "path": "cases/A.doctor.findings_no_policy/summary.json",
+        "size_bytes": 2641
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:494dbedcbfcf4c9b2be200300e1b14062adf30279a8c7a41e0029618e7755231",
+        "path": "cases/A.doctor.healthy_policy/after/snapshot.json",
+        "size_bytes": 15494
+      },
+      "before": {
+        "digest": "sha256:v1:8728bc6f85b57c370e39bf979237ea2cf7920c0d78b47fdbaed5c8cb3cb7dec5",
+        "path": "cases/A.doctor.healthy_policy/before/snapshot.json",
+        "size_bytes": 15525
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.healthy_policy\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.healthy_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.healthy_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.doctor.healthy_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.healthy_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.healthy_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.healthy_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.healthy_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.healthy_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.healthy_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.healthy_policy"
+        },
+        "fixture_commit": "5e4ed35c448b1cf21f8e2e8758dc00046777bddb",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:5c9ffaa970175ede1d5b59d10f653d6e4d3f9ca2697172b16d8b6559a08594c4",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:7b82197825194c0d001e6a6210d1f900e1d8ea70080afb12dbd2f9bc39ba70f7"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.healthy_policy",
+        "source_snapshot_digest": "sha256:v1:8728bc6f85b57c370e39bf979237ea2cf7920c0d78b47fdbaed5c8cb3cb7dec5"
+      },
+      "detail": {
+        "digest": "sha256:v1:5c9ffaa970175ede1d5b59d10f653d6e4d3f9ca2697172b16d8b6559a08594c4",
+        "path": "cases/A.doctor.healthy_policy/detail.json",
+        "size_bytes": 2830
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:33:33.765692Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:33:24.791831Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.healthy_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.healthy_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:7b82197825194c0d001e6a6210d1f900e1d8ea70080afb12dbd2f9bc39ba70f7",
+        "path": "cases/A.doctor.healthy_policy/summary.json",
+        "size_bytes": 2605
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:83d1c754c3319bf78bfaad887c2415db039427aff70d82710cf35a01f9d11a80",
+        "path": "cases/A.doctor.new_finding/after/snapshot.json",
+        "size_bytes": 15401
+      },
+      "before": {
+        "digest": "sha256:v1:649ebd322f3c5608225898b546e4962d0bd8230ff1e6972fbf1f837f018fd610",
+        "path": "cases/A.doctor.new_finding/before/snapshot.json",
+        "size_bytes": 15432
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.new_finding\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.new_finding",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.new_finding\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.doctor.new_finding",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.new_finding",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.new_finding\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.new_finding",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.new_finding\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.new_finding",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.new_finding",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.new_finding"
+        },
+        "fixture_commit": "e57df3deeb1cc7a7820d8cc8e6b0255137a2003b",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:4fe4b7bc04817f4c4107bba101861d15c59e7fec479ddb82b42d1e088a1e41e5",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:5dde40e6704e09318eea267c1c1c3a5f53a29154ba774f14c4b73969ed016d03"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.new_finding",
+        "source_snapshot_digest": "sha256:v1:649ebd322f3c5608225898b546e4962d0bd8230ff1e6972fbf1f837f018fd610"
+      },
+      "detail": {
+        "digest": "sha256:v1:4fe4b7bc04817f4c4107bba101861d15c59e7fec479ddb82b42d1e088a1e41e5",
+        "path": "cases/A.doctor.new_finding/detail.json",
+        "size_bytes": 2818
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:34:25.193431Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:34:14.253043Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.new_finding/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.new_finding/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:5dde40e6704e09318eea267c1c1c3a5f53a29154ba774f14c4b73969ed016d03",
+        "path": "cases/A.doctor.new_finding/summary.json",
+        "size_bytes": 2602
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:6a3e7d8b66fa88022afe57c1baa5791dc5e905305d1c3fb9eedabdd567a580c4",
+        "path": "cases/A.doctor.invalid_policy/after/snapshot.json",
+        "size_bytes": 15488
+      },
+      "before": {
+        "digest": "sha256:v1:3f97de29df7c7f4a035a7bcf32ec536ccbfa2130ccb7e91ce704bcf40ab1c859",
+        "path": "cases/A.doctor.invalid_policy/before/snapshot.json",
+        "size_bytes": 15519
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.doctor.invalid_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.invalid_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.invalid_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.invalid_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.invalid_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.invalid_policy"
+        },
+        "fixture_commit": "3c77f450adac248c8113c1cd9424f9ba0f5030fe",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:4018533bb30cac0e165c5ae024be474db58157fe86269cf59464a0248b2f76f8",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:7c0162cd7b57755d1afc7c835047071ac556ce1fa11a91466c2310f62941a132"
+        },
+        "policy_digest": "sha256:v1:d61deb07ebb2f9248f0b636bf692587e0604d0b52cf825579e15bc4bbcb930b7",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.invalid_policy",
+        "source_snapshot_digest": "sha256:v1:3f97de29df7c7f4a035a7bcf32ec536ccbfa2130ccb7e91ce704bcf40ab1c859"
+      },
+      "detail": {
+        "digest": "sha256:v1:4018533bb30cac0e165c5ae024be474db58157fe86269cf59464a0248b2f76f8",
+        "path": "cases/A.doctor.invalid_policy/detail.json",
+        "size_bytes": 2542
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:35:52.311675Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:35:41.476095Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.invalid_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.invalid_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:7c0162cd7b57755d1afc7c835047071ac556ce1fa11a91466c2310f62941a132",
+        "path": "cases/A.doctor.invalid_policy/summary.json",
+        "size_bytes": 2317
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:0199dc2988a67ab7e58e395a6850d19f19a5acef5482ca27e201dfe8c308cd8a",
+        "path": "cases/A.doctor.partial_inventory/after/snapshot.json",
+        "size_bytes": 15587
+      },
+      "before": {
+        "digest": "sha256:v1:a964e021b0f85aa418681d425692b40726547c51c7e1b284b6deba8b1c4be411",
+        "path": "cases/A.doctor.partial_inventory/before/snapshot.json",
+        "size_bytes": 15618
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_inventory\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_inventory",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_inventory\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.doctor.partial_inventory",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_inventory",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_inventory\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_inventory",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_inventory\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_inventory",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_inventory",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_inventory"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:ab3cfc2f222dc73383f5722e725b1ec62990dc610c9f433a9d631333d5fd447a",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:6eb7a51f8d77fd99ca34ed87ecd4c1217748d7ff7919cb0aeb30f749afa14bba"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_inventory",
+        "source_snapshot_digest": "sha256:v1:a964e021b0f85aa418681d425692b40726547c51c7e1b284b6deba8b1c4be411"
+      },
+      "detail": {
+        "digest": "sha256:v1:ab3cfc2f222dc73383f5722e725b1ec62990dc610c9f433a9d631333d5fd447a",
+        "path": "cases/A.doctor.partial_inventory/detail.json",
+        "size_bytes": 2841
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:37:16.156222Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:36:54.011774Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.partial_inventory/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.partial_inventory/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:6eb7a51f8d77fd99ca34ed87ecd4c1217748d7ff7919cb0aeb30f749afa14bba",
+        "path": "cases/A.doctor.partial_inventory/summary.json",
+        "size_bytes": 2654
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:e86f2424c9f573cbd81bd3bcaa317a276530e01dae499d1f829fb712da9ecdd6",
+        "path": "cases/A.doctor.instrument_failure/after/snapshot.json",
+        "size_bytes": 15618
+      },
+      "before": {
+        "digest": "sha256:v1:7ff3eda5737ffc203374af68af479d26aeeda5ab3221eb19bedac4b2f9d87309",
+        "path": "cases/A.doctor.instrument_failure/before/snapshot.json",
+        "size_bytes": 15649
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.instrument_failure\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.instrument_failure",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.instrument_failure\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.doctor.instrument_failure",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.instrument_failure",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.instrument_failure\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.instrument_failure",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.instrument_failure\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.instrument_failure",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.instrument_failure",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.instrument_failure"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:9ea3d9983553480f2a5ddf2af924b47d2dda89c96e48e09d7c5abddb182484f9",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:fffa8bf64ad7c23cc00d9109185c928ae083141c866160ffa1289c8de87a898c"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.instrument_failure",
+        "source_snapshot_digest": "sha256:v1:7ff3eda5737ffc203374af68af479d26aeeda5ab3221eb19bedac4b2f9d87309"
+      },
+      "detail": null,
+      "output_guard": {
+        "after": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.doctor.instrument_failure/blocked-output-after.txt",
+          "size_bytes": 12
+        },
+        "before": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.doctor.instrument_failure/blocked-output-before.txt",
+          "size_bytes": 12
+        }
+      },
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:39:47.267437Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:39:36.994833Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:9ea3d9983553480f2a5ddf2af924b47d2dda89c96e48e09d7c5abddb182484f9",
+        "path": "cases/A.doctor.instrument_failure/command.stderr",
+        "size_bytes": 192
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.instrument_failure/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:fffa8bf64ad7c23cc00d9109185c928ae083141c866160ffa1289c8de87a898c",
+        "path": "cases/A.doctor.instrument_failure/summary.json",
+        "size_bytes": 2655
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:98d2a8eeeabcc924a749d892a9c79388bc518404d6873a5cf4a717712ddd7c01",
+        "path": "cases/A.audit.clean_no_policy/after/snapshot.json",
+        "size_bytes": 13756
+      },
+      "before": {
+        "digest": "sha256:v1:bda243af10bdcc1a4e473467d2fd7fa390a6d3db8593bf921997afc11a6a87ca",
+        "path": "cases/A.audit.clean_no_policy/before/snapshot.json",
+        "size_bytes": 13784
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.clean_no_policy\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.clean_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.clean_no_policy\\target\\command-case\\detail.json"
+        ],
+        "case_id": "A.audit.clean_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.clean_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.clean_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.clean_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.clean_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.clean_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.clean_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.clean_no_policy"
+        },
+        "fixture_commit": "f2b05f80d95b24965887a6581fde03c0d4f0c139",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:bd8bb895f1e5a9db0d0b08d58470e0a8fa567add79a9ca7bf90a73c2cf15851d",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:dbbdaf6c9ef866f0915ad32e30eb115561b68ec63eeeab6e598fbaad94b8bf26"
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.clean_no_policy",
+        "source_snapshot_digest": "sha256:v1:bda243af10bdcc1a4e473467d2fd7fa390a6d3db8593bf921997afc11a6a87ca"
+      },
+      "detail": {
+        "digest": "sha256:v1:bd8bb895f1e5a9db0d0b08d58470e0a8fa567add79a9ca7bf90a73c2cf15851d",
+        "path": "cases/A.audit.clean_no_policy/detail.json",
+        "size_bytes": 2314
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:41:15.970424Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:40:57.744996Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.clean_no_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.clean_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:dbbdaf6c9ef866f0915ad32e30eb115561b68ec63eeeab6e598fbaad94b8bf26",
+        "path": "cases/A.audit.clean_no_policy/summary.json",
+        "size_bytes": 2105
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:583ae26720f4bc69a6761c78484f3e534c2cfd37943850ee2b6bb41a431e8fce",
+        "path": "cases/A.audit.findings_no_policy/after/snapshot.json",
+        "size_bytes": 13840
+      },
+      "before": {
+        "digest": "sha256:v1:4c21eadec591c9b1b557c989205821b3592527437a7417dc54c6c9f2460fe51e",
+        "path": "cases/A.audit.findings_no_policy/before/snapshot.json",
+        "size_bytes": 13868
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.findings_no_policy\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.findings_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.findings_no_policy\\target\\command-case\\detail.json"
+        ],
+        "case_id": "A.audit.findings_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.findings_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.findings_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.findings_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.findings_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.findings_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.findings_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.findings_no_policy"
+        },
+        "fixture_commit": "319b08a7197a210e4ff8a274484ae7a9c0088b99",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:ea84926de89019a5fa6156e6825f36290039a780adf5080bf4563365e6266fde",
+          "receipt": null,
+          "stderr": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:d6383d1ea2698c4f49640d89f4de9856196599bea0f584a97ea6451f7f959257"
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.findings_no_policy",
+        "source_snapshot_digest": "sha256:v1:4c21eadec591c9b1b557c989205821b3592527437a7417dc54c6c9f2460fe51e"
+      },
+      "detail": {
+        "digest": "sha256:v1:ea84926de89019a5fa6156e6825f36290039a780adf5080bf4563365e6266fde",
+        "path": "cases/A.audit.findings_no_policy/detail.json",
+        "size_bytes": 3213
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 0,
+        "finished_at_utc": "2026-11-05T06:42:33.116125Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:42:19.563823Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.findings_no_policy/command.stderr",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.findings_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:d6383d1ea2698c4f49640d89f4de9856196599bea0f584a97ea6451f7f959257",
+        "path": "cases/A.audit.findings_no_policy/summary.json",
+        "size_bytes": 2622
+      }
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:7d38a8adcdd7ee9bea0e1c83d0874c06ee0070790a4466f91e68c706ece13600",
+        "path": "cases/A.audit.healthy_policy/after/snapshot.json",
+        "size_bytes": 15463
+      },
+      "before": {
+        "digest": "sha256:v1:fecaeab30ff54361b04bb972cdeffc9e63bc933192575a107f7eab1cc1c7dfe9",
+        "path": "cases/A.audit.healthy_policy/before/snapshot.json",
+        "size_bytes": 15494
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.healthy_policy\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.healthy_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.healthy_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.audit.healthy_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.healthy_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.healthy_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.healthy_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.healthy_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.healthy_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.healthy_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.healthy_policy"
+        },
+        "fixture_commit": "5e4ed35c448b1cf21f8e2e8758dc00046777bddb",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:9bc9539043c0b6352ac0795f7e8a7647d5beb2506b8e995a84dc33be8ca85fc2",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.healthy_policy",
+        "source_snapshot_digest": "sha256:v1:fecaeab30ff54361b04bb972cdeffc9e63bc933192575a107f7eab1cc1c7dfe9"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:43:38.287332Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:43:34.322581Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:9bc9539043c0b6352ac0795f7e8a7647d5beb2506b8e995a84dc33be8ca85fc2",
+        "path": "cases/A.audit.healthy_policy/command.stderr",
+        "size_bytes": 563
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.healthy_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:d1c7be3d1d9bd705f2a62d0ac752e51a1f46616968132f53deb04fabc4da536a",
+        "path": "cases/A.audit.new_finding/after/snapshot.json",
+        "size_bytes": 15370
+      },
+      "before": {
+        "digest": "sha256:v1:41833338f68115229e87e3bd914d969ca12731722abb2006a2c2d496f2d59e4a",
+        "path": "cases/A.audit.new_finding/before/snapshot.json",
+        "size_bytes": 15401
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.new_finding\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.new_finding",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.new_finding\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.audit.new_finding",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.new_finding",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.new_finding\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.new_finding",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.new_finding\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.new_finding",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.new_finding",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.new_finding"
+        },
+        "fixture_commit": "e57df3deeb1cc7a7820d8cc8e6b0255137a2003b",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:0cdd2a8975c5e9058501e1b89f9ad3eee20dfacd8c1e4c186db7192e66c8d95f",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.new_finding",
+        "source_snapshot_digest": "sha256:v1:41833338f68115229e87e3bd914d969ca12731722abb2006a2c2d496f2d59e4a"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:44:11.990236Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:44:11.781810Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:0cdd2a8975c5e9058501e1b89f9ad3eee20dfacd8c1e4c186db7192e66c8d95f",
+        "path": "cases/A.audit.new_finding/command.stderr",
+        "size_bytes": 560
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.new_finding/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:039f8d7fb0e3921d299248754001090f66b4f361bec2d641330219430b365ba2",
+        "path": "cases/A.audit.invalid_policy/after/snapshot.json",
+        "size_bytes": 15457
+      },
+      "before": {
+        "digest": "sha256:v1:04cbfbab764cc08bab559533f3af1aed1dbde653aad0141fade4a1ed5bccea93",
+        "path": "cases/A.audit.invalid_policy/before/snapshot.json",
+        "size_bytes": 15488
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.invalid_policy\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.invalid_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.invalid_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.audit.invalid_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.invalid_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.invalid_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.invalid_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.invalid_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.invalid_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.invalid_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.invalid_policy"
+        },
+        "fixture_commit": "3c77f450adac248c8113c1cd9424f9ba0f5030fe",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:8c82ae0f39d8a55fb6ae2df86be8de4ee0d6c1bc8e7444511bade73a058c3d5a",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:d61deb07ebb2f9248f0b636bf692587e0604d0b52cf825579e15bc4bbcb930b7",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.invalid_policy",
+        "source_snapshot_digest": "sha256:v1:04cbfbab764cc08bab559533f3af1aed1dbde653aad0141fade4a1ed5bccea93"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:45:08.443535Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:45:07.076302Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:8c82ae0f39d8a55fb6ae2df86be8de4ee0d6c1bc8e7444511bade73a058c3d5a",
+        "path": "cases/A.audit.invalid_policy/command.stderr",
+        "size_bytes": 275
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.invalid_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:629e5750d4c647330093ff07a82db46e2e821486408bd9fa5fea157a3b8c752c",
+        "path": "cases/A.audit.partial_inventory/after/snapshot.json",
+        "size_bytes": 15556
+      },
+      "before": {
+        "digest": "sha256:v1:d01c783da37d658e2230255d24d518011bdf7c6d55d35afe97f055cf89467470",
+        "path": "cases/A.audit.partial_inventory/before/snapshot.json",
+        "size_bytes": 15587
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.partial_inventory\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.partial_inventory",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.partial_inventory\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.audit.partial_inventory",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.partial_inventory",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.partial_inventory\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.partial_inventory",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.partial_inventory\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.partial_inventory",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.partial_inventory",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.partial_inventory"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:ea6085f58e9daf2dd8ff73fb6266c4206603b9ae629234c52a1574f204acdd30",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.partial_inventory",
+        "source_snapshot_digest": "sha256:v1:d01c783da37d658e2230255d24d518011bdf7c6d55d35afe97f055cf89467470"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:45:38.443059Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:45:37.434254Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:ea6085f58e9daf2dd8ff73fb6266c4206603b9ae629234c52a1574f204acdd30",
+        "path": "cases/A.audit.partial_inventory/command.stderr",
+        "size_bytes": 566
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.partial_inventory/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:4d362f44e54ce42a72474636d9b80670b668505f37d09310fd9dc5931e1a1e03",
+        "path": "cases/A.audit.instrument_failure/after/snapshot.json",
+        "size_bytes": 15587
+      },
+      "before": {
+        "digest": "sha256:v1:495d3a7253c4bfab0de1045ef2d6b93b2f52e2fa45ccb2300ccf2767bfd80b03",
+        "path": "cases/A.audit.instrument_failure/before/snapshot.json",
+        "size_bytes": 15618
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.instrument_failure\\target\\command-case\\summary.json",
+          "audit",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.instrument_failure",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.instrument_failure\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml"
+        ],
+        "case_id": "A.audit.instrument_failure",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.instrument_failure",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.instrument_failure\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.instrument_failure",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.instrument_failure\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.instrument_failure",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.instrument_failure",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.audit.instrument_failure"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": null,
+          "receipt": null,
+          "stderr": "sha256:v1:2fb785d71cdf3a87b89fa39f02d94eeecf9e4a524c281703818a76332028b34b",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.audit.instrument_failure",
+        "source_snapshot_digest": "sha256:v1:495d3a7253c4bfab0de1045ef2d6b93b2f52e2fa45ccb2300ccf2767bfd80b03"
+      },
+      "detail": null,
+      "output_guard": {
+        "after": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.audit.instrument_failure/blocked-output-after.txt",
+          "size_bytes": 12
+        },
+        "before": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.audit.instrument_failure/blocked-output-before.txt",
+          "size_bytes": 12
+        }
+      },
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:46:28.158962Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:46:14.491545Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:2fb785d71cdf3a87b89fa39f02d94eeecf9e4a524c281703818a76332028b34b",
+        "path": "cases/A.audit.instrument_failure/command.stderr",
+        "size_bytes": 567
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.audit.instrument_failure/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:094edad2f49be628b5578d245b81c3762a640c6d1aef6f5bda0168d527bd9d58",
+        "path": "cases/A.check.clean_no_policy/after/snapshot.json",
+        "size_bytes": 13756
+      },
+      "before": {
+        "digest": "sha256:v1:5ceb296a9cfacc72a5482dc2e7db97960ba4c8770de78b1aa1d3627728fd856b",
+        "path": "cases/A.check.clean_no_policy/before/snapshot.json",
+        "size_bytes": 13784
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy\\target\\command-case\\detail.json",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.clean_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.clean_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.clean_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.clean_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.clean_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.clean_no_policy"
+        },
+        "fixture_commit": "f2b05f80d95b24965887a6581fde03c0d4f0c139",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:61d8f6badf860c218d2790d2b430ec8213411f244c0bf8c3ab436ace38bd5ac7",
+          "stderr": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.clean_no_policy",
+        "source_snapshot_digest": "sha256:v1:5ceb296a9cfacc72a5482dc2e7db97960ba4c8770de78b1aa1d3627728fd856b"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:47:07.798036Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:47:02.532883Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:61d8f6badf860c218d2790d2b430ec8213411f244c0bf8c3ab436ace38bd5ac7",
+        "path": "cases/A.check.clean_no_policy/receipt.json",
+        "size_bytes": 2429
+      },
+      "stderr": {
+        "digest": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+        "path": "cases/A.check.clean_no_policy/command.stderr",
+        "size_bytes": 93
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.clean_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:3eacd9d22b125e8d930ed9148b5b854d1afdd06d22023aba5c583f299c560ecb",
+        "path": "cases/A.check.findings_no_policy/after/snapshot.json",
+        "size_bytes": 13840
+      },
+      "before": {
+        "digest": "sha256:v1:c0d37d5146422eb158f5e9e91ec9ed8224b93cd285291b17775c5d1cea49c51e",
+        "path": "cases/A.check.findings_no_policy/before/snapshot.json",
+        "size_bytes": 13868
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy\\target\\command-case\\detail.json",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.findings_no_policy",
+        "config_path": null,
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.findings_no_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.findings_no_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.findings_no_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.findings_no_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.findings_no_policy"
+        },
+        "fixture_commit": "319b08a7197a210e4ff8a274484ae7a9c0088b99",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:204e625f420fc6a8346c8326e9036c78dd31e38127cac63e307317c667ff70b4",
+          "stderr": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": null,
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.findings_no_policy",
+        "source_snapshot_digest": "sha256:v1:c0d37d5146422eb158f5e9e91ec9ed8224b93cd285291b17775c5d1cea49c51e"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:48:19.879095Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:48:04.981984Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:204e625f420fc6a8346c8326e9036c78dd31e38127cac63e307317c667ff70b4",
+        "path": "cases/A.check.findings_no_policy/receipt.json",
+        "size_bytes": 2432
+      },
+      "stderr": {
+        "digest": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+        "path": "cases/A.check.findings_no_policy/command.stderr",
+        "size_bytes": 93
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.findings_no_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:77c6ab6b14b7368bec718e63dd537a4c0ad3b1cec1cda620dcdb930fb5b74bb6",
+        "path": "cases/A.check.healthy_policy/after/snapshot.json",
+        "size_bytes": 15463
+      },
+      "before": {
+        "digest": "sha256:v1:b576c5277603ae9e13d4a1c9e02bed559b1cede92de0e08773bcb9d038c6fbda",
+        "path": "cases/A.check.healthy_policy/before/snapshot.json",
+        "size_bytes": 15494
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.healthy_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.healthy_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.healthy_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.healthy_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.healthy_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.healthy_policy"
+        },
+        "fixture_commit": "5e4ed35c448b1cf21f8e2e8758dc00046777bddb",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:a88d7f75b137c69fbee72d1ad13c1a2fbde6c496bc7b5fec228bffb5446566e7",
+          "stderr": "sha256:v1:175000ba3e43d7d6bc9ef927701f24e081a3fe330360603c11c128386e625752",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.healthy_policy",
+        "source_snapshot_digest": "sha256:v1:b576c5277603ae9e13d4a1c9e02bed559b1cede92de0e08773bcb9d038c6fbda"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:51:14.956370Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:50:55.253121Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:a88d7f75b137c69fbee72d1ad13c1a2fbde6c496bc7b5fec228bffb5446566e7",
+        "path": "cases/A.check.healthy_policy/receipt.json",
+        "size_bytes": 3038
+      },
+      "stderr": {
+        "digest": "sha256:v1:175000ba3e43d7d6bc9ef927701f24e081a3fe330360603c11c128386e625752",
+        "path": "cases/A.check.healthy_policy/command.stderr",
+        "size_bytes": 563
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.healthy_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:ec753ee9028bdec1f649eec20cef89f5795fcb4410dea84d83a54e23b6f41bd6",
+        "path": "cases/A.check.new_finding/after/snapshot.json",
+        "size_bytes": 15370
+      },
+      "before": {
+        "digest": "sha256:v1:06a9d6e562c4c3b3b24d583864a1ab3a495e64bb5e06a82e1562a75cf58abf36",
+        "path": "cases/A.check.new_finding/before/snapshot.json",
+        "size_bytes": 15401
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.new_finding",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.new_finding\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.new_finding",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.new_finding",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.new_finding",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.new_finding"
+        },
+        "fixture_commit": "e57df3deeb1cc7a7820d8cc8e6b0255137a2003b",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:2aac54f37d49472162be0f71b055d8e7d0b2aecbd08cd3b685022bdf01deea9f",
+          "stderr": "sha256:v1:e962655484c647018ef35913640230f3067df092b2d79ad21a961e094efb2be1",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.new_finding",
+        "source_snapshot_digest": "sha256:v1:06a9d6e562c4c3b3b24d583864a1ab3a495e64bb5e06a82e1562a75cf58abf36"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T06:58:58.503632Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T06:58:37.791489Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:2aac54f37d49472162be0f71b055d8e7d0b2aecbd08cd3b685022bdf01deea9f",
+        "path": "cases/A.check.new_finding/receipt.json",
+        "size_bytes": 3029
+      },
+      "stderr": {
+        "digest": "sha256:v1:e962655484c647018ef35913640230f3067df092b2d79ad21a961e094efb2be1",
+        "path": "cases/A.check.new_finding/command.stderr",
+        "size_bytes": 560
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.new_finding/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:449312df4af3ab0084f14b24af2975ba300e0d411442931ff0d15a5cf80946e1",
+        "path": "cases/A.check.invalid_policy/after/snapshot.json",
+        "size_bytes": 15457
+      },
+      "before": {
+        "digest": "sha256:v1:1b832edd29ff3ef2c4a93a47421b5bf51c53a819b574bcfac2357863c4d17b42",
+        "path": "cases/A.check.invalid_policy/before/snapshot.json",
+        "size_bytes": 15488
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.invalid_policy",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.invalid_policy\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.invalid_policy",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.invalid_policy",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.invalid_policy",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.invalid_policy"
+        },
+        "fixture_commit": "3c77f450adac248c8113c1cd9424f9ba0f5030fe",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:c40bb60fcb1552210b1ed096c9dfcd3e73efe8683df626463b61a60bdc5ff493",
+          "stderr": "sha256:v1:1f4ea4ae527433bae28f04cc8af7c0bb713196c9cc2ecfb7705d9ab3af6e50f1",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:d61deb07ebb2f9248f0b636bf692587e0604d0b52cf825579e15bc4bbcb930b7",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.invalid_policy",
+        "source_snapshot_digest": "sha256:v1:1b832edd29ff3ef2c4a93a47421b5bf51c53a819b574bcfac2357863c4d17b42"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T07:09:01.102248Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T07:08:34.129068Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:c40bb60fcb1552210b1ed096c9dfcd3e73efe8683df626463b61a60bdc5ff493",
+        "path": "cases/A.check.invalid_policy/receipt.json",
+        "size_bytes": 2750
+      },
+      "stderr": {
+        "digest": "sha256:v1:1f4ea4ae527433bae28f04cc8af7c0bb713196c9cc2ecfb7705d9ab3af6e50f1",
+        "path": "cases/A.check.invalid_policy/command.stderr",
+        "size_bytes": 275
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.invalid_policy/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:bbb43e18b77d86a4b4da4fb0738dcf7162d94da0f722c80a51201da224d2d466",
+        "path": "cases/A.check.partial_inventory/after/snapshot.json",
+        "size_bytes": 15556
+      },
+      "before": {
+        "digest": "sha256:v1:fc3405313bc27ecbcf8c7fcaee88ab1e48a6339ce295aa8240932deef736de7d",
+        "path": "cases/A.check.partial_inventory/before/snapshot.json",
+        "size_bytes": 15587
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.partial_inventory",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.partial_inventory\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.partial_inventory",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.partial_inventory",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.partial_inventory",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.partial_inventory"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:f38a062fd6cc0d4cf8e1d8dea7e25a7fd898e7c91e46492880afad61dcb2d010",
+          "stderr": "sha256:v1:4aeb66ae8e5a75135d280a9ee6b98dd4c8fe4b0cf515e3427b57c1ee21902189",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.partial_inventory",
+        "source_snapshot_digest": "sha256:v1:fc3405313bc27ecbcf8c7fcaee88ab1e48a6339ce295aa8240932deef736de7d"
+      },
+      "detail": null,
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T07:17:40.788309Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T07:17:31.108616Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:f38a062fd6cc0d4cf8e1d8dea7e25a7fd898e7c91e46492880afad61dcb2d010",
+        "path": "cases/A.check.partial_inventory/receipt.json",
+        "size_bytes": 3047
+      },
+      "stderr": {
+        "digest": "sha256:v1:4aeb66ae8e5a75135d280a9ee6b98dd4c8fe4b0cf515e3427b57c1ee21902189",
+        "path": "cases/A.check.partial_inventory/command.stderr",
+        "size_bytes": 566
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.partial_inventory/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:1779e2286446562e6fcb6da3c951b228eea932206b4741eff2eeac68415b667c",
+        "path": "cases/A.check.instrument_failure/after/snapshot.json",
+        "size_bytes": 15587
+      },
+      "before": {
+        "digest": "sha256:v1:cabdd0da40d58e7141c76798a40145cc953057215b8c99f463f017374dd08f9a",
+        "path": "cases/A.check.instrument_failure/before/snapshot.json",
+        "size_bytes": 15618
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure\\target\\command-case\\summary.json",
+          "check",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml",
+          "--mode",
+          "no-new",
+          "--persistent-cache",
+          "off",
+          "--receipt",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure\\target\\command-case\\receipt.json"
+        ],
+        "case_id": "A.check.instrument_failure",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.instrument_failure\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.instrument_failure",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.instrument_failure",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.instrument_failure",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.check.instrument_failure"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": "no-new",
+        "output_digests": {
+          "detail": null,
+          "receipt": "sha256:v1:31fdf49a59b966256367501d7c1a57d960b72b3e068b30fe4d7931c70327d40d",
+          "stderr": "sha256:v1:642ccf1926729b28f0fc05f07fd2480a4270a8ae40729953489b987957829099",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": null
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.check.instrument_failure",
+        "source_snapshot_digest": "sha256:v1:cabdd0da40d58e7141c76798a40145cc953057215b8c99f463f017374dd08f9a"
+      },
+      "detail": null,
+      "output_guard": {
+        "after": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.check.instrument_failure/blocked-output-after.txt",
+          "size_bytes": 12
+        },
+        "before": {
+          "digest": "sha256:v1:cf9ba55be2a662568596423153df7694df6886cf54c91180923cf6e30d4b94e3",
+          "path": "cases/A.check.instrument_failure/blocked-output-before.txt",
+          "size_bytes": 12
+        }
+      },
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T07:22:03.423254Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T07:21:44.568879Z",
+        "timed_out": false
+      },
+      "receipt": {
+        "digest": "sha256:v1:31fdf49a59b966256367501d7c1a57d960b72b3e068b30fe4d7931c70327d40d",
+        "path": "cases/A.check.instrument_failure/receipt.json",
+        "size_bytes": 3050
+      },
+      "stderr": {
+        "digest": "sha256:v1:642ccf1926729b28f0fc05f07fd2480a4270a8ae40729953489b987957829099",
+        "path": "cases/A.check.instrument_failure/command.stderr",
+        "size_bytes": 567
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.check.instrument_failure/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": null
+    },
+    {
+      "after": {
+        "digest": "sha256:v1:708a9baab4a00f36257fc752edde24f791a831e5ca23d069a411fdac156ee488",
+        "path": "cases/A.doctor.partial_require_clean/after/snapshot.json",
+        "size_bytes": 15711
+      },
+      "before": {
+        "digest": "sha256:v1:d95913a8bd996bd732ec083036e0e0ba22f8ae87eb87adf89e6401e4801ec463",
+        "path": "cases/A.doctor.partial_require_clean/before/snapshot.json",
+        "size_bytes": 15742
+      },
+      "context": {
+        "argv": [
+          "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+          "--command-summary-output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean\\target\\command-case\\summary.json",
+          "doctor",
+          "--root",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean",
+          "--format",
+          "json",
+          "--output",
+          "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean\\target\\command-case\\detail.json",
+          "--config",
+          "policy/allow.toml",
+          "--require-clean"
+        ],
+        "case_id": "A.doctor.partial_require_clean",
+        "config_path": "policy/allow.toml",
+        "cwd": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean",
+        "environment": {
+          "CARGO_HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_require_clean\\cargo",
+          "GIT_CONFIG_GLOBAL": "nul",
+          "GIT_CONFIG_NOSYSTEM": "1",
+          "GIT_OPTIONAL_LOCKS": "0",
+          "GIT_TERMINAL_PROMPT": "0",
+          "HOME": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_require_clean",
+          "LANG": "C",
+          "LC_ALL": "C",
+          "LLVM_PROFILE_FILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean\\target\\command-case\\profiles\\candidate-%m-%p.profraw",
+          "NO_COLOR": "1",
+          "PATH": "C:\\Program Files\\Git\\cmd;C:\\bin",
+          "SYSTEMROOT": "C:\\WINDOWS",
+          "TEMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_require_clean",
+          "TMP": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_require_clean",
+          "USERPROFILE": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\homes\\A.doctor.partial_require_clean"
+        },
+        "fixture_commit": "c41015e1044b74cefe3cfab51e58e2bb689ede8a",
+        "mode": null,
+        "output_digests": {
+          "detail": "sha256:v1:6767c1fd2b287fc91a7bf951682a354012facf982912e76f8ad6474f0c0b9ffb",
+          "receipt": null,
+          "stderr": "sha256:v1:03828a4969a60cc0b80be1044b1eae7df9056b00601d540c019258150f1f071a",
+          "stdout": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "summary": "sha256:v1:b2de248df7eff73b7b20f4c3b9d7b0f45277d5f684c3132aa69396ac82d13280"
+        },
+        "policy_digest": "sha256:v1:2c2c198ee1758de9b2d8404f49f641ff4d38f56383b2519678e26bec2218a079",
+        "profile": null,
+        "resolved_config_identity": null,
+        "root": "F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean",
+        "source_snapshot_digest": "sha256:v1:d95913a8bd996bd732ec083036e0e0ba22f8ae87eb87adf89e6401e4801ec463"
+      },
+      "detail": {
+        "digest": "sha256:v1:6767c1fd2b287fc91a7bf951682a354012facf982912e76f8ad6474f0c0b9ffb",
+        "path": "cases/A.doctor.partial_require_clean/detail.json",
+        "size_bytes": 2857
+      },
+      "output_guard": null,
+      "process": {
+        "exit_code": 1,
+        "finished_at_utc": "2026-11-05T07:29:44.460728Z",
+        "launch_error": null,
+        "started": true,
+        "started_at_utc": "2026-11-05T07:29:30.841443Z",
+        "timed_out": false
+      },
+      "receipt": null,
+      "stderr": {
+        "digest": "sha256:v1:03828a4969a60cc0b80be1044b1eae7df9056b00601d540c019258150f1f071a",
+        "path": "cases/A.doctor.partial_require_clean/command.stderr",
+        "size_bytes": 116
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "path": "cases/A.doctor.partial_require_clean/command.stdout",
+        "size_bytes": 0
+      },
+      "summary": {
+        "digest": "sha256:v1:b2de248df7eff73b7b20f4c3b9d7b0f45277d5f684c3132aa69396ac82d13280",
+        "path": "cases/A.doctor.partial_require_clean/summary.json",
+        "size_bytes": 2658
+      }
+    }
+  ],
+  "catalogue_digest": "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08",
+  "collection_id": "rc1-installed-command-cases-4723-r2",
+  "context_digest": "sha256:v1:ddee71dbeef4bcbf88284d747847f57444da16dfeb9a5ee91bbce02972d2da02",
+  "schema_id": "cargo-allow.command-case-bundle.v1",
+  "schema_version": 1
+}

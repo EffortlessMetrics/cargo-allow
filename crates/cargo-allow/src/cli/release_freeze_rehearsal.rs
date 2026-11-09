@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde_json::Value as Json;
 
-const PHASES: [&str; 8] = [
+const PHASES: [&str; 9] = [
     "release_identity",
     "candidate_package_set",
     "shared_prerequisites",
@@ -19,6 +19,7 @@ const PHASES: [&str; 8] = [
     "manifest_and_assets",
     "authorization_boundary",
     "workflow_graph_permissions",
+    "escaped_defect_corpus",
 ];
 
 const ZERO_MUTATION_FLAGS: [&str; 7] = [
@@ -40,6 +41,43 @@ const BOUNDARY_FIELDS: [&str; 6] = [
     "phase_status_note",
 ];
 
+const CORPUS_SCHEMA: &str = "cargo-allow.release-rehearsal-escaped-defect-corpus.v1";
+const CORPUS_FIXTURE: &str = "scripts/test-release-escaped-defect-corpus.py";
+const CORPUS_FIELDS: [&str; 4] = ["schema", "fixture_matrix", "rows", "claim_boundary"];
+const CORPUS_ROW_FIELDS: [&str; 7] = [
+    "incident_id",
+    "defect",
+    "seam",
+    "owner",
+    "status",
+    "result",
+    "claim_boundary",
+];
+const CORPUS_ROW_STATUSES: [&str; 4] = [
+    "fault_injected",
+    "typed_identity",
+    "phase_binding",
+    "pending_upstream",
+];
+const CORPUS_INCIDENT_IDS: [&str; 16] = [
+    "RC1-ESCAPE-001",
+    "RC1-ESCAPE-002",
+    "RC1-ESCAPE-003",
+    "RC1-ESCAPE-004",
+    "RC1-ESCAPE-005",
+    "RC1-ESCAPE-006",
+    "RC1-ESCAPE-007",
+    "RC1-ESCAPE-008",
+    "RC1-ESCAPE-009",
+    "RC1-ESCAPE-010",
+    "RC1-ESCAPE-011",
+    "RC1-ESCAPE-012",
+    "RC1-ESCAPE-013",
+    "RC1-ESCAPE-014",
+    "RC1-ESCAPE-015",
+    "RC1-ESCAPE-016",
+];
+
 pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
     let mut notes = Vec::new();
     if value.get("schema_version").and_then(Json::as_str) != Some("1.0") {
@@ -48,7 +86,7 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
 
     match value.get("phases").and_then(Json::as_object) {
         None => {
-            notes.push("fail:rehearsal phases must be the canonical eight-phase object".to_string())
+            notes.push("fail:rehearsal phases must be the canonical nine-phase object".to_string())
         }
         Some(phases) => {
             for name in PHASES {
@@ -162,6 +200,127 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
             {
                 notes.push(format!(
                     "fail:rehearsal records unknown zero_mutation_proof field {name:?}"
+                ));
+            }
+        }
+    }
+
+    // The escaped-defect corpus (#3793) is admitted by shape: every canonical
+    // incident row must be present with a named owner and an honest per-row
+    // result. Rows still pending an upstream producer carry no proof; the
+    // freeze judgment itself weighs that state, not this admission.
+    match value.get("escaped_defect_corpus").and_then(Json::as_object) {
+        None => notes
+            .push("fail:rehearsal records no escaped_defect_corpus evidence object".to_string()),
+        Some(corpus) => {
+            if corpus.get("schema").and_then(Json::as_str) != Some(CORPUS_SCHEMA) {
+                notes.push(format!(
+                    "fail:rehearsal escaped_defect_corpus.schema must be {CORPUS_SCHEMA:?}"
+                ));
+            }
+            if corpus.get("fixture_matrix").and_then(Json::as_str) != Some(CORPUS_FIXTURE) {
+                notes.push(format!(
+                    "fail:rehearsal escaped_defect_corpus.fixture_matrix must be {CORPUS_FIXTURE:?}"
+                ));
+            }
+            if corpus
+                .get("claim_boundary")
+                .and_then(Json::as_str)
+                .is_none_or(|text| text.is_empty())
+            {
+                notes.push(
+                    "fail:rehearsal escaped_defect_corpus.claim_boundary must be a nonempty string"
+                        .to_string(),
+                );
+            }
+            match corpus.get("rows").and_then(Json::as_array) {
+                None => notes.push(
+                    "fail:rehearsal escaped_defect_corpus.rows must be the canonical sixteen-row array"
+                        .to_string(),
+                ),
+                Some(rows) => {
+                    let mut seen = BTreeSet::new();
+                    for row in rows {
+                        let Some(row) = row.as_object() else {
+                            notes.push(
+                                "fail:rehearsal escaped_defect_corpus row must be an object"
+                                    .to_string(),
+                            );
+                            continue;
+                        };
+                        let incident_id = row
+                            .get("incident_id")
+                            .and_then(Json::as_str)
+                            .unwrap_or_default();
+                        if !CORPUS_INCIDENT_IDS.contains(&incident_id)
+                            || !seen.insert(incident_id.to_string())
+                        {
+                            notes.push(format!(
+                                "fail:rehearsal escaped_defect_corpus row incident_id must be canonical and unique; observed {incident_id:?}"
+                            ));
+                            continue;
+                        }
+                        for field in ["defect", "seam", "claim_boundary"] {
+                            if row
+                                .get(field)
+                                .and_then(Json::as_str)
+                                .is_none_or(|text| text.is_empty())
+                            {
+                                notes.push(format!(
+                                    "fail:rehearsal escaped_defect_corpus.{incident_id}.{field} must be a nonempty string"
+                                ));
+                            }
+                        }
+                        if !row
+                            .get("owner")
+                            .and_then(Json::as_str)
+                            .is_some_and(|owner| owner.starts_with('#') && owner.len() > 1)
+                        {
+                            notes.push(format!(
+                                "fail:rehearsal escaped_defect_corpus.{incident_id}.owner must name its owner issue"
+                            ));
+                        }
+                        let status = row.get("status").and_then(Json::as_str).unwrap_or_default();
+                        if !CORPUS_ROW_STATUSES.contains(&status) {
+                            notes.push(format!(
+                                "fail:rehearsal escaped_defect_corpus.{incident_id}.status must be a canonical corpus status; observed {status:?}"
+                            ));
+                        }
+                        let result = row.get("result").and_then(Json::as_str).unwrap_or_default();
+                        let admitted = match (status, result) {
+                            ("pending_upstream", "recorded_pending") => true,
+                            (_, "proven") if status != "pending_upstream" => true,
+                            _ => false,
+                        };
+                        if !admitted {
+                            notes.push(format!(
+                                "fail:rehearsal escaped_defect_corpus.{incident_id} must record result proven, or recorded_pending for a pending_upstream row; observed {result:?}"
+                            ));
+                        }
+                        for name in row
+                            .keys()
+                            .filter(|name| !CORPUS_ROW_FIELDS.contains(&name.as_str()))
+                        {
+                            notes.push(format!(
+                                "fail:rehearsal records unknown escaped_defect_corpus row field {name:?}"
+                            ));
+                        }
+                    }
+                    if seen.len() != CORPUS_INCIDENT_IDS.len() {
+                        notes.push(format!(
+                            "fail:rehearsal escaped_defect_corpus must cover all {} canonical incidents; observed {}",
+                            CORPUS_INCIDENT_IDS.len(),
+                            seen.len()
+                        ));
+                    }
+                }
+            }
+            for name in corpus
+                .keys()
+                .filter(|name| !CORPUS_FIELDS.contains(&name.as_str()))
+            {
+                notes.push(format!(
+                    "fail:rehearsal records unknown escaped_defect_corpus field {name:?}"
                 ));
             }
         }

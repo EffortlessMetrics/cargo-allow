@@ -1,0 +1,74 @@
+schema_version = "0.1"
+policy = "cargo-allow"
+
+[[allow]]
+id = "allow-xp-alpha"
+kind = "panic"
+family = "unwrap"
+path = "tree/alpha.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "#2276 cross-platform semantic determinism fixture: live matched posture for the forward-spelled unwrap finding."
+evidence = ["issue:2276"]
+created = "2026-11-05"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:3e906e44fd8d34ac"
+
+[[allow]]
+id = "allow-xp-alpha-crlf"
+kind = "panic"
+family = "unwrap"
+path = "tree/alpha_crlf.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "#2276 cross-platform semantic determinism fixture: review-due posture; the CRLF twin must carry the same normalized snippet hash as the LF original."
+evidence = ["issue:2276"]
+created = "2026-01-01"
+review_after = "2026-06-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:3e906e44fd8d34ac"
+
+[[allow]]
+id = "allow-xp-gamma-expect"
+kind = "panic"
+family = "expect"
+path = "tree/nested/gamma.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "#2276 cross-platform semantic determinism fixture: expired posture through an exact structural selector, which stays annotation-only under the #4238 no-new law."
+evidence = ["issue:2276"]
+created = "2025-01-01"
+expires = "2026-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "chosen"
+callee = "expect"
+normalized_snippet_hash = "fnv1a64:216308e073e2c641"
+
+[[allow]]
+id = "allow-xp-policy"
+kind = "non_rust_file"
+family = "configuration"
+path = "policy.toml"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "#2276 fixture policy self-receipt so the non-Rust self surface carries a matched posture in the canonical projection."
+evidence = ["issue:2276"]
+created = "2026-11-05"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "policy.toml"
+target_fingerprint = "toml"
+glob = "policy.toml"

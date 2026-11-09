@@ -62,6 +62,23 @@ The [release experience](cargo-allow.release-experience.v1.schema.json)
 See the [producer and consumer contract](../release/release-experience-v1.md).
 It is a pure evaluation component; it installs nothing and executes no candidate.
 
+The [release impact receipt](cargo-allow.release-impact.v1.schema.json)
+(`cargo-allow.release-impact.v1`) is produced by
+`allow_report::classify_release_impact_v1` and its canonical renderer, consumed
+by the ci.yml release-impact routing graph (#3794). It is the typed
+release-sensitive routing decision for one exact base/head/merge-base subject,
+compiled from checked repository inventories: the checked path rules, the #3786
+semantic-owner inventory, and the generation-2 package topology
+include/file-list authority. An unmatched path or unresolved semantic owner
+classifies as `unknown` and requires the rehearsal. It is a pure routing
+component; it selects proof only, grants no release authority, invokes no Cargo
+metadata, rustc, network, or repository code, and never carries token context.
+The companion rehearsal observation (`cargo-allow.release-rehearsal-observation.v1`)
+and terminal aggregate (`cargo-allow.release-rehearsal-required.v1`) are typed
+in `allow_report::artifacts::release_impact_v1` and validated by their Rust
+contracts; their routing laws fail closed on missing, skipped, cancelled,
+stale, or contradictory evidence.
+
 | Component | Schema ID | Producer |
 |---|---|---|
 | [Resolved source-exception configuration](resolved-cargo-allow-config-v1.schema.json) | `cargo-allow.resolved-config.v1` | `allow_policy::resolve_cargo_allow_config_v1`, rendered by `allow_report::render_resolved_cargo_allow_config_json` |
@@ -263,6 +280,9 @@ runtime, reachability, or semantic analysis.
 | [Publication journal](cargo-allow.publication-journal.v1.schema.json) | `cargo-allow.publication-journal.v1` | typed `allow-report` append-only publication journal model and canonical renderer (#3921) |
 | [Publication checkpoint](cargo-allow.publication-checkpoint.v1.schema.json) | `cargo-allow.publication-checkpoint.v1` | typed `allow-report` remote publication checkpoint model and readback classifier (#3922) |
 | [Publication recovery](cargo-allow.publication-recovery.v1.schema.json) | `cargo-allow.publication-recovery.v1` | typed `allow-report` unknown-upload recovery decision model and renderer (#3924) |
+| [Crates.io trusted publishing receipt](cargo-allow.crates-io-trusted-publishing-receipt.v1.schema.json) | `cargo-allow.crates-io-trusted-publishing-receipt.v1` | typed `allow-report` publication authentication posture contract (#2282, #2496) |
+| [Crates.io first-publication bootstrap receipt](cargo-allow.crates-io-first-publication-bootstrap-receipt.v1.schema.json) | `cargo-allow.crates-io-first-publication-bootstrap-receipt.v1` | typed `allow-report` shared-substrate bootstrap evidence contract (#3145, #2496) |
+| [Crates.io registry install journey receipt](cargo-allow.crates-io-registry-install-journey-receipt.v1.schema.json) | `cargo-allow.crates-io-registry-install-journey-receipt.v1` | typed `allow-report` registry-installed journey contract (#2496) |
 
 The historical `ReleaseManifestV1` scaffold (hard-coded publish order, mandatory
 OIDC authentication) was retired with its schema: no release ever attached a V1

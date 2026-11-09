@@ -376,3 +376,47 @@ fn release_channel_inference_stays_outside_scanned_surfaces() {
         );
     }
 }
+
+/// #3788 graph negative: the guard must trip on a newly introduced semantic
+/// tag parser, so an undeclared scanned surface cannot hide from the
+/// denominator, while display-only formatting of already-validated fields
+/// stays outside it.
+#[test]
+fn guard_trips_on_newly_introduced_semantic_tag_parsers() {
+    let semantic_parser_lines = [
+        "version=\"${GITHUB_REF_NAME#v}\"",
+        "version=\"${tag#${prefix}}\"",
+        "[[ \"${v}\" =~ ^[0-9]+\\.[0-9]+\\.[0-9]+$ ]]",
+        "awk '/^\\[workspace\\.package\\]/ { in_ws = 1; next }'",
+        "[[ \"${tag}\" == *-rc* ]]",
+        "grep -oE 'rc\\.[0-9]+'",
+        "prerelease=false",
+    ];
+    for line in semantic_parser_lines {
+        let lower_line = line.to_ascii_lowercase();
+        let detected: Vec<MarkerClass> = MarkerClass::all()
+            .into_iter()
+            .filter(|class| class.detected_in_line(&lower_line, line))
+            .collect();
+        assert!(
+            !detected.is_empty(),
+            "a newly introduced semantic tag parser must trip a marker class: {line}"
+        );
+    }
+
+    let display_only_lines = [
+        "echo \"version=${RELEASE_VERSION}\"",
+        "print(identity.channel)",
+    ];
+    for line in display_only_lines {
+        let lower_line = line.to_ascii_lowercase();
+        let detected: Vec<MarkerClass> = MarkerClass::all()
+            .into_iter()
+            .filter(|class| class.detected_in_line(&lower_line, line))
+            .collect();
+        assert!(
+            detected.is_empty(),
+            "display-only formatting of validated fields must stay outside the denominator: {line}"
+        );
+    }
+}

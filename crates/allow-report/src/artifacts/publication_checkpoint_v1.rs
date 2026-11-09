@@ -34,9 +34,10 @@ use super::publication_journal_v1::{
 };
 use super::release_authorization_custody_v1::secret_marker;
 use super::release_operation_authority_v1::{
-    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationHeadV1,
-    CargoAllowReleaseOperationIdentityV1, release_operation_head_digest_v1,
-    release_operation_identity_digest_v1, validate_release_operation_identity_v1,
+    CargoAllowReleaseOperationClassV1, CargoAllowReleaseOperationEventV1,
+    CargoAllowReleaseOperationHeadV1, CargoAllowReleaseOperationIdentityV1,
+    release_operation_head_digest_v1, release_operation_identity_digest_v1,
+    validate_release_operation_head_v1, validate_release_operation_identity_v1,
 };
 
 pub const PUBLICATION_CHECKPOINT_SCHEMA_ID: &str = "cargo-allow.publication-checkpoint.v1";
@@ -503,10 +504,6 @@ pub fn begin_publication_checkpoint_v1(
                     previous.operation_identity_digest.as_str(),
                 ),
                 (
-                    init.operation_head_digest.as_str(),
-                    previous.operation_head_digest.as_str(),
-                ),
-                (
                     init.authorization_digest.as_str(),
                     previous.authorization_digest.as_str(),
                 ),
@@ -601,11 +598,15 @@ pub fn begin_publication_checkpoint_v1(
 }
 
 /// Begin a checkpoint bound to one canonical #3940 release operation. The
-/// init digests must equal the canonical identity and head digests; the
-/// identity itself is revalidated so a digest-shaped foreign operation can
-/// never become checkpoint authority.
+/// identity is revalidated and the retained head is recompiled from the
+/// exact operation event history, so a fabricated schema, sequence, event
+/// digest, state, or aggregate field can never advertise a nonexistent
+/// canonical replay point. The recorded head digest is always derived from
+/// the validated head: a later checkpoint advances when the operation
+/// advances instead of being forced to reuse a stale replay point.
 pub fn begin_publication_checkpoint_for_operation_v1(
     identity: &CargoAllowReleaseOperationIdentityV1,
+    events: &[CargoAllowReleaseOperationEventV1],
     head: &CargoAllowReleaseOperationHeadV1,
     mut init: PublicationCheckpointInitV1,
     prior: Option<&CargoAllowPublicationCheckpointV1>,
@@ -625,12 +626,13 @@ pub fn begin_publication_checkpoint_for_operation_v1(
     if !class_agrees {
         return Err("checkpoint class must agree with the canonical operation class");
     }
+    validate_release_operation_head_v1(identity, events, head.evaluated_at_unix_seconds, head)
+        .map_err(
+            |_| "checkpoint head is not the canonical head of the supplied operation history",
+        )?;
     let identity_digest =
         release_operation_identity_digest_v1(identity).map_err(|_| "identity digest failed")?;
     let head_digest = release_operation_head_digest_v1(head).map_err(|_| "head digest failed")?;
-    if head.operation_identity_digest != identity_digest {
-        return Err("checkpoint head does not belong to the checkpoint operation");
-    }
     init.operation_identity_digest = identity_digest;
     init.operation_head_digest = head_digest;
     begin_publication_checkpoint_v1(init, prior)

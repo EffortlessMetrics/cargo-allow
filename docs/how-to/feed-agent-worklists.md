@@ -33,6 +33,25 @@ The JSON `paging` block and the human output both name the applied window and
 the pre-paging filtered total, so an empty or short page never reads as a
 clean queue.
 
+## Filters Narrow Payload, Not Scan Cost
+
+Every `worklist` filter — `--risk`, `--kind`, `--item-kind`, `--status`,
+`--path`, `--allow-id` — pays the full-tree scan before filtering. A filter
+narrows the emitted payload; it does not shorten or skip the scan that
+produces it, and no filter makes the command a bounded-latency read.
+
+In the retained #4374 observation (2026-10-04, loaded Windows debug host,
+indicative — not a universal hardware claim), `worklist --item-kind
+baseline_debt` returned zero items (1,918 B) and was still the slowest
+measured variant (minimum 10,258.5 ms, slower than the unfiltered queue's
+minimum 2,281.5 ms). A filter that matches most of the queue gives little
+payload relief either: `--kind panic` matched 145 of 160 items and still
+emitted 265,198 B, about 4× the 64 KiB advisory agent-read target documented
+in [performance budgets](../performance-budgets.md#payload-budgets). The
+intended cheap targeted reads are `--status new` (2 items, 4,862 B measured)
+and `--allow-id` for one entry's queue. To bound any queue's payload, page it
+with `--limit`/`--offset` as shown above.
+
 ## Route Migration Closeout
 
 When a migration summary reports `follow_up_queues` or

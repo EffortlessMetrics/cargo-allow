@@ -1,3 +1,12 @@
+//! Historical characterization fixture for the legacy
+//! `CargoAllowReleaseOperationV1` container (#3940 PR B disposition:
+//! retained namespaced historical form, explicitly classified). The
+//! canonical production authority is `release_operation_authority_v1`
+//! (`CargoAllowReleaseOperationIdentityV1` and the head/evaluation model);
+//! every production consumer composes that authority. This file exercises
+//! the legacy container only to pin its recorded characterization behavior
+//! and adds no production operation semantics.
+
 use allow_report::{
     AggregateOperationStateV1, CargoAllowReleaseOperationV1, OperationClassV1, OperationEventKindV1,
 };

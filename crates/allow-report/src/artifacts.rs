@@ -9,6 +9,9 @@ mod candidate_preparation_plan_v1;
 mod candidate_preparation_receipt_v1;
 mod ci_performance_receipt_v1;
 mod ci_pregate_result_v1;
+mod crates_io_first_publication_bootstrap_receipt_v1;
+mod crates_io_registry_install_journey_receipt_v1;
+mod crates_io_trusted_publishing_receipt_v1;
 mod dependency_graph_delta_compiler;
 mod dependency_graph_delta_v1;
 mod dependency_graph_evidence_v1;
@@ -52,6 +55,7 @@ mod release_authorization_custody_v1;
 mod release_authorization_v1;
 mod release_experience_v1;
 mod release_identity_v1;
+mod release_impact_v1;
 mod release_manifest_v2;
 mod release_operation_authority_v1;
 mod release_operation_lease_v1;
@@ -126,6 +130,34 @@ pub use ci_pregate_result_v1::{
     CI_PRE_GATE_SCHEMA_ID, CI_PRE_GATE_SCHEMA_VERSION, CiPreGateCheckResultV1,
     CiPreGateCheckStateV1, CiPreGateEvaluationV1, CiPreGateResultV1, CiPreGateStateV1,
     evaluate_ci_pre_gate, render_ci_pre_gate_human, render_ci_pre_gate_json,
+};
+pub use crates_io_first_publication_bootstrap_receipt_v1::{
+    BootstrapPackageRowV1, BootstrapPromotionV1, BootstrapRowFamilyV1,
+    CRATES_IO_FIRST_PUBLICATION_BOOTSTRAP_RECEIPT_SCHEMA_ID,
+    CRATES_IO_FIRST_PUBLICATION_BOOTSTRAP_RECEIPT_SCHEMA_VERSION,
+    CratesIoFirstPublicationBootstrapReceiptV1, CratesIoFirstPublicationBootstrapResultV1,
+    CratesIoFirstPublicationBootstrapValidationV1,
+    render_crates_io_first_publication_bootstrap_receipt_v1,
+    render_crates_io_first_publication_bootstrap_receipt_v1_bytes,
+    validate_crates_io_first_publication_bootstrap_receipt_v1,
+};
+pub use crates_io_registry_install_journey_receipt_v1::{
+    CRATES_IO_REGISTRY_INSTALL_JOURNEY_RECEIPT_SCHEMA_ID,
+    CRATES_IO_REGISTRY_INSTALL_JOURNEY_RECEIPT_SCHEMA_VERSION,
+    CratesIoRegistryInstallJourneyReceiptV1, CratesIoRegistryInstallJourneyResultV1,
+    CratesIoRegistryInstallJourneyValidationV1, RegistryInstallChannelV1, RegistryJourneyStepV1,
+    RegistryResolvedRowV1, render_crates_io_registry_install_journey_receipt_v1,
+    render_crates_io_registry_install_journey_receipt_v1_bytes,
+    validate_crates_io_registry_install_journey_receipt_v1,
+};
+pub use crates_io_trusted_publishing_receipt_v1::{
+    CRATES_IO_TRUSTED_PUBLISHING_RECEIPT_SCHEMA_ID,
+    CRATES_IO_TRUSTED_PUBLISHING_RECEIPT_SCHEMA_VERSION, CratesIoAuthClassV1,
+    CratesIoTrustedPublishingReceiptV1, CratesIoTrustedPublishingResultV1,
+    CratesIoTrustedPublishingValidationV1, OidcPostureV1,
+    render_crates_io_trusted_publishing_receipt_v1,
+    render_crates_io_trusted_publishing_receipt_v1_bytes,
+    validate_crates_io_trusted_publishing_receipt_v1,
 };
 #[cfg(test)]
 pub(crate) use dependency_graph_delta_compiler::{
@@ -258,9 +290,9 @@ pub use minimum_direct_version_v1::{
     DirectDependencyClassV1, DirectMinimumVersionSetV1, DirectRequirementRowV1,
     MINIMUM_DIRECT_VERSION_SCHEMA_ID, MINIMUM_DIRECT_VERSION_SCHEMA_VERSION, MinimumFloorResultV1,
     MinimumFloorRowV1, MinimumProofEvaluationV1, MinimumProofVerdictV1,
-    MinimumVersionProofReceiptV1, MinimumVersionProofRequestV1, MinimumVersionRowResultV1,
-    ProductDependencySetV1, evaluate_minimum_version_proof, render_minimum_proof_human,
-    render_minimum_proof_json,
+    MinimumVersionExecutionProvenanceV1, MinimumVersionProofReceiptV1,
+    MinimumVersionProofRequestV1, MinimumVersionRowResultV1, ProductDependencySetV1,
+    evaluate_minimum_version_proof, render_minimum_proof_human, render_minimum_proof_json,
 };
 pub use minimum_version_drift_v1::{
     DRIFT_RELEASE_SET_PRODUCT, MINIMUM_DIRECT_VERSION_DRIFT_SCHEMA_ID,
@@ -403,9 +435,11 @@ pub use publication_recovery_v1::{
 };
 
 pub use rc_publication_incident_v1::{
-    ChannelPostureV1, FinalCandidateEligibilityV1, GitHubReleaseObservationV1,
+    ArtifactInnerFileV1, AttemptArtifactObservationV1, AttemptJobObservationV1, ChannelPostureV1,
+    FinalCandidateEligibilityV1, GitHubReleaseObservationV1, InstallObservationV1,
     ObservationCompletenessV1, RC_PUBLICATION_INCIDENT_SCHEMA, RcPublicationIncidentV1,
-    RegistryObservationV1, ReleaseAttemptV1, RowReconciliationV1, TagObservationV1,
+    RegistryObservationV1, ReleaseAssetObservationV1, ReleaseAttemptV1, RowReconciliationV1,
+    TagObservationV1,
 };
 
 pub use publication_checkpoint_v1::{
@@ -512,8 +546,25 @@ pub use release_experience_v1::{
 pub use release_identity_v1::{
     ReleaseChannelV1, ReleaseIdentityErrorV1, ReleaseIdentityV1, ReleaseVersionV1,
 };
+pub use release_impact_v1::{
+    CargoAllowReleaseImpactReceiptV1, CargoAllowReleaseRehearsalRequiredResultV1,
+    RELEASE_IMPACT_SCHEMA_ID, RELEASE_IMPACT_SCHEMA_VERSION,
+    RELEASE_REHEARSAL_OBSERVATION_SCHEMA_ID, RELEASE_REHEARSAL_OBSERVATION_SCHEMA_VERSION,
+    RELEASE_REHEARSAL_REQUIRED_SCHEMA_ID, RELEASE_REHEARSAL_REQUIRED_SCHEMA_VERSION,
+    RELEASE_SENSITIVE_PATH_RULES_V1, RELEASE_UNRELATED_PATH_RULES_V1,
+    RELEASE_UNRESOLVED_GOVERNANCE_RULES_V1, ReleaseImpactClassifierInputV1,
+    ReleaseImpactDecisionV1, ReleaseImpactDenominatorBindingV1, ReleaseImpactDenominatorV1,
+    ReleaseImpactPathDecisionV1, ReleaseImpactPathMatchV1, ReleaseImpactPathRuleV1,
+    ReleaseImpactSubjectV1, ReleaseRehearsalObservationOutcomeV1, ReleaseRehearsalObservationV1,
+    ReleaseRehearsalRequiredAggregateV1, classify_release_impact_v1,
+    evaluate_release_rehearsal_required_v1, is_git_object_name, observe_release_rehearsal_v1,
+    release_impact_denominator, render_release_impact_receipt_human,
+    render_release_impact_receipt_json, render_release_rehearsal_observation_human,
+    render_release_rehearsal_observation_json, render_release_rehearsal_required_human,
+    render_release_rehearsal_required_json, validate_release_impact_receipt_v1,
+};
 pub use release_manifest_v2::{
-    RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
+    ConsumedEvidenceV1, RELEASE_MANIFEST_V2_SCHEMA_ID, RELEASE_MANIFEST_V2_SCHEMA_VERSION,
     ReleaseManifestAuthenticationV2, ReleaseManifestEnvelopeV2, ReleaseManifestOperationV2,
     ReleaseManifestPackageRowV2, ReleaseManifestPayloadV2, ReleaseManifestPublicationPostureV2,
     ReleaseManifestResultV2, ReleaseManifestSupportPostureV2, ReleaseManifestV2Validation,

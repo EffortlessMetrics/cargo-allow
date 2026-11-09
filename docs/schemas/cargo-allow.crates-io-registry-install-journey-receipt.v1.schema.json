@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.crates-io-registry-install-journey-receipt.v1.schema.json",
+  "description": "Typed registry-installed journey evidence for one post-publication install of the released cargo-allow from the public crates.io registry (#2496). The receipt binds the installed release version, platform, and run identity to the all-green journey steps and the installed resolved graph with retained registry checksums. A non-zero journey step (skipped, cancelled, or timed-out producer), a missing resolved graph, an unresolved row checksum, or an unsupported install channel is a named non-clean result. Installed-journey evidence is distinct from candidate bytes, isolated candidate installs, and bootstrap-published shared bytes; it proves no candidate behavior or publication authority.",
+  "title": "cargo-allow CratesIoRegistryInstallJourneyReceiptV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "repository",
+    "release_version",
+    "platform",
+    "source_commit",
+    "source_tree",
+    "git_ref",
+    "event",
+    "workflow_run_id",
+    "workflow_attempt",
+    "channel",
+    "journey_steps",
+    "resolved_graph",
+    "limitations",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.crates-io-registry-install-journey-receipt.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "repository": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "platform": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40,64}$"
+    },
+    "source_tree": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{40,64}$"
+    },
+    "git_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "event": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_run_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflow_attempt": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "channel": {
+      "oneOf": [
+        {
+          "const": "crates_io_registry"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "unsupported"
+          ],
+          "properties": {
+            "unsupported": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "journey_steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/journeyStep"
+      }
+    },
+    "resolved_graph": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/resolvedRow"
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "journeyStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "exit_code"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "exit_code": {
+          "type": "integer"
+        }
+      }
+    },
+    "resolvedRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package_name",
+        "package_version"
+      ],
+      "properties": {
+        "package_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "registry_checksum": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-fA-F]{64}$"
+        }
+      }
+    }
+  }
+}

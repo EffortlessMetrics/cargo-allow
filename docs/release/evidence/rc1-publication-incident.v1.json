@@ -5,20 +5,641 @@
   "channel_tag": "v0.2.0-rc.1",
   "attempts": [
     {
+      "run_id": 32684125678,
+      "run_attempt": 1,
+      "commit": "a6096dbdaaac277e1aa342d9870c4961a7efd239",
+      "tree": "2d0facdfefeb15ce51b0a82273c0c65dde0f719a",
+      "conclusion": "failure",
+      "result_class": "no_publication_preflight_failure",
+      "retained_publish_receipt_artifact_id": null,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "failure",
+          "first_failing_step": "Resolve exact release context"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        }
+      ],
+      "artifacts": [],
+      "observation_limit": "The provider retains no artifacts for this run: the preflight job failed in 'Resolve exact release context' and the publish job was skipped, so no publish receipt exists and no package publication is attributable to this run."
+    },
+    {
+      "run_id": 32686659526,
+      "run_attempt": 1,
+      "commit": "2c7dc0b3d1ed398108036ae2dc6d3621e37b471e",
+      "tree": "ab829deb47241905ea58776aec4d5b0e4a27420b",
+      "conclusion": "failure",
+      "result_class": "no_publication_preflight_failure",
+      "retained_publish_receipt_artifact_id": null,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "failure",
+          "first_failing_step": "Qualify the topology-derived cargo-allow candidate"
+        },
+        {
+          "name": "publish",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9506005732,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 303194,
+          "expired": false,
+          "expires_at": "2026-11-22T03:30:07Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        }
+      ],
+      "observation_limit": "The publish job was skipped, so no package publication is attributable to this run; the retained preflight bundle was listed but not re-observed at byte level here."
+    },
+    {
       "run_id": 32688128233,
+      "run_attempt": 1,
       "commit": "f8bbd3a83b6286cf00693cfdb951c4c21ae24ace",
       "tree": "73e98378d9053445cde2adfbc806c11a6cad6a67",
       "conclusion": "failure",
-      "result_class": "partial",
-      "retained_publish_receipt_artifact_id": 9506518765
+      "result_class": "partial_publication",
+      "retained_publish_receipt_artifact_id": 9506518765,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "publish",
+          "conclusion": "failure",
+          "first_failing_step": "Publish cargo-allow topology rows in dependency order"
+        },
+        {
+          "name": "install-smoke",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "skipped",
+          "first_failing_step": null
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9506518765,
+          "name": "release-publish-receipt",
+          "size_in_bytes": 2982,
+          "expired": false,
+          "expires_at": "2026-11-22T03:55:23Z",
+          "inner_files": [
+            {
+              "name": "release-publish.receipt.json",
+              "size_in_bytes": 455,
+              "sha256": "sha256:7330c08b2cf2c3735dddefd967f37e8bfadd68891a23df923ad3675b98ce6f59"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 6001,
+              "sha256": "sha256:445fc5b621bba9c6621ae311e5e1920f87f1b51e5de0803206083c47eb9bcd5c"
+            },
+            {
+              "name": "shared-registry-preflight.receipt.json",
+              "size_in_bytes": 1827,
+              "sha256": "sha256:9215a5f93f699219dee17cc283e521493445b585d9407863fdfb14cade96c62a"
+            }
+          ],
+          "observation_note": "Topology receipt binds candidate commit f8bbd3a83b6286cf00693cfdb951c4c21ae24ace, tree 73e98378d9053445cde2adfbc806c11a6cad6a67, and Cargo.lock digest 38f0bf0f9c844d8b9bb503acb49029919360d97cdbc58082d797c8e383644d8d; it records eight published_verified rows, the allow-diff row terminal in uploaded_waiting_for_registry with registry_checksum=null, and incident_state=partial."
+        },
+        {
+          "artifact_id": 9506470923,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 307719,
+          "expired": false,
+          "expires_at": "2026-11-22T03:55:23Z",
+          "inner_files": [
+            {
+              "name": "cache/scan-cache.v2.bin",
+              "size_in_bytes": 3236409,
+              "sha256": "sha256:e205e0ff4b92c03e6b65ec6342da8da632f5a78b2ddffd70fa0219876612f8a0"
+            },
+            {
+              "name": "cache/scan-cache.v2.lock",
+              "size_in_bytes": 0,
+              "sha256": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            {
+              "name": "check.md",
+              "size_in_bytes": 5392,
+              "sha256": "sha256:2d4cdf2d3f309b44ad216f0892f23142638f462e9d1abc089faac6ba799ae9ce"
+            },
+            {
+              "name": "check.receipt.json",
+              "size_in_bytes": 8715,
+              "sha256": "sha256:97609c9b716a2bbf0dceb49cc5fa2241ec0d453aefa1a54d33dc73b0d423c7f8"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 5713,
+              "sha256": "sha256:4a9d2e2ee9344e7eec37ceadf4edeb6cd6df80e403cc9ef2833f100df6fc420b"
+            }
+          ],
+          "observation_note": "Preflight candidate-qualification bundle; its topology receipt (publish=false) pre-registers the identical candidate-local checksums that the publish receipt later uploaded."
+        }
+      ],
+      "observation_limit": null
+    },
+    {
+      "run_id": 32689821900,
+      "run_attempt": 1,
+      "commit": "73d0c7813e078c6d439c4f31cdeea760df56d788",
+      "tree": "44eea2a1ad4f88644dde8f391241c2e2c915435b",
+      "conclusion": "failure",
+      "result_class": "publication_complete_release_assembly_failure",
+      "retained_publish_receipt_artifact_id": 9507033255,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "publish",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (windows-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (ubuntu-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "failure",
+          "first_failing_step": "Set up job"
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9507033255,
+          "name": "release-publish-receipt",
+          "size_in_bytes": 3362,
+          "expired": false,
+          "expires_at": "2026-11-22T04:23:21Z",
+          "inner_files": [
+            {
+              "name": "release-publish.receipt.json",
+              "size_in_bytes": 455,
+              "sha256": "sha256:97cee33df4efc0cbcad9183bd1da8c01918e20cdd8ec087d0db50f68f8282e42"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 6513,
+              "sha256": "sha256:ac9df3abd4ed5b32abc62dff8d4d69ab74514f1173433b305775d51872afb237"
+            },
+            {
+              "name": "shared-registry-preflight.receipt.json",
+              "size_in_bytes": 1827,
+              "sha256": "sha256:cc4bda567f7912da20855e51482299370b70907cce3dd0ef87d99cf6aa53efe4"
+            }
+          ],
+          "observation_note": "Records the allow-diff row verified_existing against registry ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488 and the first cargo-allow upload (published_verified, candidate-local 42b652369e26dbc430c81ac6e03c8bdb8f07fc1717238752696c534d727a566b, registry 212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143); the producing candidate archive is not retained and the state name alone does not establish exact producing-candidate bytes."
+        },
+        {
+          "artifact_id": 9506990403,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 308074,
+          "expired": false,
+          "expires_at": "2026-11-22T04:23:21Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9507067409,
+          "name": "release-install-smoke-receipt-ubuntu-latest",
+          "size_in_bytes": 317,
+          "expired": false,
+          "expires_at": "2026-11-22T04:23:21Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9507118304,
+          "name": "release-install-smoke-receipt-windows-latest",
+          "size_in_bytes": 318,
+          "expired": false,
+          "expires_at": "2026-11-22T04:23:21Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        }
+      ],
+      "observation_limit": "The retained install-smoke receipts of the intermediate runs were listed but not re-observed at byte level here; their producing job conclusions are recorded from the provider run readback."
+    },
+    {
+      "run_id": 32691586163,
+      "run_attempt": 1,
+      "commit": "d0715021ab823604f820269fde2cbf224b5c918b",
+      "tree": "53e6b8860edef3cbf1c8ba60fe32e6aaf4b85251",
+      "conclusion": "failure",
+      "result_class": "publication_complete_release_assembly_failure",
+      "retained_publish_receipt_artifact_id": 9507571685,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "publish",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (ubuntu-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (windows-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "failure",
+          "first_failing_step": "Attest tagged Linux executable archive"
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9507571685,
+          "name": "release-publish-receipt",
+          "size_in_bytes": 3353,
+          "expired": false,
+          "expires_at": "2026-11-22T04:52:24Z",
+          "inner_files": [
+            {
+              "name": "release-publish.receipt.json",
+              "size_in_bytes": 455,
+              "sha256": "sha256:afea78e8a2d582efb859a0d8b1d5e3756930479a7e1f409851917ad3f7a81d3d"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 6513,
+              "sha256": "sha256:fa25f379a1405423ad50d7a07d9b9674ca965087224e358dd5d23c30c7b0c900"
+            },
+            {
+              "name": "shared-registry-preflight.receipt.json",
+              "size_in_bytes": 1827,
+              "sha256": "sha256:415a1565425e3f5d67bef736e124879d02550f3225a3771873b20b9293c6a215"
+            }
+          ],
+          "observation_note": "Complete topology receipt over the unchanged registry digests; every row verified_existing."
+        },
+        {
+          "artifact_id": 9507539579,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 307945,
+          "expired": false,
+          "expires_at": "2026-11-22T04:52:24Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9507604371,
+          "name": "release-install-smoke-receipt-ubuntu-latest",
+          "size_in_bytes": 317,
+          "expired": false,
+          "expires_at": "2026-11-22T04:52:24Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9507636349,
+          "name": "release-install-smoke-receipt-windows-latest",
+          "size_in_bytes": 318,
+          "expired": false,
+          "expires_at": "2026-11-22T04:52:24Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        }
+      ],
+      "observation_limit": "The retained install-smoke receipts of the intermediate runs were listed but not re-observed at byte level here; their producing job conclusions are recorded from the provider run readback."
+    },
+    {
+      "run_id": 32693345514,
+      "run_attempt": 1,
+      "commit": "36428be8eafa30b14a9cbc1738a5400935a08bd7",
+      "tree": "69abc20481a114e1389006ea535b3cf05b05ee1f",
+      "conclusion": "failure",
+      "result_class": "publication_complete_release_assembly_failure",
+      "retained_publish_receipt_artifact_id": 9508159216,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "publish",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (windows-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (ubuntu-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "failure",
+          "first_failing_step": "Generate release manifest"
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9508159216,
+          "name": "release-publish-receipt",
+          "size_in_bytes": 3351,
+          "expired": false,
+          "expires_at": "2026-11-22T05:23:09Z",
+          "inner_files": [
+            {
+              "name": "release-publish.receipt.json",
+              "size_in_bytes": 455,
+              "sha256": "sha256:526b2b24d2a81764ea99610f44a22c40576b0e42678f2a513b78339e80e8159e"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 6513,
+              "sha256": "sha256:fe6a05e6b81f16dcee710bb6e29c07a8f5967a7fd0040fc3c079e349a4e2c8c5"
+            },
+            {
+              "name": "shared-registry-preflight.receipt.json",
+              "size_in_bytes": 1827,
+              "sha256": "sha256:2b5602cbc870708381745b8a909c9dbff6f1b571c961f74b4249fe42871688be"
+            }
+          ],
+          "observation_note": "Complete topology receipt over the unchanged registry digests; every row verified_existing."
+        },
+        {
+          "artifact_id": 9508131555,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 307943,
+          "expired": false,
+          "expires_at": "2026-11-22T05:23:09Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9508193759,
+          "name": "release-install-smoke-receipt-ubuntu-latest",
+          "size_in_bytes": 318,
+          "expired": false,
+          "expires_at": "2026-11-22T05:23:09Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9508227555,
+          "name": "release-install-smoke-receipt-windows-latest",
+          "size_in_bytes": 318,
+          "expired": false,
+          "expires_at": "2026-11-22T05:23:09Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        }
+      ],
+      "observation_limit": "The retained install-smoke receipts of the intermediate runs were listed but not re-observed at byte level here; their producing job conclusions are recorded from the provider run readback."
+    },
+    {
+      "run_id": 32696120014,
+      "run_attempt": 1,
+      "commit": "d39c1ed0d144c7031ec41176c566b1206f2bc5b3",
+      "tree": "a69405b662e5db892b861fe79d6a7a7822f8d15e",
+      "conclusion": "failure",
+      "result_class": "publication_complete_release_assembly_failure",
+      "retained_publish_receipt_artifact_id": 9509058259,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "publish",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (windows-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (ubuntu-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "failure",
+          "first_failing_step": "Generate release manifest"
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9509058259,
+          "name": "release-publish-receipt",
+          "size_in_bytes": 3357,
+          "expired": false,
+          "expires_at": "2026-11-22T06:09:05Z",
+          "inner_files": [
+            {
+              "name": "release-publish.receipt.json",
+              "size_in_bytes": 455,
+              "sha256": "sha256:ce2c8ed8964c8c9f0cd4355cd5251c9c60d373ab587d1416a2df986e330ba90e"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 6513,
+              "sha256": "sha256:a6841a9c2f0d3488f01711c1c7f70e6306d70d2c2a83acffe4ec22b7ae58fb3d"
+            },
+            {
+              "name": "shared-registry-preflight.receipt.json",
+              "size_in_bytes": 1827,
+              "sha256": "sha256:86fbb20f1f91f0bb33d1fa150897b0c16afa6013268677a0a92dba503ab201db"
+            }
+          ],
+          "observation_note": "Complete topology receipt over the unchanged registry digests; every row verified_existing."
+        },
+        {
+          "artifact_id": 9509011838,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 307945,
+          "expired": false,
+          "expires_at": "2026-11-22T06:09:05Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9509097958,
+          "name": "release-install-smoke-receipt-ubuntu-latest",
+          "size_in_bytes": 317,
+          "expired": false,
+          "expires_at": "2026-11-22T06:09:05Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9509151676,
+          "name": "release-install-smoke-receipt-windows-latest",
+          "size_in_bytes": 317,
+          "expired": false,
+          "expires_at": "2026-11-22T06:09:05Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        }
+      ],
+      "observation_limit": "The retained install-smoke receipts of the intermediate runs were listed but not re-observed at byte level here; their producing job conclusions are recorded from the provider run readback."
     },
     {
       "run_id": 32698363934,
+      "run_attempt": 1,
       "commit": "8bdabcd18723e36bbcfada423fa44779eefa599c",
       "tree": "4b9f15d68a4797e5a94739c88bee3468810a4b03",
       "conclusion": "success",
       "result_class": "complete",
-      "retained_publish_receipt_artifact_id": 9509808660
+      "retained_publish_receipt_artifact_id": 9509808660,
+      "jobs": [
+        {
+          "name": "preflight",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "publish",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (windows-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "install-smoke (ubuntu-latest)",
+          "conclusion": "success",
+          "first_failing_step": null
+        },
+        {
+          "name": "github-release",
+          "conclusion": "success",
+          "first_failing_step": null
+        }
+      ],
+      "artifacts": [
+        {
+          "artifact_id": 9509808660,
+          "name": "release-publish-receipt",
+          "size_in_bytes": 3350,
+          "expired": false,
+          "expires_at": "2026-11-22T06:41:40Z",
+          "inner_files": [
+            {
+              "name": "release-publish.receipt.json",
+              "size_in_bytes": 455,
+              "sha256": "sha256:87c3028bcd83e45afdc050a2533eaa9a4f0838f279d0a41896b9566b841b4cc3"
+            },
+            {
+              "name": "topology-publish.receipt.json",
+              "size_in_bytes": 6513,
+              "sha256": "sha256:aa211ad295303d5e35631f5ceed90b4a090c18df69f401a336b8d7fe265d51ab"
+            },
+            {
+              "name": "shared-registry-preflight.receipt.json",
+              "size_in_bytes": 1827,
+              "sha256": "sha256:a8033314786a72af31d0d014c3eba434db941be9ed44f72361ae780088fbc211"
+            }
+          ],
+          "observation_note": "Complete topology receipt; every row verified_existing against the unchanged registry digests; release-publish.receipt.json binds the run, tag, and candidate commit/tree."
+        },
+        {
+          "artifact_id": 9509769293,
+          "name": "release-preflight-receipts",
+          "size_in_bytes": 307943,
+          "expired": false,
+          "expires_at": "2026-11-22T06:41:40Z",
+          "inner_files": [],
+          "observation_note": "Retained per the provider listing; its inner bytes were not re-observed in this reconciliation."
+        },
+        {
+          "artifact_id": 9509851446,
+          "name": "release-install-smoke-receipt-ubuntu-latest",
+          "size_in_bytes": 318,
+          "expired": false,
+          "expires_at": "2026-11-22T06:41:40Z",
+          "inner_files": [
+            {
+              "name": "release-install-smoke.receipt.json",
+              "size_in_bytes": 185,
+              "sha256": "sha256:1c6346b5605577e7e98834ba22d14918fa0332abad63e1a9b54e63ac5fabfdb2"
+            }
+          ],
+          "observation_note": "Receipt carries identity fields only (event, ref, sha, version, os, workflow_run_id); no installation-result field."
+        },
+        {
+          "artifact_id": 9509888507,
+          "name": "release-install-smoke-receipt-windows-latest",
+          "size_in_bytes": 318,
+          "expired": false,
+          "expires_at": "2026-11-22T06:41:40Z",
+          "inner_files": [
+            {
+              "name": "release-install-smoke.receipt.json",
+              "size_in_bytes": 186,
+              "sha256": "sha256:727c971d10984eebcef2ee3c6f97dafaaf510cf38cab16b8c52a393b1b501571"
+            }
+          ],
+          "observation_note": "Receipt carries identity fields only (event, ref, sha, version, os, workflow_run_id); no installation-result field."
+        }
+      ],
+      "observation_limit": null
     }
   ],
   "tag_observation": {
@@ -114,10 +735,14 @@
       "version": "0.2.0-rc.1",
       "registry_checksum": "sha256:ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488",
       "retained_candidate_checksums": [
-        "sha256:90637b00caf45d494fe8bbe1fbae29a730ed0cf6cc17f0c8f3122c6941fd0786",
-        "sha256:86fe2512fda53f78468273d5829876cf16c9c55e2f39d41652644fdd2fb22afd"
+        "sha256:86fe2512fda53f78468273d5829876cf16c9c55e2f39d41652644fdd2fb22afd",
+        "sha256:b0e2cadd8273629f47ea984be52f15633e24c2fc2b8b1a558bd102ab8b141480",
+        "sha256:ab817eb78fed770c18ba8fe9273ec9caf3db85de0161d2805742d0222b34ed57",
+        "sha256:403bdcca3d886a33858e2d93033ae05be5c63a47e90337702702afd871ec0ed9",
+        "sha256:0017693c11993a7f27d04b71d2c5aa4fface424accaf2480afe5f0efe1492bba",
+        "sha256:90637b00caf45d494fe8bbe1fbae29a730ed0cf6cc17f0c8f3122c6941fd0786"
       ],
-      "note": "The first retained topology receipt records the attempt's local candidate bytes (86fe2512...) as uploaded_waiting_for_registry with registry_checksum=null. The separately retained historical incident narrative in #3759 reports the registry already holding ae3f4ed1...; that observed checksum is not a value in the first receipt's JSON. The final run's repackage (90637b00...) also differs. The registry bytes match no retained candidate receipt, so the producing candidate is unretained intermediate moved-tag history."
+      "note": "The producing run 32688128233's retained publish receipt (artifact 9506518765) ends this row in uploaded_waiting_for_registry with candidate-local bytes 86fe2512... and registry_checksum=null, so the upload-response identity was never verified. The registry later observed ae3f4ed1..., and every later run's retained repackage (32689821900 b0e2cadd..., 32691586163 ab817eb7..., 32693345514 403bdcca..., 32696120014 0017693c..., 32698363934 90637b00...) differs from it. No candidate archive is retained, so the registry bytes match no retained candidate archive."
     },
     {
       "state": "published_across_candidate_history",
@@ -125,31 +750,107 @@
       "version": "0.2.0-rc.1",
       "registry_checksum": "sha256:212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143",
       "retained_candidate_checksums": [
+        "sha256:42b652369e26dbc430c81ac6e03c8bdb8f07fc1717238752696c534d727a566b",
+        "sha256:3d690da0cba5eca33441fdb76119bd7ad277498d276dcf1dbfc61b69ae3578f8",
+        "sha256:ba380ac0323339f4ce4af0f31d71abed424b219a9ca3aadb6d0b0d46820ee668",
+        "sha256:2c28f9568027216e665c2bf4b183cdd4e54260fff1343298640ed78467629629",
         "sha256:8f3bdd549b1bccfdbdd3301ab655377c2fd49e71989871bf7bc2949d573e0f76"
       ],
-      "note": "The first attempt never reached this row; the final run's repackage (8f3bdd54...) differs from the registry bytes (212dfcc8...), so those bytes were published by an unretained intermediate moved-tag candidate."
+      "note": "The first publication attempt ended before this row. The first irreversible upload is recorded by run 32689821900's retained publish receipt (artifact 9507033255, state published_verified, candidate-local 42b65236...), but the producing candidate archive is not retained and that receipt's candidate-local checksum differs from the registry-observed digest 212dfcc8..., so the state name alone does not establish exact producing-candidate bytes. Every retained repackage, including the final run's 8f3bdd54..., differs from the registry bytes."
     }
   ],
   "github_release": {
+    "release_id": 375500943,
     "name": "v0.2.0-rc.1",
     "draft": false,
     "prerelease": false,
+    "target_commitish": "main",
     "asset_count": 7,
-    "observed_note": "The RC GitHub Release is published with draft=false AND prerelease=false - a stable-release posture for a prerelease channel identity (the RcReleasePrereleaseFlagMismatch incident class; fixed for future tags by routing the workflow's prerelease field through the typed identity projection). The published release is not rewritten as part of incident reconciliation."
+    "assets": [
+      {
+        "asset_id": 527214046,
+        "name": "cargo-allow-v0.2.0-rc.1-x86_64-unknown-linux-gnu.tar.gz",
+        "size_in_bytes": 4058730,
+        "digest": "sha256:242438c6a9ca5345bb439055fa17d9fef2dc3e622d38f4805012b652c53a06bf",
+        "state": "uploaded"
+      },
+      {
+        "asset_id": 527214042,
+        "name": "cargo-allow-v0.2.0-rc.1-x86_64-unknown-linux-gnu.tar.gz.executable.sha256",
+        "size_in_bytes": 78,
+        "digest": "sha256:21c515c36339495bcece9613699c4e8423d691db655ac3b489691f05fae1e2bc",
+        "state": "uploaded"
+      },
+      {
+        "asset_id": 527214048,
+        "name": "cargo-allow-v0.2.0-rc.1-x86_64-unknown-linux-gnu.tar.gz.sha256",
+        "size_in_bytes": 122,
+        "digest": "sha256:60fa11bbda3c294c7ef4f901a1a9adfa391bcc16a6cf6ee91dcf068e23a3959b",
+        "state": "uploaded"
+      },
+      {
+        "asset_id": 527214045,
+        "name": "release-binary-install.receipt.json",
+        "size_in_bytes": 1029,
+        "digest": "sha256:f8ba4c81267fbf768a37dfa1730ffb8e4edda83c01e687e9da6f2a0f4c69c4a4",
+        "state": "uploaded"
+      },
+      {
+        "asset_id": 527214047,
+        "name": "release-binary.receipt.json",
+        "size_in_bytes": 798,
+        "digest": "sha256:ed5b4d82b26c906f1523db5ac142568f95d3a724ab497be6ac07e12c09f10079",
+        "state": "uploaded"
+      },
+      {
+        "asset_id": 527214043,
+        "name": "release-manifest-v2.json",
+        "size_in_bytes": 4315,
+        "digest": "sha256:a0458fdf012c11cb56f4fd771e788c8cdc8e4676f8551e301aa89a3d5608ff33",
+        "state": "uploaded"
+      },
+      {
+        "asset_id": 527214044,
+        "name": "release-manifest-v2.sha256",
+        "size_in_bytes": 91,
+        "digest": "sha256:30eefcd27bc1f222d45df6fd7df2211dd4a15116aa5c1a5613d61190beb1e456",
+        "state": "uploaded"
+      }
+    ],
+    "observed_note": "The RC GitHub Release is published with draft=false AND prerelease=false - a stable-release posture for a prerelease channel identity (the RcReleasePrereleaseFlagMismatch incident class; fixed for future tags by routing the workflow's prerelease field through the typed identity projection). target_commitish=main is additionally observed as an expected/observed channel mismatch. The published release is not rewritten as part of incident reconciliation."
   },
+  "install_observations": [
+    {
+      "platform": "ubuntu-latest",
+      "run_id": 32698363934,
+      "receipt_artifact_id": 9509851446,
+      "receipt_inner_sha256": "sha256:1c6346b5605577e7e98834ba22d14918fa0332abad63e1a9b54e63ac5fabfdb2",
+      "observed_note": "Exact-version install receipt bound by artifact ID 9509851446 and inner SHA-256 on 2026-11-04; the receipt carries identity fields only and no installation-result field. The producing install-smoke (ubuntu-latest) job conclusion is success. Current re-installation was not independently re-executed here."
+    },
+    {
+      "platform": "windows-latest",
+      "run_id": 32698363934,
+      "receipt_artifact_id": 9509888507,
+      "receipt_inner_sha256": "sha256:727c971d10984eebcef2ee3c6f97dafaaf510cf38cab16b8c52a393b1b501571",
+      "observed_note": "Exact-version install receipt bound by artifact ID 9509888507 and inner SHA-256 on 2026-11-04; the receipt carries identity fields only and no installation-result field. The producing install-smoke (windows-latest) job conclusion is success. Current re-installation was not independently re-executed here."
+    }
+  ],
   "registry_observation": {
-    "observed_at": "2026-08-30",
+    "observed_at": "2026-11-04",
     "rows_present": 10,
     "yanked_count": 0
   },
   "observation_completeness": "partial_observation",
   "observation_limits": [
     "The incident tag's create/delete/recreate event history (timestamps, actor, order) is not retained; only the current annotated tag target is observable.",
-    "The producing-candidate receipts for the allow-diff and cargo-allow registry bytes are unretained: no retained topology receipt carries ae3f4ed1... or 212dfcc8... as a candidate-local package checksum (they appear only as observed registry values), so their source candidates are identified only as intermediate moved-tag history.",
+    "The producing-candidate archives for the allow-diff and cargo-allow registry bytes are unretained: no retained receipt carries ae3f4ed17b8877640c00e8fabd1e4e1778eff52dc102cc5103ee49ca92c5a488 or 212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143 as a candidate-local package checksum, and the producing runs' upload-response identities (allow-diff uploaded_waiting_for_registry in 32688128233; cargo-allow published_verified in 32689821900) were never byte-bound to the registry digests.",
+    "Run 32684125678 retained no provider artifacts, so its preflight and publish receipts are unobservable; the conclusion that its publish job never ran rests on the provider job readback alone.",
+    "The inner bytes of the retained preflight bundles and intermediate-run install-smoke receipts other than run 32688128233's bundle were listed but not re-observed in this reconciliation.",
     "docs.rs build state for the ten rows was not observed in this record.",
-    "The retained install receipts contain identity fields only and carry no installation-result or attestation fields. The final run's workflow jobs report historical install and attestation success. Current installation and artifact attestation state were not independently re-verified here."
+    "The install-smoke receipts carry identity fields only and no installation-result or attestation fields; the producing jobs' success conclusions come from the provider run readback, and current re-installation was not independently re-executed here.",
+    "Provider observations were taken 2026-11-04 via read-only GitHub API readback; artifact expiry (2026-11-22) will remove the byte-level basis for the inner-file observations after that date."
   ],
   "channel_posture": "public_prerelease_with_incident",
   "final_candidate_eligibility": "not_reusable",
-  "claim_boundary": "Reconciles retained run receipts (artifacts 9506518765 and 9509808660), the current annotated tag target, a crates.io registry observation dated 2026-08-30 (all ten rows present, none yanked, checksums matching the final run's observed registry values), and the current GitHub Release state. Registry checksum equality is not source-tag provenance: rows are exact only against the retained candidate receipt that produced their irreversible upload, and rows whose bytes match no retained candidate stay visibly across-candidate. This record establishes no clean single-candidate release, authorizes no yank, replaces no public release, and renders no rc.1 evidence reusable for the final 0.2.0 identity."
+  "claim_boundary": "Reconciles all eight provider-observed release attempts over the moved incident tag (run/job/step conclusions, retained artifacts with inner SHA-256 bound by exact artifact ID on 2026-11-04), the current annotated tag target, the current GitHub Release state with all seven provider assets, exact install-smoke receipt observations, and a crates.io registry observation re-taken 2026-11-04 (all ten rows present, none yanked, checksums unchanged from the 2026-08-30 observation and equal to the retained receipts' registry values). Registry checksum equality is not source-tag provenance: rows are exact only against the retained candidate receipt that produced their irreversible upload, and rows whose bytes match no retained candidate stay visibly across-candidate. This record establishes no clean single-candidate release, authorizes no yank, replaces no public release, and renders no rc.1 evidence reusable for the final 0.2.0 identity."
 }

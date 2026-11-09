@@ -39,37 +39,18 @@ fn require(cond: bool, msg: &str) -> Result<(), io::Error> {
     }
 }
 
-fn parse_rc_tag(tag: &str) -> Result<(u64, u64, u64, u64), io::Error> {
-    // Expected format: major.minor.patch-rc.N
-    let parts: Vec<&str> = tag.split("-rc.").collect();
-    let prefix = parts
-        .first()
-        .copied()
-        .ok_or_else(|| io::Error::other("invalid rc format"))?;
-    let rc_str = parts
-        .get(1)
-        .copied()
-        .ok_or_else(|| io::Error::other("missing rc num"))?;
-
-    let ver_parts: Vec<&str> = prefix.split('.').collect();
-    let major_str = ver_parts
-        .first()
-        .copied()
-        .ok_or_else(|| io::Error::other("missing major"))?;
-    let minor_str = ver_parts
-        .get(1)
-        .copied()
-        .ok_or_else(|| io::Error::other("missing minor"))?;
-    let patch_str = ver_parts
-        .get(2)
-        .copied()
-        .ok_or_else(|| io::Error::other("missing patch"))?;
-
-    let major: u64 = major_str.parse().map_err(io::Error::other)?;
-    let minor: u64 = minor_str.parse().map_err(io::Error::other)?;
-    let patch: u64 = patch_str.parse().map_err(io::Error::other)?;
-    let rc_num: u64 = rc_str.parse().map_err(io::Error::other)?;
-    Ok((major, minor, patch, rc_num))
+fn require_rc_ordering(first: &str, second: &str) -> Result<(), io::Error> {
+    // Ordering through the typed authority: ReleaseVersionV1::precedence
+    // reproduces SemVer precedence for the supported grammar (Slice E), so
+    // the corpus never re-parses the RC shape to compare fixtures.
+    let before =
+        ReleaseVersionV1::parse(first).map_err(|error| io::Error::other(error.to_string()))?;
+    let after =
+        ReleaseVersionV1::parse(second).map_err(|error| io::Error::other(error.to_string()))?;
+    require(
+        before.precedence() < after.precedence(),
+        "RC numbering ordering must be monotonic",
+    )
 }
 
 #[test]
@@ -87,9 +68,7 @@ fn rc1_incident_corpus_1_to_8() -> Result<(), Box<dyn Error>> {
     )?;
 
     // 2. Parser rejects or misorders numbered RC
-    let v1 = parse_rc_tag("0.2.0-rc.1")?;
-    let v2 = parse_rc_tag("0.2.0-rc.2")?;
-    require(v1 < v2, "RC numbering ordering must be monotonic")?;
+    require_rc_ordering("0.2.0-rc.1", "0.2.0-rc.2")?;
 
     // 3. VCS metadata repackage drift vs retained namespace
     let local_hash = "sha256:1111";

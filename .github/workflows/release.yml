@@ -57,6 +57,8 @@ jobs:
       authorization: ${{ steps.release_context.outputs.authorization }}
       recovery_receipt_run_id: ${{ steps.release_context.outputs.recovery_receipt_run_id }}
       github_prerelease: ${{ steps.release_context.outputs.github_prerelease }}
+      release_record_path: ${{ steps.release_context.outputs.release_record_path }}
+      github_note_path: ${{ steps.release_context.outputs.github_note_path }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -141,6 +143,13 @@ jobs:
           # manifest text in this workflow.
           version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' target/cargo-allow/release-identity.json)"
           github_prerelease="$(python3 -c 'import json,sys; print(str(json.load(open(sys.argv[1]))["github_prerelease"]).lower())' target/cargo-allow/release-identity.json)"
+          # #3788: the exact release-record and GitHub-note paths are read
+          # from the validated projection. Downstream jobs consume these
+          # outputs; they never assemble release paths from raw version or
+          # tag text, and a missing note file is a typed missing-input
+          # error, not a locally synthesized fallback.
+          release_record_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["release_record_path"])' target/cargo-allow/release-identity.json)"
+          github_note_path="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["github_note_path"])' target/cargo-allow/release-identity.json)"
           {
             echo "version=${version}"
             echo "tag=${tag}"
@@ -150,6 +159,8 @@ jobs:
             echo "authorization=${authorization}"
             echo "recovery_receipt_run_id=${RECOVERY_RECEIPT_RUN_ID}"
             echo "github_prerelease=${github_prerelease}"
+            echo "release_record_path=${release_record_path}"
+            echo "github_note_path=${github_note_path}"
           } >> "${GITHUB_OUTPUT}"
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
@@ -282,14 +293,202 @@ jobs:
           name: release-operation-identity
           path: target/cargo-allow/release-operation-identity.json
 
+  # #2267 pre-publication cross-platform SourceCandidateSmoke matrix. Every
+  # required row reuses the landed #2256 Stage A packaging harness
+  # (scripts/package-candidate-smoke.sh) and the #2266 installed first-hour
+  # journey (scripts/source-candidate-smoke.sh) against the exact release
+  # identity: the same commit/tree the preflight validated (the recovery tag
+  # checkout on the publish_recovery path, so recovery can never prove a
+  # different source candidate). Rows are read-only candidate proof: no
+  # secret is read, nothing is published, no tag is touched. The selected
+  # matrix follows #3737 — Linux and Windows x86_64 on Rust 1.95 are
+  # required rows; macOS and the Rust 1.85 rollback-guidance lane are
+  # explicitly NotIncluded (that classification is declared in the gate
+  # script, never inferred from absent YAML). One auditable publication path
+  # keeps its single workflow; this stage only adds proof before publish.
+  source-candidate-smoke:
+    needs: preflight
+    strategy:
+      # A failed or cancelled row must surface as itself; cancelling the
+      # sibling row would hide a required result behind another failure.
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            toolchain: "1.95.0"
+          - platform: windows
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            toolchain: "1.95.0"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.preflight.outputs.recovery == 'true' && format('refs/tags/{0}', needs.preflight.outputs.tag) || github.sha }}
+          # The smoke journeys run local git only (archive/worktree/rev-parse);
+          # the checkout must not retain the runner token.
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@6c977a6ca4077a0ceb28ffbe03f59d46e9ac8772 # stable
+        with:
+          # #3737 selects Rust 1.95 for every candidate row.
+          toolchain: "1.95.0"
+      - name: Package the exact candidate and smoke the install (Stage A)
+        shell: bash
+        run: bash scripts/package-candidate-smoke.sh
+      - name: Run the installed first-hour source-candidate journey (#2266)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bin="${PWD}/target/package-candidate-smoke/install/bin/cargo-allow"
+          [[ -x "${bin}" ]] || bin="${bin}.exe"
+          CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
+      - name: Record the platform smoke receipt
+        if: always()
+        shell: bash
+        env:
+          ROW_PLATFORM: ${{ matrix.platform }}
+          ROW_TARGET: ${{ matrix.target }}
+          ROW_TOOLCHAIN: ${{ matrix.toolchain }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_TAG: ${{ needs.preflight.outputs.tag }}
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+          EXPECTED_COMMIT: ${{ needs.preflight.outputs.commit }}
+          EXPECTED_TREE: ${{ needs.preflight.outputs.tree }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p target/cargo-allow
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          platform = os.environ["ROW_PLATFORM"]
+          harness_path = Path("target/source-candidate-smoke/source-candidate-smoke.receipt.json")
+          packaged_path = Path("target/package-candidate-smoke/package-candidate-smoke.receipt.txt")
+          harness = None
+          if harness_path.is_file():
+              try:
+                  harness = json.loads(harness_path.read_text(encoding="utf-8"))
+              except json.JSONDecodeError:
+                  harness = None
+          packaged = []
+          if packaged_path.is_file():
+              for line in packaged_path.read_text(encoding="utf-8").splitlines():
+                  if line.startswith("packaged="):
+                      packaged.append(line[len("packaged="):].split("-", 1)[0])
+          row = {
+              "repository": os.environ["EXPECTED_REPOSITORY"],
+              "ref": os.environ["EXPECTED_REF"],
+              "candidate_commit": os.environ["EXPECTED_COMMIT"],
+              "candidate_tree": os.environ["EXPECTED_TREE"],
+              "candidate_version": os.environ["EXPECTED_VERSION"],
+              "tag": os.environ["EXPECTED_TAG"],
+              "platform": platform,
+              "target": os.environ["ROW_TARGET"],
+              "toolchain": os.environ["ROW_TOOLCHAIN"],
+              "required": True,
+              "result": (harness or {}).get("result", "NotProven"),
+              "packaged_crates": packaged,
+              "harness_receipt_sha256": (
+                  "sha256:" + hashlib.sha256(harness_path.read_bytes()).hexdigest()
+                  if harness_path.is_file() else ""
+              ),
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["RUN_ATTEMPT"]),
+          }
+          out = Path(f"target/cargo-allow/release-source-candidate-smoke-{platform}.receipt.json")
+          out.write_bytes((json.dumps(row, indent=2) + "\n").encode("utf-8"))
+          print(f"platform smoke receipt: {out} result={row['result']}")
+          PY
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: source-candidate-smoke-receipt-${{ matrix.platform }}
+          path: |
+            target/cargo-allow/release-source-candidate-smoke-${{ matrix.platform }}.receipt.json
+            target/source-candidate-smoke/source-candidate-smoke.receipt.json
+            target/package-candidate-smoke/package-candidate-smoke.receipt.txt
+          if-no-files-found: error
+
+  # #2267 aggregate gate: publication may start only when every required
+  # #3737 platform receipt is current, claimed, and Passed for this exact
+  # run. The gate script refuses missing, skipped, cancelled, timed-out,
+  # stale, partial-graph, unclaimed, and unexpected rows; NotApplicable is
+  # valid only for the explicitly NotIncluded classifications it declares.
+  # The job runs under !cancelled() (never always()) so a failed or skipped
+  # matrix still produces a red gate instead of a silently skipped one, and
+  # publication stays blocked through the publish job's needs below.
+  source-candidate-smoke-aggregate:
+    needs: [preflight, source-candidate-smoke]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the Linux smoke row
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-candidate-smoke-receipt-linux
+          path: target/cargo-allow/source-candidate-smoke-rows/linux
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Download the Windows smoke row
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-candidate-smoke-receipt-windows
+          path: target/cargo-allow/source-candidate-smoke-rows/windows
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Aggregate the platform smoke receipts
+        env:
+          SMOKE_NEEDS_RESULT: ${{ needs.source-candidate-smoke.result }}
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_TAG: ${{ needs.preflight.outputs.tag }}
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+          EXPECTED_COMMIT: ${{ needs.preflight.outputs.commit }}
+          EXPECTED_TREE: ${{ needs.preflight.outputs.tree }}
+          EXPECTED_RUN_ID: ${{ github.run_id }}
+          EXPECTED_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release-source-candidate-smoke-gate.py aggregate \
+            --rows-dir target/cargo-allow/source-candidate-smoke-rows \
+            --fixture docs/dogfood/fixtures/release/candidate-crate-set.toml \
+            --needs-result "${SMOKE_NEEDS_RESULT}" \
+            --expected-repository "${EXPECTED_REPOSITORY}" \
+            --expected-ref "${EXPECTED_REF}" \
+            --expected-commit "${EXPECTED_COMMIT}" \
+            --expected-tree "${EXPECTED_TREE}" \
+            --expected-version "${EXPECTED_VERSION}" \
+            --expected-tag "${EXPECTED_TAG}" \
+            --expected-run-id "${EXPECTED_RUN_ID}" \
+            --expected-run-attempt "${EXPECTED_RUN_ATTEMPT}" \
+            --output target/cargo-allow/source-candidate-smoke-aggregate.receipt.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: source-candidate-smoke-aggregate
+          path: target/cargo-allow/source-candidate-smoke-aggregate.receipt.json
+          if-no-files-found: error
+
   publish:
-    needs: [preflight, authorize]
+    needs: [preflight, authorize, source-candidate-smoke-aggregate]
     runs-on: ubuntu-latest
     outputs:
       auth_source: ${{ steps.registry_token.outputs.source }}
       authorization_digest: ${{ needs.authorize.outputs.authorization_digest }}
       version: ${{ needs.preflight.outputs.version }}
       github_prerelease: ${{ needs.preflight.outputs.github_prerelease }}
+      github_note_path: ${{ needs.preflight.outputs.github_note_path }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -312,6 +511,40 @@ jobs:
           path: target/cargo-allow/operation-identity
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+      # #2267: the publication path consumes the smoke aggregate as evidence
+      # and re-verifies its identity binding inside this job, so a stale,
+      # foreign-run, or non-Passed gate receipt can never reach the upload
+      # steps even if a needs edge were later edited.
+      - name: Download the source-candidate smoke aggregate
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: source-candidate-smoke-aggregate
+          path: target/cargo-allow/smoke-aggregate
+          run-id: ${{ github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Refuse publication without a current cross-platform smoke aggregate
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_TAG: ${{ needs.preflight.outputs.tag }}
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+          EXPECTED_COMMIT: ${{ needs.preflight.outputs.commit }}
+          EXPECTED_TREE: ${{ needs.preflight.outputs.tree }}
+          EXPECTED_RUN_ID: ${{ github.run_id }}
+          EXPECTED_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release-source-candidate-smoke-gate.py verify \
+            --aggregate target/cargo-allow/smoke-aggregate/source-candidate-smoke-aggregate.receipt.json \
+            --expected-repository "${EXPECTED_REPOSITORY}" \
+            --expected-ref "${EXPECTED_REF}" \
+            --expected-commit "${EXPECTED_COMMIT}" \
+            --expected-tree "${EXPECTED_TREE}" \
+            --expected-version "${EXPECTED_VERSION}" \
+            --expected-tag "${EXPECTED_TAG}" \
+            --expected-run-id "${EXPECTED_RUN_ID}" \
+            --expected-run-attempt "${EXPECTED_RUN_ATTEMPT}" \
+            --output target/cargo-allow/source-candidate-smoke-verify.receipt.json
       - name: Release version and artifact preflight
         env:
           DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish_recovery && 'true' || 'false' }}
@@ -1171,6 +1404,7 @@ jobs:
             target/cargo-allow/release-publish.receipt.json
             target/cargo-allow/topology-publish.receipt.json
             target/cargo-allow/shared-registry-preflight.receipt.json
+            target/cargo-allow/source-candidate-smoke-verify.receipt.json
       - name: Retain publication checkpoint evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1312,6 +1546,7 @@ jobs:
           gh attestation verify "${archive}" --repo "${GITHUB_REPOSITORY}"
           ATTESTATION_VERIFIED=true bash scripts/verify-release-binary.sh --version "${version}" --receipt "${OUTPUT_DIR}/release-binary-install.receipt.json" "${archive}"
       - name: Generate release manifest
+        id: release_manifest
         env:
           REPOSITORY: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
@@ -1332,34 +1567,83 @@ jobs:
           EXPECTED_TOPOLOGY_RECEIPT_SHA256: ${{ steps.publication_receipt.outputs.topology_sha256 }}
         run: |
           set -euo pipefail
-          export VERSION="${RELEASE_VERSION}"
-          export TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
-          bash scripts/generate-release-manifest.sh
+          # #2497: the manifest's semantic authority is the typed Rust
+          # command. It validates the exact retained receipts, reconciles
+          # every published row through the typed publication adapter,
+          # assembles ReleaseManifestV2, re-validates the exact written
+          # bytes, and fails closed on anything other than the required
+          # typed result. Shell derives only the operation tree identity.
+          TREE="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          cargo run -p cargo-allow --locked --quiet -- release-manifest \
+            --version "${RELEASE_VERSION}" \
+            --repository "${REPOSITORY}" \
+            --tag "${TAG}" \
+            --commit "${COMMIT}" \
+            --tree "${TREE}" \
+            --auth-source "${AUTH_SOURCE}" \
+            --authorization-digest "${AUTHORIZATION_DIGEST}" \
+            --workflow-run-id "${WORKFLOW_RUN_ID}" \
+            --platforms "${PLATFORMS}" \
+            --rust-toolchain "${RUST_TOOLCHAIN}" \
+            --runner "${RUNNER}" \
+            --binary-package-receipt "${BINARY_PACKAGE_RECEIPT}" \
+            --binary-install-receipt "${BINARY_INSTALL_RECEIPT}" \
+            --topology-receipt "${TOPOLOGY_RECEIPT}" \
+            --require-published-topology \
+            --expected-topology-receipt-sha256 "${EXPECTED_TOPOLOGY_RECEIPT_SHA256}" \
+            --require-result complete \
+            --output target/cargo-allow/release-manifest-v2.json \
+            --result-out target/cargo-allow/release-manifest-v2.result.json \
+            --github-output "${GITHUB_OUTPUT}"
+      - name: Retain typed manifest evidence
+        # #2497: the failed reconciliation and its referenced diagnostics are
+        # retained without changing the aggregate result.
+        if: always() && steps.release_manifest.outcome != 'skipped'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-manifest-typed-evidence
+          path: |
+            target/cargo-allow/release-manifest-v2.result.json
+            target/cargo-allow/release-manifest-v2.json
+          if-no-files-found: warn
+      - name: Require the typed Complete manifest before attestation
+        # #2497: the exact manifest bytes are re-validated by the typed
+        # authority immediately before attestation. An incomplete payload, a
+        # stale result, or bytes that changed after generation fails this job
+        # so no attestation or release step can run.
+        run: |
+          cargo run -p cargo-allow --locked --quiet -- release-manifest \
+            --manifest target/cargo-allow/release-manifest-v2.json \
+            --require-result complete \
+            --result-out target/cargo-allow/release-manifest-v2.result.json \
+            --github-output "${GITHUB_OUTPUT}"
       - name: Attest release manifest
+        # #2497: attestation runs only on the typed Complete result.
+        if: success() && steps.release_manifest.outputs.result == 'complete'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: target/cargo-allow/release-manifest-v2.json
       - name: Resolve release notes
         id: notes
+        env:
+          RELEASE_NOTE_PATH: ${{ needs.publish.outputs.github_note_path }}
         run: |
-          version="${RELEASE_VERSION}"
-          notes_path="docs/release/github/v${version}.md"
-          if [ -f "${notes_path}" ]; then
-            echo "body_path=${notes_path}" >> "${GITHUB_OUTPUT}"
-          else
-            cat > "/tmp/release-notes.md" <<EOF
-          # cargo-allow v${version}
-
-          See [docs/release/${version}.md](https://github.com/${{ github.repository }}/blob/${{ github.sha }}/docs/release/${version}.md)
-          for the full release record.
-          EOF
-            echo "body_path=/tmp/release-notes.md" >> "${GITHUB_OUTPUT}"
-          fi
+          set -euo pipefail
+          # #3788: the note path is the typed release-identity projection's
+          # exact selected path, relayed through preflight and publish. Its
+          # absence is a typed missing-input error that fails this release
+          # closed; a locally assembled or synthesized fallback note could
+          # disagree with the validated identity and is deleted.
+          [ -n "${RELEASE_NOTE_PATH}" ] || { echo "::error::typed release note input missing: the projection carried no github_note_path"; exit 1; }
+          [ -f "${RELEASE_NOTE_PATH}" ] || { echo "::error::typed release note input missing: no release notes at the projected path ${RELEASE_NOTE_PATH}"; exit 1; }
+          echo "body_path=${RELEASE_NOTE_PATH}" >> "${GITHUB_OUTPUT}"
       - name: Verify manifest checksum after attestation
         run: |
           cd target/cargo-allow
           sha256sum -c release-manifest-v2.sha256
       - name: Create GitHub Release (draft until manifest attached)
+        # #2497: release creation runs only on the typed Complete result.
+        if: success() && steps.release_manifest.outputs.result == 'complete'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ github.ref_name }}
@@ -1368,6 +1652,8 @@ jobs:
           draft: true
           prerelease: ${{ needs.publish.outputs.github_prerelease == 'true' }}
       - name: Attach release manifest to GitHub Release
+        # #2497: attachment runs only on the typed Complete result.
+        if: success() && steps.release_manifest.outputs.result == 'complete'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ github.ref_name }}
@@ -1380,6 +1666,8 @@ jobs:
             target/cargo-allow/release-assets/release-binary.receipt.json
             target/cargo-allow/release-assets/release-binary-install.receipt.json
       - name: Publish release after manifest attached
+        # #2497: public visibility runs only on the typed Complete result.
+        if: success() && steps.release_manifest.outputs.result == 'complete'
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ github.ref_name }}

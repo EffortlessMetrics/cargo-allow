@@ -57,23 +57,42 @@ id = "release-version-preflight"
 path = "scripts/release-version-preflight.sh"
 role = "release version/artifact preflight"
 disposition = "typed-consumer"
-marker_classes = ["tag-strip", "workspace-reader", "prerelease-posture"]
-exact_counts = [{ class = "tag-strip", count = 1 }]
+marker_classes = ["workspace-reader", "prerelease-posture"]
+exact_counts = [
+  { class = "workspace-reader", count = 3 },
+  { class = "prerelease-posture", count = 6 },
+]
 sites = [
   "release-identity --version",
-  "tag_version=\"${GITHUB_REF_NAME#v}\"",
+  "release_identity_projection.py",
+  "projected_version=\"${value}\"",
 ]
-claim_boundary = "Version grammar and channel decisions are delegated to `cargo-allow release-identity`; the script also writes the validated typed projection (including github_prerelease) to RELEASE_IDENTITY_PROJECTION_FILE for callers. The residual tag strip and workspace-version reader only feed exact comparison inputs and the typed call, not independent channel inference."
+claim_boundary = "Version grammar, channel, and tag decisions are delegated to `cargo-allow release-identity`, whose canonical JSON projection the script consumes once through the shared bounded reader (scripts/release_identity_projection.py): the raw caller input is only bound to the projected canonical version with --expect, the observed tag ref is only bound to the projected canonical tag, and every downstream comparison, changelog heading, and release-record path derives from the projected identity. The #3786 residual tag strip (reconstructing a version from GITHUB_REF_NAME) is deleted; the workspace-version reader remains only as the source-controlled equality input, not channel inference. No fallback identity exists."
+
+[[consumers]]
+id = "release-identity-projection-reader"
+path = "scripts/release_identity_projection.py"
+role = "shared bounded reader for the typed release-identity projection"
+disposition = "typed-consumer"
+marker_classes = ["prerelease-posture"]
+exact_counts = [{ class = "prerelease-posture", count = 3 }]
+sites = [
+  "SCHEMA_ID = \"cargo-allow.release-identity.v1\"",
+  "def load_projection",
+]
+claim_boundary = "Extracts exact fields from one `cargo-allow release-identity` JSON projection and binds caller-supplied expected values for exact equality. It validates the projection envelope (schema generation and validated result), checks JSON field types, and prints the requested fields as KEY=VALUE lines. It owns no release grammar, channel inference, tag reconstruction, or path selection; unreadable, malformed, foreign-schema, non-validated, incomplete, or mistyped projections fail closed with no default or fallback."
 
 [[consumers]]
 id = "verify-release-binary"
 path = "scripts/verify-release-binary.sh"
 role = "clean-install verification of the release archive"
 disposition = "exact-value-pass-through"
-marker_classes = ["tag-strip"]
-exact_counts = [{ class = "tag-strip", count = 2 }]
-sites = ["version=\"${archive_name#${prefix}}\""]
-claim_boundary = "Derives the version from the archive filename to compare it for exact equality with the caller-supplied version; no channel or prerelease semantics are decided here."
+marker_classes = []
+sites = [
+  "--version with the exact projected release identity is required",
+  "expected_archive_name=\"cargo-allow-v${version}-x86_64-unknown-linux-gnu.tar.gz\"",
+]
+claim_boundary = "The caller-supplied exact release identity is required (--version) and the canonical archive name is constructed from it and compared for exact equality; the former filename-derived version strips are deleted (#3787). No channel or prerelease semantics are decided here."
 
 [[consumers]]
 id = "direct-floor-proof-workspace-reader"
@@ -141,11 +160,11 @@ claim_boundary = "Tag-prefix stripping is delegated to Changie's VersionNoPrefix
 [[consumers]]
 id = "generate-release-manifest"
 path = "scripts/generate-release-manifest.sh"
-role = "release-manifest-v2 envelope builder"
+role = "thin wrapper over the typed cargo-allow release-manifest command (#2497)"
 disposition = "typed-consumer"
-marker_classes = ["prerelease-posture"]
-sites = ["\"release-identity\", \"--version\""]
-claim_boundary = "Every topology receipt row version is validated through the typed Rust release-identity authority (memoized per distinct version), so the manifest never accepts a form the authority rejects — the former embedded full-SemVer regex, which accepted build metadata and unsupported prerelease spellings, is deleted. The one detected prerelease-posture line is this row's own documented boundary comment inside the script."
+marker_classes = []
+sites = ["release-manifest"]
+claim_boundary = "The wrapper translates the documented environment contract one-to-one into typed arguments for `cargo-allow release-manifest` and decides nothing itself: version grammar, publication equality, and the typed result all live in the Rust authority (crates/cargo-allow/src/cli/release_manifest_command.rs). The former embedded shell+Python encoder — with its SemVer regex history and prerelease-posture comment — is deleted from the authoritative path; the workflow invokes the typed command directly."
 
 [[consumers]]
 id = "install-action-version-gate"
@@ -239,6 +258,24 @@ sites = ["read_workspace_version()"]
 claim_boundary = "Reads the exact workspace version for identity comparison; no channel inference."
 
 [[consumers]]
+id = "exact-candidate-staged-packaging"
+path = "scripts/exact-candidate-staged-packaging.py"
+role = "staged outside-workspace mixed-version packaging producer (#2886)"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["resolve_inherited_package_table("]
+claim_boundary = "Resolves workspace inheritance to exact values so the staged closure packages standalone; the package version authority is the V2 topology row comparison, never a parsed workspace version, and there is no channel inference or upload."
+
+[[consumers]]
+id = "exact-candidate-staged-packaging-fixture"
+path = "scripts/test-exact-candidate-staged-packaging.py"
+role = "two-version fixture characterization for the staged packaging producer (#2886)"
+disposition = "exact-value-pass-through"
+marker_classes = ["workspace-reader"]
+sites = ["FIXTURE_WORKSPACE_MANIFEST"]
+claim_boundary = "The fixture workspace manifests carry workspace inheritance only so the producer's standalone rewrite is exercised; packaged versions come from the fixture topology rows, with no channel inference."
+
+[[consumers]]
 id = "exact-candidate-package-set"
 path = "scripts/exact-candidate-package-set.sh"
 role = "13-crate candidate package set harness"
@@ -263,7 +300,20 @@ role = "characterization tests for the release preflight"
 disposition = "historical-fixture-only"
 marker_classes = ["workspace-reader", "prerelease-posture"]
 sites = ["workspace_version=\"$(awk '/^\\[workspace\\.package\\]/"]
-claim_boundary = "Fabricates v-prefixed tags as negative fixtures and independently reads the workspace version to build them; also asserts the typed projection file carries a validated result and a github_prerelease field (field presence only — value semantics stay in the Rust CLI tests). Fixtures only, not a release authority."
+claim_boundary = "Fabricates v-prefixed tags as negative fixtures and independently reads the workspace version to build them; also asserts the typed projection file carries a validated result and a github_prerelease field (field presence only — value semantics stay in the Rust CLI tests), and that the emitted projection is consumable by the shared bounded reader. Fixtures only, not a release authority."
+
+[[consumers]]
+id = "test-release-identity-projection-reader"
+path = "scripts/test-release-identity-projection-reader.py"
+role = "fail-closed controls for the bounded release-identity projection reader"
+disposition = "historical-fixture-only"
+marker_classes = ["prerelease-posture"]
+exact_counts = [{ class = "prerelease-posture", count = 15 }]
+sites = [
+  "class ReaderTests(unittest.TestCase):",
+  "test_rc_ordering_follows_typed_precedence_not_lexical_filenames",
+]
+claim_boundary = "Fixture projections mirror the exact JSON the typed authority emits for stable 0.2.0 and the RC.1/RC.2/RC.10 line. The controls pin envelope validation, exact extraction, expected-value binding, and the typed-precedence-versus-lexical ordering trap; the fixtures carry the github_prerelease posture vocabulary but decide no channel semantics and are never a release authority."
 
 [[consumers]]
 id = "test-verify-crate-registry-version"
@@ -380,8 +430,8 @@ path = "scripts/release-install-smoke.sh"
 role = "published install smoke"
 disposition = "exact-value-pass-through"
 marker_classes = []
-sites = []
-claim_boundary = "Passes the version opaquely to `cargo install --version`; no parsing."
+sites = ["bin=\"$(command -v cargo-allow)\""]
+claim_boundary = "Passes the version opaquely to `cargo install --version`, resolves the installed binary to one absolute path (no PATH substitution or source-checkout fallback), and requires the installed executable to self-report exactly the installed identity; no parsing (#3787)."
 
 [[consumers]]
 id = "generate-changie-history"

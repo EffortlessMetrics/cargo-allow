@@ -43,6 +43,13 @@ run_expect_failure "observed tag mismatch fails closed" \
   env DRY_RUN=true GITHUB_EVENT_NAME=push GITHUB_REF_NAME="v9.9.9" \
   bash scripts/release-version-preflight.sh "${workspace_version}"
 
+# An -rc observed tag can never ship the stable workspace identity: the
+# typed authority rejects the tag/version disagreement before any release
+# planning runs (#3786 law, gripped here through the preflight consumer).
+run_expect_failure "rc observed tag cannot ship the stable identity" \
+  env DRY_RUN=true GITHUB_EVENT_NAME=push GITHUB_REF_NAME="v${workspace_version}-rc.9" \
+  bash scripts/release-version-preflight.sh "${workspace_version}"
+
 run_expect_failure "release version mismatch" \
   bash scripts/release-version-preflight.sh "0.0.0-missing"
 
@@ -61,8 +68,27 @@ grep -q '"github_prerelease"' "${projection_file}" || {
 }
 printf 'ok typed release identity projection file carries validated prerelease posture\n'
 
+# The projection the preflight emitted must be consumable by the shared
+# bounded reader with the raw input bound to the projected canonical
+# identity (#3787).
+run_expect_success "bounded reader consumes the emitted projection" \
+  python3 scripts/release_identity_projection.py "${projection_file}" \
+    --require version,tag,github_prerelease \
+    --expect "version=${workspace_version}" \
+    --expect "tag=v${workspace_version}"
+
 grep -q 'release-identity --version' scripts/release-version-preflight.sh || {
   printf 'fail typed release identity invocation missing\n' >&2
   exit 1
 }
 printf 'ok typed release identity invocation retained\n'
+
+grep -q 'release_identity_projection.py' scripts/release-version-preflight.sh || {
+  printf 'fail bounded projection reader invocation missing\n' >&2
+  exit 1
+}
+if grep -q 'GITHUB_REF_NAME#' scripts/release-version-preflight.sh; then
+  printf 'fail tag-to-version reconstruction still present\n' >&2
+  exit 1
+fi
+printf 'ok no tag-to-version reconstruction retained\n'

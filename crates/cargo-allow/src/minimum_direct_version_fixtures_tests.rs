@@ -51,6 +51,7 @@ fn receipt(rows: Vec<MinimumVersionRowResultV1>) -> MinimumVersionProofReceiptV1
         rows,
         commands: vec!["cargo check --locked".to_string()],
         floor_lock_digest: "floor-lock-digest-1".to_string(),
+        execution_provenance: None,
         limitations: Vec::new(),
         claim_boundary: "bounded".to_string(),
     }
@@ -285,4 +286,50 @@ fn minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean() {
         "the floor candidate lock digest is retained"
     );
     assert!(!receipt.commands.is_empty());
+}
+
+#[test]
+fn minimum_direct_version_fixtures_provenance_section_parses_the_producer_shape() {
+    // The producer emits the #4214 section with these exact key
+    // names; `deny_unknown_fields` fails closed on any drift
+    // between the emitter and the typed receipt.
+    let text = r#"
+{
+ "schema_id": "cargo-allow.minimum-direct-version.v1",
+ "schema_version": 1,
+ "product": "cargo-allow",
+ "package_roots": ["cargo-allow"],
+ "msrv": "1.95",
+ "toolchain": "1.95.0",
+ "target": "host:x86_64-unknown-linux-gnu",
+ "manifest_set_digest": "m",
+ "lock_digest": "l",
+ "rows": [],
+ "commands": ["cargo check --locked"],
+ "floor_lock_digest": "sha256:v1:floor",
+ "execution_provenance": {
+  "command": "bash scripts/proof-direct-floors.sh",
+  "working_directory": "/checkout",
+  "source_commit": "c0ffee",
+  "source_tree": "deadbeef",
+  "selected_source_digest": "0ef5cc36fbe92389eec515bc163036bc5ee76c67e397b3b5b2b738de9a70e818",
+  "selected_source_scope": ["crates/**/*.rs"],
+  "selected_source_exclusions": ["target/"],
+  "toolchain_identity": "rustc 1.95.0",
+  "profile": "dev",
+  "executable_path": null,
+  "executable_digest": null
+ },
+ "limitations": [],
+ "claim_boundary": "bounded"
+}"#;
+    let receipt: MinimumVersionProofReceiptV1 =
+        serde_json::from_str(text).expect("the provenance-carrying receipt parses");
+    let provenance = receipt
+        .execution_provenance
+        .expect("the section is present");
+    assert_eq!(provenance.source_commit, "c0ffee");
+    assert_eq!(provenance.executable_path, None);
+    assert_eq!(provenance.executable_digest, None);
+    assert_eq!(provenance.selected_source_scope.len(), 1);
 }

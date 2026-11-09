@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/EffortlessMetrics/cargo-allow/blob/main/docs/schemas/cargo-allow.release-impact.v1.schema.json",
+  "title": "CargoAllowReleaseImpactReceiptV1",
+  "description": "Typed release-impact routing decision for one exact base/head/merge-base subject (#3794). Compiled from checked repository inventories (the checked release-sensitive path rules, the #3786 release-identity semantic-owner inventory, and the generation-2 package topology include/file-list authority) without Cargo metadata, rustc, network access, credential reads, or repository code execution. An unmatched path or unresolved semantic owner classifies as unknown and requires the rehearsal. The decision selects proof routing only; it grants no release authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_id",
+    "schema_version",
+    "base_sha",
+    "head_sha",
+    "merge_base_sha",
+    "classification",
+    "rehearsal_required",
+    "path_decisions",
+    "matched_release_sensitive_paths",
+    "unknown_paths",
+    "denominator",
+    "rationale",
+    "limitations",
+    "claim_boundary"
+  ],
+  "properties": {
+    "schema_id": {
+      "const": "cargo-allow.release-impact.v1"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "base_sha": {
+      "$ref": "#/$defs/git_object_name",
+      "description": "Exact base commit the classifier decided against."
+    },
+    "head_sha": {
+      "$ref": "#/$defs/git_object_name",
+      "description": "Exact reviewed head the classifier decided against."
+    },
+    "merge_base_sha": {
+      "$ref": "#/$defs/git_object_name",
+      "description": "Exact merge base; a base movement with an identical head is a different subject."
+    },
+    "classification": {
+      "$ref": "#/$defs/decision"
+    },
+    "rehearsal_required": {
+      "type": "boolean",
+      "description": "True unless the classification is unrelated; unknown selects the rehearsal (fail closed)."
+    },
+    "path_decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/path_decision"
+      },
+      "description": "One auditable decision per changed path, sorted and deduplicated."
+    },
+    "matched_release_sensitive_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Exactly the release_sensitive path decisions in receipt order."
+    },
+    "unknown_paths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Exactly the unknown path decisions in receipt order."
+    },
+    "denominator": {
+      "$ref": "#/$defs/denominator_binding"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "claim_boundary": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "$defs": {
+    "git_object_name": {
+      "type": "string",
+      "description": "Lowercase 40- or 64-character hexadecimal Git object name.",
+      "pattern": "^[0-9a-f]{40}$|^[0-9a-f]{64}$"
+    },
+    "decision": {
+      "type": "string",
+      "enum": ["release_sensitive", "unrelated", "unknown"]
+    },
+    "path_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "decision", "rule", "owner"],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Forward-slash repository-relative changed path."
+        },
+        "decision": {
+          "$ref": "#/$defs/decision"
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The checked rule, inventory row, or authority that decided the path."
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The owning issue or authority the rule is bound to."
+        }
+      }
+    },
+    "denominator_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path_rules",
+        "unrelated_rules",
+        "governance_rules",
+        "semantic_owner_paths",
+        "package_roots",
+        "packaged_asset_roots",
+        "digest"
+      ],
+      "properties": {
+        "path_rules": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "unrelated_rules": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "governance_rules": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "semantic_owner_paths": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Rows consumed from the #3786 release-identity semantic-owner inventory."
+        },
+        "package_roots": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Publish=true package roots consumed from the generation-2 package topology."
+        },
+        "packaged_asset_roots": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Topology asset_roots shipped inside a .crate."
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:v1:[0-9a-f]{64}$",
+          "description": "Content digest over the exact consumed denominator."
+        }
+      }
+    }
+  }
+}

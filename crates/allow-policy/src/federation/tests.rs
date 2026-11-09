@@ -301,9 +301,9 @@ fn mirror_divergence_rejects_dangling_policy_link() -> std::io::Result<()> {
         let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
             .map_err(|error| std::io::Error::other(error.to_string()))?;
         if divergences.len() != 1
-            || !divergences
+            || divergences
                 .first()
-                .is_some_and(|record| record.mirror_fingerprint.is_none())
+                .is_none_or(|record| record.mirror_fingerprint.is_some())
         {
             return Err(std::io::Error::other(format!(
                 "dangling mirror link should remain unavailable: {divergences:?}"
@@ -334,9 +334,9 @@ fn mirror_divergence_rejects_non_regular_policy_before_read() -> std::io::Result
         let divergences = super::divergence::detect_mirror_divergences(&root, &validated.config)
             .map_err(|error| std::io::Error::other(error.to_string()))?;
         if divergences.len() != 1
-            || !divergences
+            || divergences
                 .first()
-                .is_some_and(|record| record.mirror_fingerprint.is_none())
+                .is_none_or(|record| record.mirror_fingerprint.is_some())
         {
             return Err(std::io::Error::other(format!(
                 "non-regular mirror target was not rejected: {divergences:?}"
