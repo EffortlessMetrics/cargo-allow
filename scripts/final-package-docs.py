@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tarfile
 import tempfile
@@ -27,6 +28,54 @@ import importlib.util
 ROOT = Path(__file__).resolve().parent.parent
 BASIS_SCHEMA = "cargo-allow.final-package-docs-basis.v1"
 RECEIPT_SCHEMA = "cargo-allow.final-package-docs.v1"
+
+# Validated authority projections memoized per version/tag pair: the harness
+# validates one basis per negative control and the cargo build dominates the
+# first invocation.
+_AUTHORITY_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
+
+
+# The typed authority always runs in the real workspace checkout: the test
+# harness rebinds ROOT to a temporary directory for publisher file
+# operations, but version validation is workspace-independent.
+WORKSPACE_ROOT = ROOT
+
+
+def authority_projection(version: str, tag: str) -> dict[str, Any]:
+    """Validate one version/tag pair through the typed Rust authority.
+
+    Grammar, canonical tag identity, and channel semantics belong to
+    `cargo-allow release-identity`; this function only transports the
+    validated projection. Authority rejection and malformed output fail
+    closed with the authority diagnostic attached.
+    """
+    key = (version, tag)
+    cached = _AUTHORITY_CACHE.get(key)
+    if cached is not None:
+        return cached
+    try:
+        completed = subprocess.run(
+            ["cargo", "run", "--quiet", "-p", "cargo-allow", "--locked", "--",
+             "release-identity", "--version", version, "--tag", tag],
+            cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=600,
+        )
+    except (OSError, subprocess.SubprocessError) as error:
+        fail(f"typed release identity unavailable for basis version {version!r} tag {tag!r}: {error}")
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "").strip().splitlines()
+        fail(f"typed release identity rejected basis version {version!r} tag {tag!r}: {detail[0] if detail else 'no diagnostic'}")
+    try:
+        projection = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        fail(f"typed release identity emitted malformed JSON for basis version {version!r} tag {tag!r}")
+    if (
+        not isinstance(projection, dict)
+        or projection.get("schema") != "cargo-allow.release-identity.v1"
+        or projection.get("result") != "validated"
+    ):
+        fail(f"typed release identity projection not validated for basis version {version!r} tag {tag!r}")
+    _AUTHORITY_CACHE[key] = projection
+    return projection
 TOPLOGY = ROOT / "policy/product-package-topology-v2.toml"
 
 
@@ -94,13 +143,27 @@ def load_basis(path: Path) -> dict[str, Any]:
         fail("basis release_identity is missing")
     version = identity.get("version")
     tag = identity.get("tag")
-    channel = identity.get("channel")
-    prerelease = identity.get("github_prerelease")
-    if not isinstance(version, str) or version.count(".") != 2 or not version.replace(".", "").isdigit():
-        fail(f"basis version {version!r} is not a stable x.y.z identity")
-    if tag != f"v{version}":
-        fail(f"basis tag {tag!r} does not match the canonical tag v{version}")
-    if channel != "stable" or prerelease is not False:
+    if not isinstance(version, str) or not isinstance(tag, str):
+        fail(f"basis release_identity must carry exact version/tag strings, found version={version!r} tag={tag!r}")
+    # Final-docs policy gate on the claimed basis posture: only a stable,
+    # non-prerelease basis can become final authority. Grammar behind these
+    # fields is validated against the typed authority below; this gate
+    # states the final-only policy, it never parses version text.
+    if identity.get("channel") != "stable" or identity.get("github_prerelease") is not False:
+        fail(
+            "rc-line or prerelease basis cannot be the final package-docs "
+            "authority: 0.2.0-rc.1 evidence stays incident-lineage history "
+            "under #3759 and the final basis must be stable 0.2.0"
+        )
+    projection = authority_projection(version, tag)
+    for field in ("version", "tag", "channel", "github_prerelease", "rc_ordinal"):
+        if projection.get(field) != identity.get(field):
+            fail(
+                "basis release_identity does not match the typed authority "
+                f"projection for version {version!r} tag {tag!r}: field {field!r} "
+                f"is {identity.get(field)!r}, authority projects {projection.get(field)!r}"
+            )
+    if projection.get("channel") != "stable" or projection.get("github_prerelease") is not False:
         fail(
             "rc-line or prerelease basis cannot be the final package-docs "
             "authority: 0.2.0-rc.1 evidence stays incident-lineage history "

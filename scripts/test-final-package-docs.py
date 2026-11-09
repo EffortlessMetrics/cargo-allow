@@ -472,7 +472,7 @@ def main() -> None:
 
         expect_failure(harness, fixture_basis(version="0.2.0-rc.1", tag="v0.2.0-rc.1",
                                               channel="release_candidate", prerelease=True),
-                       full_rows(), "is not a stable x.y.z identity")
+                       full_rows(), "rc-line or prerelease basis")
         expect_failure(harness, fixture_basis(version="0.2.0", tag="v0.2.0",
                                               channel="stable", prerelease=True),
                        full_rows(), "rc-line or prerelease basis")
