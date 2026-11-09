@@ -706,6 +706,45 @@ def reseal_experience_predecessors(originals, original_input, predecessors):
     original_input["journey_digest"] = BASE_FIXTURE.digest(originals[journey_path])
 
 
+def join_forged_command_case_projection(originals, members, original_input, commit):
+    """Bind synthetic claims, not native bundle/executable/observation originals."""
+    catalogue_bytes = (ROOT / "docs/release/core-command-migration-cases.v1.json").read_bytes()
+    catalogue = json.loads(catalogue_bytes)
+    if len(catalogue["cases"]) != 107:
+        raise AssertionError("the forged full-denominator control must be reviewed with a changed catalogue")
+    originals["experience-migration-denominator.json"] = catalogue_bytes
+    original_input["migration_denominator_digest"] = BASE_FIXTURE.digest(catalogue_bytes)
+    context = {
+        "schema_id":"cargo-allow.command-case-context.v1", "schema_version":1,
+        "collection_id":"forged-full-denominator", "catalogue_digest":original_input["migration_denominator_digest"],
+        "binary":{"path":original_input["invocation_path"], "size_bytes":1,
+            "digest":original_input["binary_digest"], "tool_version":"0.2.0",
+            "provenance":"supplied_installed_candidate", "source_generation":commit,
+            "candidate_identity":original_input["candidate_digest"], "install_identity":original_input["install_digest"]},
+        # No native case observations were produced. A projection claiming all
+        # cases valid must not substitute for the absent execution originals.
+        "cases":[],
+    }
+    context_bytes = json.dumps(context, indent=2).encode() + b"\n"
+    admission = {
+        "schema_id":"cargo-allow.command-case-admission.v1", "schema_version":1,
+        "catalogue_digest":original_input["migration_denominator_digest"],
+        "context_digest":BASE_FIXTURE.digest(context_bytes),
+        "bundle_digest":BASE_FIXTURE.digest(b"invented, unretained bundle"),
+        "collection_id":context["collection_id"], "semantic_validity":"valid", "qualification":"complete",
+        "cases":[{"case_id":case["id"], "semantic_validity":"valid", "process_observed":True,
+            "detail_reconciled":True, "observed_result_class":"completed", "observed_completeness":"complete",
+            "errors":[], "binding_gaps":[]} for case in catalogue["cases"]],
+        "missing_cases":[], "dimensions":catalogue["dimensions"], "errors":[], "qualification_gaps":[],
+        "claim_boundary":"deliberately forged projection; no native execution is claimed by this test",
+    }
+    for role, data in (("command-case-context", context_bytes),
+                       ("command-case-admission", json.dumps(admission, indent=2).encode() + b"\n")):
+        path = "evidence-" + role + ".json"
+        originals[path] = data
+        members.append({"logical_id":"evidence:" + role, "role":"Evidence:" + role, "path":path})
+
+
 def experience_native_controls(binary):
     """Run actual prepare/readback/qualify/replay; never substitute an evaluator."""
     cases = ("not_proven", "forged_complete", "missing_input", "missing_result",
@@ -713,7 +752,8 @@ def experience_native_controls(binary):
              "expired", "changed_result", "duplicate_json", "producer",
              "unknown_package_top", "unknown_package_nested", "unknown_install_top",
              "unknown_install_nested", "unknown_journey_top", "unknown_journey_nested",
-             "optional_fields", "malformed_input")
+             "optional_fields", "malformed_input", "command_cases_forged_full",
+             "command_cases_missing_context", "command_cases_replaced_context")
     with tempfile.TemporaryDirectory(prefix="experience-native-") as directory:
         directory = Path(directory)
         root = directory / "repo"
@@ -794,6 +834,19 @@ def experience_native_controls(binary):
                 reseal_experience_predecessors(originals, original_input, predecessors)
             elif case == "malformed_input":
                 original_input["maximum_age_seconds"] = "not an integer"
+            elif case.startswith("command_cases_"):
+                original_input["invocation_path"] = str(root / "target/installed/bin/cargo-allow")
+                join_forged_command_case_projection(originals, original_members, original_input, head)
+                context_path = "evidence-command-case-context.json"
+                if case == "command_cases_missing_context":
+                    del originals[context_path]
+                    original_members = [member for member in original_members if member["path"] != context_path]
+                elif case == "command_cases_replaced_context":
+                    context = json.loads(originals[context_path])
+                    context["binary"]["path"] = str(root / "target/replaced/bin/cargo-allow")
+                    # The new original is authentic to its provider envelope,
+                    # but the admission still binds the previous context bytes.
+                    originals[context_path] = json.dumps(context, indent=2).encode() + b"\n"
             originals["evidence-experience-input.json"] = json.dumps(original_input, indent=2).encode() + b"\n"
             originals["evidence-release-experience.json"] = json.dumps(original_result, indent=2).encode() + b"\n"
             if case in ("missing_input", "missing_result", "missing_reference"):
@@ -823,6 +876,13 @@ def experience_native_controls(binary):
             bridge_calls = []
             def checked_bridge(phase, wire, evidence, out):
                 bridge_calls.append(phase)
+                if case.startswith("command_cases_"):
+                    expected_roles = {"command-case-admission"}
+                    if case != "command_cases_missing_context":
+                        expected_roles.add("command-case-context")
+                    selected_roles = {item.split("=", 1)[0] for item in evidence if item.startswith("command-case-")}
+                    if selected_roles != expected_roles:
+                        raise AssertionError("the actual CLI did not receive the selected command-case evidence roles")
                 if case == "producer":
                     selected = next(item for item in wire["artifacts"] if item["transfer"]["stable_artifact_id"] == "508")
                     selected["expected_producer"]["run_attempt"] += 1
@@ -855,7 +915,9 @@ def experience_native_controls(binary):
                     "unknown_package_top":"malformed", "unknown_package_nested":"malformed",
                     "unknown_install_top":"malformed", "unknown_install_nested":"malformed",
                     "unknown_journey_top":"malformed", "unknown_journey_nested":"malformed",
-                    "optional_fields":"not_proven", "malformed_input":"malformed"}[case]
+                    "optional_fields":"not_proven", "malformed_input":"malformed",
+                    "command_cases_forged_full":"not_proven", "command_cases_missing_context":"malformed",
+                    "command_cases_replaced_context":"mismatch"}[case]
                 readiness = result["readiness"]
                 if (result["post_merge_qualification"] != "EquivalentTree"
                         or result["custody_disposition"] != "Complete"
@@ -871,6 +933,18 @@ def experience_native_controls(binary):
                         raise AssertionError("actual required experience row was masked or lost: " + case + "/" + logical_id)
                     if case in ("not_proven", "forged_complete", "optional_fields") and any(owner not in node["claim_boundary"] for owner in ("#2466", "#3149", "#3151")):
                         raise AssertionError("matching model output fabricated an absent semantic producer")
+                    if case.startswith("command_cases_"):
+                        diagnostic = {
+                            "command_cases_forged_full":"all 107 selected case executions remain unproven",
+                            "command_cases_missing_context":"must be retained together",
+                            "command_cases_replaced_context":"does not bind the retained expected-context bytes",
+                        }[case]
+                        if diagnostic not in node["claim_boundary"] or "#3149" not in node["claim_boundary"]:
+                            raise AssertionError("command-case control failed at a different boundary: " + case)
+                        if case == "command_cases_forged_full" and (
+                                "projection claims 107/107 valid selected cases" not in node["claim_boundary"]
+                                or "#4705" not in node["claim_boundary"]):
+                            raise AssertionError("forged coverage escaped its projection-only claim boundary")
                     if case.startswith("unknown_") and "unknown field unrecognized_observation" not in node["claim_boundary"]:
                         raise AssertionError("unknown-field control was masked by a different defect")
                     if case in ("missing_input", "missing_result", "malformed_input") or case.startswith("unknown_"):
@@ -884,6 +958,24 @@ def experience_native_controls(binary):
                             or direct["next_action"] != "produce the exact evidence result on the selected subject"):
                         raise AssertionError("actual direct input row lost its precise evidence action")
                     # The dependent result may legitimately remain transitively stale.
+                if case.startswith("command_cases_"):
+                    expected_ids = {"command-case-admission"}
+                    if case != "command_cases_missing_context":
+                        expected_ids.add("command-case-context")
+                    support = [node for node in replay["evidence_graph"]["nodes"]
+                               if node["evidence_id"].startswith("command-case-")]
+                    if {node["evidence_id"] for node in support} != expected_ids:
+                        raise AssertionError("command-case supporting graph rows were lost or fabricated")
+                    for node in support:
+                        if (node["required"] or node["evidence_id"] in replay["evidence_graph"]["required_node_ids"]
+                                or any(row["evidence_id"] == node["evidence_id"] for row in readiness["required_evidence"])
+                                or node["producer_expectation"] is None or node["artifact_digest"] is None):
+                            raise AssertionError("command-case support lost custody binding or became a required execution proof")
+                        if (node["authority_scope"] != "support_only"
+                                or node["evidence_id"] not in readiness["support_only_evidence_ids"]
+                                or node["result"] != "not_proven"
+                                or "declaration and custody only" not in node["claim_boundary"]):
+                            raise AssertionError("command-case declaration acquired final execution authority")
                 if replay["retained_transfers"] != [world.objects[selection["artifact_id"]]["transfer"]
                                                    for selection in world.selection["artifacts"]]:
                     raise AssertionError("original producer envelopes were relabeled")

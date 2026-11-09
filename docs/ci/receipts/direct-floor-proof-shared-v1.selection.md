@@ -7,18 +7,18 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: shared
 - Package roots: effortless-repo-protocol, effortless-repo-snapshot, effortless-repo-edit, effortless-rust-source-index
 - Selected closure: effortless-repo-edit, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index
-- Starting source commit: c11079adb4a8ccf76891720e0454283556a59f89
+- Starting source commit: 48c408f30e5d7f2503013bc5deb60237078f7ce5
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
-- Executed floor commit: 515b48d626c6e4a354efba6d0f980b815002dbd6
-- Executed floor tree: 13f501e37240d123fc836697662da340135f56df
+- Executed floor commit: f7383735a0ad8b4e508f4e61e21307a243760279
+- Executed floor tree: 1a43f27dcebcb7dc9356a22ae2d8283880463e29
 - Receipt: direct-floor-proof-shared-v1.json
-- Receipt SHA-256: sha256:v1:36c2f0c38c4adba0bfeb42db3c04a7748063f7a6f0ca9b4878eb31b05601e46d
-- Manifest-set digest: 15033bc3547c8f5eac558c0da38ce2e6aaa943c1eac7e34c968dfd1395357ffc
+- Receipt SHA-256: sha256:v1:7d4dc98220b598fd8ad205d48fbc18b91f2684bf5f5a81054677bfb4558fb1a1
+- Manifest-set digest: 71bcdc199f3925f034b42c4e90d16150f4b45eeffb3325799d75ec0bce1e3ea6
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
-- Executed floor-lock digest: sha256:v1:057fcdb40c04e8b575f853c97049dd545f1c2109d16f37b5982431ae8d3d9914
+- Executed floor-lock digest: sha256:v1:659a4fb282580e37c7814a32647965e815f5cd3240c18a07549784af0d8f140d
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
 | --- | --- | --- | --- | --- | --- |

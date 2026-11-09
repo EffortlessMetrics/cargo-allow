@@ -1,0 +1,1631 @@
+{
+  "admission": {
+    "admitted_case_ids": [
+      "A.adopt.clean_no_policy"
+    ],
+    "case_verdict_counts": {
+      "incomplete": 13,
+      "invalid": 15,
+      "valid": 1
+    },
+    "missing_case_count": 106,
+    "missing_cases_note": "the 78 non-selected accepted-catalogue cases remain outstanding obligations",
+    "producer": "cargo-allow command-migration-evidence (current source reader)",
+    "qualification": "partial",
+    "qualification_gaps": [
+      "the first-family reader cannot satisfy the full A-C, diff-D and #3882 denominator",
+      "JSON/detail/sidecar readback does not execute human, quiet, file, TTY or installed-entrypoint parity cases",
+      "runtime resolved-configuration, selected sensor-profile and same-evaluation artifact-set bindings remain incomplete (#3876/#3880/#3885)",
+      "expected-context custody, installation authority and final experience/qualification consumption remain outside this reader (#3151/#2501)",
+      "source-generation and candidate/install mappings are caller-pinned declarations; binary digest readback alone does not authenticate a build or installation",
+      "before/after snapshots cover the controlled fixture outside target and the blocked-output canary; they are not a sandbox or a claim about all host filesystem effects",
+      "supplied candidate/install identities are bound declarations; their existing installation receipt and custody authorities were not replayed"
+    ],
+    "semantic_validity": "invalid"
+  },
+  "aggregate_owner_issue": 4705,
+  "cases": [
+    {
+      "admission_errors": [],
+      "case_id": "A.adopt.clean_no_policy",
+      "command": "adopt",
+      "detail_digest": "sha256:v1:d91e6be374e6e84a9923e62b323c853b83fce3713733d21667886e34e22c8a97",
+      "detail_emitted": true,
+      "detail_reconciled": true,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:06:49.050874Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "completed",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "valid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:05:27.852555Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:1f1b6cff422251586ef7f72ec09937f3e3415f241267f75a9986ff267f97c612",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.adopt.findings_no_policy",
+      "command": "adopt",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:12:51.046479Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:12:28.841964Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "adoption policy state/path contradicts the selected fixture"
+      ],
+      "case_id": "A.adopt.healthy_policy",
+      "command": "adopt",
+      "detail_digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:16:31.405575Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:16:07.558507Z",
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "adoption policy state/path contradicts the selected fixture"
+      ],
+      "case_id": "A.adopt.new_finding",
+      "command": "adopt",
+      "detail_digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:19:11.049129Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:18:48.059634Z",
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "absent/invalid policy falsely has a consumed-policy digest"
+      ],
+      "case_id": "A.adopt.invalid_policy",
+      "command": "adopt",
+      "detail_digest": "sha256:v1:90834730746c9cb36b0a85453fae45d391d8ad6b9e5d87074cd7e9b72b7ac0a8",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:22:27.080178Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:22:07.952185Z",
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:c53ea295fb3a15ca05dbeb3403acccda7a6b8e38f6faac41616d3cc54ef6ed18",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "detail inventory subject or scope mismatch"
+      ],
+      "case_id": "A.adopt.partial_inventory",
+      "command": "adopt",
+      "detail_digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:25:05.815533Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:24:31.511110Z",
+      "stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "size_bytes": 57
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "hard-error summary contradicts the existing native error adapter"
+      ],
+      "case_id": "A.adopt.instrument_failure",
+      "command": "adopt",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:30:13.360886Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:29:36.570824Z",
+      "stderr": {
+        "digest": "sha256:v1:77d27450567e3edd15f1900acc782aaafca4917661d3b84de3810df956193bcc",
+        "size_bytes": 191
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "case_id": "A.doctor.clean_no_policy",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:03e8508b44f45dd56af5399e1e312583cb076236c697e9e3d31f947965de77e4",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:32:01.128184Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "findings",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:31:31.843112Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "case_id": "A.doctor.findings_no_policy",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:19fb34bff7fca6b8e6108c560f2eb6b2db9b6c3c6cd5cb067bfefbd51ccff5f3",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:32:51.118449Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "findings",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:32:44.341074Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "case_id": "A.doctor.healthy_policy",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:5c9ffaa970175ede1d5b59d10f653d6e4d3f9ca2697172b16d8b6559a08594c4",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:33:33.765692Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:33:24.791831Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:7b82197825194c0d001e6a6210d1f900e1d8ea70080afb12dbd2f9bc39ba70f7",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "case_id": "A.doctor.new_finding",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:4fe4b7bc04817f4c4107bba101861d15c59e7fec479ddb82b42d1e088a1e41e5",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:34:25.193431Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:34:14.253043Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:5dde40e6704e09318eea267c1c1c3a5f53a29154ba774f14c4b73969ed016d03",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "case_id": "A.doctor.invalid_policy",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:4018533bb30cac0e165c5ae024be474db58157fe86269cf59464a0248b2f76f8",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:35:52.311675Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:35:41.476095Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:7c0162cd7b57755d1afc7c835047071ac556ce1fa11a91466c2310f62941a132",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "case_id": "A.doctor.partial_inventory",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:ab3cfc2f222dc73383f5722e725b1ec62990dc610c9f433a9d631333d5fd447a",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:37:16.156222Z",
+      "observed_completeness": "partial",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:36:54.011774Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:6eb7a51f8d77fd99ca34ed87ecd4c1217748d7ff7919cb0aeb30f749afa14bba",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "hard-error summary contradicts the existing native error adapter"
+      ],
+      "case_id": "A.doctor.instrument_failure",
+      "command": "doctor",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:39:47.267437Z",
+      "observed_completeness": "partial",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:39:36.994833Z",
+      "stderr": {
+        "digest": "sha256:v1:9ea3d9983553480f2a5ddf2af924b47d2dda89c96e48e09d7c5abddb182484f9",
+        "size_bytes": 192
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:fffa8bf64ad7c23cc00d9109185c928ae083141c866160ffa1289c8de87a898c",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "case_id": "A.audit.clean_no_policy",
+      "command": "audit",
+      "detail_digest": "sha256:v1:bd8bb895f1e5a9db0d0b08d58470e0a8fa567add79a9ca7bf90a73c2cf15851d",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:41:15.970424Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "completed",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:40:57.744996Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:dbbdaf6c9ef866f0915ad32e30eb115561b68ec63eeeab6e598fbaad94b8bf26",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "detail/summary result, coverage, currentness, action, effects or next-proof mismatch"
+      ],
+      "case_id": "A.audit.findings_no_policy",
+      "command": "audit",
+      "detail_digest": "sha256:v1:ea84926de89019a5fa6156e6825f36290039a780adf5080bf4563365e6266fde",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 0,
+      "finished_at_utc": "2026-11-05T06:42:33.116125Z",
+      "observed_completeness": "complete",
+      "observed_result_class": "findings",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:42:19.563823Z",
+      "stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:d6383d1ea2698c4f49640d89f4de9856196599bea0f584a97ea6451f7f959257",
+      "summary_emitted": true,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.audit.healthy_policy",
+      "command": "audit",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:43:38.287332Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:43:34.322581Z",
+      "stderr": {
+        "digest": "sha256:v1:9bc9539043c0b6352ac0795f7e8a7647d5beb2506b8e995a84dc33be8ca85fc2",
+        "size_bytes": 563
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.audit.new_finding",
+      "command": "audit",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:44:11.990236Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:44:11.781810Z",
+      "stderr": {
+        "digest": "sha256:v1:0cdd2a8975c5e9058501e1b89f9ad3eee20dfacd8c1e4c186db7192e66c8d95f",
+        "size_bytes": 560
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.audit.invalid_policy",
+      "command": "audit",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:45:08.443535Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:45:07.076302Z",
+      "stderr": {
+        "digest": "sha256:v1:8c82ae0f39d8a55fb6ae2df86be8de4ee0d6c1bc8e7444511bade73a058c3d5a",
+        "size_bytes": 275
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.audit.partial_inventory",
+      "command": "audit",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:45:38.443059Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:45:37.434254Z",
+      "stderr": {
+        "digest": "sha256:v1:ea6085f58e9daf2dd8ff73fb6266c4206603b9ae629234c52a1574f204acdd30",
+        "size_bytes": 566
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.audit.instrument_failure",
+      "command": "audit",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:46:28.158962Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:46:14.491545Z",
+      "stderr": {
+        "digest": "sha256:v1:2fb785d71cdf3a87b89fa39f02d94eeecf9e4a524c281703818a76332028b34b",
+        "size_bytes": 567
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.clean_no_policy",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:47:07.798036Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:61d8f6badf860c218d2790d2b430ec8213411f244c0bf8c3ab436ace38bd5ac7",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:47:02.532883Z",
+      "stderr": {
+        "digest": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+        "size_bytes": 93
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.findings_no_policy",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:48:19.879095Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:204e625f420fc6a8346c8326e9036c78dd31e38127cac63e307317c667ff70b4",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:48:04.981984Z",
+      "stderr": {
+        "digest": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+        "size_bytes": 93
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.healthy_policy",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:51:14.956370Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:a88d7f75b137c69fbee72d1ad13c1a2fbde6c496bc7b5fec228bffb5446566e7",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:50:55.253121Z",
+      "stderr": {
+        "digest": "sha256:v1:175000ba3e43d7d6bc9ef927701f24e081a3fe330360603c11c128386e625752",
+        "size_bytes": 563
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.new_finding",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T06:58:58.503632Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:2aac54f37d49472162be0f71b055d8e7d0b2aecbd08cd3b685022bdf01deea9f",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T06:58:37.791489Z",
+      "stderr": {
+        "digest": "sha256:v1:e962655484c647018ef35913640230f3067df092b2d79ad21a961e094efb2be1",
+        "size_bytes": 560
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.invalid_policy",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T07:09:01.102248Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:c40bb60fcb1552210b1ed096c9dfcd3e73efe8683df626463b61a60bdc5ff493",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T07:08:34.129068Z",
+      "stderr": {
+        "digest": "sha256:v1:1f4ea4ae527433bae28f04cc8af7c0bb713196c9cc2ecfb7705d9ab3af6e50f1",
+        "size_bytes": 275
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.partial_inventory",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T07:17:40.788309Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:f38a062fd6cc0d4cf8e1d8dea7e25a7fd898e7c91e46492880afad61dcb2d010",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T07:17:31.108616Z",
+      "stderr": {
+        "digest": "sha256:v1:4aeb66ae8e5a75135d280a9ee6b98dd4c8fe4b0cf515e3427b57c1ee21902189",
+        "size_bytes": 566
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [],
+      "case_id": "A.check.instrument_failure",
+      "command": "check",
+      "detail_digest": null,
+      "detail_emitted": false,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T07:22:03.423254Z",
+      "observed_completeness": null,
+      "observed_result_class": null,
+      "receipt_digest": "sha256:v1:31fdf49a59b966256367501d7c1a57d960b72b3e068b30fe4d7931c70327d40d",
+      "receipt_emitted": true,
+      "semantic_validity": "incomplete",
+      "started": true,
+      "started_at_utc": "2026-11-05T07:21:44.568879Z",
+      "stderr": {
+        "digest": "sha256:v1:642ccf1926729b28f0fc05f07fd2480a4270a8ae40729953489b987957829099",
+        "size_bytes": 567
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": null,
+      "summary_emitted": false,
+      "timed_out": false
+    },
+    {
+      "admission_errors": [
+        "doctor configuration validity contradicts the selected fixture"
+      ],
+      "case_id": "A.doctor.partial_require_clean",
+      "command": "doctor",
+      "detail_digest": "sha256:v1:6767c1fd2b287fc91a7bf951682a354012facf982912e76f8ad6474f0c0b9ffb",
+      "detail_emitted": true,
+      "detail_reconciled": false,
+      "exit_code": 1,
+      "finished_at_utc": "2026-11-05T07:29:44.460728Z",
+      "observed_completeness": "partial",
+      "observed_result_class": "malformed_input",
+      "receipt_digest": null,
+      "receipt_emitted": false,
+      "semantic_validity": "invalid",
+      "started": true,
+      "started_at_utc": "2026-11-05T07:29:30.841443Z",
+      "stderr": {
+        "digest": "sha256:v1:03828a4969a60cc0b80be1044b1eae7df9056b00601d540c019258150f1f071a",
+        "size_bytes": 116
+      },
+      "stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size_bytes": 0
+      },
+      "summary_digest": "sha256:v1:b2de248df7eff73b7b20f4c3b9d7b0f45277d5f684c3132aa69396ac82d13280",
+      "summary_emitted": true,
+      "timed_out": false
+    }
+  ],
+  "channel_version": "0.2.0-rc.1",
+  "claim_boundary": [
+    "each of the 29 accepted first-family cases was executed exactly once by the public 0.2.0-rc.1 binary installed from crates.io into a throwaway CARGO_HOME; no source build was substituted",
+    "candidate and install identities are exact digests declared from the public registry row and the executed bytes; no installation receipt or custody authority was replayed by the reader",
+    "native admission returned a real negative result (1 valid, 13 incomplete, 15 invalid): the installed 0.2.0-rc.1 binary does not satisfy the accepted first-family catalogue as current source expects it; this record retains that negative result verbatim instead of repairing or flattening it",
+    "native admission is the current-source reader's own semantic verdict; it keeps qualification partial with 78 outstanding accepted-catalogue cases in addition to the 28 non-valid selected observations",
+    "this record neither claims Complete, nor release qualification, nor external-pilot, nor installed-documentation evidence, nor any release authorization",
+    "no release surface was mutated; all writes outside this record set were confined to throwaway F:/Temp directories"
+  ],
+  "collection": {
+    "catalogue_cases": 107,
+    "catalogue_digest": "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08",
+    "catalogue_git_blob": "fec59acff35d1baa92fbc4b5a82c3a95df1e6af6",
+    "catalogue_repo_path": "docs/release/core-command-migration-cases.v1.json",
+    "collection_id": "rc1-installed-command-cases-4723-r2",
+    "collector_invocation_timeout_seconds": 120,
+    "collector_script": "scripts/command-case-evidence.py",
+    "collector_script_git_blob": "e23fb927b25eafa47503c6ed78eb1deda46128fe",
+    "selected_cases": 29
+  },
+  "environment": {
+    "collector_python": "3.14",
+    "git_executable": "C:/Program Files/Git/cmd/git.exe",
+    "host_os": "Windows 10.0.26300 x64",
+    "install_toolchain": "cargo 1.99.1 (5f94df478 2026-08-27)"
+  },
+  "executed_with": {
+    "candidate_identity": "sha256:v1:212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143",
+    "candidate_identity_authority": {
+      "derivation": "registry version-row checksum carried as sha256:v1:-prefixed digest",
+      "registry": "crates.io",
+      "row": {
+        "checksum": "212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143",
+        "crate": "cargo-allow",
+        "crate_size": 739114,
+        "created_at": "2026-08-24T04:32:06.171214Z",
+        "published_by": "EffortlessSteven",
+        "version": "0.2.0-rc.1",
+        "yanked": false
+      }
+    },
+    "declaration_status": "bound declarations; the existing installation receipt and custody authorities were not replayed by the reader (its recorded qualification gap)",
+    "digest": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+    "install_identity": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+    "install_identity_authority": {
+      "derivation": "sha256 of the exact installed executable bytes executed by every case",
+      "equals_binary_digest": true
+    },
+    "path": "F:\\Temp\\rc1-4723-run\\cargo-home\\bin\\cargo-allow.exe",
+    "provenance": "supplied_installed_candidate",
+    "size_bytes": 13653504,
+    "source_generation": "8bdabcd18723e36bbcfada423fa44779eefa599c",
+    "source_generation_authority": {
+      "fact": "provider-observed head 8bdabcd18723e36bbcfada423fa44779eefa599c of green publication run 32698363934",
+      "record": "docs/release/incidents/2026-08-24-rc1-tag-movement.md"
+    },
+    "tool_version": "0.2.0-rc.1"
+  },
+  "first_run_anomaly": {
+    "case": "A.adopt.instrument_failure",
+    "classification": "host timing flake in fixture setup, not installed-binary behavior; store retained raw setup members at F:/Temp/rc1-4723-run/collection-rc1-command-cases",
+    "collection_id": "rc1-installed-command-cases-4723",
+    "observation": "collector-per-process default timeout of 30 seconds was exceeded (35.3s recorded, timed_out=true); git had created the fixture commit before termination",
+    "resolution": "full re-collection into a fresh store with --timeout 120; the failed store was never admitted",
+    "step": "git commit fixture setup"
+  },
+  "install": {
+    "command": "cargo install cargo-allow --version 0.2.0-rc.1 --locked",
+    "compiled_from_registry": [
+      "allow-core",
+      "allow-diff",
+      "allow-files",
+      "allow-inventory",
+      "allow-match",
+      "allow-policy",
+      "allow-policy-legacy",
+      "allow-report",
+      "allow-rust",
+      "cargo-allow",
+      "clap",
+      "clap_complete",
+      "clap_derive",
+      "effortless-repo-edit",
+      "effortless-repo-protocol",
+      "effortless-repo-snapshot",
+      "rayon",
+      "regex",
+      "serde_derive",
+      "serde_spanned",
+      "sha2",
+      "syn",
+      "toml",
+      "toml_datetime",
+      "tree-sitter",
+      "tree-sitter-rust",
+      "unicode-normalization"
+    ],
+    "install_root": "F:/Temp/rc1-4723-run/cargo-home (isolated throwaway CARGO_HOME)",
+    "network_use": "public registry state of 0.2.0-rc.1 only (crates.io index and crate download)",
+    "workspace_mutation": "none; install and collection confined to throwaway F:/Temp directories"
+  },
+  "lane_issue": 4723,
+  "observation_id": "rc1-installed-command-cases-4723-r2",
+  "observed_installed_drift": {
+    "classification": "real negative parity result; retained as observed, not repaired or suppressed",
+    "incomplete_summary_absent_cases": [
+      "A.adopt.findings_no_policy",
+      "A.audit.healthy_policy",
+      "A.audit.instrument_failure",
+      "A.audit.invalid_policy",
+      "A.audit.new_finding",
+      "A.audit.partial_inventory",
+      "A.check.clean_no_policy",
+      "A.check.findings_no_policy",
+      "A.check.healthy_policy",
+      "A.check.instrument_failure",
+      "A.check.invalid_policy",
+      "A.check.new_finding",
+      "A.check.partial_inventory"
+    ],
+    "invalid_by_first_error": {
+      "absent/invalid policy falsely has a consumed-policy digest": [
+        "A.adopt.invalid_policy"
+      ],
+      "adoption policy state/path contradicts the selected fixture": [
+        "A.adopt.healthy_policy",
+        "A.adopt.new_finding"
+      ],
+      "detail inventory subject or scope mismatch": [
+        "A.adopt.partial_inventory"
+      ],
+      "detail/summary result, coverage, currentness, action, effects or next-proof mismatch": [
+        "A.doctor.clean_no_policy",
+        "A.doctor.findings_no_policy",
+        "A.doctor.invalid_policy",
+        "A.audit.clean_no_policy",
+        "A.audit.findings_no_policy"
+      ],
+      "doctor configuration validity contradicts the selected fixture": [
+        "A.doctor.healthy_policy",
+        "A.doctor.new_finding",
+        "A.doctor.partial_inventory",
+        "A.doctor.partial_require_clean"
+      ],
+      "hard-error summary contradicts the existing native error adapter": [
+        "A.adopt.instrument_failure",
+        "A.doctor.instrument_failure"
+      ]
+    },
+    "observed_examples": [
+      "A.check.clean_no_policy exited 1 with stderr 'error[E0002_INVALID_CONFIG]: no policy config found; run cargo-allow init or pass --config' where the accepted catalogue expects a passing no-policy check",
+      "A.adopt.findings_no_policy exited 1 and emitted neither summary nor detail",
+      "A.audit.findings_no_policy exited 0 with summary+detail whose typed projections contradict the current-native adapters",
+      "A.doctor.invalid_policy emitted a consumed-policy digest where the fixture expects none"
+    ],
+    "valid_cases": [
+      "A.adopt.clean_no_policy"
+    ]
+  },
+  "retained_records": {
+    "admission": {
+      "digest": "sha256:v1:94459de8658e880f181f774c3f8eb01a7854162dc7251dc72f4c13dbf4572e29",
+      "repo_path": "docs/release/evidence/rc1-command-case-admission.v1.json",
+      "size_bytes": 28117
+    },
+    "bundle": {
+      "digest": "sha256:v1:b07e3cd2d72b6611f809d724036516fbfa801a94d7904eec53ecc43f5732b774",
+      "repo_path": "docs/release/evidence/rc1-command-case-bundle.v1.json",
+      "size_bytes": 130458
+    },
+    "context": {
+      "digest": "sha256:v1:ddee71dbeef4bcbf88284d747847f57444da16dfeb9a5ee91bbce02972d2da02",
+      "repo_path": "docs/release/evidence/rc1-command-case-context.v1.json",
+      "size_bytes": 82390
+    },
+    "members": {
+      "A.adopt.clean_no_policy:detail": {
+        "digest": "sha256:v1:d91e6be374e6e84a9923e62b323c853b83fce3713733d21667886e34e22c8a97",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/detail.json",
+        "size_bytes": 4064,
+        "store_member_path": "cases/A.adopt.clean_no_policy/detail.json"
+      },
+      "A.adopt.clean_no_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.clean_no_policy/command.stderr"
+      },
+      "A.adopt.clean_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.clean_no_policy/command.stdout"
+      },
+      "A.adopt.clean_no_policy:summary": {
+        "digest": "sha256:v1:1f1b6cff422251586ef7f72ec09937f3e3415f241267f75a9986ff267f97c612",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/summary.json",
+        "size_bytes": 2090,
+        "store_member_path": "cases/A.adopt.clean_no_policy/summary.json"
+      },
+      "A.adopt.findings_no_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.findings_no_policy/command.stderr"
+      },
+      "A.adopt.findings_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.findings_no_policy/command.stdout"
+      },
+      "A.adopt.healthy_policy:detail": {
+        "digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/detail.json",
+        "size_bytes": 4213,
+        "store_member_path": "cases/A.adopt.healthy_policy/detail.json"
+      },
+      "A.adopt.healthy_policy:stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stderr",
+        "size_bytes": 57,
+        "store_member_path": "cases/A.adopt.healthy_policy/command.stderr"
+      },
+      "A.adopt.healthy_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.healthy_policy/command.stdout"
+      },
+      "A.adopt.healthy_policy:summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/summary.json",
+        "size_bytes": 2173,
+        "store_member_path": "cases/A.adopt.healthy_policy/summary.json"
+      },
+      "A.adopt.instrument_failure:stderr": {
+        "digest": "sha256:v1:77d27450567e3edd15f1900acc782aaafca4917661d3b84de3810df956193bcc",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stderr",
+        "size_bytes": 191,
+        "store_member_path": "cases/A.adopt.instrument_failure/command.stderr"
+      },
+      "A.adopt.instrument_failure:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.instrument_failure/command.stdout"
+      },
+      "A.adopt.instrument_failure:summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/summary.json",
+        "size_bytes": 2173,
+        "store_member_path": "cases/A.adopt.instrument_failure/summary.json"
+      },
+      "A.adopt.invalid_policy:detail": {
+        "digest": "sha256:v1:90834730746c9cb36b0a85453fae45d391d8ad6b9e5d87074cd7e9b72b7ac0a8",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/detail.json",
+        "size_bytes": 4213,
+        "store_member_path": "cases/A.adopt.invalid_policy/detail.json"
+      },
+      "A.adopt.invalid_policy:stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stderr",
+        "size_bytes": 57,
+        "store_member_path": "cases/A.adopt.invalid_policy/command.stderr"
+      },
+      "A.adopt.invalid_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.invalid_policy/command.stdout"
+      },
+      "A.adopt.invalid_policy:summary": {
+        "digest": "sha256:v1:c53ea295fb3a15ca05dbeb3403acccda7a6b8e38f6faac41616d3cc54ef6ed18",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/summary.json",
+        "size_bytes": 2173,
+        "store_member_path": "cases/A.adopt.invalid_policy/summary.json"
+      },
+      "A.adopt.new_finding:detail": {
+        "digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/detail.json",
+        "size_bytes": 4213,
+        "store_member_path": "cases/A.adopt.new_finding/detail.json"
+      },
+      "A.adopt.new_finding:stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stderr",
+        "size_bytes": 57,
+        "store_member_path": "cases/A.adopt.new_finding/command.stderr"
+      },
+      "A.adopt.new_finding:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.new_finding/command.stdout"
+      },
+      "A.adopt.new_finding:summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/summary.json",
+        "size_bytes": 2173,
+        "store_member_path": "cases/A.adopt.new_finding/summary.json"
+      },
+      "A.adopt.partial_inventory:detail": {
+        "digest": "sha256:v1:a003dce51d01bb4f6b09d9c7cc39c7224aaea24fb09909313907928583c8bd5c",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/detail.json",
+        "size_bytes": 4213,
+        "store_member_path": "cases/A.adopt.partial_inventory/detail.json"
+      },
+      "A.adopt.partial_inventory:stderr": {
+        "digest": "sha256:v1:d1bf9e7eaadfa300ea892e567b6a643d2294d4cefac6d24de4b266dd466ee655",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stderr",
+        "size_bytes": 57,
+        "store_member_path": "cases/A.adopt.partial_inventory/command.stderr"
+      },
+      "A.adopt.partial_inventory:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.adopt.partial_inventory/command.stdout"
+      },
+      "A.adopt.partial_inventory:summary": {
+        "digest": "sha256:v1:51bbd637c61c3fa96857f69fd4c77219a559131e4a1084f90cb567d10be5dc6f",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/summary.json",
+        "size_bytes": 2173,
+        "store_member_path": "cases/A.adopt.partial_inventory/summary.json"
+      },
+      "A.audit.clean_no_policy:detail": {
+        "digest": "sha256:v1:bd8bb895f1e5a9db0d0b08d58470e0a8fa567add79a9ca7bf90a73c2cf15851d",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/detail.json",
+        "size_bytes": 2314,
+        "store_member_path": "cases/A.audit.clean_no_policy/detail.json"
+      },
+      "A.audit.clean_no_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.clean_no_policy/command.stderr"
+      },
+      "A.audit.clean_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.clean_no_policy/command.stdout"
+      },
+      "A.audit.clean_no_policy:summary": {
+        "digest": "sha256:v1:dbbdaf6c9ef866f0915ad32e30eb115561b68ec63eeeab6e598fbaad94b8bf26",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/summary.json",
+        "size_bytes": 2105,
+        "store_member_path": "cases/A.audit.clean_no_policy/summary.json"
+      },
+      "A.audit.findings_no_policy:detail": {
+        "digest": "sha256:v1:ea84926de89019a5fa6156e6825f36290039a780adf5080bf4563365e6266fde",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/detail.json",
+        "size_bytes": 3213,
+        "store_member_path": "cases/A.audit.findings_no_policy/detail.json"
+      },
+      "A.audit.findings_no_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.findings_no_policy/command.stderr"
+      },
+      "A.audit.findings_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.findings_no_policy/command.stdout"
+      },
+      "A.audit.findings_no_policy:summary": {
+        "digest": "sha256:v1:d6383d1ea2698c4f49640d89f4de9856196599bea0f584a97ea6451f7f959257",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/summary.json",
+        "size_bytes": 2622,
+        "store_member_path": "cases/A.audit.findings_no_policy/summary.json"
+      },
+      "A.audit.healthy_policy:stderr": {
+        "digest": "sha256:v1:9bc9539043c0b6352ac0795f7e8a7647d5beb2506b8e995a84dc33be8ca85fc2",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stderr",
+        "size_bytes": 563,
+        "store_member_path": "cases/A.audit.healthy_policy/command.stderr"
+      },
+      "A.audit.healthy_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.healthy_policy/command.stdout"
+      },
+      "A.audit.instrument_failure:stderr": {
+        "digest": "sha256:v1:2fb785d71cdf3a87b89fa39f02d94eeecf9e4a524c281703818a76332028b34b",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stderr",
+        "size_bytes": 567,
+        "store_member_path": "cases/A.audit.instrument_failure/command.stderr"
+      },
+      "A.audit.instrument_failure:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.instrument_failure/command.stdout"
+      },
+      "A.audit.invalid_policy:stderr": {
+        "digest": "sha256:v1:8c82ae0f39d8a55fb6ae2df86be8de4ee0d6c1bc8e7444511bade73a058c3d5a",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stderr",
+        "size_bytes": 275,
+        "store_member_path": "cases/A.audit.invalid_policy/command.stderr"
+      },
+      "A.audit.invalid_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.invalid_policy/command.stdout"
+      },
+      "A.audit.new_finding:stderr": {
+        "digest": "sha256:v1:0cdd2a8975c5e9058501e1b89f9ad3eee20dfacd8c1e4c186db7192e66c8d95f",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stderr",
+        "size_bytes": 560,
+        "store_member_path": "cases/A.audit.new_finding/command.stderr"
+      },
+      "A.audit.new_finding:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.new_finding/command.stdout"
+      },
+      "A.audit.partial_inventory:stderr": {
+        "digest": "sha256:v1:ea6085f58e9daf2dd8ff73fb6266c4206603b9ae629234c52a1574f204acdd30",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stderr",
+        "size_bytes": 566,
+        "store_member_path": "cases/A.audit.partial_inventory/command.stderr"
+      },
+      "A.audit.partial_inventory:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.audit.partial_inventory/command.stdout"
+      },
+      "A.check.clean_no_policy:receipt": {
+        "digest": "sha256:v1:61d8f6badf860c218d2790d2b430ec8213411f244c0bf8c3ab436ace38bd5ac7",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/receipt.json",
+        "size_bytes": 2429,
+        "store_member_path": "cases/A.check.clean_no_policy/receipt.json"
+      },
+      "A.check.clean_no_policy:stderr": {
+        "digest": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stderr",
+        "size_bytes": 93,
+        "store_member_path": "cases/A.check.clean_no_policy/command.stderr"
+      },
+      "A.check.clean_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.clean_no_policy/command.stdout"
+      },
+      "A.check.findings_no_policy:receipt": {
+        "digest": "sha256:v1:204e625f420fc6a8346c8326e9036c78dd31e38127cac63e307317c667ff70b4",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/receipt.json",
+        "size_bytes": 2432,
+        "store_member_path": "cases/A.check.findings_no_policy/receipt.json"
+      },
+      "A.check.findings_no_policy:stderr": {
+        "digest": "sha256:v1:444e3972b792b4bda636551db8e02667147cb88746ca96043987ab12fae95f70",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stderr",
+        "size_bytes": 93,
+        "store_member_path": "cases/A.check.findings_no_policy/command.stderr"
+      },
+      "A.check.findings_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.findings_no_policy/command.stdout"
+      },
+      "A.check.healthy_policy:receipt": {
+        "digest": "sha256:v1:a88d7f75b137c69fbee72d1ad13c1a2fbde6c496bc7b5fec228bffb5446566e7",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/receipt.json",
+        "size_bytes": 3038,
+        "store_member_path": "cases/A.check.healthy_policy/receipt.json"
+      },
+      "A.check.healthy_policy:stderr": {
+        "digest": "sha256:v1:175000ba3e43d7d6bc9ef927701f24e081a3fe330360603c11c128386e625752",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stderr",
+        "size_bytes": 563,
+        "store_member_path": "cases/A.check.healthy_policy/command.stderr"
+      },
+      "A.check.healthy_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.healthy_policy/command.stdout"
+      },
+      "A.check.instrument_failure:receipt": {
+        "digest": "sha256:v1:31fdf49a59b966256367501d7c1a57d960b72b3e068b30fe4d7931c70327d40d",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/receipt.json",
+        "size_bytes": 3050,
+        "store_member_path": "cases/A.check.instrument_failure/receipt.json"
+      },
+      "A.check.instrument_failure:stderr": {
+        "digest": "sha256:v1:642ccf1926729b28f0fc05f07fd2480a4270a8ae40729953489b987957829099",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stderr",
+        "size_bytes": 567,
+        "store_member_path": "cases/A.check.instrument_failure/command.stderr"
+      },
+      "A.check.instrument_failure:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.instrument_failure/command.stdout"
+      },
+      "A.check.invalid_policy:receipt": {
+        "digest": "sha256:v1:c40bb60fcb1552210b1ed096c9dfcd3e73efe8683df626463b61a60bdc5ff493",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/receipt.json",
+        "size_bytes": 2750,
+        "store_member_path": "cases/A.check.invalid_policy/receipt.json"
+      },
+      "A.check.invalid_policy:stderr": {
+        "digest": "sha256:v1:1f4ea4ae527433bae28f04cc8af7c0bb713196c9cc2ecfb7705d9ab3af6e50f1",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stderr",
+        "size_bytes": 275,
+        "store_member_path": "cases/A.check.invalid_policy/command.stderr"
+      },
+      "A.check.invalid_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.invalid_policy/command.stdout"
+      },
+      "A.check.new_finding:receipt": {
+        "digest": "sha256:v1:2aac54f37d49472162be0f71b055d8e7d0b2aecbd08cd3b685022bdf01deea9f",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/receipt.json",
+        "size_bytes": 3029,
+        "store_member_path": "cases/A.check.new_finding/receipt.json"
+      },
+      "A.check.new_finding:stderr": {
+        "digest": "sha256:v1:e962655484c647018ef35913640230f3067df092b2d79ad21a961e094efb2be1",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stderr",
+        "size_bytes": 560,
+        "store_member_path": "cases/A.check.new_finding/command.stderr"
+      },
+      "A.check.new_finding:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.new_finding/command.stdout"
+      },
+      "A.check.partial_inventory:receipt": {
+        "digest": "sha256:v1:f38a062fd6cc0d4cf8e1d8dea7e25a7fd898e7c91e46492880afad61dcb2d010",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/receipt.json",
+        "size_bytes": 3047,
+        "store_member_path": "cases/A.check.partial_inventory/receipt.json"
+      },
+      "A.check.partial_inventory:stderr": {
+        "digest": "sha256:v1:4aeb66ae8e5a75135d280a9ee6b98dd4c8fe4b0cf515e3427b57c1ee21902189",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stderr",
+        "size_bytes": 566,
+        "store_member_path": "cases/A.check.partial_inventory/command.stderr"
+      },
+      "A.check.partial_inventory:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.check.partial_inventory/command.stdout"
+      },
+      "A.doctor.clean_no_policy:detail": {
+        "digest": "sha256:v1:03e8508b44f45dd56af5399e1e312583cb076236c697e9e3d31f947965de77e4",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/detail.json",
+        "size_bytes": 2195,
+        "store_member_path": "cases/A.doctor.clean_no_policy/detail.json"
+      },
+      "A.doctor.clean_no_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.clean_no_policy/command.stderr"
+      },
+      "A.doctor.clean_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.clean_no_policy/command.stdout"
+      },
+      "A.doctor.clean_no_policy:summary": {
+        "digest": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/summary.json",
+        "size_bytes": 2641,
+        "store_member_path": "cases/A.doctor.clean_no_policy/summary.json"
+      },
+      "A.doctor.findings_no_policy:detail": {
+        "digest": "sha256:v1:19fb34bff7fca6b8e6108c560f2eb6b2db9b6c3c6cd5cb067bfefbd51ccff5f3",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/detail.json",
+        "size_bytes": 2204,
+        "store_member_path": "cases/A.doctor.findings_no_policy/detail.json"
+      },
+      "A.doctor.findings_no_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.findings_no_policy/command.stderr"
+      },
+      "A.doctor.findings_no_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.findings_no_policy/command.stdout"
+      },
+      "A.doctor.findings_no_policy:summary": {
+        "digest": "sha256:v1:2dcdfcc6fd3dfcf010c2914f83ebeb8331e416b21d29387d06ed5789d35c4ce7",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/summary.json",
+        "size_bytes": 2641,
+        "store_member_path": "cases/A.doctor.findings_no_policy/summary.json"
+      },
+      "A.doctor.healthy_policy:detail": {
+        "digest": "sha256:v1:5c9ffaa970175ede1d5b59d10f653d6e4d3f9ca2697172b16d8b6559a08594c4",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/detail.json",
+        "size_bytes": 2830,
+        "store_member_path": "cases/A.doctor.healthy_policy/detail.json"
+      },
+      "A.doctor.healthy_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.healthy_policy/command.stderr"
+      },
+      "A.doctor.healthy_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.healthy_policy/command.stdout"
+      },
+      "A.doctor.healthy_policy:summary": {
+        "digest": "sha256:v1:7b82197825194c0d001e6a6210d1f900e1d8ea70080afb12dbd2f9bc39ba70f7",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/summary.json",
+        "size_bytes": 2605,
+        "store_member_path": "cases/A.doctor.healthy_policy/summary.json"
+      },
+      "A.doctor.instrument_failure:stderr": {
+        "digest": "sha256:v1:9ea3d9983553480f2a5ddf2af924b47d2dda89c96e48e09d7c5abddb182484f9",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stderr",
+        "size_bytes": 192,
+        "store_member_path": "cases/A.doctor.instrument_failure/command.stderr"
+      },
+      "A.doctor.instrument_failure:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.instrument_failure/command.stdout"
+      },
+      "A.doctor.instrument_failure:summary": {
+        "digest": "sha256:v1:fffa8bf64ad7c23cc00d9109185c928ae083141c866160ffa1289c8de87a898c",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/summary.json",
+        "size_bytes": 2655,
+        "store_member_path": "cases/A.doctor.instrument_failure/summary.json"
+      },
+      "A.doctor.invalid_policy:detail": {
+        "digest": "sha256:v1:4018533bb30cac0e165c5ae024be474db58157fe86269cf59464a0248b2f76f8",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/detail.json",
+        "size_bytes": 2542,
+        "store_member_path": "cases/A.doctor.invalid_policy/detail.json"
+      },
+      "A.doctor.invalid_policy:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.invalid_policy/command.stderr"
+      },
+      "A.doctor.invalid_policy:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.invalid_policy/command.stdout"
+      },
+      "A.doctor.invalid_policy:summary": {
+        "digest": "sha256:v1:7c0162cd7b57755d1afc7c835047071ac556ce1fa11a91466c2310f62941a132",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/summary.json",
+        "size_bytes": 2317,
+        "store_member_path": "cases/A.doctor.invalid_policy/summary.json"
+      },
+      "A.doctor.new_finding:detail": {
+        "digest": "sha256:v1:4fe4b7bc04817f4c4107bba101861d15c59e7fec479ddb82b42d1e088a1e41e5",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/detail.json",
+        "size_bytes": 2818,
+        "store_member_path": "cases/A.doctor.new_finding/detail.json"
+      },
+      "A.doctor.new_finding:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.new_finding/command.stderr"
+      },
+      "A.doctor.new_finding:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.new_finding/command.stdout"
+      },
+      "A.doctor.new_finding:summary": {
+        "digest": "sha256:v1:5dde40e6704e09318eea267c1c1c3a5f53a29154ba774f14c4b73969ed016d03",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/summary.json",
+        "size_bytes": 2602,
+        "store_member_path": "cases/A.doctor.new_finding/summary.json"
+      },
+      "A.doctor.partial_inventory:detail": {
+        "digest": "sha256:v1:ab3cfc2f222dc73383f5722e725b1ec62990dc610c9f433a9d631333d5fd447a",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/detail.json",
+        "size_bytes": 2841,
+        "store_member_path": "cases/A.doctor.partial_inventory/detail.json"
+      },
+      "A.doctor.partial_inventory:stderr": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stderr",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.partial_inventory/command.stderr"
+      },
+      "A.doctor.partial_inventory:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.partial_inventory/command.stdout"
+      },
+      "A.doctor.partial_inventory:summary": {
+        "digest": "sha256:v1:6eb7a51f8d77fd99ca34ed87ecd4c1217748d7ff7919cb0aeb30f749afa14bba",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/summary.json",
+        "size_bytes": 2654,
+        "store_member_path": "cases/A.doctor.partial_inventory/summary.json"
+      },
+      "A.doctor.partial_require_clean:detail": {
+        "digest": "sha256:v1:6767c1fd2b287fc91a7bf951682a354012facf982912e76f8ad6474f0c0b9ffb",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/detail.json",
+        "size_bytes": 2857,
+        "store_member_path": "cases/A.doctor.partial_require_clean/detail.json"
+      },
+      "A.doctor.partial_require_clean:stderr": {
+        "digest": "sha256:v1:03828a4969a60cc0b80be1044b1eae7df9056b00601d540c019258150f1f071a",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stderr",
+        "size_bytes": 116,
+        "store_member_path": "cases/A.doctor.partial_require_clean/command.stderr"
+      },
+      "A.doctor.partial_require_clean:stdout": {
+        "digest": "sha256:v1:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stdout",
+        "size_bytes": 0,
+        "store_member_path": "cases/A.doctor.partial_require_clean/command.stdout"
+      },
+      "A.doctor.partial_require_clean:summary": {
+        "digest": "sha256:v1:b2de248df7eff73b7b20f4c3b9d7b0f45277d5f684c3132aa69396ac82d13280",
+        "repo_path": "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/summary.json",
+        "size_bytes": 2658,
+        "store_member_path": "cases/A.doctor.partial_require_clean/summary.json"
+      }
+    },
+    "members_root": "docs/release/evidence/rc1-command-case-members.v1"
+  },
+  "retention_exclusions": {
+    "binary_member": {
+      "digest": "sha256:v1:a90db04e232a3c3cec1528a32754aed902453f7f85a3a9659aa56fa6fc056f50",
+      "reason": "the installed executable's byte copy is not committed to git; the exact bytes are fixed by this digest and retained in the lane collection store",
+      "size_bytes": 13653504,
+      "store_member_path": "binary/cargo-allow"
+    },
+    "homes": "child HOME/CARGO_HOME directories are environment inputs, not members",
+    "snapshots_and_setup": "before/after snapshot members and git fixture setup members are digest-bound in the retained bundle; their bytes remain in the lane collection store"
+  },
+  "schema": "cargo-allow.rc1-command-case-observation.v1"
+}

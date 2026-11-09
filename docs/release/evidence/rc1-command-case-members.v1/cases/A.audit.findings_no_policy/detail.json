@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.report.v1",
+  "tool": "cargo-allow",
+  "command": "audit",
+  "status": "passed",
+  "failed": false,
+  "claim_boundary": ["source_tree_inventory", "source_syntax_only", "cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed", "source_text_in_identity_fields"],
+  "scanner_limitations": ["cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed"],
+  "inventory": {
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "F:/Temp/rc1-4723-run/collection-rc1-command-cases-r2/fixtures/A.audit.findings_no_policy",
+    "files_scanned": 1,
+    "completeness": "scoped"
+  },
+  "rust_scanner": {
+    "completeness": "scoped",
+    "files_considered": 1,
+    "files_scanned": 1,
+    "files_skipped": 0,
+    "files_with_parse_errors": 0,
+    "skipped_by_reason": {
+      "read_failed_or_unsupported": 0
+    }
+  },
+  "summary": {
+    "findings": 1,
+    "outcomes": 1,
+    "matched": 0,
+    "new": 1,
+    "expired": 0,
+    "review_due": 0,
+    "location_drift": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "evidence_missing": 0,
+    "missing_required_field": 0,
+    "baseline_debt": 0
+  },
+  "trend": {
+    "review_items": 1,
+    "new": 1,
+    "expired": 0,
+    "review_due": 0,
+    "location_drift": 0,
+    "stale": 0,
+    "ambiguous": 0,
+    "invalid_selector": 0,
+    "missing_required_field": 0,
+    "evidence_missing": 0,
+    "baseline_debt": 0
+  },
+  "audit_remediation_roadmap": [
+    {
+      "signal": "new_unreceipted",
+      "label": "new unreceipted",
+      "route_kind": "worklist_status",
+      "item_kind": "new_unreceipted_finding",
+      "worklist_status": "new",
+      "count": 1,
+      "command": "cargo-allow worklist --status new --format json"
+    }
+  ],
+  "evidence_repair_queues": [
+
+  ],
+  "source_inventory": {
+    "findings": 1,
+    "by_kind": [
+      {"kind": "panic", "total": 1, "matched": 0, "new": 1, "review_items": 1}
+    ],
+    "by_family": [
+      {"kind": "panic", "family": "unwrap", "label": "panic.unwrap", "total": 1, "matched": 0, "new": 1, "review_items": 1}
+    ]
+  },
+  "outcomes": [
+    {"status": "new", "allow_id": null, "candidate_ids": [], "finding_index": 0, "score": 0, "message": "unreceipted panic.unwrap at src/lib.rs:1:49"}
+  ],
+  "findings": [
+    {"kind": "panic", "family": "unwrap", "path": "src/lib.rs", "line": 1, "container": "fixture", "ast_kind": "method_call"}
+  ]
+}

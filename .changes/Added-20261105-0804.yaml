@@ -1,0 +1,17 @@
+kind: Added
+body: >-
+  Add one normalized semantic determinism fixture (#2276): a checked-in
+  repository/policy scenario under
+  tests/fixtures/cross_platform_semantics and a
+  release_platform_semantics integration test that runs the real
+  inventory-scan-match-render pipeline over it and pins a canonical
+  projection golden covering normalized finding identities, LF/CRLF
+  invariance, path-spelling, drive/UNC/Unicode seams, case sensitivity,
+  git-tracked inventory, matched/new/expired/review-due posture, and the
+  receipt/JSON/Markdown renders, with five independent negative controls;
+  the test-core-platforms matrix turns per-runner equality with the golden
+  into the cross-platform proof; the fixture mini-repository is excluded
+  from the packaged crate so the release smoke harness's package-rebuild
+  omit law keeps the crate-root README.md as the only README.md-named
+  packaged asset.
+time: 2026-11-05T08:04:00Z

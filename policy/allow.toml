@@ -26400,3 +26400,2573 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/2497-2497-typed-manifest-assembly.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/2497-2497-typed-manifest-assembly.toml"
+
+[[allow]]
+id = "allow-11386"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-admission.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained installed 0.2.0-rc.1 command-case observation record rc1-command-case-admission.v1.json binding the public prerelease executions and native admission verdict (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-admission.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-admission.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11387"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-bundle.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained installed 0.2.0-rc.1 command-case observation record rc1-command-case-bundle.v1.json binding the public prerelease executions and native admission verdict (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-bundle.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-bundle.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11388"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-context.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained installed 0.2.0-rc.1 command-case observation record rc1-command-case-context.v1.json binding the public prerelease executions and native admission verdict (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-context.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-context.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11389"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11390"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11391"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.adopt.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11392"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.adopt.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.clean_no_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11393"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11394"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.findings_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11395"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11396"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11397"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.adopt.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11398"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.adopt.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.healthy_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11399"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11400"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11401"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.adopt.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.instrument_failure/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11402"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11403"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11404"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.adopt.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11405"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.adopt.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.invalid_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11406"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11407"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11408"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.adopt.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11409"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.adopt.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.new_finding/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11410"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.adopt.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11411"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.adopt.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11412"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.adopt.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11413"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.adopt.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.adopt.partial_inventory/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11414"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11415"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11416"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.audit.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11417"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.audit.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.clean_no_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11418"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11419"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11420"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.audit.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11421"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.audit.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.findings_no_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11422"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11423"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.healthy_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11424"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11425"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.instrument_failure/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11426"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11427"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.invalid_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11428"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11429"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.new_finding/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11430"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.audit.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11431"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.audit.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.audit.partial_inventory/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11432"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11433"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11434"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.clean_no_policy/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11435"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11436"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11437"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.findings_no_policy/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11438"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11439"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11440"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.healthy_policy/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11441"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11442"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11443"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.instrument_failure/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11444"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11445"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11446"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.invalid_policy/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11447"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11448"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11449"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.new_finding/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11450"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.check.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11451"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.check.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11452"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/receipt.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member receipt.json for accepted case A.check.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/receipt.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.check.partial_inventory/receipt.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11453"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11454"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11455"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11456"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.clean_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.clean_no_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11457"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11458"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11459"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11460"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.findings_no_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.findings_no_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11461"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11462"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11463"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11464"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.healthy_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.healthy_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11465"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11466"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11467"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.instrument_failure (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.instrument_failure/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11468"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11469"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11470"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11471"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.invalid_policy (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.invalid_policy/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11472"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11473"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11474"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11475"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.new_finding (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.new_finding/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11476"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11477"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11478"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11479"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.partial_inventory (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_inventory/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11480"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stderr"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stderr for accepted case A.doctor.partial_require_clean (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stderr"
+target_fingerprint = "stderr"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stderr"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11481"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stdout"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member command.stdout for accepted case A.doctor.partial_require_clean (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stdout"
+target_fingerprint = "stdout"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/command.stdout"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11482"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/detail.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member detail.json for accepted case A.doctor.partial_require_clean (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/detail.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/detail.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11483"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/summary.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained exact installed 0.2.0-rc.1 command-case execution member summary.json for accepted case A.doctor.partial_require_clean (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/summary.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-members.v1/cases/A.doctor.partial_require_clean/summary.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11484"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-command-case-observation.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained installed 0.2.0-rc.1 command-case observation record rc1-command-case-observation.v1.json binding the public prerelease executions and native admission verdict (#4723)"
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-command-case-observation.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-command-case-observation.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11485"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4723-4723-experience-a-installed.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #4723 experience-A lane's added receipts; note retention only, no new scanned surface beyond this file."
+evidence = ["issue:4723"]
+created = "2026-11-05"
+review_after = "2027-02-03"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4723-4723-experience-a-installed.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4723-4723-experience-a-installed.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11492"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/next-release-qualification.json"
+owner = "release/qualification"
+classification = "release_qualification_ledger"
+reason = "Machine-readable ReleaseQualificationV1 blocker ledger binding the 0.2.0 go/no-go input to exact main basis with derived readiness flags and the #3737 selection digest; it classifies evidence and routes work without granting release authority."
+evidence = ["issue:2263", "test:release_qualification", "doc:docs/support-matrix.toml"]
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/next-release-qualification.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/next-release-qualification.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11493"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/next-release-qualification.md"
+owner = "release/qualification"
+classification = "release_qualification_ledger"
+reason = "Human projection of the same typed ReleaseQualificationV1 ledger data, regenerated byte-exactly by the release_qualification checker so JSON and Markdown cannot disagree; records no release authorization."
+evidence = ["issue:2263", "test:release_qualification"]
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/next-release-qualification.md"
+target_fingerprint = "md"
+glob = "docs/release/evidence/next-release-qualification.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-11494"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2263-2263-qualification-materialization.toml"
+owner = "release/qualification"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #2263 lane's added allow-11386, allow-11387, and allow-11494 receipts; note retention only, no new scanned surface beyond this file."
+evidence = ['issue:2263']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2263-2263-qualification-materialization.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2263-2263-qualification-materialization.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11495"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Fixture policy of the #2276 cross-platform semantic determinism scenario: the checked-in policy text pins matched/review-due/expired/new postures for the fixture scan; it decides no product policy semantics."
+evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
+target_fingerprint = "toml"
+glob = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
+
+[[allow]]
+id = "allow-11486"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/command-mutation-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Collect the #4725 C-family mutation obligations once per supplied-binary invocation in owned disposable Git fixtures with closed child environment, retained argv/exit/streams, per-step snapshots and declared-write reconciliation; no semantic, installation or release authority is delegated to Python."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/command-mutation-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/command-mutation-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11496"
+kind = "panic"
+family = "unwrap"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/alpha.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Forward-spelled LF unwrap fixture finding of the #2276 semantic determinism scenario; its normalized snippet hash must equal the CRLF twin's (allow-11497) on every platform."
+evidence = ['issue:2276', 'test:cross_platform_semantics_newline_handling_is_identity_invariant']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:3e906e44fd8d34ac"
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-11497"
+kind = "panic"
+family = "unwrap"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/alpha_crlf.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "CRLF twin of the #2276 LF unwrap fixture finding; identical code text and normalized snippet hash prove newline handling is identity-invariant across platforms."
+evidence = ['issue:2276', 'test:cross_platform_semantics_newline_handling_is_identity_invariant']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "load"
+callee = "unwrap"
+normalized_snippet_hash = "fnv1a64:3e906e44fd8d34ac"
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-11498"
+kind = "panic"
+family = "expect"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/nested/gamma.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Nested-path expect fixture finding of the #2276 semantic determinism scenario, pinning repository-relative normalization and the param:0 slot fingerprint for the deeper fixture directory."
+evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "chosen"
+callee = "expect"
+normalized_snippet_hash = "fnv1a64:216308e073e2c641"
+
+[allow.last_seen]
+line = 2
+column = 11
+
+[[allow]]
+id = "allow-11499"
+kind = "panic"
+family = "unreachable"
+path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/nested/gamma.rs"
+owner = "core/test-platform"
+classification = "determinism_fixture"
+reason = "Deliberately unmatched unreachable fixture finding of the #2276 semantic determinism scenario: it carries the new posture in the canonical projection while the fixture policy stays silent."
+evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "macro_call"
+container = "guard"
+macro_name = "unreachable"
+target_fingerprint = "unreachable"
+normalized_snippet_hash = "fnv1a64:9059f89f8c5ac8ee"
+
+[allow.last_seen]
+line = 7
+column = 14
+
+[[allow]]
+id = "allow-11500"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/2276-2276-determinism-fixture.toml"
+owner = "core/test-platform"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #2276 semantic-determinism lane's added allow-11495 through allow-11499 receipts; note retention only, no new scanned surface beyond this file."
+evidence = ['issue:2276']
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/2276-2276-determinism-fixture.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/2276-2276-determinism-fixture.toml"
+
+
+[[allow]]
+id = "allow-11487"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/verify-command-mutation-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Admit retained mutation collections by recomputing member digests, snapshot diffs, argv templates, exit expectations and declared-write boundaries against a caller-pinned expected context, and replay the committed manifest; the reader grants no qualification or release authority."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/verify-command-mutation-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/verify-command-mutation-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11488"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-command-mutation-evidence.py"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Hermetic negative controls constructing synthetic collections and manifests so the admission reader rejects wrong subject, wrong family, duplicate or missing cases, replacement bytes, undeclared writes, stale values, fake successes and probe escapes; assertions are not qualification evidence."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-command-mutation-evidence.py"
+target_fingerprint = "py"
+glob = "scripts/test-command-mutation-evidence.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11489"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/command-mutation-1/manifest.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Committed retained record of one executed 0.2.0-rc.1 mutation collection: per-step exits, changed paths, dispositions and digest bindings to the out-of-tree collection; observations only, no exception approval or release qualification."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/command-mutation-1/manifest.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/command-mutation-1/manifest.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11490"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/command-mutation-1/README.md"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Claim-boundary document for the executed mutation evidence slice: exact installed identity, retained findings, admission and replay routes; prose only."
+evidence = ["issue:4725", "doc:docs/release/evidence/command-mutation-1/README.md"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/command-mutation-1/README.md"
+target_fingerprint = "md"
+glob = "docs/release/evidence/command-mutation-1/README.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+
+[[allow]]
+id = "allow-11491"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4725-4725-experience-mutation-1.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for this lane's added allow-11386 through allow-11491 receipts; note retention only, no new scanned surface beyond this file, matching the #3793/#4214/#4716/#2497 precedents."
+evidence = ["issue:4725"]
+created = "2026-11-05"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4725-4725-experience-mutation-1.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4725-4725-experience-mutation-1.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4760-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4760.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retain exact-pair review state for the command-case declaration admission repair; no semantic execution, CI waiver or release authority."
+evidence = ["pr:4760", "issue:4705", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-09"
+review_after = "2027-02-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4760.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4760.json"
+
+[[allow]]
+id = "allow-4760-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4760-review-disposition.toml"
+owner = "core/governance"
+classification = "reviewed_exception"
+reason = "Self-cover the exact revision note for PR4760 review-state retention without widening source exceptions."
+evidence = ["pr:4760", "issue:4705"]
+created = "2026-11-09"
+review_after = "2027-02-09"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4760-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4760-review-disposition.toml"

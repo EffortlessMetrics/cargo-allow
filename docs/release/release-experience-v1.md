@@ -140,21 +140,22 @@ commands are not promoted by this adapter.
 
 #### The #3149 command-case join (#4705)
 
-The executed-denominator hold is no longer unconditional in the face of
-retained evidence. The composer accepts two optional evidence roles,
+The composer accepts two optional evidence roles,
 `command-case-admission=path` (the original native
 `cargo-allow.command-case-admission.v1` projection) and
 `command-case-context=path` (its caller-pinned expected context). The join
-admits the retained admission for exactly its covered cases only after it
-binds, independently: the accepted case catalogue (the referenced
+checks structural bindings: the accepted case catalogue (the referenced
 `experience:migration-denominator` bytes must hash to the native reader's
 pinned catalogue digest), the exact retained expected-context bytes, the
 experience input's installed-executable digest, and the freeze subject's
-source generation. Only a supplied-installed-candidate collection that covers
-the entire accepted denominator with every selected case semantically valid
-discharges the #3149 hold; a source-build collection never does. Partial
-coverage keeps the hold `NotProven` with the covered/uncovered counts in the
-claim boundary — absent cases stay visible and are never silently admitted.
+source generation, collection identity, invocation path and version.
+These checks do not replay the native bundle or its member originals. The
+small-record freeze transport deliberately excludes executable/archive bytes,
+and no authenticated original-member adapter connects it to the native reader.
+Every supplied projection therefore keeps #3149 and #4705 `NotProven`, including
+a projection claiming all 107 cases valid. Counts are explicitly claimed rows,
+not natively admitted coverage. The current first-family reader supports only
+29 cases and cannot itself emit a valid full-denominator result.
 Duplicate originals or rows, foreign executables or subjects, wrong or opaque
 catalogue bytes, unbound context bytes, and admissions reporting collection
 errors all keep the hold with a specific defect. The retained originals are
@@ -163,10 +164,12 @@ exact bytes like every other evidence role.
 
 The next implementation sequence is the #3149 executed catalogue and summary
 validation, #3151 installed documentation observations, and #2466's separately
-owned pilot producer/reader after target selection. The #3149 admission
-consumer now exists (#4705); only a genuinely executed installed denominator
-admitted through it can discharge that hold, while #3151 and #2466 keep their
-missing-producer holds until their own reviewed producers land. Production
+owned pilot producer/reader after target selection. The #3149 metadata/custody
+join exists, but #4705 remains incomplete until authenticated original-member
+transport can reuse the existing native reader and reconcile candidate/install
+authority. Passing an unchecked directory, trusting the supplied bundle digest
+or increasing the small-record limits is not a substitute. #3151 and #2466
+keep their missing-producer holds until their own reviewed producers land. Production
 experience admission becomes `Complete` only when no required hold remains.
 
 ### Focused admission controls

@@ -1,0 +1,57 @@
+{
+  "schema_id": "cargo-allow.core-command-summary.v1",
+  "schema_version": 1,
+  "tool": "cargo-allow",
+  "tool_version": "0.2.0-rc.1",
+  "operation": "audit",
+  "subject": {
+    "kind": "worktree",
+    "repository_identity": "local-repository:sha256:v1:d66c59a6a8033f27a2b9fd6ad965ebedad423ad1ff40961bc23323bf9c420207",
+    "portable_identity": "worktree:git_tracked:current-unpinned",
+    "limitations": [
+      "the current worktree result is not bound to a commit, tree, or Git-index identity"
+    ]
+  },
+  "result_class": "completed",
+  "posture": "satisfied",
+  "completeness": "complete",
+  "currentness": "current",
+  "reason": {
+    "code": "audit.satisfied",
+    "message": "the selected source-exception posture is satisfied"
+  },
+  "additional_action_count": 0,
+  "operation_effects": {
+    "reads_repository": true,
+    "writes_repository": false,
+    "executes_repository_code": false,
+    "invokes_network": false,
+    "explicit_non_effects": [
+      "does not modify source, policy, Git, hooks, workflows, or GitHub settings",
+      "does not execute repository code or external evidence tools"
+    ]
+  },
+  "next_proof": {
+    "id": "audit.full_no_new_check",
+    "kind": "command",
+    "title": "Run the enforcing no-new check",
+    "program": "cargo-allow",
+    "args": [
+      "check",
+      "--mode",
+      "no-new"
+    ],
+    "write_posture": "read_only",
+    "reason": "audit is informational even when its source inputs are complete",
+    "expected_effect": "the current repository is evaluated under the no-new gate",
+    "proof_boundary": "the source-syntax gate does not prove compiled or runtime correctness"
+  },
+  "claim_boundary": {
+    "statement": "cargo-allow evaluated selected source-tree syntax and source-exception ledger posture only",
+    "limitations": [
+      "cargo metadata, rustc, Clippy, build scripts, proc macros, tests, and repository code were not invoked",
+      "macro expansion, type information, MIR, control flow, and data flow were not analyzed",
+      "the current worktree result is not bound to a commit, tree, or Git-index identity"
+    ]
+  }
+}

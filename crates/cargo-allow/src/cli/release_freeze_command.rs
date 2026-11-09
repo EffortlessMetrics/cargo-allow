@@ -1415,9 +1415,10 @@ fn build_evidence_graph(
         ));
     }
 
-    // Retained command-case originals join the installed-experience admission
-    // itself; when supplied they keep a non-required supporting row so the
-    // qualifier's custody binding still finds their graph node.
+    // Retained command-case declarations join the installed-experience
+    // admission but cannot prove the underlying executions. Keep their
+    // custody nodes support-only so neither a required-row selector nor a
+    // positive-authority edge can promote these unreplayed claims.
     for role in [
         FreezeEvidenceRole::CommandCaseAdmission,
         FreezeEvidenceRole::CommandCaseContext,
@@ -1427,12 +1428,16 @@ fn build_evidence_graph(
         };
         let (class, origin, id) = role.graph_shape();
         let result = if input.bound_ok() {
-            FinalEvidenceNodeResultV1::Complete
+            FinalEvidenceNodeResultV1::NotProven
         } else {
             FinalEvidenceNodeResultV1::Mismatch
         };
         let mut node = node_for(id, class, origin, &input.sha256, result, subject);
         node.required = false;
+        node.authority_scope = FinalEvidenceAuthorityScopeV1::SupportOnly;
+        node.claim_boundary = format!(
+            "Retained {id} declaration and custody only; underlying command-case executions remain unproven until authenticated native bundle/member replay (#3149/#4705)."
+        );
         nodes.push(node);
     }
 

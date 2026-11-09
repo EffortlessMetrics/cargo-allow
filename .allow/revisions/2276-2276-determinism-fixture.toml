@@ -1,0 +1,48 @@
+# Revision note: land the #2276 normalized semantic determinism fixture.
+#
+# The lane adds one checked-in repository/policy scenario under
+# crates/cargo-allow/tests/fixtures/cross_platform_semantics and one
+# integration test (release_platform_semantics.rs) that runs the real
+# inventory -> scan -> match -> render pipeline over it and pins a canonical
+# projection golden for the test-core-platforms matrix. The five fixture
+# scan surfaces (the fixture policy, two unwrap twins, an expect, and a
+# deliberately unmatched unreachable) and this note file are receipted
+# additively; the note file is self-covered by its own added_allow record,
+# matching the #3787/#3793/#4214/#4716 precedents. No existing entry was
+# narrowed, loosened, or expired.
+
+[[records]]
+allow_ids = ["allow-11495"]
+reason = "Fixture policy of the #2276 cross-platform semantic determinism scenario: the checked-in policy text pins matched/review-due/expired/new postures for the fixture scan and decides no product policy semantics. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fbb39782a81499ed4a36173decf9fe9c3f1ecf7d4f82a43ddecfe7ea2f522317"
+
+[[records]]
+allow_ids = ["allow-11496"]
+reason = "Forward-spelled LF unwrap fixture finding; its normalized snippet hash must equal the CRLF twin's (allow-11497) on every platform, pinning newline-invariant identity. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:92153e194673d841119471914fa9a2cac3580a936eca50b0fa62a14b64f3e784"
+
+[[records]]
+allow_ids = ["allow-11497"]
+reason = "CRLF twin of the LF unwrap fixture finding with identical code text and normalized snippet hash, proving newline handling is identity-invariant. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4a899c8713c924010c8d1ffafec0e6e9cafa7d3b1d3ce1a2efb9e7fdfc52ec76"
+
+[[records]]
+allow_ids = ["allow-11498"]
+reason = "Nested-path expect fixture finding pinning repository-relative normalization and the param:0 slot fingerprint. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5c32977a8e802a7c5a1ab15b03965130c09dc04bcf2d7b302d4915184fb6cf12"
+
+[[records]]
+allow_ids = ["allow-11499"]
+reason = "Deliberately unmatched unreachable fixture finding that carries the new posture in the canonical projection while the fixture policy stays silent. Added receipt for a new scanned surface only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e9d22bee6336c40c873a0ab74e062c0c6d6e1e4eb507bf8af9aa4be91c6f5e78"
+
+[[records]]
+allow_ids = ["allow-11500"]
+reason = "Self-covering revision note receipting this note file, matching the #3787, #3793, #4214, and #4716 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:84d81543978de9c014a185c0bc80b6923cfcf31cc4de3678bdec0f105a838e95"

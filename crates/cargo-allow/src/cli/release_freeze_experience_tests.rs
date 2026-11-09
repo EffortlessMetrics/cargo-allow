@@ -1268,7 +1268,7 @@ fn native_context(
         collection_id: "command-case-test".to_string(),
         catalogue_digest: String::new(),
         binary: NativeBinaryContext {
-            path: "/installed/bin/cargo-allow".to_string(),
+            path: original.input.invocation_path.clone(),
             size_bytes: 1,
             digest: original.input.binary_digest.clone(),
             tool_version: subject.version.clone(),
@@ -1284,7 +1284,7 @@ fn native_context(
                 root: format!("/collection/fixtures/{case_id}"),
                 cwd: format!("/collection/fixtures/{case_id}"),
                 argv: vec![
-                    "/installed/bin/cargo-allow".to_string(),
+                    original.input.invocation_path.clone(),
                     "audit".to_string(),
                     "--root".to_string(),
                     format!("/collection/fixtures/{case_id}"),
@@ -1304,8 +1304,9 @@ fn native_context(
 }
 
 impl OriginalBundle {
-    /// Retain real command-case originals bound to the real accepted
-    /// catalogue and this bundle's exact executable/subject identities.
+    /// Retain synthetic projection/context bytes bound to the real accepted
+    /// catalogue and fixture executable/subject identities. These are not
+    /// native execution originals and cannot establish semantic coverage.
     /// Empty binding digests are sealed from the retained bytes; a patch may
     /// preset a foreign digest to forge exactly that binding.
     fn join_command_case(
@@ -1347,7 +1348,8 @@ impl OriginalBundle {
 }
 
 #[test]
-fn retained_partial_command_case_originals_admit_exactly_their_covered_cases() -> ExperienceResult {
+fn retained_partial_command_case_projections_do_not_prove_their_claimed_cases() -> ExperienceResult
+{
     let catalogue_bytes = real_catalogue_bytes()?;
     if digest_payload(&digest(&catalogue_bytes)) != digest_payload(CATALOGUE_DIGEST) {
         return Err(
@@ -1379,9 +1381,8 @@ fn retained_partial_command_case_originals_admit_exactly_their_covered_cases() -
         context,
         |_, _, _| {},
     )?;
-    // The genuine delivered originals are valid under the accepted catalogue,
-    // but they cover only their implemented family: the hold stays NotProven
-    // with the uncovered remainder explicitly visible.
+    // A plausible 29-case projection remains a declaration without replay of
+    // the original bundle and members. Its coverage is not semantic proof.
     let admission = original.admission()?;
     if admission.result != State::NotProven || admission.notes.len() != 3 {
         return Err(format!(
@@ -1393,12 +1394,12 @@ fn retained_partial_command_case_originals_admit_exactly_their_covered_cases() -
     assert_admission(
         &original,
         State::NotProven,
-        "natively admit 29/107 accepted selected cases",
+        "projection claims 29/107 valid selected cases",
     )?;
     assert_admission(
         &original,
         State::NotProven,
-        "installed-candidate execution of the remaining 78 selected cases stays unproven",
+        "all 107 selected case executions remain unproven at this boundary",
     )?;
     // The retained originals keep their exact custody identity.
     let (_, retained) = original
@@ -1425,7 +1426,7 @@ fn retained_partial_command_case_originals_admit_exactly_their_covered_cases() -
 }
 
 #[test]
-fn full_installed_denominator_discharges_only_the_3149_hold() -> ExperienceResult {
+fn forged_full_installed_denominator_cannot_discharge_the_3149_hold() -> ExperienceResult {
     let catalogue_bytes = real_catalogue_bytes()?;
     let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
     let ids: Vec<String> = catalogue.cases.iter().map(|case| case.id.clone()).collect();
@@ -1446,11 +1447,12 @@ fn full_installed_denominator_discharges_only_the_3149_hold() -> ExperienceResul
         |_, _, _| {},
     )?;
     let admission = original.admission()?;
-    // The discharged hold is documented by its own claim-boundary note while
-    // the two remaining producer dependencies keep their required records.
+    // This projection cannot be emitted by the current native reader, which
+    // only supports 29 cases. Matching identity claims and custody of the JSON
+    // must not turn 107 synthetic valid rows into executed evidence.
     if admission.result != State::NotProven || admission.notes.len() != 3 {
         return Err(format!(
-            "full installed discharge must keep the remaining producer holds: {:?}",
+            "forged full installed coverage must keep all producer holds: {:?}",
             admission.notes
         )
         .into());
@@ -1458,19 +1460,20 @@ fn full_installed_denominator_discharges_only_the_3149_hold() -> ExperienceResul
     if admission
         .notes
         .iter()
-        .any(|note| note.contains("parity producer are absent"))
+        .any(|note| note.contains("denominator is natively admitted"))
         || !admission.notes.iter().any(|note| {
-            note.contains("the accepted 107-case selected denominator is natively admitted")
+            note.contains("projection claims 107/107 valid selected cases")
+                && note.contains("all 107 selected case executions remain unproven")
                 && note.contains("collection command-case-test")
         })
     {
         return Err(format!(
-            "full installed denominator did not discharge only #3149: {:?}",
+            "forged installed denominator was promoted beyond its evidence: {:?}",
             admission.notes
         )
         .into());
     }
-    for owner in ["#2466", "#3151"] {
+    for owner in ["#2466", "#3149", "#3151", "#4705"] {
         assert_admission(&original, State::NotProven, owner)?;
     }
     Ok(())
@@ -1554,7 +1557,7 @@ fn command_case_join_negatives_keep_the_executed_denominator_hold() -> Experienc
             5 => {
                 expected = (
                     State::NotProven,
-                    "natively admits 106/107 accepted selected cases",
+                    "projection claims 106/107 valid selected cases",
                 );
                 original
                     .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
@@ -1722,6 +1725,68 @@ fn duplicate_command_case_evidence_role_is_malformed_before_the_join() -> Experi
             admission.notes
         )
         .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn command_case_projection_metadata_cannot_substitute_for_native_originals() -> ExperienceResult {
+    let catalogue_bytes = real_catalogue_bytes()?;
+    let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
+    let ids: Vec<String> = catalogue.cases.iter().map(|case| case.id.clone()).collect();
+    for defect in 0..10 {
+        let mut original = bundle()?;
+        let context = native_context(
+            &original,
+            &ids,
+            NativeProvenance::SuppliedInstalledCandidate,
+        );
+        let projection = native_admission(
+            native_rows(&ids, SemanticValidity::Valid),
+            Vec::new(),
+            SemanticValidity::Valid,
+        );
+        let expected = match defect {
+            0 | 1 => (State::Mismatch, "different or empty collections"),
+            2 => (State::Malformed, "malformed bundle digest"),
+            3..=5 => (State::Mismatch, "executable path, version or size"),
+            6 | 7 => (State::Malformed, "well-formed candidate/install identities"),
+            _ => (
+                State::NotProven,
+                "all 107 selected case executions remain unproven",
+            ),
+        };
+        original.join_command_case(&catalogue_bytes, projection, context, |adm, ctx, _| {
+            match defect {
+                0 => adm.collection_id = "another collection".to_string(),
+                1 => {
+                    adm.collection_id.clear();
+                    ctx.collection_id.clear();
+                }
+                2 => adm.bundle_digest = "not-a-digest".to_string(),
+                3 => ctx.binary.path = "/foreign/bin/cargo-allow".to_string(),
+                4 => ctx.binary.tool_version = "99.0.0".to_string(),
+                5 => ctx.binary.size_bytes = 0,
+                6 => ctx.binary.candidate_identity = Some(String::new()),
+                7 => ctx.binary.install_identity = None,
+                8 => {
+                    // A self-consistent digest does not retain its referent.
+                    adm.bundle_digest = digest(b"invented but unretained bundle");
+                    adm.qualification_gaps.clear();
+                    adm.qualification = "complete".to_string();
+                }
+                _ => {
+                    // Labels claiming observed execution cannot replace bytes.
+                    for row in &mut adm.cases {
+                        row.process_observed = false;
+                        row.detail_reconciled = false;
+                        row.binding_gaps.clear();
+                    }
+                }
+            }
+        })?;
+        assert_admission(&original, expected.0, expected.1)?;
+        assert_admission(&original, expected.0, "#3149")?;
     }
     Ok(())
 }

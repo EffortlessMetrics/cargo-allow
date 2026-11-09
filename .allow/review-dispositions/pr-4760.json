@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4760,
+  "base_ref": "main",
+  "base_sha": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
+  "head_ref": "fix/4705-4705-experience-connect",
+  "head_sha": "f78819fc1e40497403b8f76163652b168bb5955e",
+  "merge_base": "b7b8355d1e15221acc41ba973cc0e7ffa7ca4fc3",
+  "reviewed_diff_digest": "sha256:v2:e0255605b87cec2e704a9b09be2b94c0b9690daae2692d6e433ffc0145a8cdb2",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "ChatGPT same-maintainer source review of the original PR head before repair; review5834126614. No independent-human approval.",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_blocked",
+  "findings": [
+    {
+      "id": "unreplayed-command-case-projection",
+      "severity": "blocking",
+      "owned_seam": "release-experience command-case admission",
+      "source_path": "crates/cargo-allow/src/cli/release_freeze_experience.rs",
+      "source_line": 110,
+      "repair_route": "PR4760 writer must preserve NotProven until authenticated native bundle/member replay exists, then retain a fresh exact-pair review after tests and current floor proof.",
+      "claim_boundary": "The original head trusts 107 synthetic valid rows without replaying their original bundle/member evidence and incorrectly discharges #3149."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5834126614",
+    "Existing bot quota notices are not completed reviews. The reviewed original head f78819fc was moved to Draft. This record is historical after repairs and cannot grant Ready or merge authority to a successor."
+  ],
+  "required_ci": {
+    "owner": "PR #4760 integration owner: qualify committed source, regenerate all four direct-floor receipts through the native producer, inspect actual terminal checks, then retain a fresh source-pair disposition. This partial record grants no readiness or merge authority.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4760"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4760",
+  "reviewed_at_utc": "2026-11-09T23:13:56Z"
+}

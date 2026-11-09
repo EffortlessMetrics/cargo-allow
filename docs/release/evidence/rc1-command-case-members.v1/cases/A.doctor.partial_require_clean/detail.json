@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "schema_id": "cargo-allow.doctor.v1",
+  "tool": "cargo-allow",
+  "command": "doctor",
+  "claim_boundary": ["source_tree_inventory", "source_syntax_only", "cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed", "source_text_in_identity_fields"],
+  "scanner_limitations": ["cargo_metadata_not_invoked", "cargo_commands_not_invoked", "rustc_not_invoked", "clippy_not_invoked", "build_scripts_not_executed", "proc_macros_not_executed", "macro_expansion_not_analyzed", "macro_token_tree_contents_not_analyzed", "type_information_not_analyzed", "mir_not_analyzed", "build_output_not_analyzed", "control_flow_not_analyzed", "data_flow_not_analyzed", "external_evidence_tools_not_invoked", "repository_code_not_executed"],
+  "inventory": {
+    "scope": "source_tree",
+    "scanner": "source_syntax",
+    "source": "git_tracked",
+    "root": "F:/Temp/rc1-4723-run/collection-rc1-command-cases-r2/fixtures/A.doctor.partial_require_clean",
+    "files_scanned": 2,
+    "completeness": "scoped"
+  },
+  "root": {
+    "path": "F:/Temp/rc1-4723-run/collection-rc1-command-cases-r2/fixtures/A.doctor.partial_require_clean",
+    "discovery": "explicit_root"
+  },
+  "config": {
+    "found": true,
+    "path": "F:/Temp/rc1-4723-run/collection-rc1-command-cases-r2/fixtures/A.doctor.partial_require_clean/policy/allow.toml",
+    "provenance": {"source": "cli_override", "precedence": "cli_override"},
+    "valid": false,
+    "diagnostic": "failed to parse policy TOML in \\\\?\\F:\\Temp\\rc1-4723-run\\collection-rc1-command-cases-r2\\fixtures\\A.doctor.partial_require_clean\\policy\\allow.toml: TOML parse error at line 22, column 1\n   |\n22 | calendar_expiry_blocks_no_new = false\n   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nunknown field `calendar_expiry_blocks_no_new`, expected one of `owner_required`, `reason_required`, `classification_required`, `evidence_required`, `expires_or_review_after_required`, `allow_bare_allow_attributes`, `lint_policy_id_required`, `stale_entries_fail`, `unsafe`\n"
+  },
+  "scanner": {
+    "completeness": "partial",
+    "rust": {
+      "files_considered": 1,
+      "files_scanned": 1,
+      "files_skipped": 0,
+      "files_with_parse_errors": 1,
+      "skipped_by_reason": {
+        "read_failed_or_unsupported": 0
+      }
+    }
+  },
+  "file_families": {
+    "configured": [
+
+    ],
+    "conflicts": [
+
+    ]
+  },
+  "federation": {
+    "found": false,
+    "path": null,
+    "valid": null
+  },
+  "evidence_repair_queues": [
+
+  ]
+}

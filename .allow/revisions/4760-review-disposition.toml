@@ -1,0 +1,14 @@
+# Exact-path review-state retention for the command-case admission repair.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4760-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0e55b8d9df20b4a579fdd7b1d967b16b83580f9c7a5dcc8269dbe29605d2fdea"
+reason = "Retain truthful exact-pair review state without granting semantic execution or release authority."
+
+[[records]]
+allow_ids = ["allow-4760-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ba0e753643ee0c9a429bbbabc41329545abd903bc9afc7b3b3f0d5197c04142d"
+reason = "Self-cover the precise policy revision for PR4760 review-state retention."

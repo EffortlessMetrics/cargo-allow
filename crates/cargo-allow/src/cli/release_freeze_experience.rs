@@ -72,15 +72,10 @@ impl Admission {
                 State::NotProven,
                 "#3149: the executed supported-case denominator and human/machine parity producer are absent",
             ),
-            // Covered cases are admitted for exactly what the retained native
-            // admission proves; every uncovered selected case stays explicitly
-            // NotProven-visible instead of being silently admitted.
+            // A retained projection is not a replay of its native bundle and
+            // members. Its claimed coverage cannot discharge this hold.
             CommandCaseJoin::Partial(note) => self.record(State::NotProven, note),
             CommandCaseJoin::Defect(result, note) => self.record(result, note),
-            // The full accepted denominator is admitted from the exact
-            // installed candidate, so this one hold discharges; the other
-            // producer dependencies keep their own required records.
-            CommandCaseJoin::Discharged(note) => self.notes.push(note),
         }
         self.record(
             State::NotProven,
@@ -91,27 +86,22 @@ impl Admission {
 
 /// Outcome of joining the retained command-case originals into the #3149
 /// executed-denominator hold. Every note names the owning hold so the claim
-/// boundary always shows who is discharged, who is partially covered, and
-/// which retained original is defective.
+/// boundary distinguishes a bound declaration from replayed semantic proof.
 enum CommandCaseJoin {
     /// No retained originals: the delivered absence hold stands unchanged.
     Absent,
-    /// The retained native admission binds the accepted catalogue, the exact
-    /// installed executable and this subject, and covers the full accepted
-    /// denominator with every selected case semantically valid.
-    Discharged(String),
-    /// Retained originals admit their covered cases; the hold stays
-    /// NotProven-visible for the uncovered remainder.
+    /// Retained projection/context metadata binds, but the underlying native
+    /// bundle/member replay is absent. Every selected case stays unproven.
     Partial(String),
     /// The retained originals carry a binding defect; the hold remains.
     Defect(State, String),
 }
 
 /// Join the retained command-case admission and its expected context into the
-/// executed-denominator hold. The native admission is trusted for its per-case
-/// semantics only after it binds the accepted catalogue, the retained expected
-/// context, the exact installed executable and this subject; anything else
-/// keeps the hold with a specific defect.
+/// executed-denominator hold. Metadata checks cannot authenticate a native
+/// evaluation. The small-record freeze transport does not carry the original
+/// executable, snapshots and case members required by the native reader, so
+/// even a self-consistent full-coverage projection must remain NotProven.
 fn command_case_join(
     subject: &SubjectIdentity,
     input: &ReleaseExperienceInputV1,
@@ -177,6 +167,19 @@ fn command_case_join(
             ),
         );
     }
+    if admission.collection_id.trim().is_empty() || admission.collection_id != context.collection_id
+    {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case projection and expected context name different or empty collections".to_string(),
+        );
+    }
+    if super::hex_payload(&admission.bundle_digest).is_none() {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            "#3149: retained command-case projection has a malformed bundle digest".to_string(),
+        );
+    }
     if !same_digest(&admission.context_digest, &context_input.sha256) {
         return CommandCaseJoin::Defect(
             State::Mismatch,
@@ -237,10 +240,46 @@ fn command_case_join(
                 .to_string(),
         );
     }
+    if context.binary.path != input.invocation_path
+        || context.binary.tool_version != subject.version
+        || context.binary.size_bytes == 0
+    {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case executable path, version or size differs from the selected candidate".to_string(),
+        );
+    }
     let installed = match context.binary.provenance {
-        crate::core_command_migration::BinaryProvenance::SourceBuild => false,
+        crate::core_command_migration::BinaryProvenance::SourceBuild => {
+            if context.binary.candidate_identity.is_some()
+                || context.binary.install_identity.is_some()
+            {
+                return CommandCaseJoin::Defect(
+                    State::Malformed,
+                    "#3149: source-build command-case context claims installed identities"
+                        .to_string(),
+                );
+            }
+            false
+        }
         crate::core_command_migration::BinaryProvenance::SuppliedInstalledCandidate => {
-            context.binary.candidate_identity.is_some() && context.binary.install_identity.is_some()
+            if context
+                .binary
+                .candidate_identity
+                .as_deref()
+                .is_none_or(|value| super::hex_payload(value).is_none())
+                || context
+                    .binary
+                    .install_identity
+                    .as_deref()
+                    .is_none_or(|value| super::hex_payload(value).is_none())
+            {
+                return CommandCaseJoin::Defect(
+                    State::Malformed,
+                    "#3149: installed command-case context lacks well-formed candidate/install identities".to_string(),
+                );
+            }
+            true
         }
     };
     let total = catalogue.cases.len();
@@ -265,45 +304,28 @@ fn command_case_join(
             );
         }
     }
-    let covered = admission
+    let claimed = admission
         .cases
         .iter()
         .filter(|case| case.semantic_validity == SemanticValidity::Valid)
         .count();
-    let uncovered = total.saturating_sub(covered);
     let collection: String = admission.collection_id.chars().take(100).collect();
-    if admission.errors.is_empty()
-        && admission.semantic_validity == SemanticValidity::Valid
-        && admission.missing_cases.is_empty()
-        && admitted_ids.len() == total
-        && covered == total
-    {
-        if !installed {
-            return CommandCaseJoin::Partial(format!(
-                "#3149: retained source-build command-case observations natively admit the full {total}-case accepted denominator; installed-candidate execution stays required"
-            ));
-        }
-        return CommandCaseJoin::Discharged(format!(
-            "#3149: the accepted {total}-case selected denominator is natively admitted from the exact installed candidate (collection {collection}); the executed supported-case denominator and human/machine parity producer are present"
-        ));
-    }
     let errors = if admission.errors.is_empty() {
         String::new()
     } else {
         format!(
-            "; the retained native admission reports {} collection errors",
+            "; the retained projection reports {} collection errors",
             admission.errors.len()
         )
     };
-    if installed {
-        CommandCaseJoin::Partial(format!(
-            "#3149: retained command-case evidence natively admits {covered}/{total} accepted selected cases from the exact installed candidate{errors}; the remaining {uncovered} selected case executions stay unproven"
-        ))
+    let provenance = if installed {
+        "declared installed-candidate"
     } else {
-        CommandCaseJoin::Partial(format!(
-            "#3149: retained source-build command-case observations natively admit {covered}/{total} accepted selected cases{errors}; installed-candidate execution of the remaining {uncovered} selected cases stays unproven"
-        ))
-    }
+        "source-build"
+    };
+    CommandCaseJoin::Partial(format!(
+        "#3149: retained {provenance} projection claims {claimed}/{total} valid selected cases (collection {collection}){errors}; the native bundle/member originals have not been replayed and candidate/install authority has not been reconciled, so all {total} selected case executions remain unproven at this boundary; installed-candidate execution stays required (#4705)"
+    ))
 }
 
 fn same_digest(left: &str, right: &str) -> bool {

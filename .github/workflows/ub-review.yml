@@ -124,6 +124,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          # Bind the review lane to the submitted head, not GitHub's
+          # synthetic merge commit: the post transaction re-verifies the
+          # PR head and a merge-ref checkout reads as a head change.
+          ref: ${{ github.event.pull_request.head.sha }}
       - name: Report unavailable review lane
         if: env.UB_REVIEW_AVAILABLE != 'yes'
         run: |
@@ -139,7 +143,7 @@ jobs:
           EOF
       - name: Run ub-review
         if: env.UB_REVIEW_AVAILABLE == 'yes'
-        uses: EffortlessMetrics/ub-review@f2cd5a3c95621e676c5d3b542cd6b316cc316deb
+        uses: EffortlessMetrics/ub-review@12c7700d4aa84922b9bdf9af63b67d76873cd463
         with:
           profile: gh-runner
           posting: review

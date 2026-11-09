@@ -1,0 +1,618 @@
+# Revision note: land the #4723 experience-A installed command-case observations.
+#
+# The lane executed the public 0.2.0-rc.1 prerelease binary as installed from
+# crates.io (isolated throwaway CARGO_HOME, no source build) across all 29
+# accepted first-family command cases with the existing collector, then drove
+# the retained bundle through the current-source native reader
+# (command-migration-evidence). The honest negative verdict (1 valid, 13
+# incomplete, 15 invalid, 78 outstanding catalogue cases) is retained verbatim
+# in docs/release/evidence/rc1-command-case-observation.v1.json and its
+# sibling context/bundle/admission/member records. Each new scanned evidence
+# surface is receipted additively as a reviewed_exception non_rust_file entry;
+# serials were renumbered past the concurrently landed main tail
+# (origin/main already carried allow-11385 from another lane). The note file
+# is self-covered by its own added_allow record, matching the
+# #3793/#4214/#4716/#2267 precedents. The lane's changie changelog fragment
+# is already covered by the repository-wide .changes/*.yaml glob entry
+# allow-0312, so no duplicate fragment receipt exists here. No release
+# surface was mutated and no release authority is claimed.
+
+[[records]]
+allow_ids = ["allow-11386"]
+reason = "Added receipt for a retained installed 0.2.0-rc.1 command-case observation record; evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:764b0216e10e25dd038953346e36feb247fcb773b7a7265d306f1023f24adfd0"
+
+[[records]]
+allow_ids = ["allow-11387"]
+reason = "Added receipt for a retained installed 0.2.0-rc.1 command-case observation record; evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b1e7148606c28def7167e0881bac127ff72400ddcb69ab538d01fe9ced1e2a5f"
+
+[[records]]
+allow_ids = ["allow-11388"]
+reason = "Added receipt for a retained installed 0.2.0-rc.1 command-case observation record; evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e6c7388580c976cfe59cde6359d92910c6ca026afb49b64c1794842b2c2c3a08"
+
+[[records]]
+allow_ids = ["allow-11389"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:38c11304279e5ca5f107f40a543e8f39569d513e3f439fab66acd9cccb3542fb"
+
+[[records]]
+allow_ids = ["allow-11390"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:862bfd91cacc475842ce319f3ef59782815f0576f976d467d75d8053abe6204c"
+
+[[records]]
+allow_ids = ["allow-11391"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.adopt.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c36a9d6c0586a434cb065b4e33f2cb815ab2d122e540342b01926ca9ea1d773e"
+
+[[records]]
+allow_ids = ["allow-11392"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.adopt.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a576615ad00b4dc09055246fc121fc988addacb14ac715c58893e5eb77eec10e"
+
+[[records]]
+allow_ids = ["allow-11393"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:db5e7beaefeb318290314e044ac6a56a6c501830125db71695af985b9fe2cc35"
+
+[[records]]
+allow_ids = ["allow-11394"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:04ce8452a7bb7ccd89c7c657a93283a404c247aeb3ba573af71e6772f1568bd2"
+
+[[records]]
+allow_ids = ["allow-11395"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2bfdce1faf7d5d72fa9a1f7f41631fd42381547eaff84ef1f076ec615135b3c2"
+
+[[records]]
+allow_ids = ["allow-11396"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8acdd79e9380f5f751ed0023d84d47c6c6f8c7892ab7f48acd77e867ff425648"
+
+[[records]]
+allow_ids = ["allow-11397"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.adopt.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6f628eb768b723ca96cd70a54fc99ed996e3bd8e03d542f9a49e0dc3c95a619c"
+
+[[records]]
+allow_ids = ["allow-11398"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.adopt.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e5cdf033eae6825479fa65199d7323d98202aec2d5eec8790808f624ae1d9b92"
+
+[[records]]
+allow_ids = ["allow-11399"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aa0a58e823ec32258f6ebc9084d3d2d58f674b5813a2aa542f6ee0e29d8ad119"
+
+[[records]]
+allow_ids = ["allow-11400"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:78e6c22cede4af5bde2fe7bfbcaac277d899c1c4bbdb6417fb4ccd3d1290ba4b"
+
+[[records]]
+allow_ids = ["allow-11401"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.adopt.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5195a53fb771895182c31cf9c6b542e4997214a28ed23d32ce288072c0975a9f"
+
+[[records]]
+allow_ids = ["allow-11402"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4689cce0b2fa1cf50e4e7ea7b8ffea58ce90b007e95ffb3258efe35144d04ad7"
+
+[[records]]
+allow_ids = ["allow-11403"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e54987482799972d59012507ab6b87dfe05cd41f1f557d17f3d40a23ac87cb96"
+
+[[records]]
+allow_ids = ["allow-11404"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.adopt.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d0b2ab2a27623a57796d857075c0f7fcd8755c44071fd539bb309d7fe96d79c8"
+
+[[records]]
+allow_ids = ["allow-11405"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.adopt.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:03d23d5279b34e7069946ef165b2b70c304349a384e9bfe072d9f3bf14a88ad1"
+
+[[records]]
+allow_ids = ["allow-11406"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9987707e11f8d8eb329063d481c0e29ad6e458bf758cb23088547cdf3aceab80"
+
+[[records]]
+allow_ids = ["allow-11407"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:04bf98a92669951e9eba47f71bd3310f846089c0b78ef502d2be65b72d1044b9"
+
+[[records]]
+allow_ids = ["allow-11408"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.adopt.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7957bde2e2472851072e109127e0c713a7116532c88a410c4d0ad93a0952c2be"
+
+[[records]]
+allow_ids = ["allow-11409"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.adopt.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:dc9e93352c5fdb0f5aac3dbe5684161225e5518c2da4f6d995d1c8212f0f72f8"
+
+[[records]]
+allow_ids = ["allow-11410"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.adopt.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1f8f61666dcd3b750768261c094bad00b1d5283db1a48d56f6194cc2600d9844"
+
+[[records]]
+allow_ids = ["allow-11411"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.adopt.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5aa211137fb63af203dba96c1ed454a4838000b371e3edfdc6599f94452e6d54"
+
+[[records]]
+allow_ids = ["allow-11412"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.adopt.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:846ba3f7acd336af6b7c770e5e271e06174fb37995089926c6bf3906424e39e1"
+
+[[records]]
+allow_ids = ["allow-11413"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.adopt.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:958d9c40fd0472f39413e045c5d2f02b30d5083fe73afaf48c057dbcfd114c53"
+
+[[records]]
+allow_ids = ["allow-11414"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:f866871310db56efad5871f03a622a5b925661027cea07e0ba0a2c0189de5a31"
+
+[[records]]
+allow_ids = ["allow-11415"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:93e18f52c06fe2ccf72da7bfb64184e543f650e2307dc8d4fc8e357091ae1f2f"
+
+[[records]]
+allow_ids = ["allow-11416"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.audit.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:faf780a2b7ca55901e88338355aa3ac61424d2b366a328ef746c250785738397"
+
+[[records]]
+allow_ids = ["allow-11417"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.audit.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6c5065c3e8b5fe90d2b691ad34b96a9ae451466e8703b94a0d87725fca7bc1ed"
+
+[[records]]
+allow_ids = ["allow-11418"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:717d4e53cc46a3d6d45cbf4a75620f16805802c74da5624ef27316e8affb3700"
+
+[[records]]
+allow_ids = ["allow-11419"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7e3f7c83727042d412b2656e77b7ee8f01513a0174ccbd4855ade53ac46f19c0"
+
+[[records]]
+allow_ids = ["allow-11420"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.audit.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b4bbaead1765b0010ac4a1c45ebe92289094691855a27668175f71a676ae2898"
+
+[[records]]
+allow_ids = ["allow-11421"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.audit.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:94825317ade0eb20f08fabcb09655523778a3074cb4867ccbc1e67ba8447048c"
+
+[[records]]
+allow_ids = ["allow-11422"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5013a3fe37dd4545d2db9622e2397315a6d5183113fcf09a702cb7c6bbc7e8c3"
+
+[[records]]
+allow_ids = ["allow-11423"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:61462ec19e4bda567412366640d3a320e9e99edf3da4a75d401a30d2cd750ec9"
+
+[[records]]
+allow_ids = ["allow-11424"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:236b6a63d91e69ba4c1c23fb01f991d8f534a01feb506bb04d0f2cb3907dede7"
+
+[[records]]
+allow_ids = ["allow-11425"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c0ba3fdba266dafcb81b8915891799284c0c9fdd9c30b0fd23cc09e5058465ac"
+
+[[records]]
+allow_ids = ["allow-11426"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1eeb6f85b5329ce6ed41a7aca7f3894687fe6e9f7e599c7c7114b790880b2250"
+
+[[records]]
+allow_ids = ["allow-11427"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e23eef96d93c28d6ee56d6a7441fd4125d80655c3d8f7141e85b12c918d1385d"
+
+[[records]]
+allow_ids = ["allow-11428"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:aa1215e41b5d219d09ff2116af8d07aa9864294cd4d81b9a6ed0b2a0fe3db495"
+
+[[records]]
+allow_ids = ["allow-11429"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e1ed0381ad31fd5d4fb84a973f0809c785285a44b2455318553b7a081e69b160"
+
+[[records]]
+allow_ids = ["allow-11430"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.audit.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c8499320fbebd5e56006da1849e14d1855b25b4fa1b5ddc289ae881617757c3f"
+
+[[records]]
+allow_ids = ["allow-11431"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.audit.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:eb46cfe309b84b70966f40e16a71e6a582b5e8568ac7609f3ee0ddcfbdc66b63"
+
+[[records]]
+allow_ids = ["allow-11432"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:967dd2e10611467137e67649c83a199a5e35ecad2b60cfa881517cb875341bc6"
+
+[[records]]
+allow_ids = ["allow-11433"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3ff35108380157e42b0eda25a762f38f6af1867247e32dcc3a8928113888d496"
+
+[[records]]
+allow_ids = ["allow-11434"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6090c4e1c18279c80adcab53af00c52b3935d56940a518e337355633fab79e0a"
+
+[[records]]
+allow_ids = ["allow-11435"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2b85951bbc7bb12ec5242db743886caddb70a9674af1a47b1f4df495d4bc7a0a"
+
+[[records]]
+allow_ids = ["allow-11436"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c438d3cf5870111310297c4a327f5e8c14f9749db3f7c2b64085976a06f8f498"
+
+[[records]]
+allow_ids = ["allow-11437"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e89fedf61b3f1c707e1876d5eb94d8d1859189f7cc335404e2be3b0b694d8bb8"
+
+[[records]]
+allow_ids = ["allow-11438"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:007b084ab5eb47bba2dc331663568ab07e9bbd7c99733c88e9e0454b9111b7cb"
+
+[[records]]
+allow_ids = ["allow-11439"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8ee3a2af52ca1f37cbcb9e8ecfd2feb12bb7fb15e0759a70eaf92bac00c6e3de"
+
+[[records]]
+allow_ids = ["allow-11440"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c5019616e4b3749b27aac176d2f91219fe033f9626c231ad950002f37c8885a7"
+
+[[records]]
+allow_ids = ["allow-11441"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:556510769fec29d79db75588599fc73446815c773c8d135440f5e7fb9130e59c"
+
+[[records]]
+allow_ids = ["allow-11442"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bc8be36cf7c69f126e135bce310788136249547d248d47c6aafb80c31e233233"
+
+[[records]]
+allow_ids = ["allow-11443"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:91587ce64533625780254af462b91ea93837dcbaf0e9edbde9c3a5eedd765c41"
+
+[[records]]
+allow_ids = ["allow-11444"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d9a1e5e57303c5ddc6a6cbb5ba57ee88e6968b4dedfcb486f4f29c91baca38a6"
+
+[[records]]
+allow_ids = ["allow-11445"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5f43269d7a0c5a1bb62fc7010720182362cec24dec0df68d845ec63b60488c15"
+
+[[records]]
+allow_ids = ["allow-11446"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:516d304d4ca5a8eb01a8dc3b426ca1c0b12131a4a06dcaf38e1a0d72c6e89d79"
+
+[[records]]
+allow_ids = ["allow-11447"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6720c03f05d64ca6a2559d68f013c3ba971314874d00057724c836a4ed7fa540"
+
+[[records]]
+allow_ids = ["allow-11448"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bd01cd95a89c28db86ddcb2e0d69f6d96e7222bfef47c97f2d2fe65504c60e17"
+
+[[records]]
+allow_ids = ["allow-11449"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a49cd594201aeea4a573bce8708f60f752676afbb4cc8514f5e4119dfb846d89"
+
+[[records]]
+allow_ids = ["allow-11450"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.check.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8544b7d5fa12f145bd910d9151b6a3812fec609d58ce3d4755573ab7d8119013"
+
+[[records]]
+allow_ids = ["allow-11451"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.check.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:9f7cb9514d433ecd711d56411e25a03a88415375d233e676972c51a0ebf02afc"
+
+[[records]]
+allow_ids = ["allow-11452"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (receipt.json, accepted case A.check.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5a14e7f69c2a28c5e0fc4d8299d6dbd5deaec87d4d7e83c67223c0d4e4b0d605"
+
+[[records]]
+allow_ids = ["allow-11453"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b427eec258913077770fbc60b6c92ff55f870d0bd7616140f471d525b3ef3db6"
+
+[[records]]
+allow_ids = ["allow-11454"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3f9657653dcb4a895b9da4be6a0c12ee840ba43e136bcc471f040c180a8128dc"
+
+[[records]]
+allow_ids = ["allow-11455"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ec33fddfed9ee6703337a8b684cae3a3602440fb7311d378c44a6344514f0e06"
+
+[[records]]
+allow_ids = ["allow-11456"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.clean_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d9f8330ca432daaffc54faf92dc6176afa4499833587f9a185249402825a55d7"
+
+[[records]]
+allow_ids = ["allow-11457"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:27a23a00ecc703eeb684635caf23bd8fe55f439159ce81e8adff66fa70d7c2bc"
+
+[[records]]
+allow_ids = ["allow-11458"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:50cab24ef24c122dfa6ee3cbaa7eeaf0aee6fa9468d5768ddfbf1d427f6c2fa5"
+
+[[records]]
+allow_ids = ["allow-11459"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:eccc8b9d92bbac3b942a86607b129c2c447ef8f917697a1277a1f81180c73aff"
+
+[[records]]
+allow_ids = ["allow-11460"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.findings_no_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:36975507f7780c3905e0c637889b77873230a4dce03e86a5801fc71849bb1b02"
+
+[[records]]
+allow_ids = ["allow-11461"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d7ddf74dc42f8984c2bf01274ff33e43ed68d6bc1246d72372d158de94dbc933"
+
+[[records]]
+allow_ids = ["allow-11462"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:22deaad3ec96a474fe57602ba1251a34d80fffb2b8265b97b1f5545039559dd6"
+
+[[records]]
+allow_ids = ["allow-11463"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7423ec90e064a15d8cbd8cc1207426fba669f739a075b28e73244c9424560c30"
+
+[[records]]
+allow_ids = ["allow-11464"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.healthy_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:47901871160d2f318b35decd618785d6998cb9cb1860e13e5ce75cbcea48dcda"
+
+[[records]]
+allow_ids = ["allow-11465"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3f0af5d4999819580364f340f64aa24159abcd4d5d6a427daa3483442f19d191"
+
+[[records]]
+allow_ids = ["allow-11466"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5e8a1ce161bbbabb7dd42c935a8438ce129438cd49187239ec0bee68cb4352eb"
+
+[[records]]
+allow_ids = ["allow-11467"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.instrument_failure); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ff82f906cb2462aa1275b2c2663ff3cecc58727029a864afeb423f0e2292cd12"
+
+[[records]]
+allow_ids = ["allow-11468"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:01577d1526464ed24d4f02005d9f45cb71dbdc1853e822908da23c193f64112a"
+
+[[records]]
+allow_ids = ["allow-11469"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:af0c5cb4a0ec915be5a1b635ab59d3ab33ecef70b0cbe75a9ba13d7b9e4ead64"
+
+[[records]]
+allow_ids = ["allow-11470"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:153062d128b0b58baa1a8de368736f18eeb49f0c40732964c8fac0a18bf3db80"
+
+[[records]]
+allow_ids = ["allow-11471"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.invalid_policy); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d33aed7cb610ab0d549582c33eee79245e00f2c042db4c682200117790809037"
+
+[[records]]
+allow_ids = ["allow-11472"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c9f675865cc6865e9d293ba70cd5f2f08a8eb9f6f0905abe44bbfb1a00209ffc"
+
+[[records]]
+allow_ids = ["allow-11473"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2989ac430e2b59da05d5001796194a5a6c4fb609a4baa98f9a5389e42fe68f14"
+
+[[records]]
+allow_ids = ["allow-11474"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fa8a495e3174da036276f29d38b2ff4ac4c8fce0129825c544a6a10ff6e4bfe1"
+
+[[records]]
+allow_ids = ["allow-11475"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.new_finding); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ac42cfe066a52b6f94ae8fb960cba7d9199f97a04dc6fcb38409803bc82409a4"
+
+[[records]]
+allow_ids = ["allow-11476"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:e67f2ebcc4d424a2c5a3e88162d573ab08bf599f6469d9daf0400b8fc93dd87c"
+
+[[records]]
+allow_ids = ["allow-11477"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:3febfbe2a7b458b66e3083485d155ca48a4e779dbe529d285ceb6877c0d15592"
+
+[[records]]
+allow_ids = ["allow-11478"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:057ef497cc5aff2a2c59b092e73764969d12c335a31d37d0f6087bca1f49dcc7"
+
+[[records]]
+allow_ids = ["allow-11479"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.partial_inventory); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:0076dbbe05bbf28dc5842a02b7fd3f3f375ce5dc8852e39b797ba94d7f149e36"
+
+[[records]]
+allow_ids = ["allow-11480"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stderr, accepted case A.doctor.partial_require_clean); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:387a35e0c1be391dbdd8797255ee0393d2808f0e2621302f7e055c15b8f069f4"
+
+[[records]]
+allow_ids = ["allow-11481"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (command.stdout, accepted case A.doctor.partial_require_clean); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b4f6c4e33a7d56b0d39d6a4c7fcf6c082ad1a8ba8c2ce0a85190b887d68f59d8"
+
+[[records]]
+allow_ids = ["allow-11482"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (detail.json, accepted case A.doctor.partial_require_clean); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:cdc38c3924653447ff1b529dfbe0f5ce29796bddee163636b1a9428cc35e5131"
+
+[[records]]
+allow_ids = ["allow-11483"]
+reason = "Added receipt for a retained exact installed 0.2.0-rc.1 command-case execution member (summary.json, accepted case A.doctor.partial_require_clean); evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d7c1afd0db9c769ab627ac2b006acd521aef96b041a23dc5ab55d8ff20b22189"
+
+[[records]]
+allow_ids = ["allow-11484"]
+reason = "Added receipt for a retained installed 0.2.0-rc.1 command-case observation record; evidence retention only."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:446e12dd05a9b0c47b805310688199f7860c2dd845e3a433e35653f7ce1314d4"
+
+[[records]]
+allow_ids = ["allow-11485"]
+reason = "Self-covering revision note receipting this note file, matching the #3793/#4214/#4716/#2267 precedents; note retention only, no new scanned surface beyond this file."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:8fd36fe1a117b13287b2a0aaa036b6635c0ac92a6527f587f7bacd86599bdceb"

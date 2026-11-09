@@ -874,3 +874,53 @@ required_stronger_owner = "#2282/#3145/#2268 release workflow producers"
 may_satisfy_release_gate = false
 last_reconciled_commit = "branch-under-review"
 claim_boundary = "Synthetic typed-model validation only; no registry call, no token read, no tag, and no publication occurs, and no live release-authorization surface is created or modified."
+
+[[surfaces]]
+id = "release-qualification-ledger"
+owner_issue = 2263
+semantic_authority = "release qualification ledger"
+path = "crates/cargo-allow/tests/release_qualification.rs"
+subject = "docs/release/evidence/next-release-qualification.json"
+producer = "Rust integration test"
+consumer = "#2262/#2269/#2501 release qualification"
+claimed_acceptance_row = "the ReleaseQualificationV1 ledger satisfies its closed row contract and its projection agrees"
+assertion_mechanism = "typed JSON validation with recomputed readiness derivation, cross-file #3737 support-matrix binding, and projection regeneration"
+evidence_class = "TypedModelValidation"
+disposition = "bounded projection"
+required_stronger_owner = "#2262"
+may_satisfy_release_gate = false
+last_reconciled_commit = "main@current"
+claim_boundary = "The checker validates the ledger's internal contract and derivation; hosted qualification runs, live repository controls, operator pilots, and real registry receipts remain operator or post-publication evidence."
+
+[[surfaces]]
+id = "cross-platform-semantic-determinism"
+owner_issue = 2276
+semantic_authority = "one normalized semantic determinism fixture for Linux, Windows, and macOS"
+path = "crates/cargo-allow/tests/release_platform_semantics.rs"
+subject = "tests/fixtures/cross_platform_semantics fixture tree and the pinned canonical projection golden"
+producer = "Rust integration test running the real inventory/scan/match/render pipeline over the checked-in fixture"
+consumer = "#2265 test-core-platforms matrix / #2262 release qualification platform evidence"
+claimed_acceptance_row = "one fixture produces the same canonical semantic result on every claimed platform, with finding identity, match posture, inventory completeness, canonical ordering, and JSON/Markdown rendering as load-bearing assertions"
+assertion_mechanism = "byte-pinned canonical projection golden over the fixture tree, five independent negative controls, and allow-core normalization-seam assertions (separators, drive/UNC, NFC/NFD, case sensitivity)"
+evidence_class = "TypedModelValidation"
+disposition = "bounded per-host determinism oracle over the real pipeline"
+required_stronger_owner = "#2265 hosted Linux/Windows/macOS matrix equality run"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "Per-host deterministic reproduction of the pinned projection; cross-platform equality is proven only by the hosted test-core-platforms runs. Deleted-tracked inventory stays owned by the retained inventory_deleted_tracked test, and no release-authorization surface is created or modified."
+[[surfaces]]
+id = "command-mutation-evidence-4725"
+owner_issue = 4725
+semantic_authority = "retained C-family mutation case evidence"
+path = "crates/cargo-allow/tests/release_command_mutation_evidence_cli.rs"
+subject = "scripts/command-mutation-evidence.py + scripts/verify-command-mutation-evidence.py + docs/release/evidence/command-mutation-1/manifest.v1.json"
+producer = "Rust integration test driving the hermetic Python admission controls and the committed manifest replay"
+consumer = "#4705 experience aggregation / #2501 final refreeze reviewers"
+claimed_acceptance_row = "committed mutation evidence replays through the production admission reader; wrong subject, wrong family, duplicate/unknown/missing cases, replacement bytes, undeclared writes, missing declared writes, stale snapshots, fake successes, contract-probe escapes and invalid dispositions are named rejections"
+assertion_mechanism = "manifest schema/provenance/denominator assertions plus production Python admission controls"
+evidence_class = "StructuredShapeValidation"
+disposition = "committed-record replay plus hermetic transport controls; the retained out-of-tree collection is bound by digest, not re-executed"
+required_stronger_owner = "#4705 aggregate experience owner; native Rust A-family reader admission remains #4723's lane"
+may_satisfy_release_gate = false
+last_reconciled_commit = "branch-under-review"
+claim_boundary = "The committed manifest retains executed observations of one public 0.2.0-rc.1 candidate inside disposable fixtures; it does not qualify the installed release, approve exceptions, or rerun the collection in CI."

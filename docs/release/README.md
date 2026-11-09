@@ -15,6 +15,11 @@ The [0.1.11 qualification snapshot](0.1.11-readiness.md) remains historical
 evidence for the published patch release, which stays the stable rollback
 baseline.
 
+The [ReleaseQualificationV1 blocker ledger](evidence/next-release-qualification.md)
+materializes the current-main go/no-go input for the prospective 0.2.0 final
+release (#2263). It classifies evidence and routes work; it is not release
+authorization.
+
 ## Rehearsal receipt output
 
 `python scripts/release-rehearsal.py --commit HEAD` emits its characterization
