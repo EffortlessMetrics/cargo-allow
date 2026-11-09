@@ -2,7 +2,7 @@ use super::*;
 use ReleaseExperienceResultV1 as ResultState;
 
 /// Fail-closed reader verdicts keep a named reason per finding; the aggregate
-/// result is the minimum finding state, or Complete when none fired.
+/// result is the minimum finding state, capped at NotProven for v1.
 fn finding(
     states: &mut Vec<ResultState>,
     gaps: &mut Vec<String>,
@@ -14,12 +14,11 @@ fn finding(
     gaps.push(format!("{result:?}: {reason}"));
 }
 
-/// Pure semantic reader over one original docs-execution record. It never
-/// executes the candidate and never trusts a claimed outcome: every recorded
-/// check must carry internally consistent observations, cover every required
-/// docs identity, and keep observed writes inside the declared set before the
-/// reader yields Complete. Staleness and subject binding are admission-side
-/// concerns that need a checked observation clock.
+/// Inspect an original docs-execution record without executing the candidate.
+/// Contradictory declarations are defects, but consistent declarations do not
+/// prove the selected cases, exact documentation bytes, or output semantics.
+/// The v1 contract therefore never yields Complete. Staleness and subject
+/// binding remain admission-side concerns requiring a checked clock.
 pub fn evaluate_release_experience_docs_execution_v1(
     record: &ReleaseExperienceDocsExecutionV1,
 ) -> CargoAllowReleaseDocsExecutionEvaluationV1 {
@@ -70,6 +69,14 @@ pub fn evaluate_release_experience_docs_execution_v1(
             &mut gaps,
             ResultState::Malformed,
             "docs-execution requires a positive observation time and freshness window",
+        );
+    }
+    if rust_floor_token(&record.rust_floor_claim).is_none() {
+        finding(
+            &mut states,
+            &mut gaps,
+            ResultState::Malformed,
+            "docs-execution rust_floor_claim is not a comparable version",
         );
     }
     if record
@@ -231,21 +238,9 @@ pub fn evaluate_release_experience_docs_execution_v1(
                         format!("check {} claims matched without observed output", check.id),
                     );
                 }
-                if check.kind == ReleaseExperienceDocsCheckKindV1::SurfaceGeneration
-                    && let Some(command) = check.command.as_deref()
-                    && !command.trim().is_empty()
-                    && !check.stdout_excerpt.contains(command)
-                {
-                    finding(
-                        &mut states,
-                        &mut gaps,
-                        ResultState::Mismatch,
-                        format!(
-                            "check {} matched output does not name the advertised command {command}",
-                            check.id
-                        ),
-                    );
-                }
+                // A manpage or explicit help need not name its generator.
+                // Presence of that name also cannot prove output correctness.
+                // The absent selected-case oracle is retained below instead.
             }
         } else {
             finding(
@@ -294,11 +289,17 @@ pub fn evaluate_release_experience_docs_execution_v1(
             );
         }
     }
+    finding(
+        &mut states,
+        &mut gaps,
+        ResultState::NotProven,
+        "v1 documentation observations lack a checked selected-case producer, exact documentation/predecessor bindings, and semantic output evidence; #3151 remains required",
+    );
     let result = states
         .iter()
         .copied()
         .min()
-        .unwrap_or(ResultState::Complete);
+        .unwrap_or(ResultState::NotProven);
     CargoAllowReleaseDocsExecutionEvaluationV1 {
         schema_id: RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID.to_string(),
         schema_version: RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION,

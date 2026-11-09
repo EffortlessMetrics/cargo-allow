@@ -80,8 +80,8 @@ fn record(checks: Vec<ReleaseExperienceDocsCheckV1>) -> ReleaseExperienceDocsExe
     }
 }
 
-/// Every required identity covered; every executed check matched with a
-/// consistent exit/output pair; observed writes stay inside the declared set.
+/// Every docs name is covered with internally consistent declarations. These
+/// rows are not the required selected-case producer or semantic output proof.
 fn complete_checks() -> Vec<ReleaseExperienceDocsCheckV1> {
     let mut checks = vec![
         executed(
@@ -141,10 +141,28 @@ fn complete_checks() -> Vec<ReleaseExperienceDocsCheckV1> {
 }
 
 #[test]
-fn complete_record_with_all_identities_reads_complete() -> TestResult {
+fn consistent_record_with_all_identities_remains_not_proven() -> TestResult {
     let evaluation = evaluate_release_experience_docs_execution_v1(&record(complete_checks()));
-    if evaluation.result != State::Complete || !evaluation.gaps.is_empty() {
-        return Err(format!("complete record acquired gaps: {:?}", evaluation.gaps).into());
+    if evaluation.result != State::NotProven
+        || !evaluation
+            .gaps
+            .iter()
+            .any(|gap| gap.contains("selected-case producer"))
+    {
+        return Err(format!("declarations became proof: {:?}", evaluation.gaps).into());
+    }
+    Ok(())
+}
+
+#[test]
+fn prose_only_claims_cannot_prove_installed_documentation_execution() -> TestResult {
+    let checks = RELEASE_EXPERIENCE_REQUIRED_DOCS
+        .iter()
+        .map(|name| claim_check(&format!("unexecuted-{name}"), name))
+        .collect();
+    let evaluation = evaluate_release_experience_docs_execution_v1(&record(checks));
+    if evaluation.result == State::Complete {
+        return Err("eight prose claims with no argv, exit or output proved execution".into());
     }
     Ok(())
 }
@@ -243,15 +261,15 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "matched without observed output",
         ),
         (
-            "surface output missing the command",
+            "unvalidated surface output cannot prove its claim",
             {
                 let mut checks = complete_checks();
                 check_at(&mut checks, 0, "help surface check present").stdout_excerpt =
                     "unrelated banner".to_string();
                 record(checks)
             },
-            State::Mismatch,
-            "does not name the advertised command",
+            State::NotProven,
+            "selected-case producer",
         ),
         (
             "snippet without argv",
@@ -315,6 +333,15 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             },
             State::Malformed,
             "rust_floor_claim",
+        ),
+        (
+            "unparseable rust floor",
+            ReleaseExperienceDocsExecutionV1 {
+                rust_floor_claim: "anything".to_string(),
+                ..record(complete_checks())
+            },
+            State::Malformed,
+            "rust_floor_claim is not a comparable version",
         ),
         (
             "zero freshness window",
@@ -390,12 +417,70 @@ fn documented_red_paths_stay_matched_at_their_own_expected_exit() -> TestResult 
         observed_writes: Vec::new(),
     });
     let evaluation = evaluate_release_experience_docs_execution_v1(&record(checks));
-    if evaluation.result != State::Complete {
+    if evaluation.result != State::NotProven {
         return Err(format!(
             "an honestly documented red path was denied agreement: {:?}",
             evaluation.gaps
         )
         .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn generated_surfaces_need_not_name_the_generator() -> TestResult {
+    let mut checks = complete_checks();
+    check_at(&mut checks, 2, "man surface check present").stdout_excerpt =
+        ".TH CARGO\\-ALLOW\n.SH NAME\ncargo-allow - source exception ledger".to_string();
+    let evaluation = evaluate_release_experience_docs_execution_v1(&record(checks));
+    if evaluation.result != State::NotProven
+        || evaluation
+            .gaps
+            .iter()
+            .any(|gap| gap.contains("advertised command"))
+    {
+        return Err(format!(
+            "valid man format acquired a substring mismatch: {:?}",
+            evaluation.gaps
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn arbitrary_matching_output_and_claims_are_not_semantic_evidence() -> TestResult {
+    let mut checks = complete_checks();
+    let check = check_at(&mut checks, 4, "journey check present");
+    check.argv = vec!["not-a-real-command".to_string()];
+    check.stdout_excerpt = "unrelated arbitrary bytes".to_string();
+    check.documented_claim = "the expected report was generated".to_string();
+    check.observed_summary = "the expected report was not generated".to_string();
+    let evaluation = evaluate_release_experience_docs_execution_v1(&record(checks));
+    if evaluation.result != State::NotProven {
+        return Err(format!(
+            "unsupported oracle claimed {:?}: {:?}",
+            evaluation.result, evaluation.gaps
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn file_write_paths_without_contents_do_not_prove_output() -> TestResult {
+    let mut checks = complete_checks();
+    let check = check_at(&mut checks, 4, "journey check present");
+    check.stdout_excerpt.clear();
+    check.stderr_excerpt.clear();
+    let evaluation = evaluate_release_experience_docs_execution_v1(&record(checks));
+    if evaluation.result != State::Incomplete
+        || !evaluation
+            .gaps
+            .iter()
+            .any(|gap| gap.contains("without observed output"))
+    {
+        return Err(format!("write paths became content evidence: {:?}", evaluation.gaps).into());
     }
     Ok(())
 }

@@ -1,9 +1,9 @@
 # Revision note: land the #4706 installed-documentation experience lane.
 #
 # The lane adds the cargo-allow.release-experience-docs-execution.v1 record
-# contract, its allow-report semantic reader, and the final-freeze admission
-# that lifts only the #3151 installed-documentation hold on a bound,
-# reader-Complete executed-documentation record. The public 0.2.0-rc.1
+# contract, its allow-report consistency reader, and final-freeze inspection.
+# A v1 observation cannot prove the required selected-case/documentation-byte
+# oracle; its best result is NotProven and the #3151 hold stays. The public 0.2.0-rc.1
 # prerelease execution is retained as evidence with seven honest E-family
 # disagreements; it grants no release authority. The lane's Rust tests are
 # written with receipt-free accessors, so no panic-class receipts are

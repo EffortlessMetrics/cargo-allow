@@ -60,22 +60,13 @@ impl Admission {
         }
     }
 
-    fn retain_dependencies(&mut self, docs_executed: bool) {
+    fn retain_dependencies(&mut self) {
         for note in [
             "#2466: the clean-pilot target/steps/friction producer and semantic reader are absent; retained opaque bytes do not prove a pilot",
             "#3149: the executed supported-case denominator and human/machine parity producer are absent",
+            "#3151: the checked selected-case documentation producer and exact documentation-byte oracle are absent; v1 observation declarations do not prove execution",
         ] {
             self.record(State::NotProven, note);
-        }
-        // #3151's documentation coherence hold lifts only when the original
-        // executed-documentation record was present, bound, and admitted
-        // Complete by the semantic reader; any defect keeps it, and no other
-        // role's Complete can override a failed or missing observation.
-        if !docs_executed {
-            self.record(
-                State::NotProven,
-                "#3151: installed help/reference/man/completion and selected documentation coherence production are absent",
-            );
         }
     }
 }
@@ -168,7 +159,7 @@ pub(super) fn reconcile(
         Ok(pair) => pair,
         Err(problem) => {
             admission.record(problem.result, problem.notes.join("; "));
-            admission.retain_dependencies(false);
+            admission.retain_dependencies();
             return admission;
         }
     };
@@ -197,7 +188,6 @@ pub(super) fn reconcile(
             "duplicate experience documentation identity",
         );
     }
-    let mut docs_executed = false;
     if let (Some(readback), Some(now)) = (readback, now) {
         if input.evaluated_at_unix_seconds > now
             || !now
@@ -216,16 +206,16 @@ pub(super) fn reconcile(
         }
         match admit_docs_execution(subject, &input, readback, now) {
             DocsExecution::Unclaimed => {}
-            DocsExecution::Admitted => docs_executed = true,
             DocsExecution::Defect(problem) => {
                 admission.record(problem.result, problem.notes.join("; "));
             }
         }
     }
     // An authentic download or matching model output is not a semantic proof.
-    // #2466 and #3149 have no supported producer/reader yet; #3151 lifts only
-    // through an admitted executed-documentation observation.
-    admission.retain_dependencies(docs_executed);
+    // Metadata and byte custody cannot substitute for the required producers.
+    // In particular the v1 docs record contains declarations, not a checked
+    // selected-case/documentation-byte oracle, so #3151 always stays required.
+    admission.retain_dependencies();
     admission
 }
 
@@ -233,8 +223,6 @@ pub(super) fn reconcile(
 enum DocsExecution {
     /// No claim on the input; the standing hold note stays unchanged.
     Unclaimed,
-    /// Claim present, original record bound, reader Complete: discharge.
-    Admitted,
     /// A named defect or a non-Complete reader result; the hold stays.
     Defect(Admission),
 }
@@ -243,7 +231,7 @@ enum DocsExecution {
 /// subject. Byte custody, role, and digest binding reuse the existing
 /// reference path; every binding below ties the record to the exact input,
 /// installed executable, channel/version claim, and selected documentation
-/// identities before the reader's Complete result can lift the hold.
+/// identities. The v1 record remains non-authoritative and cannot lift a hold.
 fn admit_docs_execution(
     subject: &SubjectIdentity,
     input: &ReleaseExperienceInputV1,
@@ -290,18 +278,43 @@ fn admit_docs_execution(
             "docs execution version or channel claim differs from the selected subject {expected_version}"
         ));
     }
-    // The reader guarantees a shaped floor claim; enforce floor <= toolchain
-    // whenever the recorded toolchain is itself version-shaped (fixture
-    // toolchains like `selected-toolchain` carry no comparable version).
-    if let (Some(floor), Some(toolchain)) = (
-        rust_floor_token(&record.rust_floor_claim),
-        rust_floor_token(&record.toolchain),
-    ) && !rust_floor_satisfied(&floor, &toolchain)
-    {
+    if record.channel_claim != subject.channel && record.channel_claim != "source-candidate" {
+        return binding_failure(
+            "docs execution channel claim differs from the selected subject".to_string(),
+        );
+    }
+    let Some(floor) = rust_floor_token(&record.rust_floor_claim) else {
+        return DocsExecution::Defect(Admission::issue(
+            State::Malformed,
+            "docs execution rust floor claim is not a comparable version",
+        ));
+    };
+    let Some(toolchain) = rust_toolchain_version(&record.toolchain) else {
+        return DocsExecution::Defect(Admission::issue(
+            State::Malformed,
+            "docs execution toolchain does not identify a comparable Rust compiler version",
+        ));
+    };
+    if !rust_floor_satisfied(&floor, &toolchain) {
         return binding_failure(format!(
             "docs execution rust floor {} exceeds the installed toolchain {}",
             record.rust_floor_claim, record.toolchain
         ));
+    }
+    let installed: IsolatedInstallPayloadV2 = match reference(
+        readback,
+        "experience:isolated-install",
+        &input.install_digest,
+    )
+    .and_then(|bytes| decode(bytes, "isolated install", install_fields))
+    {
+        Ok(installed) => installed,
+        Err(problem) => return DocsExecution::Defect(problem),
+    };
+    if record.platform != installed.platform || record.toolchain != installed.toolchain {
+        return binding_failure(
+            "docs execution platform or toolchain differs from the selected install".to_string(),
+        );
     }
     let selected_identities: BTreeSet<_> = input
         .docs_identities
@@ -320,33 +333,42 @@ fn admit_docs_execution(
     }
     let evaluated: CargoAllowReleaseDocsExecutionEvaluationV1 =
         evaluate_release_experience_docs_execution_v1(&record);
+    // Keep reader, claim and freshness defects together. A later disagreement
+    // must not downgrade a malformed result or hide an observed mismatch.
+    let mut admission = Admission::issue(
+        evaluated.result,
+        format!("docs execution: {}", evaluated.gaps.join("; ")),
+    );
     if evaluated.result != claim.result {
-        return DocsExecution::Defect(Admission::issue(
+        admission.record(
             State::Mismatch,
             format!(
-                "docs execution claim {claim:?} differs from the computed reader result {:?}; reader gaps: {}",
-                evaluated.result,
-                evaluated.gaps.join("; ")
+                "docs execution claim {claim:?} differs from the computed reader result {:?}",
+                evaluated.result
             ),
-        ));
+        );
     }
     if record.observed_at_unix_seconds > now
         || !now
             .checked_sub(record.observed_at_unix_seconds)
             .is_some_and(|age| record.maximum_age_seconds > 0 && age <= record.maximum_age_seconds)
     {
-        return DocsExecution::Defect(Admission::issue(
+        admission.record(
             State::Stale,
             "docs execution record is future-dated or expired at the checked provider observation",
-        ));
+        );
     }
-    if claim.result == State::Complete && evaluated.result == State::Complete {
-        return DocsExecution::Admitted;
+    DocsExecution::Defect(admission)
+}
+
+/// A Cargo version is not evidence of the compiler used by the install.
+/// Accept canonical numeric versions or the version token in rustc's output.
+fn rust_toolchain_version(value: &str) -> Option<Vec<u32>> {
+    if let Some(output) = value.strip_prefix("rustc ") {
+        output.split_whitespace().next().and_then(rust_floor_token)
+    } else {
+        rust_floor_token(value)
     }
-    DocsExecution::Defect(Admission::issue(
-        evaluated.result,
-        format!("docs execution: {}", evaluated.gaps.join("; ")),
-    ))
 }
 
 fn docs_execution_fields(value: &serde_json::Value) -> Result<(), Admission> {

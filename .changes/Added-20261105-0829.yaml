@@ -1,14 +1,11 @@
 kind: Added
 body: >-
-  Execute installed documentation checks against a selected installed
-  candidate and admit their original evidence (#4706): a
-  cargo-allow.release-experience-docs-execution.v1 record binding executed
-  help/reference/manpage/completion surfaces, first-hour and repair snippets
-  with declared/observed writes and documented exit expectations to the eight
-  existing docs identities, an allow-report semantic reader, and a final-freeze
-  admission that lifts only the #3151 documentation hold on a bound,
-  reader-Complete record while every defect, forged Complete claim, and the
-  #2466/#3149 holds stay exactly as before. The public 0.2.0-rc.1 prerelease
-  execution is retained with seven honest E-family disagreements; it grants no
-  release authority.
+  Retain installed documentation observations and inspect their original bytes
+  (#4706). The v1 reader detects inconsistent exit/write/identity declarations
+  but caps otherwise-consistent records at NotProven: it has no checked
+  selected-case producer or exact documentation-byte oracle. Forged Complete
+  claims cannot lift the #3151 documentation hold; #2466/#3149 remain separately
+  required. The public 0.2.0-rc.1 record retains its seven honest E-family
+  disagreements unchanged. No final installed qualification or release
+  authority is claimed.
 time: 2026-11-05T08:29:27Z

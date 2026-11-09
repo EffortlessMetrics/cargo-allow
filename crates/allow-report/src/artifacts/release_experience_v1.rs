@@ -100,8 +100,8 @@ pub struct ReleaseExperienceInputV1 {
     pub docs_identities: Vec<ReleaseExperienceDocsIdentityV1>,
     /// Original executed-documentation record pointer (#4706). Absent means
     /// the installed-documentation hold stays; a present claim never
-    /// discharges anything by itself — the admission recomputes the reader
-    /// from the referenced original bytes before the hold can lift.
+    /// discharges it — the admission recomputes bounded observations from
+    /// the referenced original bytes while the checked-producer hold remains.
     #[serde(default)]
     pub docs_execution: Option<ReleaseExperienceDocsExecutionClaimV1>,
     pub frictions: Vec<ReleaseExperienceFrictionV1>,

@@ -215,7 +215,7 @@ fn bundle() -> ExperienceResult<OriginalBundle> {
         "source_checkout_denied":true, "install_root_identity":digest(b"install root identity"),
         "cargo_home_identity":digest(b"isolated cargo home identity"),
         "installed_executable_digest":binary_digest, "installed_version_output":"cargo-allow 0.2.0",
-        "platform":"x86_64-unknown-linux-gnu", "toolchain":"selected-toolchain",
+        "platform":"x86_64-unknown-linux-gnu", "toolchain":"1.95.0",
         "package_rows":install_rows,
         "graph_comparison":{"expected_packages":13, "matched_packages":13, "unexpected_packages":[],
             "missing_packages":[], "version_mismatches":[], "path_sources":[]},
@@ -229,7 +229,7 @@ fn bundle() -> ExperienceResult<OriginalBundle> {
         "repository_commit":subject.commit, "repository_tree":subject.tree,
         "cargo_lock_digest":subject.cargo_lock_digest, "installed_executable_digest":binary_digest,
         "installed_version_output":"cargo-allow 0.2.0", "platform":"x86_64-unknown-linux-gnu",
-        "toolchain":"selected-toolchain", "support_matrix_generation":"selected-support",
+        "toolchain":"1.95.0", "support_matrix_generation":"selected-support",
         "package_rows":journey_rows, "journey_steps":[{"id":"existing-synthetic-step", "exit_code":0}],
         "artifact_schema_results":[], "scanner_completeness":"complete", "diff_base_identity":"selected-base",
         "limitations":["not the missing #3149 execution catalogue"], "not_included":[],
@@ -1241,8 +1241,8 @@ fn executed_docs_check(
 }
 
 impl OriginalBundle {
-    /// A reader-Complete record bound to this bundle's exact installed
-    /// executable, invocation path, and selected subject identity.
+    /// Internally consistent observations carrying this bundle's installed
+    /// identity. The v1 record still lacks a checked execution oracle.
     fn docs_execution_record(&self) -> ReleaseExperienceDocsExecutionV1 {
         let mut checks = vec![
             executed_docs_check(
@@ -1322,8 +1322,8 @@ impl OriginalBundle {
             binary_digest: self.input.binary_digest.clone(),
             installed_version_output: format!("cargo-allow {}", self.subject.version),
             invocation_path: self.input.invocation_path.clone(),
-            platform: "x86_64-pc-windows-host".to_string(),
-            toolchain: "selected-toolchain".to_string(),
+            platform: "x86_64-unknown-linux-gnu".to_string(),
+            toolchain: "1.95.0".to_string(),
             channel_claim: "stable".to_string(),
             version_claim: format!("cargo-allow {}", self.subject.version),
             rust_floor_claim: "1.95".to_string(),
@@ -1355,38 +1355,39 @@ impl OriginalBundle {
 }
 
 #[test]
-fn admitted_docs_execution_discharges_only_the_documentation_hold() -> ExperienceResult {
+fn consistent_docs_observations_retain_all_required_holds() -> ExperienceResult {
     let mut original = bundle()?;
     let record = original.docs_execution_record();
     let evaluation: CargoAllowReleaseDocsExecutionEvaluationV1 =
         evaluate_release_experience_docs_execution_v1(&record);
-    if evaluation.result != State::Complete {
+    if evaluation.result != State::NotProven {
         return Err(format!(
-            "positive fixture record is not Complete: {:?}",
+            "consistent fixture observations became proof: {:?}",
             evaluation.gaps
         )
         .into());
     }
-    original.install_docs_execution(&record, State::Complete)?;
+    original.install_docs_execution(&record, State::NotProven)?;
     let admission = original.admission()?;
     if admission.result != State::NotProven {
         return Err(format!(
-            "pilot and denominator holds must still keep NotProven: {:?}",
+            "missing producers must still keep NotProven: {:?}",
             admission.notes
         )
         .into());
     }
-    for owner in ["#2466", "#3149"] {
+    for owner in ["#2466", "#3149", "#3151"] {
         if !admission.notes.iter().any(|note| note.contains(owner)) {
             return Err(format!("independent hold {owner} was silently dropped").into());
         }
     }
-    if admission.notes.iter().any(|note| note.contains("#3151")) {
-        return Err("an admitted executed-documentation record kept the docs hold".into());
-    }
-    if admission.notes.len() != 2 {
+    if !admission
+        .notes
+        .iter()
+        .any(|note| note.contains("selected-case producer"))
+    {
         return Err(format!(
-            "admitted docs execution left unexpected notes: {:?}",
+            "missing documentation proof lost its reason: {:?}",
             admission.notes
         )
         .into());
@@ -1440,6 +1441,42 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
             "version or channel claim",
         ),
         (
+            "wrong subject channel claim",
+            "wrong_channel",
+            State::Mismatch,
+            "channel claim differs",
+        ),
+        (
+            "unparseable Rust floor",
+            "bad_floor",
+            State::Malformed,
+            "rust floor claim is not a comparable version",
+        ),
+        (
+            "Cargo version does not identify a compiler",
+            "bad_toolchain",
+            State::Malformed,
+            "toolchain does not identify a comparable Rust compiler",
+        ),
+        (
+            "compiler older than claimed floor",
+            "old_toolchain",
+            State::Mismatch,
+            "exceeds the installed toolchain",
+        ),
+        (
+            "foreign installed platform",
+            "foreign_platform",
+            State::Mismatch,
+            "platform or toolchain differs from the selected install",
+        ),
+        (
+            "foreign installed compiler",
+            "foreign_toolchain",
+            State::Mismatch,
+            "platform or toolchain differs from the selected install",
+        ),
+        (
             "stale record",
             "stale_record",
             State::Stale,
@@ -1471,7 +1508,7 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
             "changed_bytes" => {
                 let mut record = original.docs_execution_record();
                 record.platform = "changed-platform".to_string();
-                original.install_docs_execution(&record, State::Complete)?;
+                original.install_docs_execution(&record, State::NotProven)?;
                 let (_, bytes) = original
                     .readback
                     .experience_member("experience:docs-execution")?
@@ -1525,10 +1562,23 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
                 record.version_claim = "cargo-allow 9.9.9".to_string();
                 original.install_docs_execution(&record, State::Complete)?;
             }
+            "wrong_channel" | "bad_floor" | "bad_toolchain" | "old_toolchain"
+            | "foreign_platform" | "foreign_toolchain" => {
+                let mut record = original.docs_execution_record();
+                match defect {
+                    "wrong_channel" => record.channel_claim = "public-prerelease".to_string(),
+                    "bad_floor" => record.rust_floor_claim = "anything".to_string(),
+                    "bad_toolchain" => record.toolchain = "cargo 1.50.0 stable-host".to_string(),
+                    "old_toolchain" => record.toolchain = "1.94.0".to_string(),
+                    "foreign_platform" => record.platform = "another-platform".to_string(),
+                    _ => record.toolchain = "1.96.0".to_string(),
+                }
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
             "stale_record" => {
                 let mut record = original.docs_execution_record();
                 record.observed_at_unix_seconds = original.input.observed_at_unix_seconds - 10_000;
-                original.install_docs_execution(&record, State::Complete)?;
+                original.install_docs_execution(&record, State::NotProven)?;
             }
             "unbound_identity" => {
                 let mut record = original.docs_execution_record();
@@ -1571,12 +1621,125 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
             )
             .into());
         }
-        if admission.result < expected {
+        if admission.result > expected {
             return Err(format!(
                 "defect {label} read {:?} but needed at most {expected:?}",
                 admission.result
             )
             .into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_compound_defects_preserve_severity_and_all_reasons() -> ExperienceResult {
+    for (label, duplicate, mismatch, freshness, claim, expected) in [
+        (
+            "malformed with understated claim",
+            true,
+            false,
+            "current",
+            State::NotProven,
+            State::Malformed,
+        ),
+        (
+            "malformed with Complete claim",
+            true,
+            false,
+            "current",
+            State::Complete,
+            State::Malformed,
+        ),
+        (
+            "malformed freshness window",
+            false,
+            false,
+            "zero_window",
+            State::Malformed,
+            State::Malformed,
+        ),
+        (
+            "mismatch and expired",
+            false,
+            true,
+            "expired",
+            State::Mismatch,
+            State::Mismatch,
+        ),
+        (
+            "mismatch and future-dated",
+            false,
+            true,
+            "future",
+            State::Mismatch,
+            State::Mismatch,
+        ),
+        (
+            "forged Complete claim and expired",
+            false,
+            false,
+            "expired",
+            State::Complete,
+            State::Mismatch,
+        ),
+        (
+            "malformed with Complete claim and expired",
+            true,
+            false,
+            "expired",
+            State::Complete,
+            State::Malformed,
+        ),
+    ] {
+        let mut original = bundle()?;
+        let mut record = original.docs_execution_record();
+        if duplicate {
+            let check = record.checks.first().ok_or("docs check absent")?.clone();
+            record.checks.push(check);
+        }
+        if mismatch {
+            let check = record.checks.first_mut().ok_or("docs check absent")?;
+            check.outcome = ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
+            check.observed_summary = "installed help disagrees with the documentation".to_string();
+        }
+        match freshness {
+            "zero_window" => record.maximum_age_seconds = 0,
+            "expired" => record.observed_at_unix_seconds -= 10_000,
+            "future" => record.observed_at_unix_seconds += 10_000,
+            _ => {}
+        }
+        let evaluated = evaluate_release_experience_docs_execution_v1(&record);
+        original.install_docs_execution(&record, claim)?;
+        original.readback.validate(&original.subject)?;
+        let admission = original.admission()?;
+        if admission.result != expected {
+            return Err(format!(
+                "{label}: compound docs defects became {:?}, expected {expected:?}: {:?}",
+                admission.result, admission.notes
+            )
+            .into());
+        }
+        let mut reasons = vec!["#3151"];
+        if duplicate {
+            reasons.push("duplicate documentation check");
+        }
+        if mismatch {
+            reasons.push("installed help disagrees with the documentation");
+        }
+        if freshness == "zero_window" {
+            reasons.push("positive observation time and freshness window");
+        }
+        if freshness != "current" {
+            reasons.push("docs execution record is future-dated or expired");
+        }
+        if evaluated.result != claim {
+            reasons.push("differs from the computed reader result");
+        }
+        for reason in reasons {
+            if !admission.notes.iter().any(|note| note.contains(reason)) {
+                return Err(format!("{label}: lost {reason:?}: {:?}", admission.notes).into());
+            }
         }
     }
     Ok(())
@@ -1647,6 +1810,118 @@ fn docs_execution_claim_without_a_checked_readback_keeps_the_hold() -> Experienc
         || local.currentness != FinalEvidenceCurrentnessV1::ProviderUnavailable
     {
         return Err("an unchecked readback admitted docs execution without a clock".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_prose_only_or_consistent_complete_claims_keep_the_hold() -> ExperienceResult {
+    for prose_only in [false, true] {
+        let mut original = bundle()?;
+        let mut record = original.docs_execution_record();
+        if prose_only {
+            record.checks = RELEASE_EXPERIENCE_REQUIRED_DOCS
+                .iter()
+                .map(|name| {
+                    docs_check(
+                        &format!("unexecuted-{name}"),
+                        name,
+                        ReleaseExperienceDocsCheckKindV1::ClaimInspection,
+                    )
+                })
+                .collect();
+        }
+        original.install_docs_execution(&record, State::Complete)?;
+        let admission = original.admission()?;
+        if admission.result != State::Mismatch
+            || !admission.notes.iter().any(|note| note.contains("#3151"))
+            || !admission
+                .notes
+                .iter()
+                .any(|note| note.contains("differs from the computed reader result"))
+        {
+            return Err(format!("unproved Complete claim escaped: {:?}", admission.notes).into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_reference_or_freshness_defects_cannot_discharge_the_hold() -> ExperienceResult {
+    for defect in [
+        "changed_docs",
+        "replaced_docs",
+        "stale_input",
+        "missing_predecessor",
+    ] {
+        let mut original = bundle()?;
+        let record = original.docs_execution_record();
+        let expected = match defect {
+            "changed_docs" | "replaced_docs" => {
+                let digest = original.put(
+                    "experience:docs:help",
+                    "ExperienceReference",
+                    b"different arbitrary documentation bytes".to_vec(),
+                )?;
+                if defect == "replaced_docs" {
+                    original
+                        .input
+                        .docs_identities
+                        .iter_mut()
+                        .find(|identity| identity.name == "help")
+                        .ok_or("help identity absent")?
+                        .digest = digest;
+                    State::NotProven
+                } else {
+                    State::Mismatch
+                }
+            }
+            "stale_input" => {
+                original.input.observed_at_unix_seconds -= 10_000;
+                State::Stale
+            }
+            _ => {
+                original
+                    .readback
+                    .artifacts
+                    .first_mut()
+                    .ok_or("artifact absent")?
+                    .members
+                    .retain(|member| member.logical_id != "experience:package-candidate");
+                original.refresh()?;
+                State::Incomplete
+            }
+        };
+        original.install_docs_execution(&record, State::NotProven)?;
+        let admission = original.admission()?;
+        if admission.result != expected
+            || !admission.notes.iter().any(|note| note.contains("#3151"))
+        {
+            return Err(format!(
+                "{defect} lost its result or docs hold: {:?}",
+                admission.notes
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_source_candidate_is_not_a_published_channel_claim() -> ExperienceResult {
+    let mut original = bundle()?;
+    let mut record = original.docs_execution_record();
+    record.channel_claim = "source-candidate".to_string();
+    original.install_docs_execution(&record, State::NotProven)?;
+    let admission = original.admission()?;
+    if admission.result != State::NotProven
+        || !admission.notes.iter().any(|note| note.contains("#3151"))
+    {
+        return Err(format!(
+            "valid source-candidate channel was rejected: {:?}",
+            admission.notes
+        )
+        .into());
     }
     Ok(())
 }

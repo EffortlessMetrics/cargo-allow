@@ -1,16 +1,16 @@
 //! Executed installed-documentation evidence for the release experience
 //! admission (#4706, #3151).
 //!
-//! This is the semantic reader for the docs-execution record a producer
-//! emits after running the commands advertised by a selected installed
+//! This is a consistency reader for retained docs-execution observations
+//! recorded after running the commands advertised by a selected installed
 //! candidate's shipped help/reference/manpage/completion/first-hour
 //! documentation in owned isolated fixtures. It binds each observation to one
 //! of the existing [`RELEASE_EXPERIENCE_REQUIRED_DOCS`] identities, the
-//! installed executable identity, the observed version/channel/Rust-floor
-//! claims, and the exact declared/observed write sets. It computes nothing
-//! about packages, scanners, mutations, or release truth; a record is honest
-//! observations, and only a reader-Complete record can later discharge the
-//! installed-documentation hold in the freeze admission.
+//! installed executable identity, observed version/channel/Rust-floor claims,
+//! and declared/observed write sets. The v1 record does not bind checks to
+//! exact documentation bytes or a checked selected-case producer and oracle.
+//! Its best result is therefore NotProven; the installed-documentation hold
+//! stays even when every declaration is internally consistent.
 
 use serde::{Deserialize, Serialize};
 
@@ -63,8 +63,8 @@ pub struct ReleaseExperienceDocsCheckV1 {
     /// Unique within the record; the catalogue case id when the check
     /// executes one (for example `E.help.entrypoint`).
     pub id: String,
-    /// One of [`RELEASE_EXPERIENCE_REQUIRED_DOCS`]; binds the check to that
-    /// identity's original bytes in the experience input.
+    /// One of [`RELEASE_EXPERIENCE_REQUIRED_DOCS`]. This names a surface but
+    /// does not itself bind the check to that surface's original bytes.
     pub docs_name: String,
     pub kind: ReleaseExperienceDocsCheckKindV1,
     /// Advertised command the check exercises, when one exists.
@@ -90,8 +90,8 @@ pub struct ReleaseExperienceDocsCheckV1 {
     pub outcome: ReleaseExperienceDocsCheckOutcomeV1,
 }
 
-/// Original executed-documentation record. It carries observations only; the
-/// reader computes the result, so no claimed result field exists here.
+/// Original documentation observation record. Per-check outcomes are supplied
+/// declarations; internal consistency alone cannot establish execution proof.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReleaseExperienceDocsExecutionV1 {
@@ -121,7 +121,7 @@ pub struct ReleaseExperienceDocsExecutionV1 {
 }
 
 /// Model-side pointer from a `ReleaseExperienceInputV1` to its original
-/// executed-documentation record. `result` is the producer-claimed reader
+/// documentation observation record. `result` is the producer-claimed reader
 /// result; the admission recomputes the reader from the original bytes and
 /// refuses a claim that disagrees with them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -131,9 +131,9 @@ pub struct ReleaseExperienceDocsExecutionClaimV1 {
     pub result: ReleaseExperienceResultV1,
 }
 
-/// Aggregate verdict over the record. A `Complete` claim in the input whose
-/// original record evaluates below Complete is a binding mismatch, so a
-/// forged Complete can never discharge the documentation hold.
+/// Aggregate consistency verdict over the record. The v1 contract cannot
+/// prove selected execution, so even a consistent record stays NotProven.
+/// A Complete claim disagrees with that computed verdict and mismatches.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CargoAllowReleaseDocsExecutionEvaluationV1 {

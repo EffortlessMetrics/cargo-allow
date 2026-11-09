@@ -472,11 +472,23 @@ def main() -> None:
 
         expect_failure(harness, fixture_basis(version="0.2.0-rc.1", tag="v0.2.0-rc.1",
                                               channel="release_candidate", prerelease=True),
-                       full_rows(), "is not a stable x.y.z identity")
+                       full_rows(), "rc-line or prerelease basis")
         expect_failure(harness, fixture_basis(version="0.2.0", tag="v0.2.0",
                                               channel="stable", prerelease=True),
                        full_rows(), "rc-line or prerelease basis")
         print("ok rc-line basis rejected as final authority")
+
+        malformed = fixture_basis(version="0.2.0foo", tag="v0.2.0foo",
+                                  channel="stable", prerelease=False)
+        expect_failure(harness, malformed, full_rows(),
+                       "typed release identity rejected")
+        print("ok malformed version rejected by the typed authority")
+
+        ordinal_mismatch = fixture_basis()
+        ordinal_mismatch["release_identity"]["rc_ordinal"] = 7
+        expect_failure(harness, ordinal_mismatch, full_rows(),
+                       "does not match the typed authority projection")
+        print("ok authority/basis field mismatch rejected")
 
         stale_rows = full_rows()
         stale_rows[0]["package_version"] = "0.2.0-rc.1"

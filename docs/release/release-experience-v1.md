@@ -130,12 +130,12 @@ dependencies, even when the supplied model-level result is `Complete`:
   validator. Router cases can be implemented first while later cases stay
   explicitly missing.
 - #3151 must produce the installed help/reference/man/completion observations
-  and coherence evidence for the eight selected documentation identities. The
-  executed-documentation admission (#4706) discharges exactly this hold when
-  the input references an original `ReleaseExperienceDocsExecutionV1` record
-  that binds the selected executable, identities, and claims and reads
-  `Complete` through its semantic reader; every defect keeps the hold, and a
-  forged `Complete` claim over a failed or missing record mismatches instead.
+  and coherence evidence for the eight selected documentation identities and
+  the selected E-family case denominator. The v1 documentation observation
+  record retains useful execution history, but does not bind its checks to the
+  exact documentation bytes, predecessor identities or a checked case oracle.
+  It therefore cannot discharge this hold, even when all its declarations are
+  internally consistent. A forged `Complete` claim mismatches the reader.
 
 These are semantic dependencies, not new DTOs, pilot proof, or an exception
 to the current `Complete` requirement. The composer no longer fabricates
@@ -152,25 +152,40 @@ experience admission can become `Complete`.
 
 ### Executed-documentation records (#4706)
 
-`cargo-allow.release-experience-docs-execution.v1` is the original record a
-producer emits after running the commands a selected installed candidate's
-shipped documentation advertises, inside owned temporary fixtures. Each check
-binds one of the eight existing docs identities, carries the exact argv,
+`cargo-allow.release-experience-docs-execution.v1` retains observations from
+commands a selected installed candidate's shipped documentation advertises.
+Each check names one of the eight existing docs identities, carries the argv,
 observed exit, output excerpts, and declared/observed write sets, and states
 the documented exit expectation (`expected_exit_code`), so an honestly
 documented red or error path can agree at its own exit while a forged success
-at a nonzero exit mismatches. The record claims no result of its own; the
-`allow-report` semantic reader computes it from the observations.
+at a nonzero exit mismatches. The `allow-report` reader checks those fields for
+internal consistency. A per-check `matched` declaration is not an independent
+semantic oracle and the record does not prove that the required checks ran.
+Its best possible result is `NotProven`; specific defects retain their more
+severe result and named reason.
 
 The admission reads the record through the existing `ExperienceReference`
 byte-custody path, binds it to the input's installed executable digest,
-invocation path, subject version claim, and the eight selected documentation
-identities, enforces the Rust-floor claim against the recorded toolchain when
-both are version-shaped, rejects undeclared writes, unbounded text, unknown
-fields, duplicate ids, unknown identities, and missing identity coverage, and
-lifts only the #3151 hold when the recomputed reader result is `Complete` and
-equals the input's claim. #2466 and #3149 holds, staleness, and every named
-defect keep the admission below `Complete` exactly as before.
+invocation path, subject version and compatible channel claims, and the
+selected install's platform and compiler metadata. An unparseable Rust floor
+or compiler version does not silently skip their comparison. It rejects
+undeclared writes, unbounded text, unknown fields, duplicate ids, unknown
+identities, and missing identity coverage. These checks do not establish
+documentation-byte or required-case coverage, so #3151, #2466 and #3149 remain
+required holds. Fresh metadata and authentic original bytes do not waive them.
+
+Generated man/help output need not contain the generator's command name.
+File-output snippets must eventually retain and validate the actual generated
+content; write paths or prose summaries alone are not content evidence.
+This v1 reader does not substitute string-presence heuristics for that oracle.
+
+#4706 remains open for the reusable installed-documentation producer and its
+positive admission path. Extend the existing command-case execution transport
+and canonical catalogue rather than introducing a second installer or case
+denominator. The follow-up must bind original documentation, package/install/
+journey identities and all selected E cases, retain stdout/stderr and generated
+file bytes, and prove both genuine installed success and hostile-input refusal
+before the #3151 hold can be removed.
 
 One selected executed record is retained at
 [`evidence/rc1-installed-docs-execution.v1.json`](evidence/rc1-installed-docs-execution.v1.json):
