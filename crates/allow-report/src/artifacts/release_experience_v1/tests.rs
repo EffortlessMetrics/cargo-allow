@@ -44,6 +44,7 @@ fn fixture() -> ReleaseExperienceInputV1 {
             ReleaseExperienceBrownfieldPostureV1::NotIncludedPendingPublishedPilot,
         brownfield_receipt_digest: None,
         docs_identities: docs(),
+        docs_execution: None,
         frictions: vec![ReleaseExperienceFrictionV1 {
             id: "friction-clean-pilot-absent".to_string(),
             disposition: ReleaseExperienceFrictionDispositionV1::AcceptedPostRelease,

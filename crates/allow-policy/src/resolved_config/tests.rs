@@ -1938,7 +1938,7 @@ fn is_safe_relative_path_accepts_only_bounded_relative_normal_paths() -> TestRes
         "unix backslash detection tracks the target platform",
     )?;
     ensure(
-        is_safe_relative_path(Path::new("a\\b.toml")) == !cfg!(unix),
+        is_safe_relative_path(Path::new("a\\b.toml")) != cfg!(unix),
         "backslash spelling acceptance must match the platform cfg",
     )?;
     Ok(())

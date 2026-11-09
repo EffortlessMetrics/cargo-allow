@@ -52,7 +52,7 @@ def arguments(root, binary, cases=None):
         output_dir=root / "collection", collection_id="command-case-test",
         tool_version="0.2.0", source_generation=SOURCE_GENERATION or "1" * 40,
         provenance="source_build", candidate_identity=None, install_identity=None,
-        case=cases, timeout=30.0,
+        case=cases, timeout=60.0,
     )
 
 
@@ -77,7 +77,10 @@ def preserve_candidate_profiles(collection, runner_profile):
     test harness exports completed files before deleting that fixture;
     tarpaulin recursively collects its runner-owned profile directory.
     """
-    profiles = sorted((collection / "fixtures").glob("*/target/command-case/profiles/*"))
+    profiles = sorted(
+        list((collection / "fixtures").glob("*/target/command-case/profiles/*"))
+        + list((collection / "fixtures").glob("*/target/command-case/*/profiles/*"))
+    )
     if not profiles:
         return None
     if runner_profile is None:
@@ -168,6 +171,146 @@ def invoke_rmtree_error(callbacks, function, name, error):
     raise AssertionError("unexpected rmtree callback contract")
 
 
+class ConPtyProcessStatusTests(unittest.TestCase):
+    """Portable API failure controls, not Windows execution qualification."""
+
+    def setUp(self):
+        self.waits = [0]
+        self.exit_code = 0
+        self.query_succeeds = True
+        self.terminate_succeeds = True
+        self.last_error = 0
+        self.next_handle = 100
+        self.closed = []
+        self.events = []
+        self.terminal = 0x1234567887654321
+        self.kernel = SimpleNamespace(**{
+            name: mock.Mock(side_effect=callback)
+            for name, callback in {
+                "CreatePipe": self.create_pipe,
+                "CreatePseudoConsole": self.create_terminal,
+                "InitializeProcThreadAttributeList": self.initialize_attributes,
+                "UpdateProcThreadAttribute": lambda *args: 1,
+                "CreateProcessW": self.create_process,
+                "ReadFile": lambda *args: 0,
+                "WaitForSingleObject": self.wait,
+                "GetExitCodeProcess": self.query,
+                "TerminateProcess": self.terminate,
+                "ClosePseudoConsole": lambda value: self.events.append(("close_terminal", value.value)),
+                "DeleteProcThreadAttributeList": lambda value: self.events.append(("delete_attributes",)),
+                "CloseHandle": self.close_handle,
+            }.items()
+        })
+
+    def create_pipe(self, read, write, *_):
+        self.next_handle += 2
+        read._obj.value = self.next_handle
+        write._obj.value = self.next_handle + 1
+        return 1
+
+    def create_terminal(self, *args):
+        args[-1]._obj.value = self.terminal
+        return 0
+
+    def initialize_attributes(self, buffer, count, flags, size):
+        if buffer is None:
+            self.last_error = 122
+            size._obj.value = 128
+            return 0
+        return 1
+
+    def create_process(self, *args):
+        args[-1]._obj.hProcess = 500
+        args[-1]._obj.hThread = 501
+        return 1
+
+    def wait(self, process, timeout):
+        self.assertEqual(process, 500)
+        self.assertNotIn(103, self.closed, "host input must remain open while waiting")
+        result = self.waits.pop(0)
+        self.events.append(("wait", timeout, result))
+        self.last_error = 6 if result == 0xFFFFFFFF else 0
+        return result
+
+    def query(self, process, output):
+        self.assertEqual(process, 500)
+        self.events.append(("query",))
+        if self.query_succeeds:
+            output._obj.value = self.exit_code
+            return 1
+        self.last_error = 6
+        return 0
+
+    def terminate(self, process, code):
+        self.assertEqual((process, code), (500, 1))
+        self.events.append(("terminate",))
+        self.last_error = 5 if not self.terminate_succeeds else 0
+        return int(self.terminate_succeeds)
+
+    def close_handle(self, value):
+        self.closed.append(getattr(value, "value", value))
+        return 1
+
+    def run_child(self):
+        import ctypes
+        from ctypes import wintypes
+        with mock.patch.object(ctypes, "WinDLL", return_value=self.kernel, create=True), \
+                mock.patch.object(ctypes, "get_last_error", side_effect=lambda: self.last_error, create=True):
+            try:
+                return COLLECT._conpty_run(["mocked-child"], Path.cwd(), {}, 1)
+            finally:
+                self.assertEqual(self.kernel.WaitForSingleObject.restype, wintypes.DWORD)
+                self.assertCountEqual(self.closed, [102, 103, 104, 105, 500, 501])
+                self.assertEqual(len(self.closed), len(set(self.closed)))
+                self.assertEqual(self.events.count(("close_terminal", self.terminal)), 1)
+                self.assertEqual(self.events.count(("delete_attributes",)), 1)
+                self.assertFalse(self.waits, "all selected completion waits must be consumed")
+
+    def test_normal_exit_preserves_status_and_closes_owned_handles_once(self):
+        self.exit_code = 23
+        self.assertEqual(self.run_child(), (b"", True, 23, None, False))
+        self.kernel.TerminateProcess.assert_not_called()
+
+    def test_failed_wait_cannot_become_a_final_exit(self):
+        self.waits = [0xFFFFFFFF, 0]
+        with self.assertRaisesRegex(OSError, "initial wait failed: 6"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+    def test_failed_exit_query_cannot_fabricate_zero(self):
+        self.query_succeeds = False
+        with self.assertRaisesRegex(OSError, "GetExitCodeProcess failed: 6"):
+            self.run_child()
+
+    def test_timeout_observes_termination_before_reading_exit(self):
+        self.waits = [0x102, 0]
+        self.exit_code = 1
+        self.assertEqual(self.run_child(), (b"", True, 1, None, True))
+        self.assertEqual(self.events[:4], [
+            ("wait", 1000, 0x102), ("terminate",), ("wait", 10000, 0), ("query",),
+        ])
+
+    def test_failed_termination_is_not_a_final_exit(self):
+        self.waits = [0x102, 0]
+        self.terminate_succeeds = False
+        with self.assertRaisesRegex(OSError, "TerminateProcess failed: 5"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+    def test_unsignalled_termination_cannot_emit_still_active_as_an_exit(self):
+        self.waits = [0x102, 0x102]
+        self.exit_code = 259
+        with self.assertRaisesRegex(OSError, "child termination did not complete"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+    def test_failed_termination_wait_retains_named_failure(self):
+        self.waits = [0x102, 0xFFFFFFFF]
+        with self.assertRaisesRegex(OSError, "after termination failed: 6"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+
 class TransportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="command-case-transport-")
@@ -175,6 +318,50 @@ class TransportTests(unittest.TestCase):
 
     def tearDown(self):
         self.temporary.cleanup()
+
+    def test_pseudo_terminal_child_observes_all_three_terminal_streams(self):
+        store = COLLECT.Store(self.root)
+        environment = dict(os.environ)
+        environment["COMMAND_CASE_UNICODE_PROBE"] = "caf\u00e9 \u6e2c\u8a66"
+        probe = (
+            "import os,sys; "
+            "print('TTY_PROBE=' + ','.join(str(os.isatty(fd)) for fd in (0,1,2))); "
+            "print('ENV_PROBE=' + os.environ['COMMAND_CASE_UNICODE_PROBE'].encode().hex()); "
+            "print('ARGV_PROBE=' + sys.argv[1].encode().hex())"
+        )
+        process, stdout, stderr = COLLECT.run_process_tty(
+            [sys.executable, "-c", probe, "argument with spaces \u00e9"],
+            self.root, environment, 10, store, "terminal-probe",
+        )
+        self.assertTrue(process["started"], process)
+        self.assertEqual(process["exit_code"], 0, process)
+        self.assertFalse(process["timed_out"], process)
+        data = (store.root / stdout["path"]).read_bytes()
+        self.assertIn(b"TTY_PROBE=True,True,True", data)
+        self.assertIn(b"ENV_PROBE=" + environment["COMMAND_CASE_UNICODE_PROBE"].encode().hex().encode(), data)
+        self.assertIn(b"ARGV_PROBE=" + "argument with spaces \u00e9".encode().hex().encode(), data)
+        self.assertEqual(stderr["size_bytes"], 0)
+
+    def test_pseudo_terminal_missing_executable_is_not_a_pipe_fallback(self):
+        process, stdout, stderr = COLLECT.run_process_tty(
+            [str(self.root / "nonexistent-command")], self.root, dict(os.environ),
+            10, COLLECT.Store(self.root), "missing-terminal-child",
+        )
+        self.assertFalse(process["started"], process)
+        self.assertIsNone(process["exit_code"])
+        self.assertTrue(process["launch_error"])
+        self.assertEqual(stdout["size_bytes"], 0)
+        self.assertEqual(stderr["size_bytes"], 0)
+
+    def test_pseudo_terminal_capture_is_bounded_before_member_admission(self):
+        run = COLLECT._conpty_run if os.name == "nt" else COLLECT._posix_pty_run
+        with mock.patch.object(COLLECT, "JSON_LIMIT", 2048):
+            data, started, _, _, _ = run(
+                [sys.executable, "-c", "import os; os.write(1, b'x' * 16384)"],
+                self.root, dict(os.environ), 10,
+            )
+        self.assertTrue(started)
+        self.assertEqual(len(data), 2049)
 
     def test_exclusive_root_preserves_prior_owner_and_refuses_checkout(self):
         owned = COLLECT.owned_root(self.root / "owned")
@@ -831,7 +1018,8 @@ class TransportTests(unittest.TestCase):
         self.assertIsNone(timeout["launch_error"])
 
     def test_case_and_provenance_rejections_happen_before_root_allocation(self):
-        for cases in (["unknown"], ["A.audit.clean_no_policy"] * 2, ["D.diff.exact_range"]):
+        for cases in (["unknown"], ["A.audit.clean_no_policy"] * 2, ["D.diff.exact_range"],
+                      ["B.list.presentation"], ["A.adopt.human_receipt"]):
             args = arguments(self.root, Path(sys.executable).resolve(), cases)
             with self.subTest(cases=cases), self.assertRaises(ValueError):
                 COLLECT.collect(args)
@@ -995,7 +1183,7 @@ class NativeAdmissionTests(unittest.TestCase):
             expected = next(item for item in context["cases"] if item["case_id"] == case["context"]["case_id"])
             expected["output_digests"][role] = member["digest"]
 
-    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=30):
+    def admit(self, context, bundle, catalogue=None, raw_context=None, raw_bundle=None, output=None, timeout=60):
         context_bytes = COLLECT.json_bytes(context) if raw_context is None else raw_context
         bundle["context_digest"] = COLLECT.digest(context_bytes)
         bundle_bytes = COLLECT.json_bytes(bundle) if raw_bundle is None else raw_bundle
@@ -1625,6 +1813,372 @@ class NativeAdmissionTests(unittest.TestCase):
         self.invalid(context, bundle, "unexpected source file")
 
 
+PRESENTATION_CASE_IDS = [
+    "A.check.human_receipt",
+    "A.adopt.presentation",
+    "A.doctor.presentation",
+    "A.audit.presentation",
+    "A.check.presentation",
+]
+
+
+class PresentationAdmissionTests(unittest.TestCase):
+    """Read-only #4724 presentation transport and native admission controls."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.root = Path(tempfile.mkdtemp(prefix="command-case-presentation-tests-")).resolve()
+        cls.root_identity = cls.root.lstat()
+        args = arguments(cls.root, NATIVE, cases=list(PRESENTATION_CASE_IDS))
+        with redirect_stdout(io.StringIO()):
+            COLLECT.collect(args)
+        cls.collection = args.output_dir
+        cls.context = json.loads((cls.collection / "expected-context.json").read_bytes())
+        cls.bundle = json.loads((cls.collection / "bundle.json").read_bytes())
+
+    @classmethod
+    def tearDownClass(cls):
+        preserve_candidate_profiles(cls.collection, os.environ.get("LLVM_PROFILE_FILE"))
+        remove_owned_fixture(cls.root, cls.root_identity)
+
+    def setUp(self):
+        self.restore = {}
+        self.remove = []
+
+    def tearDown(self):
+        for path in self.remove:
+            path.unlink(missing_ok=True)
+        for path, data in self.restore.items():
+            path.write_bytes(data)
+
+    def selected(self, case_id):
+        context = copy.deepcopy(self.context)
+        bundle = copy.deepcopy(self.bundle)
+        context["cases"] = []
+        bundle["cases"] = []
+        context["presentation_cases"] = [
+            case for case in context["presentation_cases"] if case["case_id"] == case_id
+        ]
+        bundle["presentation_cases"] = [
+            case for case in bundle["presentation_cases"] if case["case_id"] == case_id
+        ]
+        return context, bundle
+
+    def route(self, case, route):
+        # Context invocations carry `route` directly; retained executions
+        # carry it under their pinned context.
+        return next(
+            item for item in case["invocations"]
+            if item.get("context", item)["route"] == route
+        )
+
+    def read_member(self, member):
+        return (self.collection / member["path"]).read_bytes()
+
+    def repin(self, member, data):
+        """Persist new member bytes and refresh the member identity in place."""
+        path = self.collection / member["path"]
+        self.restore.setdefault(path, path.read_bytes())
+        path.write_bytes(data)
+        member["size_bytes"], member["digest"] = len(data), COLLECT.digest(data)
+        return member
+
+    def expected_case(self, context, case_id):
+        return next(
+            case for case in context["presentation_cases"] if case["case_id"] == case_id
+        )
+
+    def repin_route_output(self, bundle, context, case_id, route, role, data):
+        """Rewrite a route output member and repin every pinned digest."""
+        execution = self.route(bundle["presentation_cases"][0], route)
+        expected = self.route(context["presentation_cases"][0], route)
+        self.repin(execution[role], data)
+        digest = execution[role]["digest"]
+        execution["context"]["output_digests"][role] = digest
+        expected["output_digests"][role] = digest
+
+    def admit(self, context, bundle):
+        context_bytes = COLLECT.json_bytes(context)
+        bundle["context_digest"] = COLLECT.digest(context_bytes)
+        context_path = self.collection / "presentation-test-context.json"
+        bundle_path = self.collection / "presentation-test-bundle.json"
+        context_path.write_bytes(context_bytes)
+        bundle_path.write_bytes(COLLECT.json_bytes(bundle))
+        self.remove.extend([context_path, bundle_path])
+        argv = [str(NATIVE), "command-migration-evidence", "--catalogue", str(CATALOGUE),
+                "--expected-context", str(context_path), "--bundle", str(bundle_path)]
+        env = dict(os.environ)
+        for key in list(env):
+            if key.startswith("GIT_") or key.startswith("CARGO_ALLOW"):
+                del env[key]
+        observed = subprocess.run(argv, cwd=self.collection, env=env, capture_output=True, timeout=60)
+        self.assertTrue(observed.stdout, observed.stderr.decode(errors="replace"))
+        return observed, json.loads(observed.stdout)
+
+    def invalid(self, context, bundle, text=None):
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 1, result)
+        self.assertEqual(result["semantic_validity"], "invalid", result)
+        if text:
+            self.assertIn(text, json.dumps(result))
+        return result
+
+    def test_valid_presentation_observations_never_become_complete(self):
+        observed, result = self.admit(self.context, self.bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        self.assertEqual(result["qualification"], "partial")
+        # Equal sidecars prove only their shared typed projection. Full human
+        # detail and terminal semantics are not projected by this reader.
+        self.assertEqual(result["semantic_validity"], "incomplete")
+        self.assertGreaterEqual(len(result["missing_cases"]), 102)
+        by_id = {case["case_id"]: case for case in result["cases"]}
+        for case_id in PRESENTATION_CASE_IDS:
+            routes = by_id[case_id]["routes"]
+            self.assertEqual(
+                [route["route"] for route in routes],
+                [route for route, _ in COLLECT.PRESENTATION_ROUTES[
+                    "human_receipt" if case_id.endswith("human_receipt") else "presentation"
+                ][case_id.split(".")[1]]],
+                case_id,
+            )
+            for route in routes:
+                if route["tty"] or route["route"] in ("human", "quiet", "file") or (
+                    case_id == "A.check.presentation" and route["route"] == "json"
+                ):
+                    self.assertEqual(route["semantic_validity"], "incomplete", (case_id, route))
+                else:
+                    self.assertEqual(route["semantic_validity"], "valid", (case_id, route))
+        # First-family cases stay missing: this collection never executed them.
+        self.assertIn("A.audit.healthy_policy", result["missing_cases"])
+        unexecuted = [case_id for case_id in result["missing_cases"]
+                      if case_id.startswith("B.")]
+        self.assertGreaterEqual(len(unexecuted), 16)
+        if EXPORT is not None:
+            for name, data in [("context", COLLECT.json_bytes(self.context)),
+                               ("bundle", COLLECT.json_bytes(self.bundle)),
+                               ("admission", observed.stdout)]:
+                (EXPORT / ("presentation-" + name + ".json")).write_bytes(data)
+
+    def test_duplicate_presentation_case_ids_are_rejected_before_member_readback(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        context["presentation_cases"] *= 2
+        bundle["presentation_cases"] *= 2
+        self.invalid(context, bundle, "duplicate expected presentation case identity")
+
+    def test_requested_successful_file_report_cannot_be_omitted(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        execution = self.route(bundle["presentation_cases"][0], "file")
+        expected = self.route(context["presentation_cases"][0], "file")
+        self.assertEqual(execution["process"]["exit_code"], 0)
+        execution["detail"] = None
+        execution["context"]["output_digests"]["detail"] = None
+        expected["output_digests"]["detail"] = None
+        self.invalid(context, bundle, "omitted its requested human report")
+
+    def test_empty_requested_file_report_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        self.repin_route_output(bundle, context, "A.adopt.presentation", "file", "detail", b"")
+        self.invalid(context, bundle, "human report is empty")
+
+    def test_contradictory_human_summary_is_rejected_with_all_member_pins_updated(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
+            with self.subTest(route=route):
+                self.repin_route_output(
+                    bundle, context, "A.adopt.presentation", route, role,
+                    b"Outcome: satisfied\nNext: no action needed\nWrites: none\n",
+                )
+                self.invalid(context, bundle, "common-summary prefix contradicts")
+
+    def test_matching_summary_cannot_prove_arbitrary_human_detail(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
+            with self.subTest(route=route):
+                invocation = self.route(bundle["presentation_cases"][0], route)
+                original = self.restore.get(
+                    self.collection / invocation[role]["path"], self.read_member(invocation[role])
+                )
+                prefix, separator, _ = original.partition(b"\n\n")
+                self.assertTrue(separator)
+                self.repin_route_output(
+                    bundle, context, "A.adopt.presentation", route, role,
+                    prefix + separator + b"Contradictory detail: no findings, safe to delete all files.\n",
+                )
+                observed, result = self.admit(context, bundle)
+                self.assertEqual(observed.returncode, 0, result)
+                admitted = next(item for item in result["cases"][0]["routes"] if item["route"] == route)
+                self.assertEqual(admitted["semantic_validity"], "incomplete", result)
+                self.assertIn("remaining detail has no native semantic projection", json.dumps(admitted))
+
+    def test_nonempty_terminal_framing_or_arbitrary_prose_cannot_prove_parity(self):
+        for data in (b"\x1b[0m", b"No findings. Everything is safe.\n"):
+            with self.subTest(data=data):
+                context, bundle = self.selected("A.adopt.presentation")
+                self.repin_route_output(bundle, context, "A.adopt.presentation", "tty", "stdout", data)
+                observed, result = self.admit(context, bundle)
+                self.assertEqual(observed.returncode, 0, result)
+                tty = next(route for route in result["cases"][0]["routes"] if route["tty"])
+                self.assertEqual(tty["semantic_validity"], "incomplete", result)
+                self.assertIn("not proven", json.dumps(tty))
+
+    def test_hard_failure_without_evaluated_detail_stays_incomplete(self):
+        context, bundle = self.selected("A.check.presentation")
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        self.assertEqual(result["cases"][0]["semantic_validity"], "incomplete", result)
+        json_route = next(route for route in result["cases"][0]["routes"] if route["route"] == "json")
+        self.assertEqual(json_route["semantic_validity"], "incomplete", result)
+        self.assertFalse(result["cases"][0]["detail_reconciled"], result)
+
+    def test_human_error_text_cannot_be_proven_by_a_valid_summary_sidecar(self):
+        context, bundle = self.selected("A.check.presentation")
+        for route in ("human", "quiet"):
+            self.repin_route_output(
+                bundle, context, "A.check.presentation", route, "stderr",
+                b"Everything passed. No errors or missing policy.\n",
+            )
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        for route in result["cases"][0]["routes"]:
+            if route["route"] in ("human", "quiet"):
+                self.assertEqual(route["semantic_validity"], "incomplete", route)
+                self.assertIn("human error stream has no native semantic projection", json.dumps(route))
+
+    def test_missing_invocation_and_route_set_members_are_rejected(self):
+        for case_id, route in (("A.adopt.presentation", "human"),
+                               ("A.check.human_receipt", "receipt_only_tty")):
+            context, bundle = self.selected(case_id)
+            bundle["presentation_cases"][0]["invocations"] = [
+                item for item in bundle["presentation_cases"][0]["invocations"]
+                if item["context"]["route"] != route
+            ]
+            self.invalid(context, bundle, "retained invocation count")
+            context, bundle = self.selected(case_id)
+            bundle["presentation_cases"][0]["invocations"] = [
+                item for item in bundle["presentation_cases"][0]["invocations"]
+                if item["context"]["route"] != route
+            ]
+            context["presentation_cases"][0]["invocations"] = [
+                item for item in context["presentation_cases"][0]["invocations"]
+                if item["route"] != route
+            ]
+            self.invalid(context, bundle, "accepted obligation")
+
+    def test_unknown_and_duplicated_routes_are_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        context["presentation_cases"][0]["invocations"][0]["route"] = "human2"
+        bundle["presentation_cases"][0]["invocations"][0]["context"]["route"] = "human2"
+        self.invalid(context, bundle, "accepted obligation set")
+        context, bundle = self.selected("A.adopt.presentation")
+        context["presentation_cases"][0]["invocations"][1]["route"] = "human"
+        bundle["presentation_cases"][0]["invocations"][1]["context"]["route"] = "human"
+        self.invalid(context, bundle, "duplicate expected presentation route")
+
+    def test_tty_flag_lie_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        expected = self.route(context["presentation_cases"][0], "tty")
+        expected["tty"] = False
+        retained = self.route(bundle["presentation_cases"][0], "tty")
+        retained["context"]["tty"] = False
+        self.invalid(context, bundle, "terminal binding")
+
+    def test_receipt_only_route_cannot_gain_stdout_detail(self):
+        context, bundle = self.selected("A.check.human_receipt")
+        self.repin_route_output(
+            bundle, context, "A.check.human_receipt", "receipt_only", "stdout",
+            b"unexpected human report detail\n",
+        )
+        self.invalid(context, bundle, "receipt-only human route unexpectedly added stdout detail")
+
+    def test_route_summary_parity_mismatch_is_rejected(self):
+        # An internally valid but different typed claim must not pass parity:
+        # every route of a case carries the same result class and coverage.
+        context, bundle = self.selected("A.adopt.presentation")
+        human = self.route(bundle["presentation_cases"][0], "human")
+        summary = json.loads(self.read_member(human["summary"]))
+        summary["completeness"] = "partial"
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "tty", "summary",
+            COLLECT.json_bytes(summary),
+        )
+        self.invalid(context, bundle, "disagree on the typed common summary")
+
+    def test_exit_disagreement_is_rejected(self):
+        context, bundle = self.selected("A.check.presentation")
+        quiet = self.route(bundle["presentation_cases"][0], "quiet")
+        self.assertNotEqual(quiet["process"]["exit_code"], 7)
+        quiet["process"]["exit_code"] = 7
+        self.invalid(context, bundle, "disagree on the observed exit code")
+
+    def test_unrequested_receipt_on_non_check_route_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        data = b"unexpected receipt\n"
+        member_path = self.collection / "presentation/A.adopt.presentation/human/receipt.json"
+        member_path.parent.mkdir(parents=True, exist_ok=True)
+        member_path.write_bytes(data)
+        self.remove.append(member_path)
+        member = {"path": "presentation/A.adopt.presentation/human/receipt.json",
+                  "size_bytes": len(data), "digest": COLLECT.digest(data)}
+        bundle["presentation_cases"][0]["invocations"][0]["receipt"] = member
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "human", "receipt", data
+        )
+        self.invalid(context, bundle, "unrequested receipt")
+
+    def test_invocation_source_mutation_is_not_accepted(self):
+        context, bundle = self.selected("A.audit.presentation")
+        case = bundle["presentation_cases"][0]
+        invocation = self.route(case, "human")
+        snapshot = json.loads(self.read_member(invocation["after"]))
+        source = next(item for item in snapshot["entries"] if item["path"] == "src/lib.rs")
+        source["mode"] ^= 0o100
+        data = COLLECT.json_bytes(snapshot)
+        self.repin(invocation["after"], data)
+        self.invalid(context, bundle, "mutation")
+
+    def test_false_no_write_claim_is_rejected(self):
+        context, bundle = self.selected("A.doctor.presentation")
+        case = bundle["presentation_cases"][0]
+        invocation = self.route(case, "human")
+        summary = json.loads(self.read_member(invocation["summary"]))
+        summary["operation_effects"]["writes_repository"] = True
+        self.repin_route_output(
+            bundle, context, "A.doctor.presentation", "human", "summary",
+            COLLECT.json_bytes(summary),
+        )
+        self.invalid(context, bundle, "writing operation must name its write paths")
+
+    def test_environment_selector_escape_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        expected = self.route(context["presentation_cases"][0], "human")
+        expected["environment"]["NO_COLOR"] = "0"
+        retained = self.route(bundle["presentation_cases"][0], "human")
+        retained["context"]["environment"]["NO_COLOR"] = "0"
+        self.invalid(context, bundle, "escaped the controlled invocation environment")
+
+    def test_empty_human_presentation_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "human", "stdout", b""
+        )
+        self.invalid(context, bundle, "lost its expected human presentation")
+
+    def test_unproven_terminal_relay_is_never_valid(self):
+        # A retained empty TTY stream cannot satisfy the terminal obligation:
+        # force the tty route's stdout member empty and repin.
+        context, bundle = self.selected("A.adopt.presentation")
+        self.repin_route_output(
+            bundle, context, "A.adopt.presentation", "tty", "stdout", b""
+        )
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        tty_route = next(
+            route for route in result["cases"][0]["routes"] if route["route"] == "tty"
+        )
+        self.assertEqual(tty_route["semantic_validity"], "incomplete", result)
+        self.assertTrue(any("terminal" in gap for gap in tty_route["binding_gaps"]), result)
+
+
 def main():
     global NATIVE, SOURCE_GENERATION, EXPORT
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1636,9 +2190,12 @@ def main():
     SOURCE_GENERATION = args.source_generation
     EXPORT = args.export_observations
     NativeAdmissionTests.__unittest_skip__ = NATIVE is None
+    PresentationAdmissionTests.__unittest_skip__ = NATIVE is None
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(TransportTests)
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(ConPtyProcessStatusTests))
     if NATIVE is not None:
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(NativeAdmissionTests))
+        suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(PresentationAdmissionTests))
     return 0 if unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1
 
 

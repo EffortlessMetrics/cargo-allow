@@ -275,6 +275,73 @@ pub(super) struct DetailProjection {
     pub(super) binding_gaps: Vec<String>,
 }
 
+/// Reconstruct the typed matching outcomes of a retained report detail.
+/// Shared by the first-family report projection and the #4724 receipt-only
+/// route validation so both read the same single source of truth.
+fn report_outcomes(detail: &ReportDetail) -> Result<Vec<MatchOutcome>, String> {
+    detail
+        .outcomes
+        .iter()
+        .map(|outcome| {
+            let status = MatchStatus::ALL
+                .iter()
+                .copied()
+                .find(|status| status.as_str() == outcome.status)
+                .ok_or_else(|| format!("unknown outcome status: {}", outcome.status))?;
+            Ok(MatchOutcome {
+                status,
+                allow_id: outcome.allow_id.clone(),
+                candidate_ids: outcome.candidate_ids.clone(),
+                finding_index: outcome.finding_index,
+                score: outcome.score,
+                message: outcome.message.clone(),
+            })
+        })
+        .collect()
+}
+
+/// Validate one receipt-only invocation's retained receipt against the
+/// separately retained JSON-route detail of the same case and fixture state
+/// (#4724). The receipt-only route deliberately omits a detail artifact; the
+/// JSON route's detail is the case's evaluated-detail authority. Run identity
+/// still comes from the receipt being validated, exactly as in
+/// [`validate_receipt`].
+pub(super) fn validate_receipt_against_detail(
+    receipt_bytes: &[u8],
+    fixture: &FixtureSpec,
+    context: &CaseContext,
+    binary: &BinaryContext,
+    detail_bytes: &[u8],
+) -> Result<(), String> {
+    let detail: ReportDetail = decode(detail_bytes)?;
+    let outcomes = report_outcomes(&detail)?;
+    need(
+        outcomes.len() == detail.findings.len(),
+        "receipt-only validation found malformed report outcomes",
+    )?;
+    let fixture_config = fixture
+        .policy
+        .as_deref()
+        .map(allow_policy::parse_policy_with_reportable_evidence)
+        .transpose()
+        .map_err(|error| format!("report requires a valid literal fixture policy: {error}"))?;
+    let (evidence, baseline_debt) = fixture_report_context(fixture_config.as_ref(), &outcomes)?;
+    let facts = inventory_facts(&detail.inventory, Some(&detail.rust_scanner), 0);
+    let root = Path::new(&context.root);
+    let source_context = crate::reporting::SourceTreeReportContext::new(root, facts);
+    let mut report_context = source_context.report(Some(baseline_debt));
+    evidence.apply_to(&mut report_context);
+    validate_receipt(
+        receipt_bytes,
+        &detail,
+        context,
+        binary,
+        &outcomes,
+        report_context,
+        fixture_config.as_ref(),
+    )
+}
+
 pub(super) fn project(
     spec: &CaseSpec,
     fixture: &FixtureSpec,
@@ -651,31 +718,7 @@ fn report(
             "audit is informational and does not own a check receipt",
         )?;
     }
-    let outcomes = detail
-        .outcomes
-        .iter()
-        .map(|outcome| {
-            let status = MatchStatus::ALL
-                .iter()
-                .copied()
-                .find(|status| status.as_str() == outcome.status)
-                .ok_or_else(|| format!("unknown outcome status: {}", outcome.status))?;
-            if outcome
-                .finding_index
-                .is_some_and(|index| index >= detail.findings.len())
-            {
-                return Err("outcome refers to a nonexistent finding".to_string());
-            }
-            Ok(MatchOutcome {
-                status,
-                allow_id: outcome.allow_id.clone(),
-                candidate_ids: outcome.candidate_ids.clone(),
-                finding_index: outcome.finding_index,
-                score: outcome.score,
-                message: outcome.message.clone(),
-            })
-        })
-        .collect::<Result<Vec<_>, String>>()?;
+    let outcomes = report_outcomes(&detail)?;
     need(
         outcomes.len() == detail.findings.len(),
         "bounded fixture needs exactly one outcome per finding",

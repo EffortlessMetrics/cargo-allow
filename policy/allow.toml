@@ -28970,3 +28970,88 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4760-review-disposition.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4760-review-disposition.toml"
+[[allow]]
+id = "allow-11501"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/rc1-installed-docs-execution.v1.json"
+owner = "core/release"
+classification = "release_experience_evidence"
+reason = "#4706 retained executed-documentation record for the public 0.2.0-rc.1 prerelease install: 30 observed checks across the eight required docs identities with seven honest E-family disagreements and the package rustdoc surface explicitly not executed; admitted only through the docs-execution semantic reader, granting no release authority."
+evidence = ["issue:4706", "test:retained_rc1_installed_docs_execution_admits_its_named_disagreements"]
+created = "2026-11-05"
+review_after = "2027-05-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/rc1-installed-docs-execution.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/rc1-installed-docs-execution.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
+id = "allow-11502"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4706-4706-experience-docs.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #4706 installed-documentation lane's added allow-11501 receipt; note retention only, no new scanned surface beyond this file, matching the #2497/#3793/#4214/#4716 precedents."
+evidence = ["issue:4706"]
+created = "2026-11-05"
+review_after = "2027-02-05"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4706-4706-experience-docs.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4706-4706-experience-docs.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4724-presentation-observation"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/core-command-presentation-4724.v1.json"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Retained #4724 read-only A presentation experience record for the public 0.2.0-rc.1: collection digests, typed per-case admission and rc.1 version-drift findings; observation only, no release authority."
+evidence = ["issue:4724"]
+created = "2026-11-06"
+review_after = "2027-02-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/core-command-presentation-4724.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/core-command-presentation-4724.v1.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
+id = "allow-4724-presentation-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4724-4724-experience-read-only.toml"
+owner = "core/release"
+classification = "reviewed_exception"
+reason = "Self-covering revision note for the #4724 A presentation experience lane's added allow-4724-presentation-observation receipt; note retention only, no new scanned surface beyond this file."
+evidence = ["issue:4724"]
+created = "2026-11-06"
+review_after = "2027-02-06"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4724-4724-experience-read-only.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4724-4724-experience-read-only.toml"
+
+[allow.last_seen]
+line = 1
+column = 1

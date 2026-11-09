@@ -89,7 +89,15 @@ fn core_command_migration_native_transport_and_admission() -> Result<(), String>
                 == Some(&completeness),
         "evidence schema vocabulary differs from the native protocol",
     )?;
-    for name in ["catalogue", "context", "bundle", "admission"] {
+    for name in [
+        "catalogue",
+        "context",
+        "bundle",
+        "admission",
+        "presentation-context",
+        "presentation-bundle",
+        "presentation-admission",
+    ] {
         let value: Value = serde_json::from_slice(
             &fs::read(observations.join(format!("{name}.json")))
                 .map_err(|error| error.to_string())?,

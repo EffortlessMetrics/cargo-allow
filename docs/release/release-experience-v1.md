@@ -78,6 +78,7 @@ path, bytes, checksum, or retention interval.
 | `experience:exact-candidate` | `ExperienceReference` | Exact candidate V2 |
 | `experience:migration-denominator` | `ExperienceReference` | The accepted #3149 case catalogue, bound to the retained native command-case admission |
 | `experience:docs:<name>` | `ExperienceReference` | Every declared documentation identity's original bytes |
+| `experience:docs-execution` | `ExperienceReference` | Required when the input references an executed-documentation record (#4706) |
 | `experience:clean-pilot`, `experience:clean-pilot-friction` | `ExperienceReference` | Required when the input references a clean pilot |
 | `experience:brownfield-pilot` | `ExperienceReference` | Required when the input references a brownfield receipt |
 
@@ -129,7 +130,12 @@ dependencies, even when the supplied model-level result is `Complete`:
   validator. Router cases can be implemented first while later cases stay
   explicitly missing.
 - #3151 must produce the installed help/reference/man/completion observations
-  and coherence evidence for the eight selected documentation identities.
+  and coherence evidence for the eight selected documentation identities and
+  the selected E-family case denominator. The v1 documentation observation
+  record retains useful execution history, but does not bind its checks to the
+  exact documentation bytes, predecessor identities or a checked case oracle.
+  It therefore cannot discharge this hold, even when all its declarations are
+  internally consistent. A forged `Complete` claim mismatches the reader.
 
 These are semantic dependencies, not new DTOs, pilot proof, or an exception
 to the current `Complete` requirement. The composer no longer fabricates
@@ -147,8 +153,9 @@ The composer accepts two optional evidence roles,
 checks structural bindings: the accepted case catalogue (the referenced
 `experience:migration-denominator` bytes must hash to the native reader's
 pinned catalogue digest), the exact retained expected-context bytes, the
-experience input's installed-executable digest, and the freeze subject's
-source generation, collection identity, invocation path and version.
+experience input's installed-executable digest and invocation path, and the
+freeze subject's source generation and version. The retained admission and
+expected context must also share a nonempty collection identity.
 These checks do not replay the native bundle or its member originals. The
 small-record freeze transport deliberately excludes executable/archive bytes,
 and no authenticated original-member adapter connects it to the native reader.
@@ -171,6 +178,53 @@ authority. Passing an unchecked directory, trusting the supplied bundle digest
 or increasing the small-record limits is not a substitute. #3151 and #2466
 keep their missing-producer holds until their own reviewed producers land. Production
 experience admission becomes `Complete` only when no required hold remains.
+
+### Executed-documentation records (#4706)
+
+`cargo-allow.release-experience-docs-execution.v1` retains observations from
+commands a selected installed candidate's shipped documentation advertises.
+Each check names one of the eight existing docs identities, carries the argv,
+observed exit, output excerpts, and declared/observed write sets, and states
+the documented exit expectation (`expected_exit_code`), so an honestly
+documented red or error path can agree at its own exit while a forged success
+at a nonzero exit mismatches. The `allow-report` reader checks those fields for
+internal consistency. A per-check `matched` declaration is not an independent
+semantic oracle and the record does not prove that the required checks ran.
+Its best possible result is `NotProven`; specific defects retain their more
+severe result and named reason.
+
+The admission reads the record through the existing `ExperienceReference`
+byte-custody path, binds it to the input's installed executable digest,
+invocation path, subject version and compatible channel claims, and the
+selected install's platform and compiler metadata. An unparseable Rust floor
+or compiler version does not silently skip their comparison. It rejects
+undeclared writes, unbounded text, unknown fields, duplicate ids, unknown
+identities, and missing identity coverage. These checks do not establish
+documentation-byte or required-case coverage, so #3151, #2466 and #3149 remain
+required holds. Fresh metadata and authentic original bytes do not waive them.
+
+Generated man/help output need not contain the generator's command name.
+File-output snippets must eventually retain and validate the actual generated
+content; write paths or prose summaries alone are not content evidence.
+This v1 reader does not substitute string-presence heuristics for that oracle.
+
+#4706 remains open for the reusable installed-documentation producer and its
+positive admission path. Extend the existing command-case execution transport
+and canonical catalogue rather than introducing a second installer or case
+denominator. The follow-up must bind original documentation, package/install/
+journey identities and all selected E cases, retain stdout/stderr and generated
+file bytes, and prove both genuine installed success and hostile-input refusal
+before the #3151 hold can be removed.
+
+One selected executed record is retained at
+[`evidence/rc1-installed-docs-execution.v1.json`](evidence/rc1-installed-docs-execution.v1.json):
+the public 0.2.0-rc.1 prerelease installed into an isolated root, with 30
+checks over all eight identities, seven honest E-family disagreements (flat
+first screen, unnamed prerelease channel, completion hiding leak, internal
+surface leakage, package-surface desynchronization, first-screen crowding)
+and the package rustdoc surface explicitly not executed. Its reader result is
+`Mismatch`, so the #3151 hold stays for this channel; it is retained executed
+evidence, not final installed qualification, and grants no release authority.
 
 ### Focused admission controls
 

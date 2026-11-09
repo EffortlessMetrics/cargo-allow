@@ -53,6 +53,7 @@ mod refresh;
 mod release_artifact_transfer_v1;
 mod release_authorization_custody_v1;
 mod release_authorization_v1;
+mod release_experience_docs_execution_v1;
 mod release_experience_v1;
 mod release_identity_v1;
 mod release_impact_v1;
@@ -533,6 +534,13 @@ pub use release_authorization_v1::{
     ReleaseAuthorizationUseObservationV1, compile_release_authorization_v1,
     release_authorization_denominator_binding_v1, render_release_authorization_v1,
     transition_authorization_consumption, validate_release_authorization_continuation_v1,
+};
+pub use release_experience_docs_execution_v1::{
+    CargoAllowReleaseDocsExecutionEvaluationV1, RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID,
+    RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION, ReleaseExperienceDocsCheckKindV1,
+    ReleaseExperienceDocsCheckOutcomeV1, ReleaseExperienceDocsCheckV1,
+    ReleaseExperienceDocsExecutionClaimV1, ReleaseExperienceDocsExecutionV1,
+    evaluate_release_experience_docs_execution_v1, rust_floor_satisfied, rust_floor_token,
 };
 pub use release_experience_v1::{
     CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,

@@ -542,6 +542,13 @@ pub use artifacts::{
 };
 // Root re-exports for the installed-experience receipt (#3151).
 pub use artifacts::{
+    CargoAllowReleaseDocsExecutionEvaluationV1, RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID,
+    RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION, ReleaseExperienceDocsCheckKindV1,
+    ReleaseExperienceDocsCheckOutcomeV1, ReleaseExperienceDocsCheckV1,
+    ReleaseExperienceDocsExecutionClaimV1, ReleaseExperienceDocsExecutionV1,
+    evaluate_release_experience_docs_execution_v1, rust_floor_satisfied, rust_floor_token,
+};
+pub use artifacts::{
     CargoAllowReleaseExperienceV1, RELEASE_EXPERIENCE_MAX_TEXT_LEN,
     RELEASE_EXPERIENCE_REQUIRED_DOCS, RELEASE_EXPERIENCE_SCHEMA_ID,
     RELEASE_EXPERIENCE_SCHEMA_VERSION, ReleaseExperienceBrownfieldPostureV1,

@@ -58,6 +58,7 @@ fn input() -> ReleaseExperienceInputV1 {
                 digest: digest(100 + index as u64),
             })
             .collect(),
+        docs_execution: None,
         frictions: vec![ReleaseExperienceFrictionV1 {
             id: "friction-clean-pilot-absent".to_string(),
             disposition: ReleaseExperienceFrictionDispositionV1::AcceptedPostRelease,

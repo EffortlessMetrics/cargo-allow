@@ -1,0 +1,11 @@
+kind: Added
+body: >-
+  Retain installed documentation observations and inspect their original bytes
+  (#4706). The v1 reader detects inconsistent exit/write/identity declarations
+  but caps otherwise-consistent records at NotProven: it has no checked
+  selected-case producer or exact documentation-byte oracle. Forged Complete
+  claims cannot lift the #3151 documentation hold; #2466/#3149 remain separately
+  required. The public 0.2.0-rc.1 record retains its seven honest E-family
+  disagreements unchanged. No final installed qualification or release
+  authority is claimed.
+time: 2026-11-05T08:29:27Z

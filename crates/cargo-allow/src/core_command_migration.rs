@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 
 #[path = "core_command_migration_detail.rs"]
 mod detail;
+#[path = "core_command_migration_presentation.rs"]
+mod presentation;
 #[path = "core_command_migration_readback.rs"]
 mod readback;
 #[path = "core_command_migration_reconcile.rs"]
@@ -21,9 +23,11 @@ pub(crate) use reconcile::reconcile;
 
 // Pin the full external catalogue without a production include outside this
 // package. The conformance test binds these bytes to the repository document;
-// packaged readers receive the complete catalogue as an explicit input.
+// packaged readers receive the complete catalogue as an explicit input. The
+// digest covers the accepted 107-case denominator plus the read-only
+// human_receipt/presentation fixture specifications (#4724).
 pub(crate) const CATALOGUE_DIGEST: &str =
-    "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08";
+    "sha256:v1:c6be62242a03b520695f5e8ffa28530374042e6ab0ec6c3f0fc2e0a59143775a";
 pub(crate) const CATALOGUE_SCHEMA: &str = "cargo-allow.command-migration-catalogue.v1";
 pub(crate) const CONTEXT_SCHEMA: &str = "cargo-allow.command-case-context.v1";
 pub(crate) const BUNDLE_SCHEMA: &str = "cargo-allow.command-case-bundle.v1";
@@ -128,6 +132,41 @@ pub(crate) struct ExpectedContext {
     pub(crate) catalogue_digest: String,
     pub(crate) binary: BinaryContext,
     pub(crate) cases: Vec<CaseContext>,
+    /// Read-only A presentation/human-receipt case contexts (#4724). Absent
+    /// for first-family-only collections, keeping those retained bytes
+    /// unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) presentation_cases: Option<Vec<PresentationCaseContext>>,
+}
+
+/// One actual invocation route of a presentation case. `route` names the
+/// presentation dimension (`human`, `json`, `quiet`, `file`, `tty`,
+/// `receipt_only`, `receipt_only_tty`); `tty` records whether the retained
+/// stdout/stderr flowed through a real pseudo-terminal.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct InvocationContext {
+    pub(crate) route: String,
+    pub(crate) tty: bool,
+    pub(crate) root: String,
+    pub(crate) cwd: String,
+    pub(crate) argv: Vec<String>,
+    pub(crate) environment: BTreeMap<String, String>,
+    pub(crate) source_snapshot_digest: String,
+    pub(crate) fixture_commit: String,
+    pub(crate) output_digests: BTreeMap<String, Option<String>>,
+    pub(crate) policy_digest: Option<String>,
+    pub(crate) config_path: Option<String>,
+    pub(crate) mode: Option<String>,
+    pub(crate) profile: Option<String>,
+    pub(crate) resolved_config_identity: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PresentationCaseContext {
+    pub(crate) case_id: String,
+    pub(crate) invocations: Vec<InvocationContext>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -175,6 +214,32 @@ pub(crate) struct Bundle {
     pub(crate) binary_member: Member,
     pub(crate) binary_digest_after: String,
     pub(crate) cases: Vec<CaseExecution>,
+    /// Read-only A presentation/human-receipt retained executions (#4724).
+    /// Absent for first-family-only collections.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) presentation_cases: Option<Vec<PresentationCaseExecution>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct InvocationExecution {
+    pub(crate) context: InvocationContext,
+    pub(crate) process: ProcessObservation,
+    pub(crate) before: Member,
+    pub(crate) after: Member,
+    pub(crate) stdout: Member,
+    pub(crate) stderr: Member,
+    pub(crate) detail: Option<Member>,
+    pub(crate) summary: Option<Member>,
+    pub(crate) receipt: Option<Member>,
+    pub(crate) output_guard: Option<OutputGuard>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct PresentationCaseExecution {
+    pub(crate) case_id: String,
+    pub(crate) invocations: Vec<InvocationExecution>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -211,6 +276,22 @@ pub(crate) struct CaseAdmission {
     pub(crate) detail_reconciled: bool,
     pub(crate) observed_result_class: Option<String>,
     pub(crate) observed_completeness: Option<String>,
+    pub(crate) errors: Vec<String>,
+    pub(crate) binding_gaps: Vec<String>,
+    /// Per-invocation presentation admission (#4724). Empty for first-family
+    /// cases, which keep their existing emitted shape.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) routes: Vec<RouteAdmission>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct RouteAdmission {
+    pub(crate) route: String,
+    pub(crate) tty: bool,
+    pub(crate) semantic_validity: SemanticValidity,
+    pub(crate) process_observed: bool,
+    pub(crate) observed_exit_code: Option<i32>,
     pub(crate) errors: Vec<String>,
     pub(crate) binding_gaps: Vec<String>,
 }

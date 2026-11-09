@@ -24,6 +24,31 @@ BINARY_LIMIT = 512 * 1024 * 1024
 FIRST_FAMILY_COMMANDS = {"adopt", "doctor", "audit", "check"}
 MAX_SELECTED_CASES = 29
 SCHEMA = "cargo-allow.command-case-bundle.v1"
+# Read-only #4724 presentation routes. Each entry is (route, requires_tty).
+# human_receipt owns the receipt-only human check route on a real terminal
+# boundary plus its JSON-route receipt/detail correspondence authority.
+PRESENTATION_ROUTES = {
+    "human_receipt": {
+        "check": [
+            ("receipt_only", False),
+            ("receipt_only_tty", True),
+            ("json", False),
+        ],
+    },
+    "presentation": {
+        "adopt": [("human", False), ("json", False), ("quiet", False), ("file", False), ("tty", True)],
+        "doctor": [("human", False), ("json", False), ("quiet", False), ("file", False), ("tty", True)],
+        "audit": [("human", False), ("json", False), ("quiet", False), ("file", False), ("tty", True)],
+        "check": [("human", False), ("json", False), ("quiet", False), ("file", False), ("tty", True)],
+    },
+}
+
+
+def presentation_routes_for(spec):
+    """The accepted route set for a case, or None outside the reader."""
+    if spec.get("family") != "A" or spec.get("first_family_collector"):
+        return None
+    return PRESENTATION_ROUTES.get(spec.get("scenario"), {}).get(spec.get("command"))
 
 
 def digest(data):
@@ -211,6 +236,360 @@ def run_process(argv, cwd, environment, timeout, store, prefix):
     return result, members[0], members[1]
 
 
+def run_process_tty(argv, cwd, environment, timeout, store, prefix):
+    """Run argv attached to a real pseudo-terminal and retain the console relay.
+
+    A real terminal merges both command streams into one console stream, so
+    the retained stdout member holds the relayed console bytes and the stderr
+    member is empty. When the host provides no usable pseudo-terminal the
+    invocation is recorded as never started instead of silently falling back
+    to pipes: presentation evidence never fabricates a terminal observation.
+    """
+    out_path = store.root / (prefix + ".stdout")
+    err_path = store.root / (prefix + ".stderr")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    started_at = utc_now()
+    if os.name == "nt":
+        data, started, exit_code, launch_error, timed_out = _conpty_run(
+            argv, cwd, environment, timeout
+        )
+    else:
+        data, started, exit_code, launch_error, timed_out = _posix_pty_run(
+            argv, cwd, environment, timeout
+        )
+    with out_path.open("xb") as stdout, err_path.open("xb") as stderr:
+        stdout.write(data)
+    result = {
+        "started_at_utc": started_at,
+        "finished_at_utc": utc_now(),
+        "started": started,
+        "exit_code": exit_code,
+        "launch_error": launch_error,
+        "timed_out": timed_out,
+    }
+    members = []
+    for path in (out_path, err_path):
+        retained = regular_bytes(path, JSON_LIMIT)
+        members.append({
+            "path": path.relative_to(store.root).as_posix(),
+            "size_bytes": len(retained), "digest": digest(retained),
+        })
+    return result, members[0], members[1]
+
+
+def _posix_pty_run(argv, cwd, environment, timeout):
+    import pty
+    import threading
+    try:
+        master_fd, slave_fd = pty.openpty()
+    except OSError as error:
+        return b"", False, None, "pseudo-terminal unavailable: " + str(error), False
+    try:
+        process = subprocess.Popen(
+            argv, cwd=cwd, env=environment, stdin=slave_fd,
+            stdout=slave_fd, stderr=slave_fd, close_fds=True,
+        )
+    except OSError as error:
+        os.close(slave_fd)
+        os.close(master_fd)
+        return b"", False, None, str(error), False
+    started = True
+    os.close(slave_fd)
+    retained = bytearray()
+
+    def pump():
+        while True:
+            try:
+                piece = os.read(master_fd, 65536)
+            except OSError:
+                break
+            if not piece:
+                break
+            # Retain at most one byte beyond the admission cap. That byte
+            # makes the existing member-size gate fail without buffering an
+            # unbounded console stream before the gate can run.
+            retained.extend(piece[: max(0, JSON_LIMIT + 1 - len(retained))])
+            if len(retained) > JSON_LIMIT:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
+
+    reader = threading.Thread(target=pump, daemon=True)
+    reader.start()
+    timed_out = False
+    try:
+        exit_code = process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        process.kill()
+        exit_code = process.wait()
+    reader.join(timeout=10)
+    try:
+        os.close(master_fd)
+    except OSError:
+        pass
+    return bytes(retained), started, exit_code, None, timed_out
+
+
+def _conpty_run(argv, cwd, environment, timeout):
+    """Run argv on a real Windows pseudo-terminal (ConPTY) via stdlib ctypes.
+
+    The merged console relay bytes are captured from the ConPTY output pipe.
+    A failure to create the terminal or process is returned as a launch error;
+    the invocation is then recorded as never started.
+    """
+    import ctypes
+    import threading
+    from ctypes import wintypes
+
+    class COORD(ctypes.Structure):
+        _fields_ = [("X", ctypes.c_short), ("Y", ctypes.c_short)]
+
+    class STARTUPINFOW(ctypes.Structure):
+        _fields_ = [
+            ("cb", wintypes.DWORD), ("lpReserved", wintypes.LPWSTR),
+            ("lpDesktop", wintypes.LPWSTR), ("lpTitle", wintypes.LPWSTR),
+            ("dwX", wintypes.DWORD), ("dwY", wintypes.DWORD),
+            ("dwXSize", wintypes.DWORD), ("dwYSize", wintypes.DWORD),
+            ("dwXCountChars", wintypes.DWORD), ("dwYCountChars", wintypes.DWORD),
+            ("dwFillAttribute", wintypes.DWORD), ("dwFlags", wintypes.DWORD),
+            ("wShowWindow", wintypes.WORD), ("cbReserved2", wintypes.WORD),
+            ("lpReserved2", ctypes.POINTER(ctypes.c_byte)),
+            ("hStdInput", wintypes.HANDLE), ("hStdOutput", wintypes.HANDLE),
+            ("hStdError", wintypes.HANDLE),
+        ]
+
+    class STARTUPINFOEXW(ctypes.Structure):
+        _fields_ = [
+            ("StartupInfo", STARTUPINFOW), ("lpAttributeList", ctypes.c_void_p),
+        ]
+
+    class SECURITY_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [
+            ("nLength", wintypes.DWORD),
+            ("lpSecurityDescriptor", ctypes.c_void_p),
+            ("bInheritHandle", wintypes.BOOL),
+        ]
+
+    class PROCESS_INFORMATION(ctypes.Structure):
+        _fields_ = [
+            ("hProcess", wintypes.HANDLE), ("hThread", wintypes.HANDLE),
+            ("dwProcessId", wintypes.DWORD), ("dwThreadId", wintypes.DWORD),
+        ]
+
+    kernel32 = ctypes.WinDLL("kernel32.dll", use_last_error=True)
+    handle = wintypes.HANDLE
+    PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016
+    CREATE_UNICODE_ENVIRONMENT = 0x00000400
+    CREATE_EXTENDED_STARTUPINFO_PRESENT = 0x00080000
+    WAIT_OBJECT_0 = 0x00000000
+    WAIT_TIMEOUT = 0x00000102
+    WAIT_FAILED = 0xFFFFFFFF
+    ERROR_INSUFFICIENT_BUFFER = 122
+
+    kernel32.CreatePipe.argtypes = [
+        ctypes.POINTER(handle), ctypes.POINTER(handle),
+        ctypes.POINTER(SECURITY_ATTRIBUTES), wintypes.DWORD,
+    ]
+    kernel32.CreatePseudoConsole.argtypes = [
+        COORD, handle, handle, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p),
+    ]
+    kernel32.CreatePseudoConsole.restype = ctypes.c_long
+    kernel32.ClosePseudoConsole.argtypes = [ctypes.c_void_p]
+    kernel32.ClosePseudoConsole.restype = None
+    kernel32.CloseHandle.argtypes = [handle]
+    kernel32.InitializeProcThreadAttributeList.argtypes = [
+        ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    kernel32.UpdateProcThreadAttribute.argtypes = [
+        ctypes.c_void_p, wintypes.DWORD, ctypes.c_size_t,
+        ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
+    ]
+    kernel32.DeleteProcThreadAttributeList.argtypes = [ctypes.c_void_p]
+    kernel32.DeleteProcThreadAttributeList.restype = None
+    kernel32.CreateProcessW.argtypes = [
+        wintypes.LPCWSTR, wintypes.LPWSTR, ctypes.c_void_p, ctypes.c_void_p,
+        wintypes.BOOL, wintypes.DWORD, ctypes.c_void_p, wintypes.LPCWSTR,
+        ctypes.POINTER(STARTUPINFOEXW), ctypes.POINTER(PROCESS_INFORMATION),
+    ]
+    kernel32.WaitForSingleObject.argtypes = [handle, wintypes.DWORD]
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.GetExitCodeProcess.argtypes = [handle, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.GetExitCodeProcess.restype = wintypes.BOOL
+    kernel32.TerminateProcess.argtypes = [handle, wintypes.UINT]
+    kernel32.TerminateProcess.restype = wintypes.BOOL
+    kernel32.ReadFile.argtypes = [
+        handle, ctypes.c_void_p, wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p,
+    ]
+
+    terminal = ctypes.c_void_p()
+    attribute_list = None
+    attribute_initialized = False
+
+    def fail(launch_error, owned=()):
+        if attribute_initialized:
+            kernel32.DeleteProcThreadAttributeList(attribute_list)
+        if terminal.value:
+            kernel32.ClosePseudoConsole(terminal)
+        for descriptor in owned:
+            kernel32.CloseHandle(descriptor)
+        return b"", False, None, launch_error, False
+
+    security = SECURITY_ATTRIBUTES()
+    security.nLength = ctypes.sizeof(SECURITY_ATTRIBUTES)
+    security.bInheritHandle = True
+    stdin_read, stdin_write, stdout_read, stdout_write = (
+        handle(), handle(), handle(), handle(),
+    )
+    if not kernel32.CreatePipe(
+        ctypes.byref(stdin_read), ctypes.byref(stdin_write),
+        ctypes.byref(security), 0,
+    ):
+        return fail("CreatePipe failed: " + str(ctypes.get_last_error()))
+    if not kernel32.CreatePipe(
+        ctypes.byref(stdout_read), ctypes.byref(stdout_write),
+        ctypes.byref(security), 0,
+    ):
+        return fail(
+            "CreatePipe failed: " + str(ctypes.get_last_error()),
+            owned=(stdin_read, stdin_write),
+        )
+    # CreatePseudoConsole returns an HRESULT, not a BOOL: zero is success.
+    hresult = kernel32.CreatePseudoConsole(
+        COORD(120, 30), stdin_read, stdout_write, 0, ctypes.byref(terminal),
+    )
+    if hresult != 0:
+        return fail(
+            f"CreatePseudoConsole failed: HRESULT {hresult:#010x}",
+            owned=(stdin_read, stdin_write, stdout_read, stdout_write),
+        )
+    attribute_size = ctypes.c_size_t(0)
+    kernel32.InitializeProcThreadAttributeList(None, 1, 0, ctypes.byref(attribute_size))
+    if ctypes.get_last_error() != ERROR_INSUFFICIENT_BUFFER or not attribute_size.value:
+        return fail(
+            "InitializeProcThreadAttributeList sizing failed",
+            owned=(stdin_read, stdin_write, stdout_read, stdout_write),
+        )
+    attribute_buffer = ctypes.create_string_buffer(attribute_size.value)
+    attribute_list = ctypes.cast(attribute_buffer, ctypes.c_void_p)
+    if not kernel32.InitializeProcThreadAttributeList(
+        attribute_list, 1, 0, ctypes.byref(attribute_size)
+    ):
+        return fail(
+            "InitializeProcThreadAttributeList failed: " + str(ctypes.get_last_error()),
+            owned=(stdin_read, stdin_write, stdout_read, stdout_write),
+        )
+    attribute_initialized = True
+    # PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE takes the HPCON value, not &HPCON.
+    # https://learn.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session
+    if not kernel32.UpdateProcThreadAttribute(
+        attribute_list, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
+        terminal, ctypes.sizeof(terminal), None, None,
+    ):
+        return fail(
+            "UpdateProcThreadAttribute failed: " + str(ctypes.get_last_error()),
+            owned=(stdin_read, stdin_write, stdout_read, stdout_write),
+        )
+    startup = STARTUPINFOEXW()
+    startup.StartupInfo.cb = ctypes.sizeof(STARTUPINFOEXW)
+    startup.lpAttributeList = attribute_list
+    # CreateProcessW may mutate its command line; the environment must be
+    # Unicode and double-NUL terminated, including an empty environment.
+    command_line = ctypes.create_unicode_buffer(
+        subprocess.list2cmdline([str(argument) for argument in argv])
+    )
+    environment_block = ctypes.create_unicode_buffer("\0".join(
+        f"{key}={value}"
+        for key, value in sorted(environment.items(), key=lambda item: item[0].upper())
+    ) + "\0")
+    information = PROCESS_INFORMATION()
+    if not kernel32.CreateProcessW(
+        None, command_line, None, None, False,
+        CREATE_UNICODE_ENVIRONMENT | CREATE_EXTENDED_STARTUPINFO_PRESENT,
+        environment_block, str(cwd), ctypes.byref(startup),
+        ctypes.byref(information),
+    ):
+        return fail(
+            "CreateProcessW failed: " + str(ctypes.get_last_error()),
+            owned=(stdin_read, stdin_write, stdout_read, stdout_write),
+        )
+    # Release the pseudo-terminal's pipe ends, but keep the host input end
+    # alive until the child exits. Closing it now can end the console session
+    # before the child produces its report.
+    kernel32.CloseHandle(stdin_read)
+    kernel32.CloseHandle(stdout_write)
+    started = True
+    retained = bytearray()
+
+    def pump():
+        buffer = ctypes.create_string_buffer(65536)
+        read = wintypes.DWORD()
+        while True:
+            if not kernel32.ReadFile(stdout_read, buffer, 65536, ctypes.byref(read), None):
+                break
+            if read.value == 0:
+                break
+            remaining = max(0, JSON_LIMIT + 1 - len(retained))
+            retained.extend(buffer.raw[: min(read.value, remaining)])
+            if len(retained) > JSON_LIMIT:
+                kernel32.TerminateProcess(information.hProcess, 1)
+
+    reader = threading.Thread(target=pump, daemon=True)
+    reader.start()
+    errors = []
+    exit_code = None
+    timed_out = False
+
+    def wait_error(result, phase):
+        if result == WAIT_FAILED:
+            return f"WaitForSingleObject {phase} failed: {ctypes.get_last_error()}"
+        if result == WAIT_TIMEOUT:
+            return f"WaitForSingleObject {phase}: child termination did not complete"
+        return f"WaitForSingleObject {phase} returned unexpected status {result:#010x}"
+
+    try:
+        waited = kernel32.WaitForSingleObject(information.hProcess, int(timeout * 1000))
+        timed_out = waited == WAIT_TIMEOUT
+        if waited != WAIT_OBJECT_0:
+            if not timed_out:
+                errors.append(wait_error(waited, "initial wait"))
+            if not kernel32.TerminateProcess(information.hProcess, 1):
+                errors.append("TerminateProcess failed: " + str(ctypes.get_last_error()))
+            # TerminateProcess is asynchronous. A requested termination is
+            # not an observed exit, even if the process-status buffer is zero.
+            waited = kernel32.WaitForSingleObject(information.hProcess, 10000)
+            if waited != WAIT_OBJECT_0:
+                errors.append(wait_error(waited, "after termination"))
+        if waited == WAIT_OBJECT_0 and not errors:
+            code = wintypes.DWORD()
+            if not kernel32.GetExitCodeProcess(information.hProcess, ctypes.byref(code)):
+                errors.append("GetExitCodeProcess failed: " + str(ctypes.get_last_error()))
+            else:
+                exit_code = code.value if code.value < 2**31 else code.value - 2**32
+    finally:
+        # Closing the pseudo-terminal flushes and ends the relay; the pump
+        # stays active until then. These owned resources close exactly once
+        # even when waiting or querying the started child fails.
+        kernel32.ClosePseudoConsole(terminal)
+        kernel32.CloseHandle(stdin_write)
+        reader.join(timeout=10)
+        kernel32.CloseHandle(stdout_read)
+        kernel32.DeleteProcThreadAttributeList(attribute_list)
+        kernel32.CloseHandle(information.hProcess)
+        kernel32.CloseHandle(information.hThread)
+    if errors:
+        # The child really started. Fail collection instead of inventing a
+        # final exit or misclassifying this as a never-started launch error.
+        raise OSError("ConPTY process observation failed: " + "; ".join(errors))
+    # Preserve empty output faithfully. Neither it nor terminal framing alone
+    # proves a command's human presentation.
+    return bytes(retained), started, exit_code, None, timed_out
+
+
 def setup_git(root, git, env, timeout, store, prefix):
     commands = [
         [str(git), "init", "--quiet"],
@@ -373,6 +752,98 @@ def collect_case(spec, fixture, root, store, binary, git, timeout):
     }
 
 
+def collect_presentation_case(spec, fixture, root, store, binary, git, timeout):
+    """Execute the accepted read-only presentation routes for one #4724 case.
+
+    Every route runs as a separate actual invocation of the supplied binary
+    against the same committed fixture, with its own before/after snapshots,
+    retained streams and artifacts. The tty routes require a real
+    pseudo-terminal; a host without one records those invocations as never
+    started rather than substituting a pipe observation.
+    """
+    case_id = spec["id"]
+    routes = PRESENTATION_ROUTES[spec["scenario"]][spec["command"]]
+    fixture_root = root / "fixtures" / case_id
+    fixture_root.mkdir(parents=True)
+    (fixture_root / "src").mkdir()
+    (fixture_root / "src/lib.rs").write_bytes(fixture["source"].encode("utf-8"))
+    if fixture["policy"] is not None:
+        (fixture_root / "policy").mkdir()
+        (fixture_root / "policy/allow.toml").write_bytes(fixture["policy"].encode("utf-8"))
+    env = child_environment(root / "homes" / case_id, git)
+    fixture_commit = setup_git(
+        fixture_root, git, env, timeout, store, "cases/" + safe_relative(case_id) + "/setup"
+    )
+    executions = []
+    contexts = []
+    for route, tty in routes:
+        outputs = fixture_root / "target/command-case" / route
+        outputs.mkdir(parents=True)
+        (outputs / "profiles").mkdir()
+        invocation_env = dict(env)
+        invocation_env["LLVM_PROFILE_FILE"] = str(outputs / "profiles" / "candidate-%m-%p.profraw")
+        summary_path = outputs / "summary.json"
+        detail_path = outputs / "detail.json" if route == "json" else None
+        report_path = outputs / "report.txt" if route == "file" else None
+        receipt_path = outputs / "receipt.json" if spec["command"] == "check" else None
+        argv = [
+            str(binary), "--command-summary-output", str(summary_path), spec["command"],
+            "--root", str(fixture_root),
+        ]
+        if fixture["policy"] is not None:
+            argv.extend(["--config", "policy/allow.toml"])
+        if route in ("human", "tty", "receipt_only", "receipt_only_tty"):
+            argv.extend(["--format", "human"])
+        elif route == "quiet":
+            argv.extend(["--quiet", "--format", "human"])
+        elif route == "json":
+            argv.extend(["--format", "json", "--output", str(detail_path)])
+        elif route == "file":
+            argv.extend(["--format", "human", "--output", str(report_path)])
+        if spec["command"] == "check":
+            argv.extend([
+                "--mode", "no-new", "--persistent-cache", "off", "--receipt", str(receipt_path),
+            ])
+        output_path = detail_path if route == "json" else report_path
+        prefix = "presentation/" + safe_relative(case_id) + "/" + route
+        before = snapshot(fixture_root, store, prefix + "/before")
+        if tty:
+            process, stdout, stderr = run_process_tty(
+                argv, fixture_root, invocation_env, timeout, store, prefix + "/command"
+            )
+        else:
+            process, stdout, stderr = run_process(
+                argv, fixture_root, invocation_env, timeout, store, prefix + "/command"
+            )
+        after = snapshot(fixture_root, store, prefix + "/after")
+        detail = capture_optional(store, prefix, "detail", output_path) if output_path else None
+        summary = capture_optional(store, prefix, "summary", summary_path)
+        receipt = capture_optional(store, prefix, "receipt", receipt_path) if receipt_path else None
+        output_digests = {role: None if member is None else member["digest"] for role, member in [
+            ("stdout", stdout), ("stderr", stderr), ("detail", detail),
+            ("summary", summary), ("receipt", receipt),
+        ]}
+        context = {
+            "route": route, "tty": tty, "root": str(fixture_root), "cwd": str(fixture_root),
+            "argv": argv, "environment": invocation_env,
+            "source_snapshot_digest": before["digest"], "fixture_commit": fixture_commit,
+            "output_digests": output_digests,
+            "policy_digest": None if fixture["policy"] is None else digest(fixture["policy"].encode()),
+            "config_path": None if fixture["policy"] is None else "policy/allow.toml",
+            "mode": "no-new" if spec["command"] == "check" else None,
+            "profile": None, "resolved_config_identity": None,
+        }
+        contexts.append(context)
+        executions.append({
+            "context": context, "process": process, "before": before, "after": after,
+            "stdout": stdout, "stderr": stderr, "detail": detail, "summary": summary,
+            "receipt": receipt, "output_guard": None,
+        })
+    return {"case_id": case_id, "invocations": executions}, {
+        "case_id": case_id, "invocations": contexts,
+    }
+
+
 def collect(args):
     catalogue, catalogue_bytes = load_json(args.catalogue.absolute())
     if catalogue.get("schema_id") != "cargo-allow.command-migration-catalogue.v1" or catalogue.get("schema_version") != 1:
@@ -383,11 +854,20 @@ def collect(args):
     selected = args.case or [item["id"] for item in catalogue["cases"] if item["first_family_collector"]]
     if len(set(selected)) != len(selected) or not selected:
         raise ValueError("case selection is empty or duplicated")
-    if any(case not in specs or not specs[case]["first_family_collector"] for case in selected):
+    if any(
+        case not in specs
+        or not (
+            specs[case]["first_family_collector"]
+            or presentation_routes_for(specs[case]) is not None
+        )
+        for case in selected
+    ):
         raise ValueError("unknown or unimplemented case requested")
     # This is an execution boundary, not semantic admission of the catalogue.
-    # A rewritten first-family flag must not dispatch a later mutation/release
-    # command before the native reader can reject its denominator.
+    # A rewritten collector flag must not dispatch a later mutation/release
+    # command before the native reader can reject its denominator. The
+    # read-only #4724 presentation route set is bounded to the same A-family
+    # diagnostic commands.
     if len(selected) > MAX_SELECTED_CASES or any(
         specs[case]["family"] != "A" or specs[case]["command"] not in FIRST_FAMILY_COMMANDS
         for case in selected
@@ -416,17 +896,28 @@ def collect(args):
     }
     store.put("catalogue.json", catalogue_bytes)
     cases = []
+    presentation_executions = []
+    presentation_contexts = []
     for case_id in selected:
         spec = specs[case_id]
-        cases.append(collect_case(
-            spec, catalogue["first_family_fixtures"][spec["scenario"]], root, store,
-            binary, git, args.timeout,
-        ))
+        fixture = catalogue["first_family_fixtures"][spec["scenario"]]
+        if spec["first_family_collector"]:
+            cases.append(collect_case(
+                spec, fixture, root, store, binary, git, args.timeout,
+            ))
+        else:
+            execution, context = collect_presentation_case(
+                spec, fixture, root, store, binary, git, args.timeout,
+            )
+            presentation_executions.append(execution)
+            presentation_contexts.append(context)
     context = {
         "schema_id": "cargo-allow.command-case-context.v1", "schema_version": 1,
         "collection_id": args.collection_id, "catalogue_digest": digest(catalogue_bytes),
         "binary": binary_context, "cases": [case["context"] for case in cases],
     }
+    if presentation_contexts:
+        context["presentation_cases"] = presentation_contexts
     context_member = store.put("expected-context.json", json_bytes(context))
     bundle = {
         "schema_id": SCHEMA, "schema_version": 1, "collection_id": args.collection_id,
@@ -434,10 +925,13 @@ def collect(args):
         "binary": binary_context, "binary_member": binary_member,
         "binary_digest_after": digest(regular_bytes(binary, BINARY_LIMIT)), "cases": cases,
     }
+    if presentation_executions:
+        bundle["presentation_cases"] = presentation_executions
     store.put("bundle.json", json_bytes(bundle))
     print(json.dumps({
         "bundle": str(root / "bundle.json"), "expected_context": str(root / "expected-context.json"),
-        "selected_cases": len(cases), "catalogue_cases": len(catalogue["cases"]),
+        "selected_cases": len(cases) + len(presentation_executions),
+        "catalogue_cases": len(catalogue["cases"]),
         "semantic_admission": "not_performed", "qualification": "not_claimed",
     }, sort_keys=True))
 

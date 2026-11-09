@@ -1,0 +1,121 @@
+{
+  "schema": "cargo-allow.core-command-presentation-experience.v1",
+  "issue": 4724,
+  "recorded_at_utc": "2026-11-05T11:13:11.157241Z",
+  "catalogue": {
+    "path": "docs/release/core-command-migration-cases.v1.json",
+    "digest": "sha256:v1:c6be62242a03b520695f5e8ffa28530374042e6ab0ec6c3f0fc2e0a59143775a",
+    "cases": 107,
+    "executed_case_ids": [
+      "A.check.human_receipt",
+      "A.adopt.presentation",
+      "A.doctor.presentation",
+      "A.audit.presentation",
+      "A.check.presentation"
+    ]
+  },
+  "candidate": {
+    "tool_version": "0.2.0-rc.1",
+    "provenance": "supplied_installed_candidate",
+    "source_generation": "8bdabcd18723e36bbcfada423fa44779eefa599c",
+    "tag": "v0.2.0-rc.1",
+    "candidate_identity": "sha256:v1:212dfcc89d7ce2170e2cd7507231cbbf75e2a43e987f6ef0691f3ad222168143",
+    "candidate_identity_authority": "crates.io registry checksum for cargo-allow 0.2.0-rc.1 (not yanked, published 2026-08-24T04:32:06Z)",
+    "install_identity": "sha256:v1:7c66a5b6cd8119f9a2c8c0d1969d443e8e1881f9e21e05d23ef7851eecaf57c1",
+    "install_route": "cargo +1.95.0 install --locked --version 0.2.0-rc.1 cargo-allow into a lane-owned CARGO_HOME"
+  },
+  "collection": {
+    "collection_id": "rc1-4724-presentation-20261105",
+    "retained_outside_repository": "F:/Temp/obs-4724-rc1 (lane-local custody; fixtures outside any checkout)",
+    "context_digest": "sha256:v1:ff782f5846b0dace05902246f8108195d992e7131062db93f31190d86b8e6a31",
+    "bundle_digest": "sha256:v1:ef75f55e20b532855ba293f9f98e5fe49f756bae4e2038361bb25c8f7f23f19b",
+    "admission_digest": "sha256:v1:e9f105e976b7dee340217c1cd6e41fe664a97645879b06d05415d77949af4c5b"
+  },
+  "admission": {
+    "reader": "cargo-allow command-migration-evidence on the #4724 branch reader",
+    "semantic_validity": "invalid",
+    "qualification": "partial",
+    "cases": [
+      {
+        "case_id": "A.adopt.presentation",
+        "semantic_validity": "incomplete",
+        "routes_valid": [
+          "human",
+          "json",
+          "quiet",
+          "file"
+        ],
+        "routes_incomplete": [
+          "tty"
+        ],
+        "finding": "full non-TTY presentation parity admitted for rc.1; the pseudo-terminal route is relay-unproven on the collection host"
+      },
+      {
+        "case_id": "A.doctor.presentation",
+        "semantic_validity": "invalid",
+        "routes_valid": [
+          "human",
+          "quiet",
+          "file"
+        ],
+        "routes_incomplete": [
+          "tty"
+        ],
+        "finding": "JSON-route typed summary disagrees with the current native doctor projection: rc.1's suggested follow-up argv lacks the rooted --root form that current main appends"
+      },
+      {
+        "case_id": "A.audit.presentation",
+        "semantic_validity": "invalid",
+        "routes_valid": [
+          "human",
+          "quiet",
+          "file"
+        ],
+        "routes_incomplete": [
+          "tty"
+        ],
+        "finding": "same rooted follow-up argv drift as doctor on the JSON route"
+      },
+      {
+        "case_id": "A.check.human_receipt",
+        "semantic_validity": "invalid",
+        "routes_valid": [],
+        "routes_incomplete": [
+          "receipt_only",
+          "receipt_only_tty"
+        ],
+        "finding": "rc.1's receipt-only human route exits 0 and suppresses stdout, but it does not emit the fresh requested common summary sidecar; that sidecar behavior postdates rc.1 (#4393-era). The JSON route additionally disagrees with the current receipt adapter"
+      },
+      {
+        "case_id": "A.check.presentation",
+        "semantic_validity": "incomplete",
+        "routes_valid": [],
+        "routes_incomplete": [
+          "human",
+          "json",
+          "quiet",
+          "file",
+          "tty"
+        ],
+        "finding": "every route refuses (no policy fixture) with exit parity 1 and validated error receipts; rc.1 predates the error-classified summary sidecar, so the common-summary dimension stays unproven"
+      }
+    ]
+  },
+  "control_observation": {
+    "description": "same transport and reader against a source build of current main (c894995a0c6b5580a851c30e26f9d169d28da56f)",
+    "collection_id": "probe2-4724-source",
+    "retained_outside_repository": "F:/Temp/obs-4724-probe2",
+    "semantic_validity": "incomplete",
+    "result": "every non-TTY route of all five cases admits valid; only the pseudo-terminal routes are relay-unproven on this host",
+    "context_digest": "sha256:v1:f3c85e61cc5e3089642aabe037ce6f36056a9b23a9861b5e7a2789e7b81ac897",
+    "bundle_digest": "sha256:v1:3c8867172b54a49330eadc361f0f01721ebf2f93b85ca0f763d640f507750602",
+    "admission_digest": "sha256:v1:db9d4ed59a25a9ef70c0731874fde020bc4079bef6660001727384361e392f47"
+  },
+  "typed_findings": [
+    "rc.1's suggested follow-up argv for doctor/audit lacks the rooted --root argument that current main appends; cross-version output disagreement is retained, not normalized",
+    "rc.1 predates the receipt-only report summary sidecar and the error-classified summary sidecar (#4393-era), so the A.check.human_receipt obligation and the check presentation summary dimension are NotProven on the public prerelease",
+    "rc.1's check receipt on the healthy fixture disagrees with the current receipt adapter projection",
+    "the pseudo-terminal relay produced no console bytes on the collection host; all tty routes retain honest relay-unproven gaps and no terminal parity is claimed"
+  ],
+  "claim_boundary": "This record admits retained observations only. It does not authenticate the installation, rerun the scans, authorize release, or qualify the 107-case denominator. Candidate/install identities are caller-pinned declarations; the registry checksum backs the candidate tarball only."
+}
