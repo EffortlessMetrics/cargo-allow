@@ -21,7 +21,7 @@ pub(crate) fn reconcile(
         dimensions: Vec::new(), errors: Vec::new(),
         qualification_gaps: vec![
             "the admitted reader cannot satisfy the full A-C, diff-D and #3882 denominator".to_string(),
-            "human/quiet/file/TTY parity is admitted only for the five #4724 A presentation/human-receipt cases under the pinned NO_COLOR child environment via the collector's pseudo-terminal relay; B diagnostics and installed-entrypoint parity remain unexecuted".to_string(),
+            "the five #4724 A cases bind typed sidecars and native non-TTY human summary prefixes under NO_COLOR; unparsed human detail and terminal semantics remain incomplete, while B diagnostics and installed-entrypoint parity remain unexecuted".to_string(),
             "runtime resolved-configuration, selected sensor-profile and same-evaluation artifact-set bindings remain incomplete (#3876/#3880/#3885)".to_string(),
             "expected-context custody, installation authority and final experience/qualification consumption remain outside this reader (#3151/#2501)".to_string(),
             "source-generation and candidate/install mappings are caller-pinned declarations; binary digest readback alone does not authenticate a build or installation".to_string(),
@@ -227,6 +227,22 @@ fn reconcile_presentation_cases(
         expected_cases.len() == bundle_cases.len(),
         "expected/retained presentation case counts disagree",
     )?;
+    let presentation_ids = expected_cases
+        .iter()
+        .map(|case| case.case_id.as_str())
+        .collect::<BTreeSet<_>>();
+    need(
+        presentation_ids.len() == expected_cases.len(),
+        "duplicate expected presentation case identity",
+    )?;
+    need(
+        expected_cases.len()
+            <= specs
+                .values()
+                .filter(|spec| presentation::presentation_routes(spec).is_some())
+                .count(),
+        "presentation case count exceeds the implemented obligation set",
+    )?;
     for (expected_case, bundle_case) in expected_cases.iter().zip(bundle_cases.iter()) {
         need(
             expected_case.case_id == bundle_case.case_id,
@@ -275,10 +291,6 @@ fn reconcile_presentation_cases(
     // Any first-family case smuggled into the presentation lists, or any
     // presentation case smuggled into the first-family list, is rejected by
     // the per-list gates above before any admission decision is reached.
-    let presentation_ids = expected_cases
-        .iter()
-        .map(|case| case.case_id.as_str())
-        .collect::<BTreeSet<_>>();
     for context in &expected.cases {
         need(
             !presentation_ids.contains(context.case_id.as_str()),

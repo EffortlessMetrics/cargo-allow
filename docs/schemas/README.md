@@ -14,6 +14,10 @@ admission projection. See the
 It preserves the complete denominator and distinguishes semantic validity from
 Partial qualification; neither collection nor readback establishes installation,
 trusted-worker custody, or publication authority.
+Actual first-family and presentation context, bundle, and admission outputs
+are checked against this schema. Presentation admission binds native human
+summary prefixes but keeps unparsed human detail and terminal semantics
+incomplete; a matching summary sidecar cannot prove those surfaces.
 
 The [final registry preflight](cargo-allow.final-registry-preflight.v1.schema.json)
 (`cargo-allow.final-registry-preflight.v1`) is produced by

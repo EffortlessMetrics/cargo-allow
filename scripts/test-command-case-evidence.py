@@ -171,6 +171,146 @@ def invoke_rmtree_error(callbacks, function, name, error):
     raise AssertionError("unexpected rmtree callback contract")
 
 
+class ConPtyProcessStatusTests(unittest.TestCase):
+    """Portable API failure controls, not Windows execution qualification."""
+
+    def setUp(self):
+        self.waits = [0]
+        self.exit_code = 0
+        self.query_succeeds = True
+        self.terminate_succeeds = True
+        self.last_error = 0
+        self.next_handle = 100
+        self.closed = []
+        self.events = []
+        self.terminal = 0x1234567887654321
+        self.kernel = SimpleNamespace(**{
+            name: mock.Mock(side_effect=callback)
+            for name, callback in {
+                "CreatePipe": self.create_pipe,
+                "CreatePseudoConsole": self.create_terminal,
+                "InitializeProcThreadAttributeList": self.initialize_attributes,
+                "UpdateProcThreadAttribute": lambda *args: 1,
+                "CreateProcessW": self.create_process,
+                "ReadFile": lambda *args: 0,
+                "WaitForSingleObject": self.wait,
+                "GetExitCodeProcess": self.query,
+                "TerminateProcess": self.terminate,
+                "ClosePseudoConsole": lambda value: self.events.append(("close_terminal", value.value)),
+                "DeleteProcThreadAttributeList": lambda value: self.events.append(("delete_attributes",)),
+                "CloseHandle": self.close_handle,
+            }.items()
+        })
+
+    def create_pipe(self, read, write, *_):
+        self.next_handle += 2
+        read._obj.value = self.next_handle
+        write._obj.value = self.next_handle + 1
+        return 1
+
+    def create_terminal(self, *args):
+        args[-1]._obj.value = self.terminal
+        return 0
+
+    def initialize_attributes(self, buffer, count, flags, size):
+        if buffer is None:
+            self.last_error = 122
+            size._obj.value = 128
+            return 0
+        return 1
+
+    def create_process(self, *args):
+        args[-1]._obj.hProcess = 500
+        args[-1]._obj.hThread = 501
+        return 1
+
+    def wait(self, process, timeout):
+        self.assertEqual(process, 500)
+        self.assertNotIn(103, self.closed, "host input must remain open while waiting")
+        result = self.waits.pop(0)
+        self.events.append(("wait", timeout, result))
+        self.last_error = 6 if result == 0xFFFFFFFF else 0
+        return result
+
+    def query(self, process, output):
+        self.assertEqual(process, 500)
+        self.events.append(("query",))
+        if self.query_succeeds:
+            output._obj.value = self.exit_code
+            return 1
+        self.last_error = 6
+        return 0
+
+    def terminate(self, process, code):
+        self.assertEqual((process, code), (500, 1))
+        self.events.append(("terminate",))
+        self.last_error = 5 if not self.terminate_succeeds else 0
+        return int(self.terminate_succeeds)
+
+    def close_handle(self, value):
+        self.closed.append(getattr(value, "value", value))
+        return 1
+
+    def run_child(self):
+        import ctypes
+        from ctypes import wintypes
+        with mock.patch.object(ctypes, "WinDLL", return_value=self.kernel, create=True), \
+                mock.patch.object(ctypes, "get_last_error", side_effect=lambda: self.last_error, create=True):
+            try:
+                return COLLECT._conpty_run(["mocked-child"], Path.cwd(), {}, 1)
+            finally:
+                self.assertEqual(self.kernel.WaitForSingleObject.restype, wintypes.DWORD)
+                self.assertCountEqual(self.closed, [102, 103, 104, 105, 500, 501])
+                self.assertEqual(len(self.closed), len(set(self.closed)))
+                self.assertEqual(self.events.count(("close_terminal", self.terminal)), 1)
+                self.assertEqual(self.events.count(("delete_attributes",)), 1)
+                self.assertFalse(self.waits, "all selected completion waits must be consumed")
+
+    def test_normal_exit_preserves_status_and_closes_owned_handles_once(self):
+        self.exit_code = 23
+        self.assertEqual(self.run_child(), (b"", True, 23, None, False))
+        self.kernel.TerminateProcess.assert_not_called()
+
+    def test_failed_wait_cannot_become_a_final_exit(self):
+        self.waits = [0xFFFFFFFF, 0]
+        with self.assertRaisesRegex(OSError, "initial wait failed: 6"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+    def test_failed_exit_query_cannot_fabricate_zero(self):
+        self.query_succeeds = False
+        with self.assertRaisesRegex(OSError, "GetExitCodeProcess failed: 6"):
+            self.run_child()
+
+    def test_timeout_observes_termination_before_reading_exit(self):
+        self.waits = [0x102, 0]
+        self.exit_code = 1
+        self.assertEqual(self.run_child(), (b"", True, 1, None, True))
+        self.assertEqual(self.events[:4], [
+            ("wait", 1000, 0x102), ("terminate",), ("wait", 10000, 0), ("query",),
+        ])
+
+    def test_failed_termination_is_not_a_final_exit(self):
+        self.waits = [0x102, 0]
+        self.terminate_succeeds = False
+        with self.assertRaisesRegex(OSError, "TerminateProcess failed: 5"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+    def test_unsignalled_termination_cannot_emit_still_active_as_an_exit(self):
+        self.waits = [0x102, 0x102]
+        self.exit_code = 259
+        with self.assertRaisesRegex(OSError, "child termination did not complete"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+    def test_failed_termination_wait_retains_named_failure(self):
+        self.waits = [0x102, 0xFFFFFFFF]
+        with self.assertRaisesRegex(OSError, "after termination failed: 6"):
+            self.run_child()
+        self.kernel.GetExitCodeProcess.assert_not_called()
+
+
 class TransportTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="command-case-transport-")
@@ -178,6 +318,50 @@ class TransportTests(unittest.TestCase):
 
     def tearDown(self):
         self.temporary.cleanup()
+
+    def test_pseudo_terminal_child_observes_all_three_terminal_streams(self):
+        store = COLLECT.Store(self.root)
+        environment = dict(os.environ)
+        environment["COMMAND_CASE_UNICODE_PROBE"] = "caf\u00e9 \u6e2c\u8a66"
+        probe = (
+            "import os,sys; "
+            "print('TTY_PROBE=' + ','.join(str(os.isatty(fd)) for fd in (0,1,2))); "
+            "print('ENV_PROBE=' + os.environ['COMMAND_CASE_UNICODE_PROBE'].encode().hex()); "
+            "print('ARGV_PROBE=' + sys.argv[1].encode().hex())"
+        )
+        process, stdout, stderr = COLLECT.run_process_tty(
+            [sys.executable, "-c", probe, "argument with spaces \u00e9"],
+            self.root, environment, 10, store, "terminal-probe",
+        )
+        self.assertTrue(process["started"], process)
+        self.assertEqual(process["exit_code"], 0, process)
+        self.assertFalse(process["timed_out"], process)
+        data = (store.root / stdout["path"]).read_bytes()
+        self.assertIn(b"TTY_PROBE=True,True,True", data)
+        self.assertIn(b"ENV_PROBE=" + environment["COMMAND_CASE_UNICODE_PROBE"].encode().hex().encode(), data)
+        self.assertIn(b"ARGV_PROBE=" + "argument with spaces \u00e9".encode().hex().encode(), data)
+        self.assertEqual(stderr["size_bytes"], 0)
+
+    def test_pseudo_terminal_missing_executable_is_not_a_pipe_fallback(self):
+        process, stdout, stderr = COLLECT.run_process_tty(
+            [str(self.root / "nonexistent-command")], self.root, dict(os.environ),
+            10, COLLECT.Store(self.root), "missing-terminal-child",
+        )
+        self.assertFalse(process["started"], process)
+        self.assertIsNone(process["exit_code"])
+        self.assertTrue(process["launch_error"])
+        self.assertEqual(stdout["size_bytes"], 0)
+        self.assertEqual(stderr["size_bytes"], 0)
+
+    def test_pseudo_terminal_capture_is_bounded_before_member_admission(self):
+        run = COLLECT._conpty_run if os.name == "nt" else COLLECT._posix_pty_run
+        with mock.patch.object(COLLECT, "JSON_LIMIT", 2048):
+            data, started, _, _, _ = run(
+                [sys.executable, "-c", "import os; os.write(1, b'x' * 16384)"],
+                self.root, dict(os.environ), 10,
+            )
+        self.assertTrue(started)
+        self.assertEqual(len(data), 2049)
 
     def test_exclusive_root_preserves_prior_owner_and_refuses_checkout(self):
         owned = COLLECT.owned_root(self.root / "owned")
@@ -1743,10 +1927,9 @@ class PresentationAdmissionTests(unittest.TestCase):
         observed, result = self.admit(self.context, self.bundle)
         self.assertEqual(observed.returncode, 0, result)
         self.assertEqual(result["qualification"], "partial")
-        # A host whose terminal relay works admits valid routes; a host
-        # without one retains unproven terminal observations. Neither can
-        # mark the 107-case denominator complete.
-        self.assertIn(result["semantic_validity"], ("valid", "incomplete"))
+        # Equal sidecars prove only their shared typed projection. Full human
+        # detail and terminal semantics are not projected by this reader.
+        self.assertEqual(result["semantic_validity"], "incomplete")
         self.assertGreaterEqual(len(result["missing_cases"]), 102)
         by_id = {case["case_id"]: case for case in result["cases"]}
         for case_id in PRESENTATION_CASE_IDS:
@@ -1759,8 +1942,10 @@ class PresentationAdmissionTests(unittest.TestCase):
                 case_id,
             )
             for route in routes:
-                if route["tty"]:
-                    self.assertIn(route["semantic_validity"], ("valid", "incomplete"))
+                if route["tty"] or route["route"] in ("human", "quiet", "file") or (
+                    case_id == "A.check.presentation" and route["route"] == "json"
+                ):
+                    self.assertEqual(route["semantic_validity"], "incomplete", (case_id, route))
                 else:
                     self.assertEqual(route["semantic_validity"], "valid", (case_id, route))
         # First-family cases stay missing: this collection never executed them.
@@ -1768,6 +1953,96 @@ class PresentationAdmissionTests(unittest.TestCase):
         unexecuted = [case_id for case_id in result["missing_cases"]
                       if case_id.startswith("B.")]
         self.assertGreaterEqual(len(unexecuted), 16)
+        if EXPORT is not None:
+            for name, data in [("context", COLLECT.json_bytes(self.context)),
+                               ("bundle", COLLECT.json_bytes(self.bundle)),
+                               ("admission", observed.stdout)]:
+                (EXPORT / ("presentation-" + name + ".json")).write_bytes(data)
+
+    def test_duplicate_presentation_case_ids_are_rejected_before_member_readback(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        context["presentation_cases"] *= 2
+        bundle["presentation_cases"] *= 2
+        self.invalid(context, bundle, "duplicate expected presentation case identity")
+
+    def test_requested_successful_file_report_cannot_be_omitted(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        execution = self.route(bundle["presentation_cases"][0], "file")
+        expected = self.route(context["presentation_cases"][0], "file")
+        self.assertEqual(execution["process"]["exit_code"], 0)
+        execution["detail"] = None
+        execution["context"]["output_digests"]["detail"] = None
+        expected["output_digests"]["detail"] = None
+        self.invalid(context, bundle, "omitted its requested human report")
+
+    def test_empty_requested_file_report_is_rejected(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        self.repin_route_output(bundle, context, "A.adopt.presentation", "file", "detail", b"")
+        self.invalid(context, bundle, "human report is empty")
+
+    def test_contradictory_human_summary_is_rejected_with_all_member_pins_updated(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
+            with self.subTest(route=route):
+                self.repin_route_output(
+                    bundle, context, "A.adopt.presentation", route, role,
+                    b"Outcome: satisfied\nNext: no action needed\nWrites: none\n",
+                )
+                self.invalid(context, bundle, "common-summary prefix contradicts")
+
+    def test_matching_summary_cannot_prove_arbitrary_human_detail(self):
+        context, bundle = self.selected("A.adopt.presentation")
+        for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
+            with self.subTest(route=route):
+                invocation = self.route(bundle["presentation_cases"][0], route)
+                original = self.restore.get(
+                    self.collection / invocation[role]["path"], self.read_member(invocation[role])
+                )
+                prefix, separator, _ = original.partition(b"\n\n")
+                self.assertTrue(separator)
+                self.repin_route_output(
+                    bundle, context, "A.adopt.presentation", route, role,
+                    prefix + separator + b"Contradictory detail: no findings, safe to delete all files.\n",
+                )
+                observed, result = self.admit(context, bundle)
+                self.assertEqual(observed.returncode, 0, result)
+                admitted = next(item for item in result["cases"][0]["routes"] if item["route"] == route)
+                self.assertEqual(admitted["semantic_validity"], "incomplete", result)
+                self.assertIn("remaining detail has no native semantic projection", json.dumps(admitted))
+
+    def test_nonempty_terminal_framing_or_arbitrary_prose_cannot_prove_parity(self):
+        for data in (b"\x1b[0m", b"No findings. Everything is safe.\n"):
+            with self.subTest(data=data):
+                context, bundle = self.selected("A.adopt.presentation")
+                self.repin_route_output(bundle, context, "A.adopt.presentation", "tty", "stdout", data)
+                observed, result = self.admit(context, bundle)
+                self.assertEqual(observed.returncode, 0, result)
+                tty = next(route for route in result["cases"][0]["routes"] if route["tty"])
+                self.assertEqual(tty["semantic_validity"], "incomplete", result)
+                self.assertIn("not proven", json.dumps(tty))
+
+    def test_hard_failure_without_evaluated_detail_stays_incomplete(self):
+        context, bundle = self.selected("A.check.presentation")
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        self.assertEqual(result["cases"][0]["semantic_validity"], "incomplete", result)
+        json_route = next(route for route in result["cases"][0]["routes"] if route["route"] == "json")
+        self.assertEqual(json_route["semantic_validity"], "incomplete", result)
+        self.assertFalse(result["cases"][0]["detail_reconciled"], result)
+
+    def test_human_error_text_cannot_be_proven_by_a_valid_summary_sidecar(self):
+        context, bundle = self.selected("A.check.presentation")
+        for route in ("human", "quiet"):
+            self.repin_route_output(
+                bundle, context, "A.check.presentation", route, "stderr",
+                b"Everything passed. No errors or missing policy.\n",
+            )
+        observed, result = self.admit(context, bundle)
+        self.assertEqual(observed.returncode, 0, result)
+        for route in result["cases"][0]["routes"]:
+            if route["route"] in ("human", "quiet"):
+                self.assertEqual(route["semantic_validity"], "incomplete", route)
+                self.assertIn("human error stream has no native semantic projection", json.dumps(route))
 
     def test_missing_invocation_and_route_set_members_are_rejected(self):
         for case_id, route in (("A.adopt.presentation", "human"),
@@ -1917,6 +2192,7 @@ def main():
     NativeAdmissionTests.__unittest_skip__ = NATIVE is None
     PresentationAdmissionTests.__unittest_skip__ = NATIVE is None
     suite = unittest.defaultTestLoader.loadTestsFromTestCase(TransportTests)
+    suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(ConPtyProcessStatusTests))
     if NATIVE is not None:
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(NativeAdmissionTests))
         suite.addTests(unittest.defaultTestLoader.loadTestsFromTestCase(PresentationAdmissionTests))

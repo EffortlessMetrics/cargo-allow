@@ -12,13 +12,13 @@
 schema_version = 1
 
 [[records]]
-allow_ids = ["allow-11501"]
+allow_ids = ["allow-4724-presentation-observation"]
 reason = "Receipt the retained #4724 public-prerelease experience record: collection digests, typed per-case presentation admission and rc.1 version-drift findings; observation only, no release authority."
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:6fa682bed48cebfda049f86cdd95f697c5aaf45cdc2925ee404d9b05b994d3c6"
+after_fingerprint = "sha256:v1:a8f50ede712fce5f671669391aadab8a5810eb5cdaf8c51b8216239c2c05169e"
 
 [[records]]
-allow_ids = ["allow-11502"]
+allow_ids = ["allow-4724-presentation-revision"]
 reason = "Self-covering receipt of this revision note file itself; note retention only, no new scanned surface beyond this file."
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:923ba580bc65f5e332c3cd05633427eb57944fb8d1e64a126bfa10bf362ac80b"
+after_fingerprint = "sha256:v1:c3c518cfdfe6093a2fcac2a0577e916270939a6348539281391999cd5751fb49"

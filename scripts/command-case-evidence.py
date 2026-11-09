@@ -295,7 +295,7 @@ def _posix_pty_run(argv, cwd, environment, timeout):
         return b"", False, None, str(error), False
     started = True
     os.close(slave_fd)
-    chunks = []
+    retained = bytearray()
 
     def pump():
         while True:
@@ -305,7 +305,15 @@ def _posix_pty_run(argv, cwd, environment, timeout):
                 break
             if not piece:
                 break
-            chunks.append(piece)
+            # Retain at most one byte beyond the admission cap. That byte
+            # makes the existing member-size gate fail without buffering an
+            # unbounded console stream before the gate can run.
+            retained.extend(piece[: max(0, JSON_LIMIT + 1 - len(retained))])
+            if len(retained) > JSON_LIMIT:
+                try:
+                    process.kill()
+                except ProcessLookupError:
+                    pass
 
     reader = threading.Thread(target=pump, daemon=True)
     reader.start()
@@ -321,7 +329,7 @@ def _posix_pty_run(argv, cwd, environment, timeout):
         os.close(master_fd)
     except OSError:
         pass
-    return b"".join(chunks), started, exit_code, None, timed_out
+    return bytes(retained), started, exit_code, None, timed_out
 
 
 def _conpty_run(argv, cwd, environment, timeout):
@@ -375,7 +383,9 @@ def _conpty_run(argv, cwd, environment, timeout):
     PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE = 0x00020016
     CREATE_UNICODE_ENVIRONMENT = 0x00000400
     CREATE_EXTENDED_STARTUPINFO_PRESENT = 0x00080000
+    WAIT_OBJECT_0 = 0x00000000
     WAIT_TIMEOUT = 0x00000102
+    WAIT_FAILED = 0xFFFFFFFF
     ERROR_INSUFFICIENT_BUFFER = 122
 
     kernel32.CreatePipe.argtypes = [
@@ -385,6 +395,9 @@ def _conpty_run(argv, cwd, environment, timeout):
     kernel32.CreatePseudoConsole.argtypes = [
         COORD, handle, handle, wintypes.DWORD, ctypes.POINTER(ctypes.c_void_p),
     ]
+    kernel32.CreatePseudoConsole.restype = ctypes.c_long
+    kernel32.ClosePseudoConsole.argtypes = [ctypes.c_void_p]
+    kernel32.ClosePseudoConsole.restype = None
     kernel32.CloseHandle.argtypes = [handle]
     kernel32.InitializeProcThreadAttributeList.argtypes = [
         ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD,
@@ -392,23 +405,36 @@ def _conpty_run(argv, cwd, environment, timeout):
     ]
     kernel32.UpdateProcThreadAttribute.argtypes = [
         ctypes.c_void_p, wintypes.DWORD, ctypes.c_size_t,
-        ctypes.POINTER(ctypes.c_void_p),
-        ctypes.c_size_t, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p),
+        ctypes.c_void_p, ctypes.c_size_t, ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_size_t),
     ]
+    kernel32.DeleteProcThreadAttributeList.argtypes = [ctypes.c_void_p]
+    kernel32.DeleteProcThreadAttributeList.restype = None
     kernel32.CreateProcessW.argtypes = [
         wintypes.LPCWSTR, wintypes.LPWSTR, ctypes.c_void_p, ctypes.c_void_p,
         wintypes.BOOL, wintypes.DWORD, ctypes.c_void_p, wintypes.LPCWSTR,
         ctypes.POINTER(STARTUPINFOEXW), ctypes.POINTER(PROCESS_INFORMATION),
     ]
     kernel32.WaitForSingleObject.argtypes = [handle, wintypes.DWORD]
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
     kernel32.GetExitCodeProcess.argtypes = [handle, ctypes.POINTER(wintypes.DWORD)]
+    kernel32.GetExitCodeProcess.restype = wintypes.BOOL
     kernel32.TerminateProcess.argtypes = [handle, wintypes.UINT]
+    kernel32.TerminateProcess.restype = wintypes.BOOL
     kernel32.ReadFile.argtypes = [
-        handle, ctypes.c_char_p, wintypes.DWORD,
+        handle, ctypes.c_void_p, wintypes.DWORD,
         ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p,
     ]
 
+    terminal = ctypes.c_void_p()
+    attribute_list = None
+    attribute_initialized = False
+
     def fail(launch_error, owned=()):
+        if attribute_initialized:
+            kernel32.DeleteProcThreadAttributeList(attribute_list)
+        if terminal.value:
+            kernel32.ClosePseudoConsole(terminal)
         for descriptor in owned:
             kernel32.CloseHandle(descriptor)
         return b"", False, None, launch_error, False
@@ -432,7 +458,6 @@ def _conpty_run(argv, cwd, environment, timeout):
             "CreatePipe failed: " + str(ctypes.get_last_error()),
             owned=(stdin_read, stdin_write),
         )
-    terminal = ctypes.c_void_p()
     # CreatePseudoConsole returns an HRESULT, not a BOOL: zero is success.
     hresult = kernel32.CreatePseudoConsole(
         COORD(120, 30), stdin_read, stdout_write, 0, ctypes.byref(terminal),
@@ -458,11 +483,13 @@ def _conpty_run(argv, cwd, environment, timeout):
             "InitializeProcThreadAttributeList failed: " + str(ctypes.get_last_error()),
             owned=(stdin_read, stdin_write, stdout_read, stdout_write),
         )
+    attribute_initialized = True
+    # PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE takes the HPCON value, not &HPCON.
+    # https://learn.microsoft.com/en-us/windows/console/creating-a-pseudoconsole-session
     if not kernel32.UpdateProcThreadAttribute(
         attribute_list, 0, PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
-        ctypes.byref(terminal), ctypes.sizeof(terminal), None, None,
+        terminal, ctypes.sizeof(terminal), None, None,
     ):
-        kernel32.DeleteProcThreadAttributeList(attribute_list)
         return fail(
             "UpdateProcThreadAttribute failed: " + str(ctypes.get_last_error()),
             owned=(stdin_read, stdin_write, stdout_read, stdout_write),
@@ -470,31 +497,33 @@ def _conpty_run(argv, cwd, environment, timeout):
     startup = STARTUPINFOEXW()
     startup.StartupInfo.cb = ctypes.sizeof(STARTUPINFOEXW)
     startup.lpAttributeList = attribute_list
-    command_line = subprocess.list2cmdline([str(argument) for argument in argv])
-    environment_block = "\0".join(
+    # CreateProcessW may mutate its command line; the environment must be
+    # Unicode and double-NUL terminated, including an empty environment.
+    command_line = ctypes.create_unicode_buffer(
+        subprocess.list2cmdline([str(argument) for argument in argv])
+    )
+    environment_block = ctypes.create_unicode_buffer("\0".join(
         f"{key}={value}"
         for key, value in sorted(environment.items(), key=lambda item: item[0].upper())
-    ) + "\0"
-    environment_bytes = environment_block.encode("utf-16-le") + b"\0"
+    ) + "\0")
     information = PROCESS_INFORMATION()
     if not kernel32.CreateProcessW(
         None, command_line, None, None, False,
         CREATE_UNICODE_ENVIRONMENT | CREATE_EXTENDED_STARTUPINFO_PRESENT,
-        environment_bytes, str(cwd), ctypes.byref(startup),
+        environment_block, str(cwd), ctypes.byref(startup),
         ctypes.byref(information),
     ):
-        kernel32.DeleteProcThreadAttributeList(attribute_list)
         return fail(
             "CreateProcessW failed: " + str(ctypes.get_last_error()),
             owned=(stdin_read, stdin_write, stdout_read, stdout_write),
         )
-    # The pseudo-terminal owns these ends now; the parent must release them
-    # before the child sees a coherent console.
+    # Release the pseudo-terminal's pipe ends, but keep the host input end
+    # alive until the child exits. Closing it now can end the console session
+    # before the child produces its report.
     kernel32.CloseHandle(stdin_read)
     kernel32.CloseHandle(stdout_write)
-    kernel32.CloseHandle(stdin_write)
     started = True
-    chunks = []
+    retained = bytearray()
 
     def pump():
         buffer = ctypes.create_string_buffer(65536)
@@ -504,31 +533,61 @@ def _conpty_run(argv, cwd, environment, timeout):
                 break
             if read.value == 0:
                 break
-            chunks.append(buffer.raw[: read.value])
+            remaining = max(0, JSON_LIMIT + 1 - len(retained))
+            retained.extend(buffer.raw[: min(read.value, remaining)])
+            if len(retained) > JSON_LIMIT:
+                kernel32.TerminateProcess(information.hProcess, 1)
 
     reader = threading.Thread(target=pump, daemon=True)
     reader.start()
-    waited = kernel32.WaitForSingleObject(information.hProcess, int(timeout * 1000))
-    timed_out = waited == WAIT_TIMEOUT
-    if timed_out:
-        kernel32.TerminateProcess(information.hProcess, 1)
-        kernel32.WaitForSingleObject(information.hProcess, 10000)
-    code = wintypes.DWORD()
-    kernel32.GetExitCodeProcess(information.hProcess, ctypes.byref(code))
-    exit_code = code.value if code.value < 2**31 else code.value - 2**31 * 2
-    # Closing the pseudo-terminal flushes and ends the relay; the pump then
-    # observes end-of-file.
-    kernel32.ClosePseudoConsole(terminal)
-    reader.join(timeout=10)
-    kernel32.CloseHandle(stdout_read)
-    kernel32.DeleteProcThreadAttributeList(attribute_list)
-    kernel32.CloseHandle(information.hProcess)
-    kernel32.CloseHandle(information.hThread)
-    # A working ConPTY host always relays at least its own terminal framing.
-    # Zero relay bytes are recorded faithfully: the native reader treats an
-    # empty retained TTY stream as an unproven terminal observation instead
-    # of terminal evidence.
-    return b"".join(chunks), started, exit_code, None, timed_out
+    errors = []
+    exit_code = None
+    timed_out = False
+
+    def wait_error(result, phase):
+        if result == WAIT_FAILED:
+            return f"WaitForSingleObject {phase} failed: {ctypes.get_last_error()}"
+        if result == WAIT_TIMEOUT:
+            return f"WaitForSingleObject {phase}: child termination did not complete"
+        return f"WaitForSingleObject {phase} returned unexpected status {result:#010x}"
+
+    try:
+        waited = kernel32.WaitForSingleObject(information.hProcess, int(timeout * 1000))
+        timed_out = waited == WAIT_TIMEOUT
+        if waited != WAIT_OBJECT_0:
+            if not timed_out:
+                errors.append(wait_error(waited, "initial wait"))
+            if not kernel32.TerminateProcess(information.hProcess, 1):
+                errors.append("TerminateProcess failed: " + str(ctypes.get_last_error()))
+            # TerminateProcess is asynchronous. A requested termination is
+            # not an observed exit, even if the process-status buffer is zero.
+            waited = kernel32.WaitForSingleObject(information.hProcess, 10000)
+            if waited != WAIT_OBJECT_0:
+                errors.append(wait_error(waited, "after termination"))
+        if waited == WAIT_OBJECT_0 and not errors:
+            code = wintypes.DWORD()
+            if not kernel32.GetExitCodeProcess(information.hProcess, ctypes.byref(code)):
+                errors.append("GetExitCodeProcess failed: " + str(ctypes.get_last_error()))
+            else:
+                exit_code = code.value if code.value < 2**31 else code.value - 2**32
+    finally:
+        # Closing the pseudo-terminal flushes and ends the relay; the pump
+        # stays active until then. These owned resources close exactly once
+        # even when waiting or querying the started child fails.
+        kernel32.ClosePseudoConsole(terminal)
+        kernel32.CloseHandle(stdin_write)
+        reader.join(timeout=10)
+        kernel32.CloseHandle(stdout_read)
+        kernel32.DeleteProcThreadAttributeList(attribute_list)
+        kernel32.CloseHandle(information.hProcess)
+        kernel32.CloseHandle(information.hThread)
+    if errors:
+        # The child really started. Fail collection instead of inventing a
+        # final exit or misclassifying this as a never-started launch error.
+        raise OSError("ConPTY process observation failed: " + "; ".join(errors))
+    # Preserve empty output faithfully. Neither it nor terminal framing alone
+    # proves a command's human presentation.
+    return bytes(retained), started, exit_code, None, timed_out
 
 
 def setup_git(root, git, env, timeout, store, prefix):

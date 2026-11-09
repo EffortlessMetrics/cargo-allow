@@ -5,16 +5,19 @@
 //! receipt-only human check route. It reads retained members only: it never
 //! executes a command, rescans a source tree, or grants qualification. Parity
 //! is claimed only where the retained observations establish it: typed
-//! common-summary equality, exit agreement, per-invocation source immutability
-//! and exact route-set membership under the pinned `NO_COLOR` child
-//! environment. Byte-level styled terminal rendering is not claimed.
+//! common-summary equality, the native human summary prefix, exit agreement,
+//! per-invocation source immutability and exact route-set membership under the
+//! pinned `NO_COLOR` child environment. Unparsed human detail and terminal
+//! presentation remain incomplete; a correct sidecar cannot prove those bytes.
 
 use super::readback::{MemberReader, safe_relative, valid_digest};
 use super::reconcile::{
     LogicalSnapshot, enum_text, git_identity, need, optional_member, utc_parts,
 };
 use super::*;
-use crate::core_command_summary::{CoreCommandSummaryV1, validate_core_command_summary};
+use crate::core_command_summary::{
+    CoreCommandSummaryV1, render_core_command_summary_human, validate_core_command_summary,
+};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
@@ -197,7 +200,7 @@ pub(super) fn admit_presentation_case(
         // absent detail is an incomplete observation, never a complete
         // parity pass.
         let json_route_admitted = admission.routes.iter().any(|route| {
-            route.route == "json" && route.semantic_validity == SemanticValidity::Valid
+            route.route == "json" && route.semantic_validity != SemanticValidity::Invalid
         });
         if json_route_admitted {
             admission
@@ -254,6 +257,7 @@ pub(super) fn admit_presentation_case(
         .iter()
         .any(|route| route.semantic_validity == SemanticValidity::Incomplete)
         || admission.routes.len() != accepted_routes.len()
+        || observations.json_route.is_none()
     {
         SemanticValidity::Incomplete
     } else {
@@ -401,9 +405,8 @@ fn admit_invocation(
     observations.observed_exits.insert(exit_code);
     // Terminal-safety of the selected routes: file/JSON routes and the
     // non-TTY receipt-only human check routes keep stdout clean; interactive
-    // human routes stay bounded. Byte equality across the TTY boundary is
-    // not claimed because a pseudo-terminal relay injects its own framing
-    // sequences; semantic parity is carried by the typed summaries instead.
+    // human routes stay bounded. A pseudo-terminal relay may inject framing;
+    // neither nonempty bytes nor equal sidecars prove its human semantics.
     match expected.route.as_str() {
         "json" | "file" => {
             need(
@@ -438,7 +441,6 @@ fn admit_invocation(
         stdout.len() <= HUMAN_STDOUT_CAP,
         "retained human presentation exceeds the bounded stdout cap",
     )?;
-    let relay_unproven = expected.tty && stdout.is_empty();
     need(
         spec.command == "check" || receipt.is_none(),
         "selected non-check command acquired an unrequested receipt",
@@ -476,6 +478,7 @@ fn admit_invocation(
     observations
         .observed_summaries
         .push((expected.route.clone(), summary.clone()));
+    let mut presentation_incomplete = false;
     if expected.route == "json" {
         if let Some(detail_bytes) = detail.as_ref() {
             let context = case_context_for(spec, expected);
@@ -527,6 +530,55 @@ fn admit_invocation(
                     &summary.reason.message,
                 )?;
             }
+            presentation_incomplete = true;
+            route_admission.binding_gaps.push(
+                "native typed hard failure has no evaluated detail; presentation parity is incomplete"
+                    .to_string(),
+            );
+        }
+    }
+    if expected.route == "file" {
+        match detail.as_ref() {
+            Some(bytes) => {
+                validate_human_summary_prefix(bytes, &summary)?;
+                presentation_incomplete = true;
+                route_admission.binding_gaps.push(
+                    "the human file's common-summary prefix matches, but its remaining detail has no native semantic projection; full presentation parity is not proven"
+                        .to_string(),
+                );
+            }
+            None => {
+                need(
+                    exit_code != 0,
+                    "successful file invocation omitted its requested human report",
+                )?;
+                let kind = allow_core::CargoAllowErrorKind::ALL
+                    .iter()
+                    .copied()
+                    .find(|kind| kind.code() == summary.reason.code)
+                    .ok_or("absent human report lacks a native typed hard-error summary")?;
+                validate_presentation_error_summary(&summary, kind)?;
+                presentation_incomplete = true;
+                route_admission.binding_gaps.push(
+                    "native typed hard failure emitted no requested human report; presentation parity is incomplete"
+                        .to_string(),
+                );
+            }
+        }
+    }
+    if matches!(expected.route.as_str(), "human" | "quiet") {
+        presentation_incomplete = true;
+        if spec.command == "check" {
+            route_admission.binding_gaps.push(
+                "the selected check fixture suppresses stdout, but its human error stream has no native semantic projection; full presentation parity is not proven"
+                    .to_string(),
+            );
+        } else {
+            validate_human_summary_prefix(&stdout, &summary)?;
+            route_admission.binding_gaps.push(
+                "the human stream's common-summary prefix matches, but its remaining detail has no native semantic projection; full presentation parity is not proven"
+                    .to_string(),
+            );
         }
     }
     if spec.scenario == "human_receipt" && expected.route != "json" {
@@ -539,22 +591,43 @@ fn admit_invocation(
             expected.clone(),
         ));
     }
-    if relay_unproven {
-        // The invocation itself ran and its exit, summary and receipt members
-        // stay validated above, but an empty retained console stream means no
-        // terminal observation exists. The terminal dimension stays unproven.
-        route_admission.semantic_validity = SemanticValidity::Incomplete;
-        route_admission.binding_gaps.push(
+    if expected.tty {
+        // Retain process/summary/receipt facts, but do not infer a terminal
+        // presentation from the caller's tty flag or nonempty relay bytes.
+        presentation_incomplete = true;
+        route_admission.binding_gaps.push(if stdout.is_empty() {
             "pseudo-terminal relay retained no console bytes; the terminal presentation was not observed"
-                .to_string(),
-        );
-        return Ok(());
+                .to_string()
+        } else {
+            "terminal bytes are retained, but have no native semantic projection or child terminal attestation; full terminal presentation parity is not proven"
+                .to_string()
+        });
     }
-    route_admission.semantic_validity = SemanticValidity::Valid;
+    route_admission.semantic_validity = if presentation_incomplete {
+        SemanticValidity::Incomplete
+    } else {
+        SemanticValidity::Valid
+    };
     Ok(())
 }
 
 const HUMAN_STDOUT_CAP: usize = 1024 * 1024;
+
+fn validate_human_summary_prefix(
+    bytes: &[u8],
+    summary: &CoreCommandSummaryV1,
+) -> Result<(), String> {
+    need(
+        !bytes.is_empty() && bytes.len() <= HUMAN_STDOUT_CAP,
+        "requested human report is empty or exceeds the bounded presentation cap",
+    )?;
+    let rendered = render_core_command_summary_human(summary);
+    need(
+        bytes.starts_with(rendered.as_bytes())
+            && bytes.get(rendered.len()).is_none_or(|byte| *byte == b'\n'),
+        "retained human common-summary prefix contradicts its native typed projection",
+    )
+}
 
 fn validate_presentation_error_summary(
     summary: &CoreCommandSummaryV1,

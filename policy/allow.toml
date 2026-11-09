@@ -28935,7 +28935,7 @@ glob = ".allow/revisions/4725-4725-experience-mutation-1.toml"
 line = 1
 column = 1
 [[allow]]
-id = "allow-11501"
+id = "allow-4724-presentation-observation"
 kind = "non_rust_file"
 family = "documentation"
 path = "docs/release/evidence/core-command-presentation-4724.v1.json"
@@ -28956,13 +28956,13 @@ glob = "docs/release/evidence/core-command-presentation-4724.v1.json"
 line = 1
 column = 1
 [[allow]]
-id = "allow-11502"
+id = "allow-4724-presentation-revision"
 kind = "non_rust_file"
 family = "configuration"
 path = ".allow/revisions/4724-4724-experience-read-only.toml"
 owner = "core/release"
 classification = "reviewed_exception"
-reason = "Self-covering revision note for the #4724 A presentation experience lane's added allow-11501 receipt; note retention only, no new scanned surface beyond this file."
+reason = "Self-covering revision note for the #4724 A presentation experience lane's added allow-4724-presentation-observation receipt; note retention only, no new scanned surface beyond this file."
 evidence = ["issue:4724"]
 created = "2026-11-06"
 review_after = "2027-02-06"
