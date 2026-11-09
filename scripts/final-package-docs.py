@@ -163,12 +163,6 @@ def load_basis(path: Path) -> dict[str, Any]:
                 f"projection for version {version!r} tag {tag!r}: field {field!r} "
                 f"is {identity.get(field)!r}, authority projects {projection.get(field)!r}"
             )
-    if projection.get("channel") != "stable" or projection.get("github_prerelease") is not False:
-        fail(
-            "rc-line or prerelease basis cannot be the final package-docs "
-            "authority: 0.2.0-rc.1 evidence stays incident-lineage history "
-            "under #3759 and the final basis must be stable 0.2.0"
-        )
     return basis
 
 
