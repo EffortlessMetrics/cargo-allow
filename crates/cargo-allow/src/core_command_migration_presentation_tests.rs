@@ -219,11 +219,14 @@ fn accepted_argv(
 }
 
 fn snapshot_member(store: &Store, prefix: &str, fixture: &FixtureSpec) -> Result<Member, String> {
-    let files = [
+    let mut files: Vec<(&str, &[u8])> = vec![
         ("src/lib.rs", fixture.source.as_bytes()),
-        (".git/HEAD", b"ref: refs/heads/fixture\n".as_slice()),
-        (".git/index", b"index".as_slice()),
+        (".git/HEAD", b"ref: refs/heads/fixture\n"),
+        (".git/index", b"index"),
     ];
+    if let Some(policy) = fixture.policy.as_deref() {
+        files.push(("policy/allow.toml", policy.as_bytes()));
+    }
     let mut entries = Vec::new();
     for (path, bytes) in files {
         let content = store.retain(&format!("{prefix}/files/{path}"), bytes)?;
@@ -348,20 +351,210 @@ fn check_error_receipt(
     root: &Path,
     binary: &BinaryContext,
     diagnostic: &str,
+    config_path: Option<&Path>,
 ) -> Result<Vec<u8>, String> {
     let source = crate::reporting::SourceTreeReportContext::new(
         root,
         crate::InventoryFacts::source_only(allow_inventory::InventorySource::FilesystemFallback),
     );
+    let config = config_path.map(allow_report::source_tree_path_text);
     let mut native_context = source.report(None);
     native_context.mode = Some("no-new");
     native_context.enforcement = Some("enforcing");
-    native_context.policy_config = None;
+    native_context.policy_config = config.as_deref();
     native_context.tool_version = Some(&binary.tool_version);
     native_context.git_sha = Some(FIXTURE_COMMIT);
     native_context.started_at = Some("2020-01-01T00:00:00Z");
     native_context.run_id = Some("presentation-check");
     Ok(allow_report::render_error_receipt(diagnostic, native_context).into_bytes())
+}
+
+/// Native check detail, receipt, and common summary for the human-receipt
+/// fixture. The bytes come from the same renderers `report` re-runs, with
+/// omitted decoder fields filled only where the live renderer leaves them out.
+fn human_receipt_artifacts(
+    root: &Path,
+    binary: &BinaryContext,
+    fixture: &FixtureSpec,
+) -> Result<(Vec<u8>, Vec<u8>, CoreCommandSummaryV1), String> {
+    let policy = fixture
+        .policy
+        .as_deref()
+        .ok_or("human-receipt fixture lacks its policy")?;
+    let config = allow_policy::parse_policy_with_reportable_evidence(policy)
+        .map_err(|error| error.to_string())?;
+    let outcomes = [allow_core::MatchOutcome {
+        status: allow_core::MatchStatus::Matched,
+        allow_id: Some("allow-0001".to_string()),
+        candidate_ids: vec!["allow-0001".to_string()],
+        finding_index: Some(0),
+        message: "matched allow-0001".to_string(),
+        score: 200,
+    }];
+    let finding = allow_core::Finding {
+        kind: allow_core::FindingKind::NonRustFile,
+        family: Some("configuration".to_string()),
+        path: PathBuf::from("policy/allow.toml"),
+        span: Some(allow_core::Span { line: 1, column: 1 }),
+        identity: allow_core::StructuralIdentity::new("toml", "tracked_file"),
+        message: "matched non-rust policy file".to_string(),
+        ledger: None,
+    };
+    let facts = crate::InventoryFacts {
+        source: allow_inventory::InventorySource::GitTracked,
+        completeness: allow_inventory::InventoryCompleteness::Scoped,
+        files_scanned: Some(2),
+        empty_git_tracked: false,
+        deleted_tracked: Some(0),
+        rust_files_skipped: 0,
+        rust_files_considered: 1,
+        rust_files_with_parse_errors: 0,
+        inventory_skipped_paths: 0,
+        reparse_skipped_paths: 0,
+        policy_digest: None,
+    };
+    let evidence = crate::reporting::EvidenceReportSummary {
+        policy_missing_evidence_entries: allow_report::matched_policy_missing_evidence_entries(
+            &config, &outcomes,
+        ),
+        broken_evidence_links: 0,
+        weak_evidence_references: 0,
+        occurrence_headroom_entries: allow_report::occurrence_headroom_entries(&config, &outcomes),
+    };
+    let source = crate::reporting::SourceTreeReportContext::new(root, facts);
+    let mut report_context =
+        source.report(Some(allow_report::policy_baseline_debt_entries(&config)));
+    evidence.apply_to(&mut report_context);
+    let findings = [finding];
+    let rendered = allow_report::render_json_with_context(
+        "check",
+        &findings,
+        &outcomes,
+        false,
+        report_context,
+    );
+    let mut detail: serde_json::Value =
+        serde_json::from_str(&rendered).map_err(|error| error.to_string())?;
+    let object = detail
+        .as_object_mut()
+        .ok_or("rendered check report is not an object")?;
+    object
+        .entry("audit_remediation_roadmap")
+        .or_insert(serde_json::Value::Null);
+    if let Some(inventory) = object
+        .get_mut("inventory")
+        .and_then(|value| value.as_object_mut())
+    {
+        inventory
+            .entry("source_identity")
+            .or_insert(serde_json::Value::Null);
+    }
+    if let Some(findings) = object
+        .get_mut("findings")
+        .and_then(|value| value.as_array_mut())
+    {
+        for finding in findings {
+            if let Some(finding) = finding.as_object_mut() {
+                finding
+                    .entry("source_package")
+                    .or_insert(serde_json::Value::Null);
+            }
+        }
+    }
+    if let Some(rows) = detail
+        .pointer_mut("/source_inventory/by_kind")
+        .and_then(|value| value.as_array_mut())
+    {
+        for row in rows {
+            if let Some(row) = row.as_object_mut() {
+                row.entry("family").or_insert(serde_json::Value::Null);
+                row.entry("label").or_insert(serde_json::Value::Null);
+            }
+        }
+    }
+    let detail_bytes = serde_json::to_vec(&detail).map_err(|error| error.to_string())?;
+    let policy_digest = allow_core::sha256_v1_bytes(policy.as_bytes());
+    let policy_config = allow_core::normalize_path(root.join("policy").join("allow.toml"));
+    let lanes = allow_core::effective_lane_posture_for_findings(
+        &config.lanes,
+        [allow_core::FindingKind::NonRustFile],
+    );
+    let lifecycle = if config.requirements.calendar_expiry_blocks_no_new {
+        allow_report::RECEIPT_LIFECYCLE_POSTURE_CALENDAR_EXPIRY_BLOCKING
+    } else {
+        allow_report::RECEIPT_LIFECYCLE_POSTURE_CANDIDATE_MODE
+    };
+    let mut receipt_context = report_context;
+    receipt_context.mode = Some("no-new");
+    receipt_context.enforcement = Some("enforcing");
+    receipt_context.policy_config = Some(&policy_config);
+    receipt_context.policy_digest = Some(&policy_digest);
+    receipt_context.git_sha = Some(FIXTURE_COMMIT);
+    receipt_context.tool_version = Some(&binary.tool_version);
+    receipt_context.started_at = Some("2020-01-01T00:00:00Z");
+    receipt_context.run_id = Some("presentation-check");
+    receipt_context.lifecycle_posture = Some(lifecycle);
+    receipt_context.lane_posture = Some(&lanes);
+    receipt_context.federation = Some(allow_report::FederationReportContext {
+        federation_version: Some(allow_policy::federation::FEDERATION_VERSION),
+        precedence_applied: Some(allow_policy::federation::PrecedenceTier::CliOverride.as_str()),
+        registry_validity: Some(
+            allow_policy::federation::FederationRegistryValidity::Absent.as_str(),
+        ),
+        ledger_contributors: None,
+        divergence_summary: None,
+    });
+    let rendered_receipt = allow_report::render_receipt_with_context_and_inventory(
+        "check",
+        &findings,
+        &outcomes,
+        false,
+        receipt_context,
+    );
+    let mut receipt: serde_json::Value =
+        serde_json::from_str(&rendered_receipt).map_err(|error| error.to_string())?;
+    if let Some(inventory) = receipt
+        .get_mut("inventory")
+        .and_then(|value| value.as_object_mut())
+    {
+        inventory
+            .entry("source_identity")
+            .or_insert(serde_json::Value::Null);
+    }
+    if let Some(rows) = receipt
+        .pointer_mut("/source_inventory/by_kind")
+        .and_then(|value| value.as_array_mut())
+    {
+        for row in rows {
+            if let Some(row) = row.as_object_mut() {
+                row.entry("family").or_insert(serde_json::Value::Null);
+                row.entry("label").or_insert(serde_json::Value::Null);
+            }
+        }
+    }
+    receipt
+        .as_object_mut()
+        .ok_or("rendered check receipt is not an object")?
+        .entry("diagnostic")
+        .or_insert(serde_json::Value::Null);
+    let receipt_bytes = serde_json::to_vec(&receipt).map_err(|error| error.to_string())?;
+    let text = std::str::from_utf8(&detail_bytes).map_err(|error| error.to_string())?;
+    let identity = crate::core_command_router::canonical_semantic_identity(text, None)
+        .map_err(|error| error.to_string())?;
+    let subject = crate::core_command_router::report_subject_from_identity(&identity, facts, None);
+    let summary = crate::core_command_router::build_report_summary_from_facts(
+        crate::core_command_router::ReportSummaryFacts {
+            command: "check",
+            root,
+            inventory_facts: facts,
+            failed: false,
+            advisory_count: crate::core_command_router::report_advisory_count(&outcomes, evidence),
+            artifact_emission: None,
+            subject,
+        },
+    )
+    .map_err(|error| error.to_string())?;
+    Ok((detail_bytes, receipt_bytes, summary))
 }
 
 fn assemble_case(
@@ -568,7 +761,8 @@ fn retained_presentation_routes_admit_shared_typed_summaries() -> Result<(), Str
     let check_summary = check_error_summary()?;
     let check_summary_bytes = summary_bytes(&check_summary)?;
     let check_root = store.root.join("fixtures").join(&check_spec.id);
-    let check_receipt = check_error_receipt(&check_root, &binary, &check_summary.reason.message)?;
+    let check_receipt =
+        check_error_receipt(&check_root, &binary, &check_summary.reason.message, None)?;
 
     let adopt = assemble_case(&store, &binary, adopt_spec, adopt_fixture, |route| {
         let (stdout, detail) = match route {
@@ -695,5 +889,117 @@ fn unstarted_and_cancelled_presentation_routes_stay_incomplete() -> Result<(), S
             "process gaps became observations: doctor={doctor_case:?} audit={audit_case:?}"
         ));
     }
+    Ok(())
+}
+
+#[test]
+fn human_receipt_without_json_detail_keeps_the_route_observations_and_rejects_the_case()
+-> Result<(), String> {
+    let (_temp, store) = Store::new()?;
+    let binary = binary_context(&store)?;
+    let (_, catalogue) = catalogue_document()?;
+    let (spec, fixture) = spec_for(&catalogue, "A.check.human_receipt")?;
+    let summary = check_error_summary()?;
+    let summary_bytes = summary_bytes(&summary)?;
+    let root = store.root.join("fixtures").join(&spec.id);
+    let receipt = check_error_receipt(
+        &root,
+        &binary,
+        &summary.reason.message,
+        Some(&root.join("policy").join("allow.toml")),
+    )?;
+    let case = assemble_case(&store, &binary, spec, fixture, |route| {
+        Ok(RoutePlan {
+            stdout: if route == "receipt_only_tty" {
+                b"tty-frame\n".to_vec()
+            } else {
+                Vec::new()
+            },
+            detail: None,
+            summary: Some(summary_bytes.clone()),
+            receipt: Some(receipt.clone()),
+            process: finished(1),
+        })
+    })?;
+    let admission = reconcile_cases(&store, &binary, vec![case])?;
+    if !admission.errors.is_empty() {
+        return Err(format!("reader errors: {:?}", admission.errors));
+    }
+    let admitted = admission
+        .cases
+        .iter()
+        .find(|case| case.case_id == spec.id)
+        .ok_or_else(|| format!("missing admission for {}", spec.id))?;
+    if !admitted
+        .errors
+        .iter()
+        .any(|error| error.contains("JSON-route receipt/detail correspondence authority"))
+    {
+        return Err(format!(
+            "human-receipt case accepted a missing JSON detail: {admitted:?}"
+        ));
+    }
+    let receipt_only = route(admitted, "receipt_only")?;
+    if !receipt_only.process_observed || receipt_only.observed_exit_code != Some(1) {
+        return Err(format!(
+            "receipt-only route was not observed: {receipt_only:?}"
+        ));
+    }
+    gap(
+        admitted,
+        "json",
+        "native typed hard failure has no evaluated detail",
+    )?;
+    gap(admitted, "receipt_only_tty", "terminal bytes are retained")?;
+    Ok(())
+}
+
+#[test]
+fn human_receipt_json_detail_authorizes_the_receipt_only_routes() -> Result<(), String> {
+    let (_temp, store) = Store::new()?;
+    let binary = binary_context(&store)?;
+    let (_, catalogue) = catalogue_document()?;
+    let (spec, fixture) = spec_for(&catalogue, "A.check.human_receipt")?;
+    let root = store.root.join("fixtures").join(&spec.id);
+    let (detail, receipt, summary) = human_receipt_artifacts(&root, &binary, fixture)?;
+    let summary_bytes = summary_bytes(&summary)?;
+    let case = assemble_case(&store, &binary, spec, fixture, |route| {
+        Ok(RoutePlan {
+            stdout: if route == "receipt_only_tty" {
+                b"tty-frame\n".to_vec()
+            } else {
+                Vec::new()
+            },
+            detail: (route == "json").then(|| detail.clone()),
+            summary: Some(summary_bytes.clone()),
+            receipt: Some(receipt.clone()),
+            process: finished(0),
+        })
+    })?;
+    let admission = reconcile_cases(&store, &binary, vec![case])?;
+    if !admission.errors.is_empty() {
+        return Err(format!("reader errors: {:?}", admission.errors));
+    }
+    let admitted = admission
+        .cases
+        .iter()
+        .find(|case| case.case_id == "A.check.human_receipt")
+        .ok_or("missing human-receipt admission")?;
+    if !admitted.errors.is_empty() || !admitted.detail_reconciled {
+        return Err(format!(
+            "human-receipt detail did not authorize the case: {admitted:?}"
+        ));
+    }
+    let json = route(admitted, "json")?;
+    if !json.errors.is_empty() || json.observed_exit_code != Some(0) {
+        return Err(format!("JSON route was not admitted: {json:?}"));
+    }
+    let receipt_only = route(admitted, "receipt_only")?;
+    if !receipt_only.process_observed || receipt_only.observed_exit_code != Some(0) {
+        return Err(format!(
+            "receipt-only route was not observed: {receipt_only:?}"
+        ));
+    }
+    gap(admitted, "receipt_only_tty", "terminal bytes are retained")?;
     Ok(())
 }
