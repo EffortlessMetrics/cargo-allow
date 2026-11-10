@@ -86,6 +86,8 @@ def run_router(args: list[str], env: dict[str, str] | None = None, cwd: Path | N
     plan_path = plan_dir / "plan.json"
     merged = os.environ.copy()
     merged.pop("GITHUB_OUTPUT", None)
+    merged.pop("PROOF_LOOKUP_PREDECESSOR", None)
+    merged.pop("PROOF_PREDECESSOR_EVIDENCE", None)
     if env:
         merged.update(env)
     merged["PROOF_PLAN_OUT"] = str(plan_path)
@@ -108,10 +110,29 @@ def run_router(args: list[str], env: dict[str, str] | None = None, cwd: Path | N
     return json.loads(plan_path.read_text(encoding="utf-8"))
 
 
-def fixture(event: str, successor: str | None, effective: str | None) -> dict:
+BEFORE = "b" * 40
+BASE = "c" * 40
+PROVEN = "d" * 40
+LEDGER_DELTA = "M\t.allow/review-dispositions/pr-4332-narrow-route.json\n"
+
+
+def fixture(
+    event: str,
+    successor: str | None,
+    effective: str | None,
+    *,
+    before: str = "",
+    base: str = "",
+    evidence: dict | None = None,
+    delta: str | None = None,
+) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         directory = Path(tmp)
         args = ["--fixture", "--event", event]
+        if before:
+            args.extend(["--before", before])
+        if base:
+            args.extend(["--base", base])
         if successor is None:
             args.append("--no-successor")
         else:
@@ -122,7 +143,30 @@ def fixture(event: str, successor: str | None, effective: str | None) -> dict:
             path = directory / "effective.txt"
             path.write_text(effective, encoding="utf-8", newline="\n")
             args.extend(["--effective-file", str(path)])
+        if evidence is not None:
+            path = directory / "evidence.json"
+            path.write_text(json.dumps(evidence), encoding="utf-8", newline="\n")
+            args.extend(["--predecessor-file", str(path)])
+        if delta is not None:
+            path = directory / "delta.txt"
+            path.write_text(delta, encoding="utf-8", newline="\n")
+            args.extend(["--delta-file", str(path)])
         return run_router(args)
+
+
+def proof_evidence(**overrides: object) -> dict:
+    evidence: dict[str, object] = {
+        "schema_id": "cargo-allow.ci-predecessor-proof.v1",
+        "predecessor": BEFORE,
+        "proven_head": PROVEN,
+        "base": BASE,
+        "source_paths": ["crates/cargo-allow/src/lib.rs"],
+        "status": "success",
+        "run_id": "1",
+        "run_url": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/1",
+    }
+    evidence.update(overrides)
+    return evidence
 
 
 def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
@@ -158,8 +202,8 @@ def check_classifications() -> None:
             "pull_request",
             ledger,
             source + ledger,
-            "review_ledger_only",
-            True,
+            "unproven_predecessor",
+            False,
         ),
         (
             "docs successor on a source pull request",
@@ -252,10 +296,133 @@ def check_classifications() -> None:
         ("schedule is a full boundary", "schedule", None, docs, "full_boundary", False),
         ("release is a full boundary", "release", None, docs, "full_boundary", False),
         ("missing event is a full boundary", "", None, source, "full_boundary", False),
+        (
+            "operator-latency schema is not docs-only",
+            "pull_request",
+            None,
+            "M\tdocs/schemas/operator-latency.v4.schema.json\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "schema beside genuine docs stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/schemas/operator-latency.v4.schema.json\n" + docs,
+            "source_bearing",
+            False,
+        ),
+        (
+            "schema directory readme stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/schemas/README.md\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "ledger successor with an unreadable effective diff stays wide",
+            "pull_request",
+            ledger,
+            "R100\told.rs\tnew.rs\n",
+            "unknown",
+            False,
+        ),
+        (
+            "quoted path fails wide",
+            "pull_request",
+            None,
+            '"M"\tdocs/ci.md\n',
+            "unknown",
+            False,
+        ),
+        (
+            "schema successor on a docs pull request stays wide",
+            "pull_request",
+            "M\tdocs/schemas/operator-latency.v4.schema.json\n",
+            docs,
+            "source_bearing",
+            False,
+        ),
     ]
     for name, event, successor, effective, class_name, narrow in cases:
         plan = fixture(event, successor, effective)
         assert_plan(name, plan, class_name, narrow)
+        for required in REQUIRED_CONTEXTS:
+            decision = next(lane["decision"] for lane in plan["lanes"] if lane["id"] == required)
+            if decision != "execute":
+                fail(f"{name}: {required} disappeared from the plan")
+
+    admitted = fixture(
+        "pull_request",
+        ledger,
+        source + ledger,
+        before=BEFORE,
+        base=BASE,
+        evidence=proof_evidence(),
+        delta=LEDGER_DELTA,
+    )
+    assert_plan(
+        "ledger successor reuses exact predecessor proof",
+        admitted,
+        "review_ledger_only",
+        True,
+    )
+    if admitted.get("proof_identity", {}).get("proven_head") != PROVEN:
+        fail("admitted plan did not keep the predecessor proof identity")
+    unproven = fixture("pull_request", ledger, source + ledger)
+    if "proof_identity" in unproven:
+        fail("unproven ledger successor stored proof identity")
+    if unproven.get("predecessor_proof", {}).get("reason") != "absent":
+        fail("missing predecessor proof was treated as reusable")
+
+    rejected = [
+        ("failed predecessor", proof_evidence(status="failed"), LEDGER_DELTA, "failed"),
+        ("pending predecessor", proof_evidence(status="pending"), LEDGER_DELTA, "pending"),
+        ("cancelled predecessor", proof_evidence(status="cancelled"), LEDGER_DELTA, "cancelled"),
+        ("skipped predecessor", proof_evidence(status="skipped"), LEDGER_DELTA, "skipped"),
+        ("stale predecessor", proof_evidence(predecessor="e" * 40), LEDGER_DELTA, "stale"),
+        ("base-moved predecessor", proof_evidence(base="e" * 40), LEDGER_DELTA, "base_moved"),
+        (
+            "wrong-source predecessor",
+            proof_evidence(source_paths=["docs/ci.md"]),
+            LEDGER_DELTA,
+            "wrong_source",
+        ),
+        (
+            "predecessor movement is not ledger-only",
+            proof_evidence(),
+            "M\tcrates/cargo-allow/src/lib.rs\n",
+            "wrong_source",
+        ),
+        ("malformed predecessor evidence", {"schema_id": "nope"}, LEDGER_DELTA, "malformed"),
+    ]
+    for name, evidence, delta, reason in rejected:
+        plan = fixture(
+            "pull_request",
+            ledger,
+            source + ledger,
+            before=BEFORE,
+            base=BASE,
+            evidence=evidence,
+            delta=delta,
+        )
+        assert_plan(name, plan, "unproven_predecessor", False)
+        if plan.get("predecessor_proof", {}).get("reason") != reason:
+            fail(f"{name}: reason {plan.get('predecessor_proof')}, expected {reason}")
+        if "proof_identity" in plan:
+            fail(f"{name}: rejected proof was reused")
+    missing_delta = fixture(
+        "pull_request",
+        ledger,
+        source + ledger,
+        before=BEFORE,
+        base=BASE,
+        evidence=proof_evidence(),
+    )
+    assert_plan("predecessor without movement proof", missing_delta, "unproven_predecessor", False)
+    if missing_delta.get("predecessor_proof", {}).get("reason") != "absent":
+        fail("unverifiable predecessor movement was reused")
 
 
 def check_contract() -> None:
@@ -337,6 +504,19 @@ def check_workflow() -> None:
     plan_at = route.find("run: python3 scripts/ci-proof-route.py")
     if test_at < 0 or plan_at < 0 or test_at > plan_at:
         fail("proof-route must run its controls before publishing a narrow decision")
+    for scope in ("actions: read", "checks: read", "contents: read"):
+        if scope not in route:
+            fail(f"proof-route is missing {scope}; predecessor lookup must stay read-only")
+    controls_end = route.find("name: Routing controls")
+    classify_at = route.find("name: Classify the lane plan")
+    if controls_end < 0 or classify_at < 0:
+        fail("proof-route lost its control or classify step")
+    if "PROOF_LOOKUP_PREDECESSOR" in route[controls_end:classify_at]:
+        fail("routing controls must not look up predecessor proof")
+    if 'PROOF_LOOKUP_PREDECESSOR: "1"' not in route[classify_at:]:
+        fail("classify step must opt in to predecessor lookup")
+    if "needs.pregate.result == 'success'" not in NARROW_IF_WITH_PREGATE:
+        fail("a pregate failure must not become a narrow route")
     if "check --mode no-new" not in jobs["test"] or "--require-change-note" not in jobs["test"]:
         fail("test no longer runs the unconditional no-new and change-note guards")
     for relative in (
@@ -400,7 +580,11 @@ def check_git_history() -> None:
         },
         cwd=repo,
     )
-    assert_plan("git ledger successor", plan, "review_ledger_only", True)
+    assert_plan("git ledger successor", plan, "unproven_predecessor", False)
+    if plan.get("predecessor_proof", {}).get("reason") != "absent":
+        fail("git ledger successor reused missing predecessor proof")
+    if "proof_identity" in plan:
+        fail("git ledger successor stored proof identity without proof")
     if plan["head"] != head:
         fail(f"git ledger successor classified {plan['head']} instead of {head}")
     if "crates/cargo-allow/src/lib.rs" not in plan["effective_paths"]:
@@ -438,12 +622,333 @@ def check_git_history() -> None:
     )
     assert_plan("git merge_group", wide, "full_boundary", False)
 
+    source_paths = [
+        path for path in plan["effective_paths"] if not path.startswith(".allow/review-dispositions/")
+    ]
+    evidence_dir = Path(tempfile.mkdtemp())
+    evidence_path = evidence_dir / "evidence.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "schema_id": "cargo-allow.ci-predecessor-proof.v1",
+                "predecessor": source,
+                "proven_head": source,
+                "base": base,
+                "source_paths": source_paths,
+                "status": "success",
+                "run_id": "1",
+                "run_url": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/1",
+            }
+        ),
+        encoding="utf-8",
+        newline="\n",
+    )
+    reused = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": source,
+            "PROOF_BASE_SHA": base,
+            "PROOF_PREDECESSOR_EVIDENCE": str(evidence_path),
+        },
+        cwd=repo,
+    )
+    assert_plan("git exact predecessor reuse", reused, "review_ledger_only", True)
+    if reused.get("proof_identity", {}).get("proven_head") != source:
+        fail("git reuse did not preserve the proven head")
+    if reused.get("proof_identity", {}).get("source_paths") != source_paths:
+        fail("git reuse changed the source identity")
+
+    stale = dict(json.loads(evidence_path.read_text(encoding="utf-8")))
+    stale["predecessor"] = base
+    stale_path = evidence_dir / "stale.json"
+    stale_path.write_text(json.dumps(stale), encoding="utf-8", newline="\n")
+    stale_plan = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": source,
+            "PROOF_BASE_SHA": base,
+            "PROOF_PREDECESSOR_EVIDENCE": str(stale_path),
+        },
+        cwd=repo,
+    )
+    assert_plan("git stale predecessor", stale_plan, "unproven_predecessor", False)
+
+    refused = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": source,
+            "PROOF_BASE_SHA": base,
+            "PROOF_LOOKUP_PREDECESSOR": "1",
+            "GITHUB_TOKEN": "not-a-real-token",
+            "GITHUB_REPOSITORY": "EffortlessMetrics/cargo-allow",
+            "GITHUB_API_URL": "http://127.0.0.1:9",
+        },
+        cwd=repo,
+    )
+    assert_plan("git lookup without https is not proof", refused, "unproven_predecessor", False)
+    if "not-a-real-token" in json.dumps(refused):
+        fail("predecessor lookup copied the token into the plan")
+
+    merge_repo = Path(tempfile.mkdtemp())
+    git(merge_repo, "init", "-b", "main")
+    git(merge_repo, "config", "user.email", "ci-proof-route@example.invalid")
+    git(merge_repo, "config", "user.name", "ci-proof-route")
+    git(merge_repo, "config", "core.autocrlf", "false")
+    write_repo(merge_repo, "README.md", "base\n")
+    git(merge_repo, "add", "README.md")
+    git(merge_repo, "commit", "-m", "base")
+    merge_base = git(merge_repo, "rev-parse", "HEAD")
+    git(merge_repo, "checkout", "-b", "pr")
+    write_repo(merge_repo, "crates/cargo-allow/src/lib.rs", "fn main() {}\n")
+    git(merge_repo, "add", "crates/cargo-allow/src/lib.rs")
+    git(merge_repo, "commit", "-m", "source")
+    pr_tip = git(merge_repo, "rev-parse", "HEAD")
+    git(merge_repo, "checkout", "main")
+    git(merge_repo, "merge", "--no-ff", "pr", "-m", "merge")
+    parents = git(merge_repo, "rev-list", "--parents", "-n", "1", "HEAD").split()
+    if len(parents) < 3 or parents[1] != merge_base or parents[2] != pr_tip:
+        fail(f"merge --no-ff parents were {parents}")
+    merged = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": "0" * 40,
+            "PROOF_BASE_SHA": merge_base,
+        },
+        cwd=merge_repo,
+    )
+    assert_plan("git merge commit source", merged, "source_bearing", False)
+    if merged["head"] != pr_tip:
+        fail(f"merge commit classified {merged['head']} instead of the pull request head")
+    mismatched = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": "0" * 40,
+            "PROOF_BASE_SHA": pr_tip,
+        },
+        cwd=merge_repo,
+    )
+    assert_plan("git base mismatch", mismatched, "unknown", False)
+    git(merge_repo, "checkout", "-b", "side", merge_base)
+    write_repo(merge_repo, "side.txt", "side\n")
+    git(merge_repo, "add", "side.txt")
+    git(merge_repo, "commit", "-m", "side")
+    side = git(merge_repo, "rev-parse", "HEAD")
+    git(merge_repo, "checkout", "main")
+    unrelated = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": side,
+            "PROOF_BASE_SHA": merge_base,
+        },
+        cwd=merge_repo,
+    )
+    assert_plan("git non-ancestor before", unrelated, "unknown", False)
+    malformed = run_router(
+        [],
+        env={
+            "PROOF_EVENT": "pull_request",
+            "PROOF_BEFORE": "not-a-sha",
+            "PROOF_BASE_SHA": merge_base,
+        },
+        cwd=merge_repo,
+    )
+    assert_plan("git malformed before", malformed, "unknown", False)
+    if malformed["head"] != pr_tip:
+        fail("malformed before moved the classified head")
+
+
+CI_JOBS = ALWAYS_CI_JOBS + NARROW_WITH_PREGATE + NARROW_STANDALONE
+SOURCE_PATHS = ["crates/cargo-allow/src/lib.rs"]
+
+
+def reduce_observation(observation: dict) -> dict:
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "observation.json"
+        path.write_text(json.dumps(observation), encoding="utf-8", newline="\n")
+        completed = subprocess.run(
+            [sys.executable, str(ROUTER), "--reduce-observation", str(path)],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    if completed.returncode != 0:
+        fail(f"reduce exited {completed.returncode}: {completed.stderr}")
+    return json.loads(completed.stdout)
+
+
+def wide_observation(sha: str, **changes: object) -> dict:
+    jobs = {job: "success" for job in CI_JOBS}
+    job_changes = changes.pop("ci_jobs", None)
+    if isinstance(job_changes, dict):
+        jobs.update(job_changes)
+    narrow = bool(changes.pop("narrow", False))
+    identity = changes.pop("identity", None)
+    plan_paths = changes.pop("plan_paths", SOURCE_PATHS)
+    plan = {
+        "narrow": narrow,
+        "head": sha,
+        "base": changes.pop("plan_base", BASE),
+        "effective_paths": plan_paths,
+    }
+    if identity is not None:
+        plan["proof_identity"] = identity
+    if changes.pop("omit_plan", False):
+        plan_value = None
+    else:
+        plan_value = plan
+    publisher = str(changes.pop("publisher", "success"))
+    frozen = str(changes.pop("frozen", "success"))
+    review = str(changes.pop("review", "neutral"))
+    runs = [
+        {
+            "workflow": ".github/workflows/ci.yml",
+            "head_sha": sha,
+            "status": changes.pop("status", "completed"),
+            "conclusion": changes.pop("conclusion", "success"),
+            "run_id": "10",
+            "run_url": "https://example.invalid/10",
+            "jobs": jobs,
+            "plan": plan_value,
+        },
+        {
+            "workflow": ".github/workflows/review-readiness.yml",
+            "head_sha": sha,
+            "status": "completed",
+            "conclusion": "success" if publisher == "success" else publisher,
+            "run_id": "11",
+            "jobs": {"review-readiness-publisher": publisher},
+        },
+        {
+            "workflow": ".github/workflows/frozen-subject-lock.yml",
+            "head_sha": sha,
+            "status": "completed",
+            "conclusion": "success" if frozen == "success" else frozen,
+            "run_id": "12",
+            "jobs": {"frozen-subject-lock": frozen},
+        },
+        {
+            "workflow": "check:review-readiness",
+            "head_sha": sha,
+            "status": "completed",
+            "conclusion": review,
+            "run_id": "13",
+        },
+    ]
+    extra = changes.pop("extra_runs", None)
+    if isinstance(extra, list):
+        runs.extend(extra)
+    observation = {
+        "schema_id": "cargo-allow.ci-predecessor-observation.v1",
+        "before": sha,
+        "base": BASE,
+        "head": sha,
+        "source_paths": SOURCE_PATHS,
+        "runs": runs,
+    }
+    observation.update(changes)
+    return observation
+
+
+def expect_reason(name: str, observation: dict, reason: str) -> None:
+    result = reduce_observation(observation)
+    if result.get("admitted") or result.get("reason") != reason:
+        fail(f"{name}: {result}")
+
+
+def check_predecessor_policy() -> None:
+    admitted = reduce_observation(wide_observation(PROVEN))
+    if not admitted.get("admitted") or admitted["evidence"]["proven_head"] != PROVEN:
+        fail(f"wide neutral review-readiness was not proof: {admitted}")
+    if admitted["evidence"]["source_paths"] != SOURCE_PATHS:
+        fail("wide proof changed the source identity")
+
+    expect_reason("failed review check", wide_observation(PROVEN, review="failure"), "failed")
+    expect_reason("skipped heavy job", wide_observation(PROVEN, ci_jobs={"msrv": "skipped"}), "skipped")
+    expect_reason("pending run", wide_observation(PROVEN, status="in_progress", conclusion=""), "pending")
+    expect_reason("cancelled run", wide_observation(PROVEN, conclusion="cancelled"), "cancelled")
+    expect_reason("failed run", wide_observation(PROVEN, conclusion="failure"), "failed")
+    expect_reason("missing plan", wide_observation(PROVEN, omit_plan=True), "absent")
+    expect_reason("empty source identity", wide_observation(PROVEN, source_paths=[]), "wrong_source")
+    expect_reason("wrong source plan", wide_observation(PROVEN, plan_paths=["docs/ci.md"]), "wrong_source")
+    expect_reason("base moved", wide_observation(PROVEN, plan_base="e" * 40), "base_moved")
+    expect_reason("publisher failed", wide_observation(PROVEN, publisher="failure"), "failed")
+    expect_reason("frozen lock failed", wide_observation(PROVEN, frozen="failure"), "failed")
+    expect_reason("malformed observation", {"schema_id": "nope"}, "malformed")
+
+    duplicate = wide_observation(PROVEN)
+    duplicate["runs"].append(dict(duplicate["runs"][0], run_id="99"))
+    expect_reason("ambiguous rerun", duplicate, "ambiguous")
+    inflight = wide_observation(PROVEN)
+    inflight["runs"].append(
+        {
+            "workflow": ".github/workflows/ci.yml",
+            "head_sha": PROVEN,
+            "status": "in_progress",
+            "conclusion": "",
+            "run_id": "14",
+            "jobs": {},
+            "plan": None,
+        }
+    )
+    expect_reason("in-progress rerun", inflight, "pending")
+
+    followed = wide_observation(PROVEN)
+    followed["before"] = BEFORE
+    followed["runs"].append(
+        {
+            "workflow": ".github/workflows/ci.yml",
+            "head_sha": BEFORE,
+            "status": "completed",
+            "conclusion": "success",
+            "run_id": "9",
+            "jobs": {job: "skipped" for job in CI_JOBS},
+            "plan": {
+                "narrow": True,
+                "head": BEFORE,
+                "base": BASE,
+                "effective_paths": SOURCE_PATHS + [".allow/review-dispositions/pr.json"],
+                "proof_identity": {
+                    "status": "success",
+                    "base": BASE,
+                    "source_paths": SOURCE_PATHS,
+                    "proven_head": PROVEN,
+                },
+            },
+        }
+    )
+    result = reduce_observation(followed)
+    if not result.get("admitted") or result["evidence"]["proven_head"] != PROVEN:
+        fail(f"narrow predecessor did not follow the wide proof: {result}")
+    if result["evidence"]["predecessor"] != BEFORE:
+        fail("followed proof lost the successor predecessor")
+
+    missing_identity = wide_observation(BEFORE, narrow=True)
+    expect_reason("narrow plan without proof identity", missing_identity, "absent")
+    no_wide = {
+        "schema_id": "cargo-allow.ci-predecessor-observation.v1",
+        "before": BEFORE,
+        "base": BASE,
+        "head": BEFORE,
+        "source_paths": SOURCE_PATHS,
+        "runs": [followed["runs"][-1]],
+    }
+    expect_reason("proof identity without the wide run", no_wide, "absent")
+
 
 def main() -> None:
     check_classifications()
     check_contract()
     check_workflow()
     check_git_history()
+    check_predecessor_policy()
     print("ci-proof-route controls passed")
 
 

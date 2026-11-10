@@ -1533,18 +1533,23 @@ jobs:
 
   proof-route:
     # Lane applicability (#2569/#4332). One source-controlled plan in
-    # scripts/ci-proof-route.py. A review-ledger successor, or a docs-only
-    # effective pull-request diff, sets narrow=true. Unknown, malformed,
-    # shared ledger impact, and every non-pull_request event stay wide,
-    # including push, workflow_dispatch, and merge_group. Heavy lanes skip
-    # only when this job succeeds with narrow=true; a failure still runs
-    # them. pregate, test, package-smoke, cargo-deny, and the release graph
-    # do not read this output. review-readiness and frozen-subject-lock are
-    # separate workflows and are not filtered. Feature-configuration row
-    # selection stays inside its own lane when that lane runs.
+    # scripts/ci-proof-route.py. A review-ledger successor narrows only
+    # when predecessor proof is exact, terminal, and for the same source
+    # and base. A docs-only effective diff can narrow. docs/schemas stays
+    # wide. Unknown, malformed, shared impact, missing proof, and every
+    # non-pull_request event stay wide, including push, workflow_dispatch,
+    # and merge_group. Heavy lanes skip only when this job succeeds with
+    # narrow=true; a failure still runs them. pregate, test, package-smoke,
+    # cargo-deny, and the release graph do not read this output.
+    # review-readiness and frozen-subject-lock are separate workflows and
+    # are not filtered. Feature-configuration row selection stays inside
+    # its own lane when that lane runs. Lookup is read-only and stays off
+    # during the routing controls.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
+      actions: read
+      checks: read
       contents: read
     outputs:
       narrow: ${{ steps.plan.outputs.narrow }}
@@ -1563,6 +1568,10 @@ jobs:
           PROOF_BEFORE: ${{ github.event.before }}
           PROOF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PROOF_BASE_REF: ${{ github.base_ref }}
+          PROOF_LOOKUP_PREDECESSOR: "1"
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
         run: python3 scripts/ci-proof-route.py
       - name: Retain the lane plan
         if: always()

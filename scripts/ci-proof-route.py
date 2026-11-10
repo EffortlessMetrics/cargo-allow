@@ -10,19 +10,26 @@ either of those.
 A ``pull_request`` run is narrow only in two cases:
 
 - the successor delta (``before``..head, when ``before`` is a real
-  ancestor) is entirely under ``.allow/review-dispositions/``
-- there is no such successor, or the successor is docs-only, and the
-  effective diff (merge-base of the PR base..head) is provably docs-only
+  ancestor) is entirely under ``.allow/review-dispositions/`` AND, when
+  the effective diff is source-bearing or shared impact, the predecessor
+  has exact terminal policy-admissible proof for that same source and base
+- there is no such successor, or the successor is not source-bearing, and
+  the effective diff (merge-base of the PR base..head) is provably
+  docs-only or ledger-only
 
 A docs-only successor on a source-bearing pull request stays wide: docs
-routing uses the effective diff, not the last commit. Ledger routing uses
-the successor so a review-ledger commit does not replay the heavy matrix.
+routing uses the effective diff, not the last commit. A ledger successor
+does not narrow a source-bearing effective diff unless that predecessor
+proof exists. Missing, stale, wrong-source, failed, pending, cancelled,
+ambiguous, skipped, and base-moved proof stays wide. ``docs/schemas/``
+and any ``*.schema.json`` are source, not docs.
 
 Unknown, empty, rename/copy, malformed, and shared ledger impact stay
 wide. ``push``, ``workflow_dispatch``, ``merge_group``, ``schedule``,
 ``release``, and every other event stay wide, including before the
 merge-group trigger exists. Planner failure writes ``narrow=false`` and
-exits non-zero so heavy lanes still run.
+exits non-zero so heavy lanes still run. Lookup failure stays wide and
+exits zero: absence is not proof.
 
 The ruleset contexts (pregate, test, review-readiness,
 frozen-subject-lock), package-smoke, cargo-deny, and the release graph
@@ -33,17 +40,31 @@ is not a green execution.
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import re
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+import zipfile
 from pathlib import Path
 
 SCHEMA_ID = "cargo-allow.ci-proof-plan.v1"
+PROOF_SCHEMA_ID = "cargo-allow.ci-predecessor-proof.v1"
+OBSERVATION_SCHEMA_ID = "cargo-allow.ci-predecessor-observation.v1"
 LEDGER_PREFIX = ".allow/review-dispositions/"
+CI_WORKFLOW = ".github/workflows/ci.yml"
+REVIEW_WORKFLOW = ".github/workflows/review-readiness.yml"
+FROZEN_WORKFLOW = ".github/workflows/frozen-subject-lock.yml"
+REVIEW_CHECK = "check:review-readiness"
 SHA = re.compile(r"^[0-9a-f]{40}([0-9a-f]{24})?$")
 MAX_PATHS = 2000
+MAX_FOLLOW = 4
+MAX_BODY = 2 * 1024 * 1024
+API_VERSION = "2022-11-28"
 
 NARROW_IF_WITH_PREGATE = (
     "${{ !cancelled() && needs.pregate.result == 'success' && "
@@ -134,6 +155,10 @@ def path_kind(path: str) -> str:
         return "ledger"
     if normalized.startswith(".allow/"):
         return "other"
+    # Schemas are load-bearing for the consumers that read them, including
+    # operator-latency. A docs/ prefix must not skip that assertion.
+    if normalized.startswith("docs/schemas/") or normalized.endswith(".schema.json"):
+        return "other"
     if normalized.startswith("docs/") or normalized.startswith(".changes/"):
         return "docs"
     if len(parts) == 1 and (normalized in ROOT_DOCS or normalized.startswith("LICENSE")):
@@ -193,17 +218,30 @@ def classify_entries(entries: list[tuple[str, str]] | None) -> str:
     return "source_bearing"
 
 
-def decide(event: str, successor_class: str | None, effective_class: str) -> tuple[str, bool]:
+def decide(
+    event: str,
+    successor_class: str | None,
+    effective_class: str,
+    predecessor_admitted: bool = False,
+) -> tuple[str, bool]:
     """Return ``(class, narrow)``.
 
     ``successor_class is None`` means the event has no predecessor (a pull
     request open, or a zero ``before``). A docs-only successor does not
-    narrow a source-bearing effective diff.
+    narrow a source-bearing effective diff. A ledger successor narrows a
+    source-bearing or shared effective diff only when predecessor proof was
+    admitted. A ledger-only effective diff still narrows on its own: it
+    does not claim that missing source proof is reusable.
     """
     if event != "pull_request":
         return "full_boundary", False
-    if successor_class == "review_ledger_only":
-        return "review_ledger_only", True
+    if successor_class == "review_ledger_only" and effective_class in {
+        "source_bearing",
+        "shared_impact",
+    }:
+        if predecessor_admitted:
+            return "review_ledger_only", True
+        return "unproven_predecessor", False
     if successor_class in {"unknown", "shared_impact", "source_bearing"}:
         return successor_class, False
     if effective_class == "docs_only":
@@ -254,8 +292,10 @@ def build_plan(
     successor_before: str,
     successor_paths: list[str],
     effective_paths: list[str],
+    proof_identity: dict[str, object] | None = None,
+    predecessor_proof: dict[str, str] | None = None,
 ) -> dict[str, object]:
-    return {
+    plan: dict[str, object] = {
         "schema_id": SCHEMA_ID,
         "schema_version": 1,
         "event": event,
@@ -268,12 +308,23 @@ def build_plan(
         "effective_paths": effective_paths,
         "lanes": lane_rows(class_name, narrow),
     }
+    if narrow and proof_identity is not None:
+        plan["proof_identity"] = proof_identity
+    if predecessor_proof is not None:
+        plan["predecessor_proof"] = predecessor_proof
+    return plan
 
 
 def paths_of(entries: list[tuple[str, str]] | None) -> list[str]:
     if not entries:
         return []
     return [path for _status, path in entries]
+
+
+def source_paths_from(paths: object) -> list[str]:
+    if not isinstance(paths, list) or not all(isinstance(path, str) for path in paths):
+        return []
+    return [path for path in paths if path_kind(path) != "ledger"]
 
 
 def git(*args: str) -> subprocess.CompletedProcess[str]:
@@ -313,6 +364,570 @@ def predecessor_state(before: str) -> str:
     if SHA.fullmatch(value):
         return "sha"
     return "malformed"
+
+
+def proof_job_rules() -> dict[str, frozenset[str]]:
+    """Conclusions that count as proof on the wide predecessor run.
+
+    ``review-readiness`` may be neutral: a draft with no disposition still
+    publishes a successful publisher job and a neutral check. Failure does
+    not. Skipped heavy jobs are not success.
+    """
+    rules = {job: frozenset({"success"}) for job, _reason in ALWAYS_CI}
+    for job in NARROW_WITH_PREGATE + NARROW_STANDALONE:
+        rules[job] = frozenset({"success"})
+    rules["review-readiness-publisher"] = frozenset({"success"})
+    rules["review-readiness"] = frozenset({"success", "neutral"})
+    rules["frozen-subject-lock"] = frozenset({"success"})
+    return rules
+
+
+def rejection(reason: str) -> dict[str, object]:
+    return {"admitted": False, "reason": reason, "evidence": None}
+
+
+def terminal_reason(conclusion: object) -> str:
+    text = str(conclusion or "").strip().lower()
+    if text in {"cancelled", "canceled"}:
+        return "cancelled"
+    if text == "skipped":
+        return "skipped"
+    if text in {"pending", "queued", "in_progress", "waiting", "requested"}:
+        return "pending"
+    return "failed"
+
+
+def aggregate(reasons: list[str]) -> str:
+    for kind in ("pending", "cancelled", "skipped", "failed", "ambiguous", "absent", "malformed"):
+        if kind in reasons:
+            return kind
+    return "failed" if reasons else "success"
+
+
+def runs_for(runs: list[object], workflow: str, sha: str) -> list[dict[str, object]]:
+    matched: list[dict[str, object]] = []
+    for run in runs:
+        if not isinstance(run, dict):
+            continue
+        if run.get("workflow") != workflow:
+            continue
+        if str(run.get("head_sha", "")).lower() != sha:
+            continue
+        matched.append(run)
+    return matched
+
+
+def classify_group(matched: list[dict[str, object]]) -> tuple[str, dict[str, object] | None]:
+    if not matched:
+        return "absent", None
+    if any(run.get("status") != "completed" for run in matched):
+        return "pending", None
+    successes = [run for run in matched if run.get("conclusion") == "success"]
+    if len(successes) > 1 or (len(successes) == 1 and len(matched) != 1):
+        return "ambiguous", None
+    if not successes:
+        chosen = max(matched, key=lambda run: str(run.get("run_id", "")))
+        return terminal_reason(chosen.get("conclusion")), None
+    return "candidate", successes[0]
+
+
+def classify_check(matched: list[dict[str, object]]) -> tuple[str, str | None]:
+    if not matched:
+        return "absent", None
+    if any(run.get("status") != "completed" for run in matched):
+        return "pending", None
+    good = [run for run in matched if run.get("conclusion") in {"success", "neutral"}]
+    if len(good) != 1 or len(matched) != 1:
+        if not good:
+            chosen = max(matched, key=lambda run: str(run.get("run_id", "")))
+            return terminal_reason(chosen.get("conclusion")), None
+        return "ambiguous", None
+    return "candidate", str(good[0].get("conclusion"))
+
+
+def job_problem(conclusion: object, allowed: frozenset[str]) -> str | None:
+    if conclusion is None:
+        return "absent"
+    text = str(conclusion).strip().lower()
+    if text in allowed:
+        return None
+    if text == "":
+        return "absent"
+    return terminal_reason(text)
+
+
+def proof_conclusions(
+    runs: list[object], sha: str, ci_run: dict[str, object]
+) -> str:
+    reasons: list[str] = []
+    jobs = ci_run.get("jobs")
+    if not isinstance(jobs, dict):
+        return "malformed"
+    review_kind, review = classify_group(runs_for(runs, REVIEW_WORKFLOW, sha))
+    if review_kind != "candidate" or review is None:
+        reasons.append(review_kind)
+    else:
+        publisher = review.get("jobs") if isinstance(review.get("jobs"), dict) else {}
+        problem = job_problem(publisher.get("review-readiness-publisher"), frozenset({"success"}))
+        if problem:
+            reasons.append(problem)
+    frozen_kind, frozen = classify_group(runs_for(runs, FROZEN_WORKFLOW, sha))
+    if frozen_kind != "candidate" or frozen is None:
+        reasons.append(frozen_kind)
+    else:
+        frozen_jobs = frozen.get("jobs") if isinstance(frozen.get("jobs"), dict) else {}
+        problem = job_problem(frozen_jobs.get("frozen-subject-lock"), frozenset({"success"}))
+        if problem:
+            reasons.append(problem)
+    check_kind, _check_value = classify_check(runs_for(runs, REVIEW_CHECK, sha))
+    if check_kind != "candidate":
+        reasons.append(check_kind)
+    ci_rules = {
+        name: allowed
+        for name, allowed in proof_job_rules().items()
+        if name not in {"review-readiness-publisher", "review-readiness", "frozen-subject-lock"}
+    }
+    for name, allowed in ci_rules.items():
+        problem = job_problem(jobs.get(name), allowed)
+        if problem:
+            reasons.append(problem)
+    return aggregate(reasons)
+
+
+def reduce_observation(observation: object) -> dict[str, object]:
+    """Admit one wide predecessor run, or reject. No network and no git."""
+    if not isinstance(observation, dict):
+        return rejection("malformed")
+    if observation.get("schema_id") != OBSERVATION_SCHEMA_ID:
+        return rejection("malformed")
+    before = str(observation.get("before", "")).lower()
+    base = str(observation.get("base", "")).lower()
+    source_paths = observation.get("source_paths")
+    runs = observation.get("runs")
+    if not isinstance(runs, list) or not all(isinstance(run, dict) for run in runs):
+        return rejection("malformed")
+    if not isinstance(source_paths, list) or not all(isinstance(path, str) for path in source_paths):
+        return rejection("malformed")
+    if not source_paths:
+        return rejection("wrong_source")
+    if not SHA.fullmatch(before) or not SHA.fullmatch(base):
+        return rejection("malformed")
+
+    sha = before
+    seen: set[str] = set()
+    for _hop in range(MAX_FOLLOW):
+        if sha in seen:
+            return rejection("ambiguous")
+        seen.add(sha)
+        kind, run = classify_group(runs_for(runs, CI_WORKFLOW, sha))
+        if kind != "candidate" or run is None:
+            return rejection(kind)
+        plan = run.get("plan")
+        if not isinstance(plan, dict):
+            return rejection("absent")
+        if str(plan.get("head", "")).lower() != sha:
+            return rejection("stale")
+        if plan.get("narrow") is True:
+            identity = plan.get("proof_identity")
+            if not isinstance(identity, dict):
+                return rejection("absent")
+            if identity.get("status") != "success":
+                mapped = terminal_reason(identity.get("status"))
+                return rejection(mapped if mapped != "failed" else "failed")
+            if str(identity.get("base", "")).lower() != base:
+                return rejection("base_moved")
+            if identity.get("source_paths") != source_paths:
+                return rejection("wrong_source")
+            proven = str(identity.get("proven_head", "")).lower()
+            if not SHA.fullmatch(proven):
+                return rejection("malformed")
+            sha = proven
+            continue
+        if plan.get("narrow") is not False:
+            return rejection("malformed")
+        if str(plan.get("base", "")).lower() != base:
+            return rejection("base_moved")
+        if source_paths_from(plan.get("effective_paths")) != source_paths:
+            return rejection("wrong_source")
+        job_reason = proof_conclusions(runs, sha, run)
+        if job_reason != "success":
+            return rejection(job_reason)
+        return {
+            "admitted": True,
+            "reason": "success",
+            "evidence": {
+                "schema_id": PROOF_SCHEMA_ID,
+                "predecessor": before,
+                "proven_head": sha,
+                "base": base,
+                "source_paths": list(source_paths),
+                "status": "success",
+                "run_id": str(run.get("run_id", "")),
+                "run_url": str(run.get("run_url", "")),
+            },
+        }
+    return rejection("ambiguous")
+
+
+def admit_recorded_proof(
+    evidence: object,
+    *,
+    before: str,
+    base: str,
+    source_paths: list[str],
+    delta_entries: list[tuple[str, str]] | None,
+) -> tuple[dict[str, object] | None, str]:
+    """Accept recorded proof only when identity and ledger movement match."""
+    if not isinstance(evidence, dict) or evidence.get("schema_id") != PROOF_SCHEMA_ID:
+        return None, "malformed"
+    if evidence.get("status") != "success":
+        mapped = terminal_reason(evidence.get("status"))
+        if str(evidence.get("status") or "").strip().lower() in {
+            "absent",
+            "pending",
+            "ambiguous",
+            "stale",
+            "wrong_source",
+            "base_moved",
+            "malformed",
+            "skipped",
+            "cancelled",
+            "canceled",
+            "failed",
+            "failure",
+        }:
+            text = str(evidence.get("status")).strip().lower()
+            aliases = {"failure": "failed", "canceled": "cancelled"}
+            return None, aliases.get(text, text if text != "failure" else "failed")
+        return None, mapped
+    predecessor = str(evidence.get("predecessor", "")).lower()
+    proven = str(evidence.get("proven_head", "")).lower()
+    evidence_base = str(evidence.get("base", "")).lower()
+    if not SHA.fullmatch(before) or predecessor != before:
+        return None, "stale"
+    if not SHA.fullmatch(base) or evidence_base != base:
+        return None, "base_moved"
+    if not SHA.fullmatch(proven):
+        return None, "malformed"
+    if evidence.get("source_paths") != source_paths or not source_paths:
+        return None, "wrong_source"
+    if not isinstance(delta_entries, list):
+        return None, "absent"
+    if classify_entries(delta_entries) != "review_ledger_only":
+        return None, "wrong_source"
+    return (
+        {
+            "schema_id": PROOF_SCHEMA_ID,
+            "predecessor": predecessor,
+            "proven_head": proven,
+            "base": evidence_base,
+            "source_paths": list(source_paths),
+            "status": "success",
+            "run_id": str(evidence.get("run_id", "")),
+            "run_url": str(evidence.get("run_url", "")),
+        },
+        "success",
+    )
+
+
+def movement_entries(proven: str, head: str) -> list[tuple[str, str]] | None:
+    if not SHA.fullmatch(proven) or not SHA.fullmatch(head):
+        return None
+    if proven != head and not is_ancestor(proven, head):
+        return None
+    if proven == head:
+        return []
+    return diff_entries(proven, head)
+
+
+def read_evidence_file(path: str) -> dict[str, object] | None:
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+class _LookupStop(Exception):
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+class _StripAuthRedirect(urllib.request.HTTPRedirectHandler):
+    """Drop Authorization before a redirect leaves the API host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if redirected is not None:
+            redirected.remove_header("Authorization")
+        return redirected
+
+
+def api_request_url(path: str, query: dict[str, str] | None) -> str:
+    base = os.environ.get("GITHUB_API_URL", "https://api.github.com").strip().rstrip("/")
+    parsed = urllib.parse.urlparse(base)
+    if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
+        raise _LookupStop("absent")
+    if not path.startswith("/") or path.startswith("//"):
+        raise _LookupStop("malformed")
+    url = f"{parsed.scheme}://{parsed.netloc}{path}"
+    if query:
+        url = f"{url}?{urllib.parse.urlencode(query)}"
+    return url
+
+
+def github_bytes(path: str, query: dict[str, str] | None) -> bytes:
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if not token:
+        raise _LookupStop("absent")
+    request = urllib.request.Request(
+        api_request_url(path, query),
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "cargo-allow-ci-proof-route",
+            "X-GitHub-Api-Version": API_VERSION,
+        },
+        method="GET",
+    )
+    opener = urllib.request.build_opener(_StripAuthRedirect)
+    try:
+        with opener.open(request, timeout=15) as response:
+            data = response.read(MAX_BODY + 1)
+    except urllib.error.HTTPError as error:
+        raise _LookupStop("absent") from error
+    except (urllib.error.URLError, TimeoutError, OSError) as error:
+        raise _LookupStop("absent") from error
+    if len(data) > MAX_BODY:
+        raise _LookupStop("malformed")
+    return data
+
+
+def github_json(path: str, query: dict[str, str] | None) -> dict[str, object]:
+    try:
+        payload = json.loads(github_bytes(path, query))
+    except json.JSONDecodeError as error:
+        raise _LookupStop("malformed") from error
+    if not isinstance(payload, dict):
+        raise _LookupStop("malformed")
+    return payload
+
+
+def paged_items(path: str, query: dict[str, str], key: str) -> list[object]:
+    items: list[object] = []
+    for page in range(1, 4):
+        payload = github_json(path, {**query, "per_page": "100", "page": str(page)})
+        batch = payload.get(key)
+        if not isinstance(batch, list):
+            raise _LookupStop("malformed")
+        items.extend(batch)
+        if len(batch) < 100:
+            return items
+    raise _LookupStop("ambiguous")
+
+
+def list_job_conclusions(repo: str, run_id: str) -> dict[str, str]:
+    jobs: dict[str, str] = {}
+    rows = paged_items(f"/repos/{repo}/actions/runs/{run_id}/jobs", {}, "jobs")
+    for job in rows:
+        if not isinstance(job, dict):
+            raise _LookupStop("malformed")
+        name = job.get("name")
+        if not isinstance(name, str) or not name or name in jobs:
+            raise _LookupStop("ambiguous" if isinstance(name, str) and name in jobs else "malformed")
+        if str(job.get("status") or "") != "completed":
+            jobs[name] = "pending"
+        else:
+            jobs[name] = str(job.get("conclusion") or "")
+    return jobs
+
+
+def download_plan(repo: str, run_id: str) -> dict[str, object] | None:
+    rows = paged_items(f"/repos/{repo}/actions/runs/{run_id}/artifacts", {}, "artifacts")
+    matches = [
+        item
+        for item in rows
+        if isinstance(item, dict) and item.get("name") == "ci-proof-plan" and not item.get("expired")
+    ]
+    if len(matches) != 1:
+        return None
+    artifact_id = matches[0].get("id")
+    blob = github_bytes(f"/repos/{repo}/actions/artifacts/{artifact_id}/zip", None)
+    try:
+        with zipfile.ZipFile(io.BytesIO(blob)) as archive:
+            names = [name for name in archive.namelist() if name.endswith("proof-plan.json")]
+            if len(names) != 1:
+                return None
+            info = archive.getinfo(names[0])
+            if info.file_size > MAX_BODY:
+                return None
+            plan = json.loads(archive.read(names[0]))
+    except (zipfile.BadZipFile, json.JSONDecodeError, KeyError, OSError):
+        return None
+    return plan if isinstance(plan, dict) else None
+
+
+def summarize_action_run(repo: str, run: dict[str, object]) -> dict[str, object]:
+    path = str(run.get("path") or "")
+    status = str(run.get("status") or "")
+    conclusion = run.get("conclusion")
+    record: dict[str, object] = {
+        "workflow": path,
+        "head_sha": str(run.get("head_sha", "")).lower(),
+        "status": status,
+        "conclusion": conclusion if isinstance(conclusion, str) else "",
+        "run_id": str(run.get("id", "")),
+        "run_url": str(run.get("html_url", "")),
+        "jobs": {},
+        "plan": None,
+    }
+    if status != "completed" or conclusion != "success":
+        return record
+    if path not in {CI_WORKFLOW, REVIEW_WORKFLOW, FROZEN_WORKFLOW}:
+        return record
+    record["jobs"] = list_job_conclusions(repo, record["run_id"])
+    if path == CI_WORKFLOW:
+        record["plan"] = download_plan(repo, record["run_id"])
+    return record
+
+
+def lookup_predecessor(
+    before: str, base: str, source_paths: list[str], head: str
+) -> tuple[dict[str, object] | None, str]:
+    """Read predecessor proof from GitHub. Any failure stays unproven."""
+    try:
+        return _lookup_predecessor(before, base, source_paths, head)
+    except _LookupStop as stop:
+        print("ci-proof-route: predecessor lookup was not admissible", file=sys.stderr)
+        return None, stop.reason
+    except Exception:  # noqa: BLE001 - a lookup crash must not skip lanes
+        print("ci-proof-route: predecessor lookup was not admissible", file=sys.stderr)
+        return None, "absent"
+
+
+def _lookup_predecessor(
+    before: str, base: str, source_paths: list[str], head: str
+) -> tuple[dict[str, object] | None, str]:
+    repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
+    if repo.count("/") != 1 or repo.startswith("/") or ".." in repo.split("/"):
+        raise _LookupStop("absent")
+    if not SHA.fullmatch(before):
+        raise _LookupStop("absent")
+    collected: list[object] = []
+    queue = [before]
+    seen: set[str] = set()
+    while queue:
+        sha = queue.pop(0)
+        if sha in seen:
+            continue
+        if len(seen) >= MAX_FOLLOW:
+            raise _LookupStop("ambiguous")
+        seen.add(sha)
+        action_runs = paged_items(
+            f"/repos/{repo}/actions/runs",
+            {"head_sha": sha},
+            "workflow_runs",
+        )
+        checks = paged_items(
+            f"/repos/{repo}/commits/{sha}/check-runs",
+            {},
+            "check_runs",
+        )
+        for check in checks:
+            if not isinstance(check, dict) or check.get("name") != "review-readiness":
+                continue
+            collected.append(
+                {
+                    "workflow": REVIEW_CHECK,
+                    "head_sha": sha,
+                    "status": str(check.get("status") or ""),
+                    "conclusion": str(check.get("conclusion") or ""),
+                    "run_id": str(check.get("id", "")),
+                    "run_url": str(check.get("html_url") or ""),
+                }
+            )
+        for run in action_runs:
+            if not isinstance(run, dict) or run.get("path") not in {
+                CI_WORKFLOW,
+                REVIEW_WORKFLOW,
+                FROZEN_WORKFLOW,
+            }:
+                continue
+            record = summarize_action_run(repo, run)
+            collected.append(record)
+            plan = record.get("plan")
+            if not isinstance(plan, dict):
+                continue
+            identity = plan.get("proof_identity")
+            if not isinstance(identity, dict):
+                continue
+            nxt = str(identity.get("proven_head", "")).lower()
+            if SHA.fullmatch(nxt) and nxt not in seen:
+                queue.append(nxt)
+    reduced = reduce_observation(
+        {
+            "schema_id": OBSERVATION_SCHEMA_ID,
+            "before": before,
+            "base": base,
+            "head": head,
+            "source_paths": source_paths,
+            "runs": collected,
+        }
+    )
+    evidence = reduced.get("evidence")
+    if not reduced.get("admitted") or not isinstance(evidence, dict):
+        return None, str(reduced.get("reason") or "absent")
+    return evidence, "success"
+
+
+def ledger_gate(
+    *,
+    before: str,
+    base: str,
+    head: str,
+    source_paths: list[str],
+    successor_class: str | None,
+    effective_class: str,
+    evidence_path: str | None,
+    delta_entries: list[tuple[str, str]] | None,
+    allow_lookup: bool,
+) -> tuple[bool, dict[str, object] | None, dict[str, str] | None]:
+    if successor_class != "review_ledger_only" or effective_class not in {
+        "source_bearing",
+        "shared_impact",
+    }:
+        return False, None, None
+    if not source_paths:
+        return False, None, {"status": "rejected", "reason": "wrong_source"}
+    preliminary: dict[str, object] | None = None
+    reason = "absent"
+    if evidence_path:
+        preliminary = read_evidence_file(evidence_path)
+        if preliminary is None:
+            reason = "malformed"
+    elif allow_lookup and os.environ.get("PROOF_LOOKUP_PREDECESSOR") == "1":
+        preliminary, reason = lookup_predecessor(before, base, source_paths, head)
+        if preliminary is not None and delta_entries is None:
+            proven = str(preliminary.get("proven_head", "")).lower()
+            delta_entries = movement_entries(proven, head)
+    elif evidence_path is None and delta_entries is None and not allow_lookup:
+        reason = "absent"
+    if evidence_path and preliminary is not None and delta_entries is None and allow_lookup:
+        proven = str(preliminary.get("proven_head", "")).lower()
+        delta_entries = movement_entries(proven, head)
+    if preliminary is None:
+        return False, None, {"status": "rejected", "reason": reason}
+    admitted, admit_reason = admit_recorded_proof(
+        preliminary,
+        before=before,
+        base=base,
+        source_paths=source_paths,
+        delta_entries=delta_entries,
+    )
+    if admitted is None:
+        return False, None, {"status": "rejected", "reason": admit_reason}
+    return True, admitted, {"status": "admitted", "reason": "success"}
 
 
 def plan_from_git() -> dict[str, object]:
@@ -368,7 +983,19 @@ def plan_from_git() -> dict[str, object]:
     else:
         effective_entries = diff_entries(merge_base.stdout.strip(), pr_head)
         effective_class = classify_entries(effective_entries)
-    class_name, narrow = decide(event, successor_class, effective_class)
+    effective_paths = paths_of(effective_entries)
+    admitted, identity, predecessor_proof = ledger_gate(
+        before=successor_before,
+        base=base,
+        head=pr_head,
+        source_paths=source_paths_from(effective_paths),
+        successor_class=successor_class,
+        effective_class=effective_class,
+        evidence_path=os.environ.get("PROOF_PREDECESSOR_EVIDENCE"),
+        delta_entries=None,
+        allow_lookup=True,
+    )
+    class_name, narrow = decide(event, successor_class, effective_class, admitted)
     return build_plan(
         event,
         class_name,
@@ -377,7 +1004,9 @@ def plan_from_git() -> dict[str, object]:
         base,
         successor_before,
         paths_of(successor_entries),
-        paths_of(effective_entries),
+        effective_paths,
+        identity,
+        predecessor_proof,
     )
 
 
@@ -400,24 +1029,47 @@ def class_from_file(path: str | None) -> tuple[str, list[str]]:
 
 def plan_from_fixture(argv: list[str]) -> dict[str, object]:
     event = flag(argv, "--event") or ""
+    before = (flag(argv, "--before") or "").strip().lower()
+    base = (flag(argv, "--base") or "").strip().lower()
     if event != "pull_request":
-        return build_plan(event, "full_boundary", False, "fixture", "", "", [], [])
+        return build_plan(event, "full_boundary", False, "fixture", base, before, [], [])
     if "--no-successor" in argv:
         successor_class: str | None = None
         successor_paths: list[str] = []
     else:
         successor_class, successor_paths = class_from_file(flag(argv, "--successor-file"))
     effective_class, effective_paths = class_from_file(flag(argv, "--effective-file"))
-    class_name, narrow = decide(event, successor_class, effective_class)
+    delta_path = flag(argv, "--delta-file")
+    if delta_path is None:
+        delta_entries = None
+    else:
+        try:
+            delta_entries = parse_name_status(Path(delta_path).read_text(encoding="utf-8"))
+        except OSError:
+            delta_entries = None
+    admitted, identity, predecessor_proof = ledger_gate(
+        before=before,
+        base=base,
+        head="fixture",
+        source_paths=source_paths_from(effective_paths),
+        successor_class=successor_class,
+        effective_class=effective_class,
+        evidence_path=flag(argv, "--predecessor-file"),
+        delta_entries=delta_entries,
+        allow_lookup=False,
+    )
+    class_name, narrow = decide(event, successor_class, effective_class, admitted)
     return build_plan(
         event,
         class_name,
         narrow,
         "fixture",
-        "",
-        "",
+        base,
+        before,
         successor_paths,
         effective_paths,
+        identity,
+        predecessor_proof,
     )
 
 
@@ -436,6 +1088,16 @@ def emit(plan: dict[str, object]) -> None:
 def main(argv: list[str]) -> int:
     if "--print-contract" in argv:
         json.dump(contract(), sys.stdout)
+        sys.stdout.write("\n")
+        return 0
+    if "--reduce-observation" in argv:
+        path = flag(argv, "--reduce-observation") or ""
+        try:
+            payload = json.loads(Path(path).read_text(encoding="utf-8"))
+            result = reduce_observation(payload)
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            result = rejection("malformed")
+        json.dump(result, sys.stdout)
         sys.stdout.write("\n")
         return 0
     try:

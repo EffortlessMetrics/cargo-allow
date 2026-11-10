@@ -50,17 +50,23 @@ product except through a declared cross-product reference).
 Lane applicability on a pull request is `scripts/ci-proof-route.py`
 (#2569/#4332), not a workflow `paths:` filter and not a second registry
 beside feature-configuration row selection or release-impact. A successor
-diff that is only `.allow/review-dispositions/` records, or an effective
-diff that is provably docs-only, records the heavy non-required lanes
-NotApplicable. GitHub skips those jobs; a skip is not a green execution.
-Unknown, malformed, and shared ledger impact stay wide. A docs-only last
-commit on a source-bearing pull request stays wide. `push`,
-`workflow_dispatch`, `merge_group`, and release events stay wide.
+diff that is only `.allow/review-dispositions/` records narrows the heavy
+non-required lanes only when the predecessor's proof is exact, terminal,
+and admissible for the same source paths and base. Missing, stale,
+wrong-source, failed, pending, cancelled, skipped, ambiguous, or
+base-moved proof stays wide and is not reused. An effective diff that is
+provably docs-only also records those lanes NotApplicable. Paths under
+`docs/schemas/` and any `*.schema.json` are source, so an
+operator-latency schema change keeps that lane. GitHub skips a lane only
+when the plan succeeds with `narrow=true`; a skip is not a green
+execution. Unknown, malformed, and shared ledger impact stay wide. A
+docs-only last commit on a source-bearing pull request stays wide.
+`push`, `workflow_dispatch`, `merge_group`, and release events stay wide.
 `pregate` and `test` always execute their current assertions, including
-no-new and the change-note guard. `package-smoke` stays because `test`
-consumes its cutover receipts. `cargo-deny` and the release-impact graph
-stay. `review-readiness` and `frozen-subject-lock` are separate workflows
-and are not path-filtered.
+no-new and the change-note guard. A pregate failure remains a failure.
+`package-smoke` stays because `test` consumes its cutover receipts.
+`cargo-deny` and the release-impact graph stay. `review-readiness` and
+`frozen-subject-lock` are separate workflows and are not path-filtered.
 
 Required lanes (gate cargo-allow patch and release on source-bearing and
 full-boundary runs):
