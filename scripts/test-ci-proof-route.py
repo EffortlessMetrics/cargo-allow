@@ -67,6 +67,12 @@ ON_BLOCK = """on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+  # Required pregate and test contexts must also run on a merge queue.
+  # This does not enable a queue or add a bypass. checks_requested is the
+  # only merge_group activity.
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
   workflow_dispatch:
 """
 
@@ -300,7 +306,7 @@ def check_workflow() -> None:
     if not separator:
         fail("ci.yml has no jobs key")
     if on_block != ON_BLOCK:
-        fail("ci.yml trigger block changed; this lane must not add paths or merge_group")
+        fail("ci.yml trigger block drifted; keep merge_group and do not add a paths filter")
     if "paths:" in on_block:
         fail("ci.yml uses a workflow-level paths filter")
     jobs = job_bodies(text)
