@@ -193,7 +193,7 @@ def absolute_on_recording_platform(value: str) -> bool:
     if not value:
         return False
     return bool(PurePosixPath(value).is_absolute()
-                or PureWindowsPath(value).is_absolute)
+                or PureWindowsPath(value).is_absolute())
 
 def validate_binary(binary, errors):
     need(valid_digest(binary.get("digest")), "binary identity lacks a valid digest", errors)

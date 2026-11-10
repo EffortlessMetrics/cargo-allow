@@ -17,6 +17,7 @@ import importlib.util
 import json
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -26,6 +27,7 @@ sys.dont_write_bytecode = True
 SCRIPT = Path(__file__).resolve().with_name("verify-command-mutation-evidence.py")
 REPOSITORY = SCRIPT.parent.parent
 CATALOGUE = REPOSITORY / "docs/release/core-command-migration-cases.v1.json"
+HISTORICAL_EVIDENCE = REPOSITORY / "docs/release/evidence/command-mutation-1"
 SPEC = importlib.util.spec_from_file_location("verify_command_mutation", SCRIPT)
 if SPEC is None or SPEC.loader is None:
     raise SystemExit("cannot load the production admission reader")
@@ -599,6 +601,91 @@ class ManifestAdmissionTests(unittest.TestCase):
         self.fail("C.init.preview case row missing from admission")
 
 
+class BinaryPathTests(unittest.TestCase):
+    def test_recording_platform_absolute_paths_are_accepted(self):
+        for path in ["/usr/local/bin/cargo-allow", "C:/tools/cargo-allow.exe",
+                     r"C:\tools\cargo-allow.exe", r"\\server\share\cargo-allow.exe"]:
+            with self.subTest(path=path):
+                self.assertTrue(VERIFY.absolute_on_recording_platform(path))
+
+    def test_relative_and_empty_paths_are_rejected(self):
+        for path in ["", " ", "cargo-allow", "relative/cargo-allow",
+                     "C:cargo-allow.exe", r"\tools\cargo-allow.exe"]:
+            with self.subTest(path=path):
+                self.assertFalse(VERIFY.absolute_on_recording_platform(path))
+
+    def test_manifest_with_relative_binary_path_is_invalid(self):
+        manifest = json.loads((HISTORICAL_EVIDENCE / "manifest.v1.json").read_bytes())
+        manifest["binary"]["path"] = "relative/cargo-allow"
+        admission = VERIFY.verify_manifest(
+            (HISTORICAL_EVIDENCE / "catalogue.v1.json").read_bytes(), manifest)
+        self.assertEqual(admission["semantic_validity"], "invalid")
+        self.assertIn("binary identity path is not absolute", admission["errors"])
+
+
+class HistoricalManifestTests(unittest.TestCase):
+    def test_retained_manifest_and_catalogue_preserve_exact_original_bytes(self):
+        for name, expected in [
+            ("manifest.v1.json", "sha256:v1:cfa63044496f17c121c911b234a9e7bec15b55345afa32eda750e6336d433b44"),
+            ("catalogue.v1.json", "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08"),
+        ]:
+            with self.subTest(name=name):
+                self.assertEqual(digest((HISTORICAL_EVIDENCE / name).read_bytes()), expected)
+
+    def verify_cli(self, catalogue):
+        return subprocess.run(
+            [sys.executable, "-B", str(SCRIPT), "verify-manifest", "--catalogue",
+             str(catalogue), "--manifest", str(HISTORICAL_EVIDENCE / "manifest.v1.json")],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+
+    def test_historical_manifest_replays_against_its_original_catalogue(self):
+        observed = self.verify_cli(HISTORICAL_EVIDENCE / "catalogue.v1.json")
+        self.assertEqual(observed.returncode, 0, observed.stdout + observed.stderr)
+        admission = json.loads(observed.stdout)
+        self.assertEqual(admission["semantic_validity"], "valid")
+        self.assertEqual(admission["errors"], [])
+
+    def test_current_catalogue_cannot_replace_historical_collection_identity(self):
+        observed = self.verify_cli(CATALOGUE)
+        self.assertEqual(observed.returncode, 1, observed.stdout + observed.stderr)
+        admission = json.loads(observed.stdout)
+        self.assertEqual(admission["semantic_validity"], "invalid")
+        self.assertEqual(admission["errors"], [
+            "manifest catalogue digest does not pin this catalogue",
+        ])
+
+
+class DriverExitTests(unittest.TestCase):
+    def test_failed_control_exits_nonzero(self):
+        # Import only the driver into a child. unittest discovers the injected
+        # __main__ canary, not this suite, so the check cannot recurse.
+        probe = """
+import importlib.util
+import sys
+import unittest
+
+path = sys.argv[1]
+sys.argv = [path]
+spec = importlib.util.spec_from_file_location("mutation_controls_driver", path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+class DeliberateFailure(unittest.TestCase):
+    def test_failure(self):
+        self.fail("deliberate test-driver exit canary")
+
+raise SystemExit(module.main())
+"""
+        observed = subprocess.run(
+            [sys.executable, "-B", "-c", probe, str(Path(__file__).resolve())],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        self.assertIn("deliberate test-driver exit canary", observed.stderr)
+        self.assertIn("FAILED (failures=1)", observed.stderr)
+        self.assertEqual(observed.returncode, 1, observed.stdout + observed.stderr)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--native-bin", type=Path)
@@ -609,9 +696,10 @@ def main():
     # The admission reader is hermetic; native-bin and observation export are
     # accepted for parity with the Rust-driven A-family transport harness and
     # are not required here.
-    unittest.main(argv=[sys.argv[0]] + (["-v"] if args.verbose else []),
-                  exit=False, verbosity=2 if args.verbose else 1)
+    program = unittest.main(argv=[sys.argv[0]] + (["-v"] if args.verbose else []),
+                            exit=False, verbosity=2 if args.verbose else 1)
+    return 0 if program.result.wasSuccessful() else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

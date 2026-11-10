@@ -264,5 +264,6 @@ proof. The collector also exports `CARGO_ALLOW_BUILD_COMMIT` (the executed
 derived HEAD), `CARGO_ALLOW_BUILD_PROFILE`, and `CARGO_ALLOW_RUSTC_IDENTITY`
 while the proof classes compile, so binaries the proof builds record their
 compile-time provenance instead of leaving it unset. The four retained
-receipts predate the section; regenerating them requires the coordinated
-build slot and stays a separate step.
+receipts include this section; their currentness still depends on the
+recorded input identities. Changes to the selected Rust sources, manifests,
+or lock inputs require new native producer execution.

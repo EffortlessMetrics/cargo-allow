@@ -16,17 +16,29 @@ fn command_mutation_manifest_replay_and_transport_controls() -> Result<(), Strin
         return Ok(());
     }
     let root = repository_root()?;
-    let catalogue = root.join("docs/release/core-command-migration-cases.v1.json");
-    let manifest_path = root
+    let current_catalogue = root.join("docs/release/core-command-migration-cases.v1.json");
+    let historical_evidence = root
         .join("docs/release/evidence")
-        .join("command-mutation-1")
-        .join("manifest.v1.json");
+        .join("command-mutation-1");
+    let catalogue = historical_evidence.join("catalogue.v1.json");
+    let manifest_path = historical_evidence.join("manifest.v1.json");
     let manifest_bytes = fs::read(&manifest_path).map_err(|error| {
         format!(
             "committed mutation-evidence manifest is unreadable at {}: {error}",
             manifest_path.display()
         )
     })?;
+    require(
+        allow_core::sha256_v1_bytes(&manifest_bytes)
+            == "sha256:v1:cfa63044496f17c121c911b234a9e7bec15b55345afa32eda750e6336d433b44",
+        "historical mutation manifest bytes were replaced or rebound",
+    )?;
+    let catalogue_bytes = fs::read(&catalogue).map_err(|error| error.to_string())?;
+    require(
+        allow_core::sha256_v1_bytes(&catalogue_bytes)
+            == "sha256:v1:5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08",
+        "historical mutation catalogue bytes do not match the retained collection",
+    )?;
     let manifest: Value = serde_json::from_slice(&manifest_bytes)
         .map_err(|error| format!("committed manifest is not valid JSON: {error}"))?;
     let binary = manifest
@@ -88,7 +100,8 @@ fn command_mutation_manifest_replay_and_transport_controls() -> Result<(), Strin
             format!("committed manifest omits retained obligation {obligation}"),
         )?;
     }
-    // Replay the committed manifest through the production admission reader.
+    // Replay the committed manifest against its original catalogue through
+    // the production admission reader, independently of the live denominator.
     let completed = run_python(
         &root,
         [
@@ -108,6 +121,29 @@ fn command_mutation_manifest_replay_and_transport_controls() -> Result<(), Strin
             String::from_utf8_lossy(&completed.stdout),
             String::from_utf8_lossy(&completed.stderr)
         ),
+    )?;
+    let mismatch = run_python(
+        &root,
+        [
+            "-B",
+            "scripts/verify-command-mutation-evidence.py",
+            "verify-manifest",
+            "--catalogue",
+            current_catalogue.to_string_lossy().as_ref(),
+            "--manifest",
+            manifest_path.to_string_lossy().as_ref(),
+        ],
+    )?;
+    let refusal: Value = serde_json::from_slice(&mismatch.stdout)
+        .map_err(|error| format!("catalogue mismatch did not retain typed refusal: {error}"))?;
+    require(
+        mismatch.status.code() == Some(1)
+            && refusal.get("semantic_validity").and_then(Value::as_str) == Some("invalid")
+            && refusal.get("errors")
+                == Some(&serde_json::json!([
+                    "manifest catalogue digest does not pin this catalogue"
+                ])),
+        "live catalogue replaced the historical collection identity or failed elsewhere",
     )?;
     // Hermetic transport/admission controls (stub collections; no scanner run).
     let mut arguments = vec![
