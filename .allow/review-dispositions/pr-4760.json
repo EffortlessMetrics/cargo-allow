@@ -6,34 +6,42 @@
   "base_ref": "main",
   "base_sha": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
   "head_ref": "fix/4705-4705-experience-connect",
-  "head_sha": "f78819fc1e40497403b8f76163652b168bb5955e",
-  "merge_base": "b7b8355d1e15221acc41ba973cc0e7ffa7ca4fc3",
-  "reviewed_diff_digest": "sha256:v2:e0255605b87cec2e704a9b09be2b94c0b9690daae2692d6e433ffc0145a8cdb2",
+  "head_sha": "7e70897146d14afb7cc7f91f16e6c25fa1adc51f",
+  "merge_base": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
+  "reviewed_diff_digest": "sha256:v2:fa66302b7e845aaa63871a5fc89cbd4350b989c9f3b901f9e64d5bb0a63f1e1e",
   "review_protocol": "review-current-head-gen1",
-  "actor_class": "same_maintainer",
-  "reviewer_identity": "ChatGPT same-maintainer source review of the original PR head before repair; review5834126614. No independent-human approval.",
-  "independent_review": "not_retained",
-  "claimed_verdict": "review_blocked",
-  "findings": [
-    {
-      "id": "unreplayed-command-case-projection",
-      "severity": "blocking",
-      "owned_seam": "release-experience command-case admission",
-      "source_path": "crates/cargo-allow/src/cli/release_freeze_experience.rs",
-      "source_line": 110,
-      "repair_route": "PR4760 writer must preserve NotProven until authenticated native bundle/member replay exists, then retain a fresh exact-pair review after tests and current floor proof.",
-      "claim_boundary": "The original head trusts 107 synthetic valid rows without replaying their original bundle/member evidence and incorrectly discharges #3149."
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review; GitHub review 5849199023. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849199023. review cargo-allow non-author oppositional exact-head model review of head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
-  ],
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5834126614",
-    "Existing bot quota notices are not completed reviews. The reviewed original head f78819fc was moved to Draft. This record is historical after repairs and cannot grant Ready or merge authority to a successor."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849199023",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519282022",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883885",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883892",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883903",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883925",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4524346178",
+    "All six review threads were read back resolved. None were unresolved.",
+    "NonBlocking PR-body staleness is dispositioned by refreshing the PR body to head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, tree ff8bc614a009485a4d3ce4fdd674e83de19adaaf, and receipt provenance producer run 42892057167, artifact 13800466144, source 7a5d3a32efbcd8d64e3d472f854499854c2c83ef. Body edits do not move the head.",
+    "NonBlocking non-terminal CI is dispositioned: run 42895218767 completed success on head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, and final test job 130116921102 completed success.",
+    "Codecov/patch on that head succeeded at 94.57% of the diff hit against target 85.03% (check run 130121639174). This is not a waiver and not a 100% claim.",
+    "NonBlocking stale review-readiness is dispositioned by this record. It binds reviewed head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, not the successor ledger commit. reviewed_diff_digest sha256:v2:fa66302b7e845aaa63871a5fc89cbd4350b989c9f3b901f9e64d5bb0a63f1e1e. Findings are empty. The successor delta must contain only .allow/review-dispositions/pr-4760.json.",
+    "Producer run 42892057167, artifact 13800466144, source 7a5d3a32efbcd8d64e3d472f854499854c2c83ef, selected_source_digest 37614d2d51e7b5a1a5085557a814e308dd1aa087de0e781215fb8449cc3cde61. Receipt retention commit 7e708971 is receipt-only.",
+    "Earlier ee81da6a source-review packet is historical only: reviewed diff sha256:v2:70ca259c418c6ec40583571c2a9e42ddc4d505c28556691f6436fc60e8880f72, CI 42790027488, no blocking source findings on that older head, no merge authorization.",
+    "Previous f78819fc record is historical: claimed_verdict review_blocked, blocking finding unreplayed-command-case-projection, actor same_maintainer, independent_review not_retained, reviewed_diff_digest sha256:v2:e0255605b87cec2e704a9b09be2b94c0b9690daae2692d6e433ffc0145a8cdb2. It grants no Ready authority to this successor.",
+    "Open claim boundaries remain: 107 synthetic rows NotProven (#3149/#4705); #4706 genuine 19-case E producer; #4724 21 obligations including 16 B cases and real Windows beyond the collector controls; #2466/#3151 held. This record is source review only and does not mark Ready or authorize merge."
   ],
   "required_ci": {
-    "owner": "PR #4760 integration owner: qualify committed source, regenerate all four direct-floor receipts through the native producer, inspect actual terminal checks, then retain a fresh source-pair disposition. This partial record grants no readiness or merge authority.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4760"
+    "owner": "PR #4760 orchestrator: verify ledger-only bootstrap, live review-readiness success, all applicable current checks, threads, and branch protection, and make separate Ready and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42895218767"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4760",
-  "reviewed_at_utc": "2026-11-09T23:13:56Z"
+  "reviewed_at_utc": "2026-11-10T20:54:39Z"
 }
