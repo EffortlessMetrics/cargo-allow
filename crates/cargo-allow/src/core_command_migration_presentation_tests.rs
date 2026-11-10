@@ -11,6 +11,7 @@ use crate::core_command_summary::{CoreCommandSummaryV1, render_core_command_summ
 use allow_core::CargoAllowErrorKind;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const FIXTURE_COMMIT: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -32,25 +33,36 @@ struct Store {
 
 impl Store {
     fn new() -> Result<(TempTree, Self), String> {
-        let nonce = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|error| error.to_string())?
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("presentation-reader-{nonce}"));
-        std::fs::create_dir_all(&root).map_err(|error| error.to_string())?;
+        let created = exclusive_store_directory()?;
+        let root = match canonical_store_root(&created) {
+            Ok(root) => root,
+            Err(error) => {
+                let _ = std::fs::remove_dir_all(&created);
+                return Err(error);
+            }
+        };
         let bytes = b"cargo-allow-presentation-fixture";
         let binary_path = root.join("binary");
-        std::fs::write(&binary_path, bytes).map_err(|error| error.to_string())?;
-        let binary_member = Member {
-            path: "binary".to_string(),
-            size_bytes: u64::try_from(bytes.len()).map_err(|error| error.to_string())?,
-            digest: allow_core::sha256_v1_bytes(bytes),
+        if let Err(error) = std::fs::write(&binary_path, bytes) {
+            let _ = std::fs::remove_dir_all(&root);
+            return Err(error.to_string());
+        }
+        let size_bytes = match u64::try_from(bytes.len()) {
+            Ok(size) => size,
+            Err(error) => {
+                let _ = std::fs::remove_dir_all(&root);
+                return Err(error.to_string());
+            }
         };
         Ok((
             TempTree(root.clone()),
             Self {
                 root,
-                binary_member,
+                binary_member: Member {
+                    path: "binary".to_string(),
+                    size_bytes,
+                    digest: allow_core::sha256_v1_bytes(bytes),
+                },
             },
         ))
     }
@@ -73,6 +85,71 @@ impl Store {
             digest: allow_core::sha256_v1_bytes(bytes),
         })
     }
+}
+
+fn exclusive_store_directory() -> Result<PathBuf, String> {
+    static NEXT: AtomicU64 = AtomicU64::new(0);
+    let nonce = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| error.to_string())?
+        .as_nanos();
+    let sequence = NEXT.fetch_add(1, Ordering::Relaxed);
+    let root = std::env::temp_dir().join(format!(
+        "presentation-reader-{}-{nonce}-{sequence}",
+        std::process::id()
+    ));
+    // Exclusive creation reports a collision instead of sharing the directory.
+    std::fs::create_dir(&root).map_err(|error| format!("create store root: {error}"))?;
+    Ok(root)
+}
+
+/// The reader refuses every symlink ancestor. macOS temp paths start at
+/// `/var`, which is a symlink, so retain the canonical directory before any
+/// member path is built. Strip the Win32 `\\?\` prefix that canonicalize adds.
+fn canonical_store_root(created: &Path) -> Result<PathBuf, String> {
+    let canonical = std::fs::canonicalize(created)
+        .map_err(|error| format!("canonicalize store root: {error}"))?;
+    let root = PathBuf::from(allow_core::strip_win32_verbatim_prefix(&path_text(
+        &canonical,
+    )?));
+    if !root.is_absolute() || !root.is_dir() {
+        return Err(format!(
+            "canonical store root is not an absolute directory: {}",
+            root.display()
+        ));
+    }
+    reject_store_indirection(&root)?;
+    Ok(root)
+}
+
+fn reject_store_indirection(path: &Path) -> Result<(), String> {
+    let mut current = path.to_path_buf();
+    loop {
+        let metadata = std::fs::symlink_metadata(&current)
+            .map_err(|error| format!("inspect store root {}: {error}", current.display()))?;
+        if metadata.file_type().is_symlink() || is_reparse_point(&metadata) {
+            return Err(format!(
+                "store root still contains a symlink: {}",
+                current.display()
+            ));
+        }
+        match current.parent() {
+            Some(parent) if parent != current => current = parent.to_path_buf(),
+            _ => return Ok(()),
+        }
+    }
+}
+
+#[cfg(windows)]
+fn is_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+    metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
+#[cfg(not(windows))]
+fn is_reparse_point(_metadata: &std::fs::Metadata) -> bool {
+    false
 }
 
 struct RoutePlan {
@@ -729,6 +806,36 @@ fn route<'a>(case: &'a CaseAdmission, name: &str) -> Result<&'a RouteAdmission, 
         .iter()
         .find(|route| route.route == name)
         .ok_or_else(|| format!("{} has no {name} route: {:?}", case.case_id, case.routes))
+}
+
+#[test]
+fn simultaneous_presentation_stores_keep_distinct_canonical_roots() -> Result<(), String> {
+    let (left_tree, left) = Store::new()?;
+    let (right_tree, right) = Store::new()?;
+    if left.root == right.root {
+        return Err(format!("stores share {}", left.root.display()));
+    }
+    if !left.root.join("binary").is_file() || !right.root.join("binary").is_file() {
+        return Err("a live store lost its binary member".to_string());
+    }
+    drop(left_tree);
+    if left.root.exists() {
+        return Err(format!(
+            "dropped store still exists: {}",
+            left.root.display()
+        ));
+    }
+    if !right.root.join("binary").is_file() {
+        return Err("dropping one store removed the other".to_string());
+    }
+    drop(right_tree);
+    if right.root.exists() {
+        return Err(format!(
+            "dropped store still exists: {}",
+            right.root.display()
+        ));
+    }
+    Ok(())
 }
 
 fn gap(case: &CaseAdmission, route_name: &str, fragment: &str) -> Result<(), String> {
