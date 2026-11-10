@@ -178,8 +178,6 @@ impl LoadBearingOwnerV1 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NonLoadBearingOwnerV1 {
-    /// The lock's own CI machinery: minimal-permission enforcement only.
-    FrozenSubjectLockMachinery,
     /// Unselected sibling products outside the frozen closure.
     SiblingProducts,
     /// Retained records of other lanes (the final-freeze records are
@@ -193,7 +191,6 @@ pub enum NonLoadBearingOwnerV1 {
 impl NonLoadBearingOwnerV1 {
     pub(crate) fn patterns(self) -> &'static [&'static str] {
         match self {
-            Self::FrozenSubjectLockMachinery => &[".github/workflows/frozen-subject-lock.yml"],
             Self::SiblingProducts => &[
                 "crates/cargo-intent",
                 "crates/cargo-proof",
@@ -216,7 +213,6 @@ impl NonLoadBearingOwnerV1 {
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
-            Self::FrozenSubjectLockMachinery => "frozen_subject_lock_machinery",
             Self::SiblingProducts => "sibling_products",
             Self::CampaignRecords => "campaign_records",
             Self::RepositoryProse => "repository_prose",
@@ -303,9 +299,10 @@ pub struct CargoAllowFrozenSubjectLockV1 {
 }
 
 /// Classify one path: first match wins across the non-load-bearing and
-/// load-bearing pattern tables (the lock's own machinery and the
-/// final-freeze records are matched before the broad `.github` and
-/// receipts patterns).
+/// load-bearing pattern tables (the final-freeze records are matched
+/// before the broad receipts pattern). Workflow files, including
+/// `.github/workflows/frozen-subject-lock.yml`, stay load-bearing:
+/// their contents define when and how a control runs.
 #[must_use]
 pub fn classify_frozen_subject_path(
     path: &str,
@@ -383,9 +380,8 @@ pub fn classify_frozen_subject_path(
 }
 
 impl NonLoadBearingOwnerV1 {
-    fn patterns_owned() -> [Self; 4] {
+    fn patterns_owned() -> [Self; 3] {
         [
-            Self::FrozenSubjectLockMachinery,
             Self::SiblingProducts,
             Self::CampaignRecords,
             Self::RepositoryProse,
@@ -659,12 +655,13 @@ mod tests {
 
     #[test]
     fn control_2_workflow_permission_change_is_never_docs_only() {
-        // The lock's own machinery file is the only non-load-bearing
-        // workflow, and it is classified as machinery, never as prose.
+        // A workflow file defines a control. The lock law allows a
+        // non-load-bearing class only when the path cannot change
+        // controls, so the lock's own workflow is load-bearing too.
         let machinery =
             classify_frozen_subject_path(".github/workflows/frozen-subject-lock.yml", "A", false);
-        assert_eq!(machinery.kind, FrozenSubjectPathKindV1::NonLoadBearing);
-        assert_eq!(machinery.owner, "frozen_subject_lock_machinery");
+        assert_eq!(machinery.kind, FrozenSubjectPathKindV1::LoadBearing);
+        assert_eq!(machinery.owner, "workflows_actions");
         let release = classify_frozen_subject_path(".github/workflows/release.yml", "A", false);
         assert_eq!(release.kind, FrozenSubjectPathKindV1::LoadBearing);
         let ci = classify_frozen_subject_path(".github/workflows/ci.yml", "A", false);
@@ -936,6 +933,10 @@ mod coverage_tests {
             (".changes/x.yaml", "release_records"),
             (".github/workflows/release.yml", "workflows_actions"),
             (
+                ".github/workflows/frozen-subject-lock.yml",
+                "workflows_actions",
+            ),
+            (
                 "scripts/release-topology-publisher.py",
                 "release_evidence_producers",
             ),
@@ -954,10 +955,6 @@ mod coverage_tests {
     #[test]
     fn non_load_bearing_patterns_classify_canonical_paths() {
         let cases = [
-            (
-                ".github/workflows/frozen-subject-lock.yml",
-                "frozen_subject_lock_machinery",
-            ),
             ("crates/cargo-intent/src/lib.rs", "sibling_products"),
             ("docs/dogfood/receipts/old-lane/x.json", "campaign_records"),
             ("docs/source-of-truth/x.md", "repository_prose"),
