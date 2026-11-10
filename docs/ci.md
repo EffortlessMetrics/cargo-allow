@@ -54,7 +54,8 @@ diff that is only `.allow/review-dispositions/` records, or an effective
 diff that is provably docs-only, records the heavy non-required lanes
 NotApplicable. GitHub skips those jobs; a skip is not a green execution.
 Unknown, malformed, and shared ledger impact stay wide. A docs-only last
-commit on a source-bearing pull request stays wide. `push`,
+commit on a source-bearing pull request stays wide. Root `README.md` counts
+as docs-only; a markdown file under `crates/` does not. `push`,
 `workflow_dispatch`, `merge_group`, and release events stay wide.
 `pregate` and `test` always execute their current assertions, including
 no-new and the change-note guard. `package-smoke` stays because `test`
