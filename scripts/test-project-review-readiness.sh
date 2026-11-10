@@ -210,7 +210,11 @@ case "$1 $2" in
       jq -r "$2" "${FIXTURE_STATE}/check-runs.json"
     else
       printf '%s\n' "$@" >"${FIXTURE_STATE}/mutation-args"
-      read -r pr <"${FIXTURE_STATE}/active-pr"
+      if [ -f "${FIXTURE_STATE}/active-pr" ]; then
+        read -r pr <"${FIXTURE_STATE}/active-pr"
+      else
+        pr=none
+      fi
       printf '%s\n' "$@" >"${FIXTURE_STATE}/mutation-${pr}.args"
       printf 'private-publication-canary\n' >&2
       exit "${FIXTURE_WRITE_STATUS}"
@@ -529,5 +533,110 @@ grep -q -- 'sha256:v2:' "${live_args_file}" || {
   echo 'review-readiness: live input does not carry the sha256:v2: digest label' >&2
   exit 1
 }
+
+# Merge-group identity is fail-closed. A unique gh-readonly-queue ref
+# still has to be the two-parent merge of that pull request. A bad ref
+# publishes failure on the queue commit and does not call the projector.
+FIXTURE_TWO_PRS=0 FIXTURE_FETCH_FAIL_PR=none FIXTURE_MOVE=none
+FIXTURE_MOVE_AT=projector FIXTURE_CONCLUSION=success FIXTURE_LEDGER=missing
+GITHUB_EVENT_NAME=merge_group
+PR_NUMBER=""
+PR_HEAD_SHA="$(printf '%040d' 7)"
+# These names are new. Assigning them without export leaves the child
+# adapter with an empty queue identity, which must fail closed.
+export MERGE_GROUP_HEAD_SHA MERGE_GROUP_HEAD_REF MERGE_GROUP_BASE_SHA MERGE_GROUP_BASE_REF
+MERGE_GROUP_HEAD_SHA="$(printf '%040d' 7)"
+MERGE_GROUP_BASE_REF=refs/heads/main
+MERGE_GROUP_BASE_SHA="$(printf '%040d' 1)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
+run_case merge_group_exact_pr 0 POST 'published success'
+grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_exact_pr/mutation-args" || {
+  echo 'review-readiness: merge group check was not published on the queue commit' >&2
+  exit 1
+}
+grep -Fq "queue subject: $(printf '%040d' 7)" "${work}/merge_group_exact_pr/mutation-args" || {
+  echo 'review-readiness: merge group summary omitted the queue subject' >&2
+  exit 1
+}
+grep -Fq "reviewed head: $(printf '%040d' 2)" "${work}/merge_group_exact_pr/mutation-args" || {
+  echo 'review-readiness: merge group summary omitted the reviewed head' >&2
+  exit 1
+}
+grep -Fq -- '--event' "${work}/merge_group_exact_pr/projector-args" || {
+  echo 'review-readiness: merge group did not reach the projector' >&2
+  exit 1
+}
+grep -Fxq 'checks_requested' "${work}/merge_group_exact_pr/projector-args" || {
+  echo 'review-readiness: merge group event was relabeled' >&2
+  exit 1
+}
+jq -e --arg head "$(printf '%040d' 2)" '.head_sha == $head and .pr_number == 4165' \
+  "${work}/merge_group_exact_pr/live-4165.json" >/dev/null || {
+  echo 'review-readiness: merge group evaluated the queue SHA as the reviewed head' >&2
+  exit 1
+}
+run_queue_rejection() {
+  local case_name="$1"
+  local result=0
+  export FIXTURE_STATE="${work}/${case_name}"
+  mkdir -p "${FIXTURE_STATE}"
+  printf '%s\n' "${check_runs}" >"${FIXTURE_STATE}/check-runs.json"
+  (
+    cd "${work}/repo"
+    bash "${ROOT}/scripts/project-review-readiness.sh"
+  ) >"${FIXTURE_STATE}/log" 2>&1 || result=$?
+  [ "${result}" -eq 1 ] || {
+    echo "review-readiness: ${case_name} exit ${result}, expected 1" >&2
+    exit 1
+  }
+  grep -Fq 'fails closed' "${FIXTURE_STATE}/log" || {
+    echo "review-readiness: ${case_name} did not fail closed" >&2
+    exit 1
+  }
+  [ ! -e "${FIXTURE_STATE}/projector-called" ] || {
+    echo "review-readiness: ${case_name} reached the projector" >&2
+    exit 1
+  }
+  grep -Fxq POST "${FIXTURE_STATE}/mutation-args" || {
+    echo "review-readiness: ${case_name} did not publish a check" >&2
+    exit 1
+  }
+  grep -Fq 'conclusion=failure' "${FIXTURE_STATE}/mutation-args" || {
+    echo "review-readiness: ${case_name} did not publish failure" >&2
+    exit 1
+  }
+  grep -Fq "head_sha=$(printf '%040d' 7)" "${FIXTURE_STATE}/mutation-args" || {
+    echo "review-readiness: ${case_name} did not attach the failure to the queue commit" >&2
+    exit 1
+  }
+  if grep -Eq 'private-.*-canary' "${FIXTURE_STATE}/log"; then
+    echo "review-readiness: ${case_name} leaked a tool payload" >&2
+    exit 1
+  fi
+}
+# A typed failure on a proven queue commit keeps its disposition
+# reason. The generic identity failure must not overwrite it.
+FIXTURE_CONCLUSION=failure FIXTURE_CARGO_STATUS=1
+run_case merge_group_typed_failure 1 POST 'published failure'
+grep -Fq 'fixture typed result' "${work}/merge_group_typed_failure/mutation-args" || {
+  echo 'review-readiness: merge group typed failure was replaced' >&2
+  exit 1
+}
+grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_typed_failure/mutation-args" || {
+  echo 'review-readiness: merge group typed failure left the queue commit' >&2
+  exit 1
+}
+FIXTURE_CONCLUSION=success FIXTURE_CARGO_STATUS=0
+PR_NUMBER=9999
+run_queue_rejection merge_group_conflicting_number
+PR_NUMBER=""
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/not-a-pr"
+run_queue_rejection merge_group_ambiguous_ref
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/other/pr-4165-$(printf '%040d' 2)"
+run_queue_rejection merge_group_wrong_base
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
+FIXTURE_PARENT_MODE=three
+run_queue_rejection merge_group_not_two_parent
+FIXTURE_PARENT_MODE=valid
 
 printf 'all review-readiness adapter characterization checks passed\n'

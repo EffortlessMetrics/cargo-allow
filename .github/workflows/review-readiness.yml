@@ -17,6 +17,12 @@ on:
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft, edited]
   push:
     branches: [main]
+  # The queue commit has no pull_request payload. The adapter resolves
+  # one PR from merge_group and fails closed when that identity is
+  # missing or ambiguous. This trigger does not enable a queue.
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
 
 permissions:
   contents: read
@@ -46,5 +52,9 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_EVENT_ACTION: ${{ github.event.action }}
           PR_BASE_CHANGED: ${{ github.event.changes.base != null }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MERGE_GROUP_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          MERGE_GROUP_HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          MERGE_GROUP_BASE_REF: ${{ github.event.merge_group.base_ref }}
         run: bash scripts/project-review-readiness.sh

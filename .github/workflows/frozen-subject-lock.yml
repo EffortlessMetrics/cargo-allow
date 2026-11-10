@@ -7,6 +7,12 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Same required context on a merge queue. The job checks out the
+  # event SHA, which for merge_group is the queue commit. No skip path
+  # is added. This trigger does not enable a queue.
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
 
 permissions:
   contents: read

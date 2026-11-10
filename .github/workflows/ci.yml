@@ -5,6 +5,12 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+  # Required pregate and test contexts must also run on a merge queue.
+  # This does not enable a queue or add a bypass. checks_requested is the
+  # only merge_group activity.
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -93,8 +99,8 @@ jobs:
       - name: Emit and evaluate the typed pre-gate result
         if: always()
         env:
-          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
-          PR_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           FMT_OUTCOME: ${{ steps.fmt.outcome || 'skipped' }}
           NO_NEW_OUTCOME: ${{ steps.no_new.outcome || 'skipped' }}
           FLOOR_FRESHNESS_OUTCOME: ${{ steps.floor_freshness.outcome || 'skipped' }}
@@ -219,7 +225,7 @@ jobs:
           lane: dependency-graph-delta
       - name: Compile and enrich the base/head delta
         env:
-          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: bash scripts/check-dependency-graph-delta.sh
       - name: Retain the delta and evidence artifacts
         if: always()
@@ -329,7 +335,7 @@ jobs:
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
-          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -403,7 +409,7 @@ jobs:
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
-          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -520,7 +526,7 @@ jobs:
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
-          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
