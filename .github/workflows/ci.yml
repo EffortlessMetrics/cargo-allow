@@ -145,6 +145,8 @@ jobs:
   # typed lane report. Advisory at this stage; enforcement selection is
   # the aggregate lane's authority (PR D under #2283/#2284).
   workflow-syntax:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -164,6 +166,8 @@ jobs:
   # completed runs always exit zero; enforcement selection is the
   # aggregate lane's authority (PR D under #2283/#2284).
   workflow-security:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -184,6 +188,8 @@ jobs:
   # JSON is retained even when the aggregate carries findings or an
   # instrument failure.
   workflow-construction:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -208,6 +214,8 @@ jobs:
   # Advisory until the owning policy selects blocking consequences;
   # malformed/empty inputs fail immediately inside the script.
   dependency-graph-delta:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -238,7 +246,8 @@ jobs:
           if-no-files-found: warn
 
   msrv:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     # `rust-toolchain.toml` pins the floating `stable` channel for local
     # development. rustup ranks that file ABOVE `rustup default`, and `rustup
@@ -748,7 +757,8 @@ jobs:
   # candidate set standalone because the interop smoke drives the
   # installed cargo-allow binary. Posture: experimental-informational.
   product-candidates-interop:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -805,6 +815,8 @@ jobs:
   # Historical source provenance for the CI performance collector
   # (#4173): discriminating fixture harness, no live GitHub calls.
   collect-performance-fixtures:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -815,6 +827,8 @@ jobs:
         run: bash scripts/test-collect-ci-performance.sh
 
   shallow-diff-smoke:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -845,7 +859,8 @@ jobs:
   # receipt/artifacts for review. This is a conservative catastrophic ceiling,
   # not a universal latency target or hardware claim.
   operator-latency:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -1181,6 +1196,8 @@ jobs:
   # shallow-diff-smoke, a characterization job that produces no inputs
   # this job consumes.
   feature-configuration-proof:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1228,7 +1245,8 @@ jobs:
   # audit exercise the products together and stay out of the
   # cargo-allow-required test lane. Posture: integrated-informational.
   integrated-dogfood:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1260,7 +1278,8 @@ jobs:
         run: bash scripts/three-product-simplification-audit.sh
 
   test-core-platforms:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -1318,7 +1337,8 @@ jobs:
   # with the exact installed candidate on Linux and a fresh build on
   # Windows.
   compat-delegation:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -1372,7 +1392,8 @@ jobs:
   # themselves without gating the cargo-allow patch/release lanes.
   # Posture: experimental-informational.
   test-intent-experimental:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1390,7 +1411,8 @@ jobs:
         run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
 
   test-proof-experimental:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -1415,7 +1437,8 @@ jobs:
   # part of the cargo-allow release set and keeps its own proof lane.
   # Posture: shared-protocol-informational.
   test-shared-protocol:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1430,7 +1453,8 @@ jobs:
   # uploads coverage to Codecov. Kept separate from the main test job so
   # coverage instrumentation doesn't slow down PR feedback.
   coverage:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1506,3 +1530,44 @@ jobs:
             -C "${cargo_deny_dir}" --strip-components=1 "${cargo_deny_asset}/cargo-deny"
           "${cargo_deny_dir}/cargo-deny" --version
           "${cargo_deny_dir}/cargo-deny" --log-level warn --manifest-path ./Cargo.toml --workspace check
+
+  proof-route:
+    # Lane applicability (#2569/#4332). One source-controlled plan in
+    # scripts/ci-proof-route.py. A review-ledger successor, or a docs-only
+    # effective pull-request diff, sets narrow=true. Unknown, malformed,
+    # shared ledger impact, and every non-pull_request event stay wide,
+    # including push, workflow_dispatch, and merge_group. Heavy lanes skip
+    # only when this job succeeds with narrow=true; a failure still runs
+    # them. pregate, test, package-smoke, cargo-deny, and the release graph
+    # do not read this output. review-readiness and frozen-subject-lock are
+    # separate workflows and are not filtered. Feature-configuration row
+    # selection stays inside its own lane when that lane runs.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      narrow: ${{ steps.plan.outputs.narrow }}
+      class: ${{ steps.plan.outputs.class }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Routing controls
+        run: python3 scripts/test-ci-proof-route.py
+      - name: Classify the lane plan
+        id: plan
+        env:
+          PROOF_EVENT: ${{ github.event_name }}
+          PROOF_BEFORE: ${{ github.event.before }}
+          PROOF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PROOF_BASE_REF: ${{ github.base_ref }}
+        run: python3 scripts/ci-proof-route.py
+      - name: Retain the lane plan
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-proof-plan
+          path: proof-plan.json
+          if-no-files-found: error
