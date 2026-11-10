@@ -496,6 +496,15 @@ def _conpty_run(argv, cwd, environment, timeout):
         )
     startup = STARTUPINFOEXW()
     startup.StartupInfo.cb = ctypes.sizeof(STARTUPINFOEXW)
+    # Windows still copies the parent's standard handles when
+    # bInheritHandles is false. A redirected parent stdout then swallows the
+    # child's writes and the ConPTY stream retains only host framing.
+    # STARTF_USESTDHANDLES with null handles gives the pseudoconsole stdin,
+    # stdout, and stderr.
+    startup.StartupInfo.dwFlags = 0x00000100
+    startup.StartupInfo.hStdInput = None
+    startup.StartupInfo.hStdOutput = None
+    startup.StartupInfo.hStdError = None
     startup.lpAttributeList = attribute_list
     # CreateProcessW may mutate its command line; the environment must be
     # Unicode and double-NUL terminated, including an empty environment.
