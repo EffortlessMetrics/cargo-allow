@@ -47,7 +47,23 @@ workflow by `ci_lane_topology_tests.rs` (including the seeded-failure proof:
 no required lane depends on, shares a job with, or references an experimental
 product except through a declared cross-product reference).
 
-Required lanes (gate cargo-allow patch and release):
+Lane applicability on a pull request is `scripts/ci-proof-route.py`
+(#2569/#4332), not a workflow `paths:` filter and not a second registry
+beside feature-configuration row selection or release-impact. A successor
+diff that is only `.allow/review-dispositions/` records, or an effective
+diff that is provably docs-only, records the heavy non-required lanes
+NotApplicable. GitHub skips those jobs; a skip is not a green execution.
+Unknown, malformed, and shared ledger impact stay wide. A docs-only last
+commit on a source-bearing pull request stays wide. `push`,
+`workflow_dispatch`, `merge_group`, and release events stay wide.
+`pregate` and `test` always execute their current assertions, including
+no-new and the change-note guard. `package-smoke` stays because `test`
+consumes its cutover receipts. `cargo-deny` and the release-impact graph
+stay. `review-readiness` and `frozen-subject-lock` are separate workflows
+and are not path-filtered.
+
+Required lanes (gate cargo-allow patch and release on source-bearing and
+full-boundary runs):
 
 - **`msrv`**: cargo-allow release-set `cargo check --all-targets` on the
   declared `rust-version` (`1.95`). cargo-allow-scoped by policy — cargo-intent
