@@ -1838,8 +1838,7 @@ class PresentationAdmissionTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        preserve_candidate_profiles(cls.collection, os.environ.get("LLVM_PROFILE_FILE"))
-        remove_owned_fixture(cls.root, cls.root_identity)
+        NativeAdmissionTests.tearDownClass.__func__(cls)
 
     def setUp(self):
         self.restore = {}
@@ -1848,6 +1847,15 @@ class PresentationAdmissionTests(unittest.TestCase):
     def tearDown(self):
         for path in self.remove:
             path.unlink(missing_ok=True)
+        self.restore_collected_members()
+
+    def restore_collected_members(self):
+        """Put rewritten members back before a subtest copies the class bundle.
+
+        selected() copies the digests captured at collection time. A previous
+        subtest may already have replaced those files, and unittest does not
+        run tearDown between subtests.
+        """
         for path, data in self.restore.items():
             path.write_bytes(data)
 
@@ -1981,23 +1989,25 @@ class PresentationAdmissionTests(unittest.TestCase):
         self.invalid(context, bundle, "human report is empty")
 
     def test_contradictory_human_summary_is_rejected_with_all_member_pins_updated(self):
-        context, bundle = self.selected("A.adopt.presentation")
         for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
             with self.subTest(route=route):
+                self.restore_collected_members()
+                context, bundle = self.selected("A.adopt.presentation")
                 self.repin_route_output(
                     bundle, context, "A.adopt.presentation", route, role,
                     b"Outcome: satisfied\nNext: no action needed\nWrites: none\n",
                 )
-                self.invalid(context, bundle, "common-summary prefix contradicts")
+                result = self.invalid(context, bundle, "common-summary prefix contradicts")
+                admitted = next(item for item in result["cases"][0]["routes"] if item["route"] == route)
+                self.assertIn("common-summary prefix contradicts", json.dumps(admitted))
 
     def test_matching_summary_cannot_prove_arbitrary_human_detail(self):
-        context, bundle = self.selected("A.adopt.presentation")
         for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
             with self.subTest(route=route):
+                self.restore_collected_members()
+                context, bundle = self.selected("A.adopt.presentation")
                 invocation = self.route(bundle["presentation_cases"][0], route)
-                original = self.restore.get(
-                    self.collection / invocation[role]["path"], self.read_member(invocation[role])
-                )
+                original = self.read_member(invocation[role])
                 prefix, separator, _ = original.partition(b"\n\n")
                 self.assertTrue(separator)
                 self.repin_route_output(

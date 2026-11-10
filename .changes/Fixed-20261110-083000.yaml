@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Keep a declared documentation-check disagreement when the executed command
+  has no captured exit. The missing exit stays incomplete, and the named
+  mismatch remains the stronger result.
+time: 2026-11-10T08:30:00Z

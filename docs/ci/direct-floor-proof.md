@@ -115,7 +115,7 @@ advisory products check-only), then retain the uploaded
 `docs/ci/receipts/` artifacts into the branch through the normal review flow.
 Do not hand-repair receipt digests to substitute for a runner proof.
 
-## Retained Windows execution
+## Retained execution
 
 ### Producer protocol controls
 

@@ -207,40 +207,41 @@ pub fn evaluate_release_experience_docs_execution_v1(
                 );
             }
         } else if executed {
-            let Some(exit_code) = check.exit_code else {
+            if let Some(exit_code) = check.exit_code {
+                if check.outcome == ReleaseExperienceDocsCheckOutcomeV1::Matched {
+                    let expected_exit = check.expected_exit_code.unwrap_or(0);
+                    if exit_code != expected_exit {
+                        finding(
+                            &mut states,
+                            &mut gaps,
+                            ResultState::Mismatch,
+                            format!(
+                                "check {} claims matched but exited {exit_code} while the documented expectation is {expected_exit}",
+                                check.id
+                            ),
+                        );
+                    }
+                    if check.stdout_excerpt.trim().is_empty()
+                        && check.stderr_excerpt.trim().is_empty()
+                    {
+                        finding(
+                            &mut states,
+                            &mut gaps,
+                            ResultState::Incomplete,
+                            format!("check {} claims matched without observed output", check.id),
+                        );
+                    }
+                    // A manpage or explicit help need not name its generator.
+                    // Presence of that name also cannot prove output correctness.
+                    // The absent selected-case oracle is retained below instead.
+                }
+            } else {
                 finding(
                     &mut states,
                     &mut gaps,
                     ResultState::Incomplete,
                     format!("check {} executed argv without a captured exit", check.id),
                 );
-                continue;
-            };
-            if check.outcome == ReleaseExperienceDocsCheckOutcomeV1::Matched {
-                let expected_exit = check.expected_exit_code.unwrap_or(0);
-                if exit_code != expected_exit {
-                    finding(
-                        &mut states,
-                        &mut gaps,
-                        ResultState::Mismatch,
-                        format!(
-                            "check {} claims matched but exited {exit_code} while the documented expectation is {expected_exit}",
-                            check.id
-                        ),
-                    );
-                }
-                if check.stdout_excerpt.trim().is_empty() && check.stderr_excerpt.trim().is_empty()
-                {
-                    finding(
-                        &mut states,
-                        &mut gaps,
-                        ResultState::Incomplete,
-                        format!("check {} claims matched without observed output", check.id),
-                    );
-                }
-                // A manpage or explicit help need not name its generator.
-                // Presence of that name also cannot prove output correctness.
-                // The absent selected-case oracle is retained below instead.
             }
         } else {
             finding(

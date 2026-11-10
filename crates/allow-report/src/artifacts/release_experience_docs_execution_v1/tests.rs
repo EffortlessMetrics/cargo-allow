@@ -155,6 +155,31 @@ fn consistent_record_with_all_identities_remains_not_proven() -> TestResult {
 }
 
 #[test]
+fn executed_mismatch_without_exit_keeps_the_disagreement() -> TestResult {
+    let mut checks = complete_checks();
+    let check = check_at(&mut checks, 0, "help surface check present");
+    check.outcome = Outcome::Mismatched;
+    check.exit_code = None;
+    check.observed_summary = "the documented flag is absent from the installed surface".to_string();
+    let evaluation = evaluate_release_experience_docs_execution_v1(&record(checks));
+    if evaluation.result != State::Mismatch {
+        return Err(format!(
+            "missing exit hid the disagreement: {:?} {}",
+            evaluation.result,
+            evaluation.gaps.join("; ")
+        )
+        .into());
+    }
+    let gaps = evaluation.gaps.join("\n");
+    if !gaps.contains("executed argv without a captured exit")
+        || !gaps.contains("observed a disagreement")
+    {
+        return Err(format!("named reasons missing: {gaps}").into());
+    }
+    Ok(())
+}
+
+#[test]
 fn prose_only_claims_cannot_prove_installed_documentation_execution() -> TestResult {
     let checks = RELEASE_EXPERIENCE_REQUIRED_DOCS
         .iter()
