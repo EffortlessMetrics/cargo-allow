@@ -11,16 +11,26 @@
   "reviewed_diff_digest": "sha256:v2:fa66302b7e845aaa63871a5fc89cbd4350b989c9f3b901f9e64d5bb0a63f1e1e",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review; GitHub review 5849199023. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review; GitHub review 5849348440. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849199023. review cargo-allow non-author oppositional exact-head model review of head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849348440. review cargo-allow non-author oppositional exact-head model review of head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
-  "findings": [],
+  "findings": [
+    {
+      "id": "presentation-store-retain-hardening",
+      "severity": "advisory",
+      "owned_seam": "presentation test-fixture containment helper",
+      "source_path": "crates/cargo-allow/src/core_command_migration_presentation_tests.rs",
+      "source_line": 70,
+      "repair_route": "Accepted bounded follow-up: reuse the reader safe_relative authority or equivalent validation in Store::retain to reject absolute paths and .. components; no source change in this ledger-only closeout",
+      "claim_boundary": "Current call sites use controlled relative paths, so no current escape; reader safe_relative is unchanged and remains the production authority. This is test-harness hardening, not a blocking product defect."
+    }
+  ],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849199023",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849348440",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519282022",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883885",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883892",
@@ -28,11 +38,12 @@
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883925",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4524346178",
     "All six review threads were read back resolved. None were unresolved.",
-    "NonBlocking PR-body staleness is dispositioned by refreshing the PR body to head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, tree ff8bc614a009485a4d3ce4fdd674e83de19adaaf, and receipt provenance producer run 42892057167, artifact 13800466144, source 7a5d3a32efbcd8d64e3d472f854499854c2c83ef. Body edits do not move the head.",
+    "NonBlocking PR-body staleness is repaired by the body update to head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, tree ff8bc614a009485a4d3ce4fdd674e83de19adaaf, and receipt provenance producer run 42892057167, artifact 13800466144, source 7a5d3a32efbcd8d64e3d472f854499854c2c83ef. The body names review 5849348440. Body edits do not move the head.",
     "NonBlocking non-terminal CI is dispositioned: run 42895218767 completed success on head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, and final test job 130116921102 completed success.",
     "Codecov/patch on that head succeeded at 94.57% of the diff hit against target 85.03% (check run 130121639174). This is not a waiver and not a 100% claim.",
-    "NonBlocking stale review-readiness is dispositioned by this record. It binds reviewed head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, not the successor ledger commit. reviewed_diff_digest sha256:v2:fa66302b7e845aaa63871a5fc89cbd4350b989c9f3b901f9e64d5bb0a63f1e1e. Findings are empty. The successor delta must contain only .allow/review-dispositions/pr-4760.json.",
+    "NonBlocking stale review-readiness is resolved by this fresh disposition. It binds reviewed head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f, not the successor ledger commit. reviewed_diff_digest sha256:v2:fa66302b7e845aaa63871a5fc89cbd4350b989c9f3b901f9e64d5bb0a63f1e1e. Advisory finding presentation-store-retain-hardening is retained. No source change. The successor delta must contain only .allow/review-dispositions/pr-4760.json.",
     "Producer run 42892057167, artifact 13800466144, source 7a5d3a32efbcd8d64e3d472f854499854c2c83ef, selected_source_digest 37614d2d51e7b5a1a5085557a814e308dd1aa087de0e781215fb8449cc3cde61. Receipt retention commit 7e708971 is receipt-only.",
+    "Interim review 5849199023 is superseded history only: https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849199023, submitted 2026-11-10T20:54:39Z, same reviewed pair, no blocking source findings. It is not this record's disposition identity.",
     "Earlier ee81da6a source-review packet is historical only: reviewed diff sha256:v2:70ca259c418c6ec40583571c2a9e42ddc4d505c28556691f6436fc60e8880f72, CI 42790027488, no blocking source findings on that older head, no merge authorization.",
     "Previous f78819fc record is historical: claimed_verdict review_blocked, blocking finding unreplayed-command-case-projection, actor same_maintainer, independent_review not_retained, reviewed_diff_digest sha256:v2:e0255605b87cec2e704a9b09be2b94c0b9690daae2692d6e433ffc0145a8cdb2. It grants no Ready authority to this successor.",
     "Open claim boundaries remain: 107 synthetic rows NotProven (#3149/#4705); #4706 genuine 19-case E producer; #4724 21 obligations including 16 B cases and real Windows beyond the collector controls; #2466/#3151 held. This record is source review only and does not mark Ready or authorize merge."
@@ -43,5 +54,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4760",
-  "reviewed_at_utc": "2026-11-10T20:54:39Z"
+  "reviewed_at_utc": "2026-11-10T21:03:17Z"
 }
