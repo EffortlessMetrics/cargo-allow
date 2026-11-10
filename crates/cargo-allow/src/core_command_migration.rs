@@ -318,3 +318,7 @@ pub(crate) struct Admission {
     pub(crate) qualification_gaps: Vec<String>,
     pub(crate) claim_boundary: String,
 }
+
+#[cfg(test)]
+#[path = "core_command_migration_presentation_tests.rs"]
+mod presentation_tests;

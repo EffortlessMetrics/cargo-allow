@@ -387,6 +387,64 @@ fn every_negative_control_stays_below_complete_with_a_named_reason() -> TestResu
             "limitations are unbounded",
         ),
         (
+            "empty check identity",
+            {
+                let mut checks = complete_checks();
+                check_at(&mut checks, 7, "readme claim check present")
+                    .id
+                    .clear();
+                record(checks)
+            },
+            State::Malformed,
+            "bounded identities",
+        ),
+        (
+            "unbounded claim text",
+            {
+                let mut checks = complete_checks();
+                check_at(&mut checks, 7, "readme claim check present").documented_claim =
+                    "x".repeat(RELEASE_EXPERIENCE_MAX_TEXT_LEN + 1);
+                record(checks)
+            },
+            State::Malformed,
+            "bounded claim and summary text",
+        ),
+        (
+            "unbounded excerpt",
+            {
+                let mut checks = complete_checks();
+                check_at(&mut checks, 0, "help surface check present").stdout_excerpt =
+                    "x".repeat(RELEASE_EXPERIENCE_MAX_TEXT_LEN + 1);
+                record(checks)
+            },
+            State::Malformed,
+            "excerpts are unbounded",
+        ),
+        (
+            "empty argv element",
+            {
+                let mut checks = complete_checks();
+                check_at(&mut checks, 0, "help surface check present")
+                    .argv
+                    .push(String::new());
+                record(checks)
+            },
+            State::Malformed,
+            "empty argv element",
+        ),
+        (
+            "matched claim without observed evidence",
+            {
+                let mut checks = complete_checks();
+                check_at(&mut checks, 7, "readme claim check present")
+                    .observed_summary
+                    .clear();
+                record(checks)
+            },
+            State::Malformed,
+            "matched without observed evidence",
+        ),
+        (
             "foreign schema generation",
             ReleaseExperienceDocsExecutionV1 {
                 schema_id: "cargo-allow.release-experience-docs-execution.v0".to_string(),

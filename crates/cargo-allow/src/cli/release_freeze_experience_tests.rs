@@ -2096,6 +2096,24 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
             "channel claim differs",
         ),
         (
+            "non-current docs execution generation",
+            "noncurrent_generation",
+            State::Unsupported,
+            "non-current generation",
+        ),
+        (
+            "invocation path differs from the selected install",
+            "invocation_path",
+            State::Mismatch,
+            "invocation path differs",
+        ),
+        (
+            "rustc output still identifies the compiler version",
+            "rustc_version_prefix",
+            State::Mismatch,
+            "platform or toolchain differs",
+        ),
+        (
             "unparseable Rust floor",
             "bad_floor",
             State::Malformed,
@@ -2205,6 +2223,21 @@ fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult
                 let mut record = original.docs_execution_record();
                 record.binary_digest = digest(b"a different installed executable");
                 original.install_docs_execution(&record, State::Complete)?;
+            }
+            "noncurrent_generation" => {
+                let mut record = original.docs_execution_record();
+                record.schema_version = 0;
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "invocation_path" => {
+                let mut record = original.docs_execution_record();
+                record.invocation_path = "install-root/bin/other".to_string();
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "rustc_version_prefix" => {
+                let mut record = original.docs_execution_record();
+                record.toolchain = "rustc 1.95.0 (59807616e1fa2540 2026-07-01)".to_string();
+                original.install_docs_execution(&record, State::NotProven)?;
             }
             "wrong_version" => {
                 let mut record = original.docs_execution_record();
