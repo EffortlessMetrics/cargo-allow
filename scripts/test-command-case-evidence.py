@@ -1997,9 +1997,18 @@ class PresentationAdmissionTests(unittest.TestCase):
                     bundle, context, "A.adopt.presentation", route, role,
                     b"Outcome: satisfied\nNext: no action needed\nWrites: none\n",
                 )
-                result = self.invalid(context, bundle, "common-summary prefix contradicts")
-                admitted = next(item for item in result["cases"][0]["routes"] if item["route"] == route)
-                self.assertIn("common-summary prefix contradicts", json.dumps(admitted))
+                result = self.invalid(context, bundle)
+                admitted = next(
+                    item for item in result["cases"][0]["routes"] if item["route"] == route
+                )
+                self.assertEqual(admitted["semantic_validity"], "invalid", admitted)
+                self.assertTrue(
+                    any(
+                        "common-summary prefix contradicts" in error
+                        for error in admitted["errors"]
+                    ),
+                    admitted,
+                )
 
     def test_matching_summary_cannot_prove_arbitrary_human_detail(self):
         for route, role in (("human", "stdout"), ("quiet", "stdout"), ("file", "detail")):
