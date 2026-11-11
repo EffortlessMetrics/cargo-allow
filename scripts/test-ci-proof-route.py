@@ -394,9 +394,168 @@ def check_classifications() -> None:
             "pull_request",
             None,
             "M\ttests/fixtures/repo-edit/sample.toml\n"
-            "M\tfixtures/unsafe/src/lib.rs\n"
-            "M\ttests/compat/fixtures/sample.toml\n",
+            "M\tfixtures/unsafe/src/lib.rs\n",
             "test_only",
+            False,
+        ),
+        (
+            "package byte authority stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-package-byte-authority.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "perf budget smoke stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-perf-budget-smoke.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate package candidate stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-package-candidate.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate staged packaging stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-staged-packaging.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate index checksum stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-index-checksum.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate isolated install stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-isolated-install.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate install journey stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-install-journey.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate install journey py stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-install-journey.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate package identity stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-package-identity.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact upgrade rollback journey stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-upgrade-rollback-journey.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "release binary contract stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-release-binary.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "linux gnu candidate stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-linux-gnu-candidate.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "final package docs stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-final-package-docs.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "release topology publisher stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-release-topology-publisher.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "qualify worklist pages stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-qualify-worklist-pages.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate interop characterization stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-interop-smoke.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "delegation test stays source",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/tests/intent_staged_precommit_delegate.rs\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "compat fixtures stay source",
+            "pull_request",
+            None,
+            "M\ttests/compat/fixtures/sample.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "nested compat fixtures stay source",
+            "pull_request",
+            None,
+            "M\ttests/compat/fixtures/nested/sample.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "undecided test script stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-not-a-real-decision.py\n",
+            "source_bearing",
             False,
         ),
         (
@@ -1314,8 +1473,60 @@ def check_machine_docs_git() -> None:
         assert_plan(f"git {relative} stays wide", plan, "source_bearing", False)
 
 
+def check_script_decisions() -> None:
+    module = load_router()
+    status, derived = module.derive_live_scripts()
+    if status != "ok":
+        fail(f"ci.yml job map: {status}")
+    live = module.live_script_surfaces()
+    decided = module.TEST_ONLY_SCRIPT_DECISIONS
+    disk = module.disk_test_scripts()
+    error = module.partition_test_scripts(disk, live, decided)
+    if error:
+        fail(f"scripts/test-* decision: {error}")
+    if not derived <= live:
+        fail("derived live scripts were dropped")
+    if not module.PINNED_SOURCE_SCRIPTS <= live:
+        fail("pinned source scripts were dropped")
+    exact = {path for path in disk if Path(path).name.startswith("test-exact-candidate-")}
+    if not exact <= live:
+        fail(f"test-exact-candidate-* left test_only: {sorted(exact - live)}")
+    required = {
+        "scripts/test-package-byte-authority.py",
+        "scripts/test-perf-budget-smoke.sh",
+        "scripts/test-release-binary.sh",
+        "scripts/test-linux-gnu-candidate.py",
+    }
+    if not required <= live:
+        fail(f"required live scripts missing: {sorted(required - live)}")
+    injected = module.partition_test_scripts(
+        disk | {"scripts/test-not-a-real-decision.py"},
+        live,
+        decided,
+    )
+    if injected is None or "scripts/test-not-a-real-decision.py" not in injected:
+        fail("a new scripts/test-* without a decision was accepted")
+    if module.script_surface_decision("scripts/test-not-a-real-decision.py") != "undecided":
+        fail("an unknown scripts/test-* file received a test_only decision")
+    if module.is_test_surface("scripts/test-not-a-real-decision.py"):
+        fail("an unknown scripts/test-* file used the bare prefix")
+    if not module.is_test_surface("scripts/test-ci-proof-route.py"):
+        fail("a decided test script no longer classifies test_only")
+    if module.is_test_surface(module.DELEGATION_TEST):
+        fail("the delegation test is still a test surface")
+    if module.is_test_surface("tests/compat/fixtures/sample.toml"):
+        fail("compat fixtures are still a test surface")
+    for path in sorted(decided):
+        if module.script_surface_decision(path) != "test_only":
+            fail(f"{path} lost its test_only decision")
+    for path in sorted(live):
+        if module.script_surface_decision(path) != "source":
+            fail(f"{path} is live but not source")
+
+
 def main() -> None:
     check_classifications()
+    check_script_decisions()
     check_machine_docs()
     check_contract()
     check_workflow()

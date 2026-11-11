@@ -78,9 +78,20 @@ NotApplicable, and it still runs `msrv`, `test-core-platforms`, and
 `coverage`. `package-smoke` is NotApplicable only for `docs_only` and
 `test_only`. A skip is not a green
 execution. Unknown, malformed, and shared ledger impact stay wide. A
-test path mixed with any other kind stays wide. Crate tests under
-`crates/<crate>/tests/`, `scripts/test-*`, and a `fixtures` path segment
-outside `docs/` are the test-only surfaces. A
+test path mixed with any other kind stays wide. Ordinary crate tests under
+`crates/<crate>/tests/` are test-only.
+`crates/cargo-allow/tests/intent_staged_precommit_delegate.rs` stays source,
+because only `compat-delegation` runs that test with a candidate.
+A `fixtures` path segment outside `docs/` is test-only except
+`tests/compat/fixtures/`, which stays source for the same lane.
+A `scripts/test-*` file is test-only only when the ci.yml job map shows
+that no test_only-skipped lane runs it, or an explicit decision records
+that fact. `package-smoke` and the four test_only product lanes contribute
+their `scripts/test-*` steps, plus one callee hop, to the source set.
+Every `scripts/test-exact-candidate-*` file stays source.
+A new `scripts/test-*` file with neither a job-map hit nor an explicit
+decision stays source, and `scripts/test-ci-proof-route.py` fails until
+that decision is recorded. There is no bare `scripts/test-*` prefix. A
 docs-only last commit on a source-bearing pull request stays wide.
 `push`, `workflow_dispatch`, `merge_group`, and release events stay wide.
 The ruleset contexts are `pregate`, `test`, `review-readiness`, and

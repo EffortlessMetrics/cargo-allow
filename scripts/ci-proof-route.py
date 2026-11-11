@@ -29,14 +29,23 @@ feature-configuration matrix, the lane and support tables, and
 direct-floor receipts. An unrecognized docs payload is source, not
 prose.
 
-A pull request whose paths are only crate tests (``crates/<crate>/tests/``),
-``scripts/test-*``, or a ``fixtures`` path segment is ``test_only``. That
-class does not set ``narrow=true``. It records package-smoke,
-product-candidates-interop, operator-latency, integrated-dogfood, and
-compat-delegation NotApplicable, and it still executes msrv,
-test-core-platforms, and coverage. A test path mixed with any other kind
-stays wide. ``docs_only`` also records package-smoke NotApplicable.
-Ledger narrow plans still execute package-smoke.
+A pull request whose paths are only ordinary crate tests
+(``crates/<crate>/tests/`` except the compat delegation test), a
+``scripts/test-*`` file with an explicit test-only decision, or a
+``fixtures`` path segment other than ``tests/compat/fixtures/`` is
+``test_only``. That class does not set ``narrow=true``. It records
+package-smoke, product-candidates-interop, operator-latency,
+integrated-dogfood, and compat-delegation NotApplicable, and it still
+executes msrv, test-core-platforms, and coverage. Scripts those skipped
+lanes run, including one callee hop, stay source, as do
+``crates/cargo-allow/tests/intent_staged_precommit_delegate.rs`` and
+``tests/compat/fixtures/``. Every ``scripts/test-exact-candidate-*`` file
+stays source. A ``scripts/test-*`` file with no job-map hit and no
+explicit decision stays source, and the routing control fails until a
+decision is recorded. There is no bare ``scripts/test-*`` prefix. A test
+path mixed with any other kind stays wide. ``docs_only`` also records
+package-smoke NotApplicable. Ledger narrow plans still execute
+package-smoke.
 
 Unknown, empty, rename/copy, malformed, and shared ledger impact stay
 wide. ``push``, ``workflow_dispatch``, ``merge_group``, ``schedule``,
@@ -109,6 +118,66 @@ PACKAGE_SMOKE_IF = (
     "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
     "needs.proof-route.outputs.class != 'test_only')) }}"
 )
+# Jobs whose test_only skip would hide a change to the scripts they run.
+SKIPPED_TEST_ONLY_JOBS = frozenset({"package-smoke", *TEST_ONLY_SKIP})
+# product-candidates-interop runs scripts/exact-candidate-interop-smoke.sh,
+# not this characterization. The repair still requires every
+# scripts/test-exact-candidate-* path to stay source.
+PINNED_SOURCE_SCRIPTS = frozenset(
+    {
+        "scripts/test-exact-candidate-interop-smoke.sh",
+    }
+)
+DELEGATION_TEST = "crates/cargo-allow/tests/intent_staged_precommit_delegate.rs"
+COMPAT_FIXTURE_PREFIX = "tests/compat/fixtures/"
+# scripts/test-* files that no skipped lane runs. A file on disk that is
+# neither here nor derived from the ci.yml job map has no decision.
+TEST_ONLY_SCRIPT_DECISIONS = frozenset(
+    {
+        "scripts/test-agent-context-contract.py",
+        "scripts/test-audit-default-sensor-burden.sh",
+        "scripts/test-campaign-issue-closeout.py",
+        "scripts/test-candidate-harness-lifecycle.py",
+        "scripts/test-changie-fragment-schema-smoke.sh",
+        "scripts/test-changie-history-roundtrip.sh",
+        "scripts/test-changie-sensor-external-consumer.sh",
+        "scripts/test-check-msrv-consistency.sh",
+        "scripts/test-check-msrv-resolved.sh",
+        "scripts/test-check-toolchain-profile.sh",
+        "scripts/test-ci-proof-route.py",
+        "scripts/test-collect-ci-performance.sh",
+        "scripts/test-command-case-evidence.py",
+        "scripts/test-command-mutation-evidence.py",
+        "scripts/test-dependency-delta-inputs.py",
+        "scripts/test-extraction-cutover-status.sh",
+        "scripts/test-feature-config-routing.py",
+        "scripts/test-final-packaged-surface.py",
+        "scripts/test-final-registry-observation.py",
+        "scripts/test-generate-release-manifest.sh",
+        "scripts/test-intent-candidate-smoke.sh",
+        "scripts/test-package-candidate-smoke.sh",
+        "scripts/test-project-review-readiness.sh",
+        "scripts/test-proof-direct-floors-protocol.sh",
+        "scripts/test-proof-direct-floors.sh",
+        "scripts/test-qualify-release-freeze.py",
+        "scripts/test-release-escaped-defect-corpus.py",
+        "scripts/test-release-final-tag.py",
+        "scripts/test-release-identity-projection-reader.py",
+        "scripts/test-release-install-smoke.sh",
+        "scripts/test-release-operation-store.py",
+        "scripts/test-release-rehearsal.py",
+        "scripts/test-release-source-candidate-smoke-gate.py",
+        "scripts/test-release-version-preflight.sh",
+        "scripts/test-review-readiness-digest-stability.sh",
+        "scripts/test-shallow-diff-base-failure.sh",
+        "scripts/test-shallow-diff-base-smoke.sh",
+        "scripts/test-three-product-dogfood-smoke.sh",
+        "scripts/test-verify-crate-registry-version.sh",
+        "scripts/test-verify-evidence-surface-inventory.py",
+    }
+)
+SCRIPT_FILE = re.compile(r"scripts/([A-Za-z0-9_.-]+\.(?:py|sh))")
+_SURFACE_CACHE: dict[str, tuple[str, frozenset[str]]] = {}
 
 # Jobs in ci.yml that execute on a narrow plan. review-readiness and
 # frozen-subject-lock are recorded here and live in their own workflows.
@@ -181,19 +250,143 @@ def contract() -> dict[str, object]:
     }
 
 
+def repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def workflow_job_bodies(text: str) -> dict[str, str] | None:
+    """Return ci.yml job bodies keyed by job id, or None when the map is unreadable."""
+    _on, separator, body = text.partition("\njobs:\n")
+    if not separator:
+        return None
+    matches = list(re.finditer(r"(?m)^  ([a-z0-9-]+):\n", body))
+    found: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        found[match.group(1)] = body[start:end]
+    return found
+
+
+def disk_test_scripts() -> frozenset[str]:
+    """Return one-segment ``scripts/test-*`` files in this checkout."""
+    root = repo_root() / "scripts"
+    found: set[str] = set()
+    try:
+        entries = list(root.iterdir())
+    except OSError:
+        return frozenset()
+    for file in entries:
+        if file.is_file() and file.name.startswith("test-"):
+            found.add(f"scripts/{file.name}")
+    return frozenset(found)
+
+
+def _script_tokens(text: str) -> set[str]:
+    found: set[str] = set()
+    for line in text.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        for name in SCRIPT_FILE.findall(line):
+            found.add(f"scripts/{name}")
+    return found
+
+
+def derive_live_scripts() -> tuple[str, frozenset[str]]:
+    """Return scripts/test-* paths that a test_only-skipped lane runs.
+
+    The set is the ci.yml run steps of those jobs, plus one callee hop into
+    the scripts those steps name. ``status`` is ``ok`` or a failure reason.
+    An unreadable map fails closed in ``live_script_surfaces``.
+    """
+    cached = _SURFACE_CACHE.get("derived")
+    if cached is not None:
+        return cached
+    workflow = repo_root() / CI_WORKFLOW
+    try:
+        text = workflow.read_text(encoding="utf-8")
+    except OSError:
+        result = ("unreadable-workflow", frozenset())
+        _SURFACE_CACHE["derived"] = result
+        return result
+    jobs = workflow_job_bodies(text)
+    if jobs is None:
+        result = ("unparsed-workflow", frozenset())
+        _SURFACE_CACHE["derived"] = result
+        return result
+    missing = sorted(SKIPPED_TEST_ONLY_JOBS - set(jobs))
+    if missing:
+        result = (f"missing-jobs:{','.join(missing)}", frozenset())
+        _SURFACE_CACHE["derived"] = result
+        return result
+    named: set[str] = set()
+    for job in SKIPPED_TEST_ONLY_JOBS:
+        named.update(_script_tokens(jobs[job]))
+    live = {path for path in named if Path(path).name.startswith("test-")}
+    root = repo_root()
+    for path in sorted(named):
+        try:
+            callee_text = (root / path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for callee in _script_tokens(callee_text):
+            if Path(callee).name.startswith("test-"):
+                live.add(callee)
+    result = ("ok", frozenset(live))
+    _SURFACE_CACHE["derived"] = result
+    return result
+
+
+def live_script_surfaces() -> frozenset[str]:
+    """Return scripts/test-* paths that must stay source-bearing."""
+    status, derived = derive_live_scripts()
+    if status != "ok":
+        return disk_test_scripts() | PINNED_SOURCE_SCRIPTS
+    return derived | PINNED_SOURCE_SCRIPTS
+
+
+def partition_test_scripts(
+    disk: frozenset[str], live: frozenset[str], decided: frozenset[str]
+) -> str | None:
+    """Return an error when a scripts/test-* file lacks exactly one decision."""
+    overlap = sorted(live & decided)
+    undecided = sorted(disk - live - decided)
+    stale = sorted((live | decided) - disk)
+    if not overlap and not undecided and not stale:
+        return None
+    return f"overlap={overlap} undecided={undecided} stale={stale}"
+
+
+def script_surface_decision(path: str) -> str:
+    """Return ``source``, ``test_only``, or ``undecided`` for one script path."""
+    if path in live_script_surfaces():
+        return "source"
+    if path in TEST_ONLY_SCRIPT_DECISIONS:
+        return "test_only"
+    return "undecided"
+
+
+def _is_compat_fixture(path: str) -> bool:
+    return path == COMPAT_FIXTURE_PREFIX.rstrip("/") or path.startswith(COMPAT_FIXTURE_PREFIX)
+
+
 def is_test_surface(path: str) -> bool:
     """Return whether ``path`` is a test-only surface (#4332 item 5).
 
-    Crate tests live under ``crates/<crate>/tests/``. ``scripts/test-*``
-    is the script suite. A path segment named ``fixtures`` is a fixture
-    tree. Docs paths are classified before this helper, so a fixture under
+    Crate tests live under ``crates/<crate>/tests/``, except the compat
+    delegation test. A ``scripts/test-*`` file is test-only only when
+    :func:`script_surface_decision` says so. A path segment named
+    ``fixtures`` is a fixture tree, except ``tests/compat/fixtures/``.
+    Docs paths are classified before this helper, so a fixture under
     ``docs/`` stays docs or source.
     """
+    if path == DELEGATION_TEST or _is_compat_fixture(path):
+        return False
     parts = path.split("/")
     if len(parts) >= 4 and parts[0] == "crates" and parts[2] == "tests":
         return True
     if len(parts) == 2 and parts[0] == "scripts" and parts[1].startswith("test-"):
-        return True
+        return script_surface_decision(path) == "test_only"
     return "fixtures" in parts
 
 
