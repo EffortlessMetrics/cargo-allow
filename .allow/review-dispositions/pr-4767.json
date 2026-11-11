@@ -1,0 +1,49 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4767,
+  "base_ref": "main",
+  "base_sha": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
+  "head_ref": "ci/merge-group-required-contexts",
+  "head_sha": "3beaca86f04d5011191bc5709a714fcf6460b11a",
+  "merge_base": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
+  "reviewed_diff_digest": "sha256:v2:1a0829c1cc5e106a0c35acfe0a6f9f6822b30e3a91b904d41f927a853190848d",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of reviews 5852941976, 5853426444, and 5853554705 on 3beaca86. Same account and model context as the author. No independent-human approval is claimed.",
+  "independent_review": {
+    "proven": {
+      "reference": "UB Review run 42945403741 artifact 13822983215 on 3beaca86: six usable lanes, gate_result=not_proven, publication_result=failed because findings were withheld. review.md records a two-parent blocker that review 5853554705 refuted from source and tests. Later UB run 42947156784 did not post. Not independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "ci-proof-plan-schema-follow-up",
+      "severity": "advisory",
+      "owned_seam": "ci-proof-plan artifact schema and conformance",
+      "source_path": "scripts/ci-proof-route.py",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp: add a dedicated cargo-allow.ci-proof-plan.v1 schema and conformance test. build_plan already emits schema_id and schema_version, download_plan consumes them, and routing controls exercise wide, narrow, and predecessor-proof plans. Not a merge blocker. Thread PRRT_kwDOSnyN3s62AJXW is resolved.",
+      "claim_boundary": "This record keeps the missing schema as an accepted follow-up. It does not claim that follow-up is done."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5852941976",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5853426444",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5853554705",
+    "Reviewed pair base d4bf17ab2e5e326626658903f5ddf1d7c54799c4, merge-base d4bf17ab2e5e326626658903f5ddf1d7c54799c4, head 3beaca86f04d5011191bc5709a714fcf6460b11a, tree 33166b610695b722733b0c404300030a9cd66cda. Diff digest sha256:v2:1a0829c1cc5e106a0c35acfe0a6f9f6822b30e3a91b904d41f927a853190848d matches check 130277879109.",
+    "Zero Blocking findings. The machine-read docs classifier repair is accepted. docs/ci.md NotApplicable wording and the two-parent merge-group claim were refuted from source and tests. All review threads were resolved, including PRRT_kwDOSnyN3s61_kPn and PRRT_kwDOSnyN3s62AJXW.",
+    "codecov/patch is failure at 33.33% diff hit versus 85.03% target. It is not a required status context. The ruleset contexts are pregate, test, review-readiness, and frozen-subject-lock.",
+    "UB run 42947156784 failed before posting (payload_written false, ambiguous claim plan at scripts/ci-proof-route.py:323). That is a publication/instrument gap. The 50% runner-minute target is not claimed. No queue rule is present, so merge-group admission is unproven.",
+    "ci.yml run 42945403704 on this reviewed head completed success with 30 jobs. review-readiness check 130277879109 is neutral because no disposition was retained yet. This file is the only successor path. It does not authorize merge, auto-merge, or a bypass."
+  ],
+  "required_ci": {
+    "owner": "Review-readiness projector: verify this ledger-only successor, then publish the check for the live pair. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42945403704"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4767",
+  "reviewed_at_utc": "2026-11-11T03:51:00Z"
+}
