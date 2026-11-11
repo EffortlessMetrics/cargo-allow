@@ -25,10 +25,10 @@ ambiguous, skipped, and base-moved proof stays wide. ``docs/schemas/``
 and any ``*.schema.json`` are source, not docs. Markdown is the only
 prose under ``docs/`` that may narrow. Markdown a guarded ``test`` step
 reads is pinned in ``MACHINE_CONSUMED_MARKDOWN`` and stays source, so
-that step still runs. Root markdown embedded by ``include_str!`` and
-``docs/architecture/extraction-shims.md`` are ``INDIRECT_CONSUMED_PATHS``
-and stay source; the markdown pin scan does not see those reads.
-``.changes/`` stays source because ``.changie.yaml`` sets ``changesDir``
+that step still runs. The pin includes repository-root markdown embedded
+by ``include_str!`` and a ``docs/*.md`` path assigned from ``join`` and
+later passed to ``read_to_string``. ``path_kind`` checks that pin before
+``ROOT_DOCS``. ``.changes/`` stays source because ``.changie.yaml`` sets ``changesDir``
 and the guarded Changie sensor self-dogfood step lints that tree.
 JSON, TOML, and any other
 non-markdown path under ``docs/`` are source, including the
@@ -245,12 +245,17 @@ ROOT_DOCS = {
     "COPYING",
     "LICENSE",
     "NOTICE",
+    "README.md",
     "SECURITY.md",
 }
 
-# Markdown read by a guarded test step. scripts/test-ci-proof-route.py
-# recomputes this set from those steps and fails when the pin drifts.
+# Markdown a guarded test step reads, including repository-root
+# include_str! markdown and an assigned join later passed to
+# read_to_string. scripts/test-ci-proof-route.py recomputes this set
+# and fails when the pin drifts. path_kind checks it before ROOT_DOCS.
 MACHINE_CONSUMED_MARKDOWN = frozenset({
+    "README.md",
+    "SUPPORT.md",
     "docs/README.md",
     "docs/adr/CARGO-ALLOW-ADR-0001-multi-ledger-federation.md",
     "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md",
@@ -259,6 +264,23 @@ MACHINE_CONSUMED_MARKDOWN = frozenset({
     "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md",
     "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md",
     "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md",
+    "docs/architecture/cargo-proof.md",
+    "docs/architecture/extraction-parity.md",
+    "docs/architecture/extraction-shims.md",
+    "docs/architecture/intent-edit.md",
+    "docs/architecture/intent-engine.md",
+    "docs/architecture/intent-model.md",
+    "docs/architecture/intent-protocol.md",
+    "docs/architecture/product-crate-law.md",
+    "docs/architecture/proof-adapter-cargo-allow.md",
+    "docs/architecture/proof-adapter-command.md",
+    "docs/architecture/proof-adapter-hawk.md",
+    "docs/architecture/proof-adapter-ripr.md",
+    "docs/architecture/proof-engine.md",
+    "docs/architecture/proof-protocol.md",
+    "docs/architecture/repo-edit.md",
+    "docs/architecture/repo-snapshot.md",
+    "docs/architecture/rust-source-index.md",
     "docs/ci.md",
     "docs/claim-boundaries.md",
     "docs/dogfood/fixtures/getting-started/expected-markers.md",
@@ -324,16 +346,6 @@ MACHINE_CONSUMED_MARKDOWN = frozenset({
     "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md",
     "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md",
     "docs/status/SUPPORT_TIERS.md",
-})
-
-# Guarded tests read these paths through include_str! or read_to_string.
-# The markdown pin scan does not see a repository-root include_str! or a
-# joined path that is read on a later line. scripts/test-ci-proof-route.py
-# fails when this set drifts from those readers or a listed path is missing.
-INDIRECT_CONSUMED_PATHS = frozenset({
-    "README.md",
-    "SUPPORT.md",
-    "docs/architecture/extraction-shims.md",
 })
 
 
@@ -607,11 +619,12 @@ def path_kind(path: str) -> str:
     # not be assumed prose.
     if normalized.startswith("docs/schemas/") or normalized.endswith(".schema.json"):
         return "other"
-    if normalized in INDIRECT_CONSUMED_PATHS:
+    # Before ROOT_DOCS and the docs/ prose rule. Root README.md is in
+    # ROOT_DOCS, and assigned-join architecture markdown would otherwise
+    # be prose.
+    if normalized in MACHINE_CONSUMED_MARKDOWN:
         return "other"
     if normalized.startswith("docs/"):
-        if normalized in MACHINE_CONSUMED_MARKDOWN:
-            return "other"
         if normalized.endswith(".md"):
             return "docs"
         return "other"

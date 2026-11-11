@@ -241,7 +241,7 @@ def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
 def check_classifications() -> None:
     ledger = "M\t.allow/review-dispositions/pr-4332-narrow-route.json\n"
     source = "M\tcrates/cargo-allow/src/lib.rs\n"
-    docs = "M\tdocs/architecture/repo-snapshot.md\n"
+    docs = "M\tdocs/architecture/repo-protocol.md\n"
     cases = [
         (
             "ledger successor on a source pull request",
@@ -345,7 +345,15 @@ def check_classifications() -> None:
             "source_bearing",
             False,
         ),
-        ("repo snapshot stays docs-only", "pull_request", None, docs, "docs_only", True),
+        (
+            "repo snapshot stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/architecture/repo-snapshot.md\n",
+            "source_bearing",
+            False,
+        ),
+        ("repo protocol stays docs-only", "pull_request", None, docs, "docs_only", True),
         ("push is a full boundary", "push", None, docs, "full_boundary", False),
         (
             "workflow_dispatch is a full boundary",
@@ -1048,8 +1056,8 @@ def check_git_history() -> None:
     git(docs_repo, "add", "README.md")
     git(docs_repo, "commit", "-m", "base")
     docs_base = git(docs_repo, "rev-parse", "HEAD")
-    write_repo(docs_repo, "docs/architecture/repo-snapshot.md", "docs\n")
-    git(docs_repo, "add", "docs/architecture/repo-snapshot.md")
+    write_repo(docs_repo, "docs/architecture/repo-protocol.md", "docs\n")
+    git(docs_repo, "add", "docs/architecture/repo-protocol.md")
     git(docs_repo, "commit", "-m", "docs")
     docs_plan = run_router(
         [],
@@ -1621,12 +1629,18 @@ def _package_dirs(blob: str) -> list[Path]:
 def guarded_step_markdown() -> set[str]:
     """docs/*.md that a guarded test step reads.
 
-    include_str!, read/read_to_string of a literal docs path, product-doc
+    include_str! of docs or repository-root markdown, an assigned
+    ``join("docs/...md")`` later passed to ``read_to_string``, a literal
+    docs path inside ``read`` or ``read_to_string(join(...))``, product-doc
     kinds walked by the support-matrix test, repo files copied into a
     rehearsal fixture, the doc-artifact ledger when a guarded test validates
     it, and read_text or shell reads in a guarded step's script.
     """
     include_str_re = re.compile(r'include_str!\s*\(\s*"([^"]+)"', re.S)
+    assigned_join_re = re.compile(
+        r'(?:let|let mut)\s+(\w+)\s*=\s*[\w.:]+\.join\(\s*"(docs/[^"]+\.md)"\s*\)\s*;',
+        re.S,
+    )
     read_re = re.compile(
         r'\bread\s*\(\s*&?[A-Za-z_][\w.]*\s*,\s*"(docs/[^"]+\.md)"\s*,?\s*\)',
         re.S,
@@ -1647,7 +1661,12 @@ def guarded_step_markdown() -> set[str]:
 
     def add(path: str) -> None:
         norm = path.replace("\\", "/")
-        if norm.startswith("docs/") and norm.endswith(".md") and ".." not in norm.split("/"):
+        parts = norm.split("/")
+        if ".." in parts or "." in parts:
+            return
+        if norm.startswith("docs/") and norm.endswith(".md"):
+            found.add(norm)
+        elif len(parts) == 1 and norm.endswith(".md"):
             found.add(norm)
 
     ledger = False
@@ -1660,6 +1679,9 @@ def guarded_step_markdown() -> set[str]:
                     add(resolved.relative_to(ROOT.resolve()).as_posix())
                 except ValueError:
                     continue
+            for name, path in assigned_join_re.findall(text):
+                if re.search(rf"read_to_string\s*\(\s*&?{re.escape(name)}\b", text):
+                    add(path)
             for literal in read_re.findall(text):
                 add(literal)
             for literal in join_re.findall(text):
@@ -1702,107 +1724,24 @@ def guarded_step_markdown() -> set[str]:
     return found
 
 
-SHIM_DOC = "docs/architecture/extraction-shims.md"
-
-
-def derive_indirect_readers() -> set[str]:
-    """Readers the docs-markdown pin scan does not keep.
-
-    Repository-root markdown embedded with include_str!, plus the shim
-    registry doc read on a later line from a joined path.
-    """
-    include_str_re = re.compile(r'include_str!\s*\(\s*"([^"]+)"', re.S)
-    found: set[str] = set()
-    for directory in _package_dirs(_guarded_step_blob()):
-        for src in directory.rglob("*.rs"):
-            text = _strip_rust_comments(src.read_text(encoding="utf-8", errors="replace"))
-            for literal in include_str_re.findall(text):
-                resolved = (src.parent / literal).resolve()
-                try:
-                    rel = resolved.relative_to(ROOT.resolve()).as_posix()
-                except ValueError:
-                    continue
-                if "/" not in rel and rel.endswith(".md"):
-                    found.add(rel)
-            if f'.join("{SHIM_DOC}")' in text and "read_to_string" in text:
-                found.add(SHIM_DOC)
-    return found
-
-
-def indirect_reader_problems(paths: set[str], derived: set[str]) -> list[str]:
-    problems: list[str] = []
-    for path in sorted(paths):
-        if not (ROOT / path).is_file():
-            problems.append(f"missing:{path}")
-    if set(paths) != set(derived):
-        missing = sorted(set(derived) - set(paths))
-        extra = sorted(set(paths) - set(derived))
-        problems.append(f"drift missing={missing} extra={extra}")
-    return problems
-
-
-def check_indirect_readers() -> None:
-    """Indirect readers and .changes stay wide. A missing path fails the check."""
-    route = load_router()
-    pinned = set(route.INDIRECT_CONSUMED_PATHS)
-    derived = derive_indirect_readers()
-    problems = indirect_reader_problems(pinned, derived)
-    if problems:
-        fail("indirect readers " + "; ".join(problems))
-    if pinned & set(route.MACHINE_CONSUMED_MARKDOWN):
-        fail("indirect readers were folded into the markdown pin")
-    for path in sorted(pinned):
-        if route.path_kind(path) != "other":
-            fail(f"{path} indirect reader is not source")
-        assert_plan(
-            f"{path} forces a wide plan",
-            fixture("pull_request", None, f"M\t{path}\n"),
-            "source_bearing",
-            False,
-        )
-    prose = "docs/architecture/repo-snapshot.md"
-    if prose in pinned or route.path_kind(prose) != "docs":
-        fail(f"{prose} no longer samples prose docs_only")
-    assert_plan(
-        "repo snapshot stays docs-only",
-        fixture("pull_request", None, f"M\t{prose}\n"),
-        "docs_only",
-        True,
-    )
-    fragment = ".changes/note.yaml"
-    if route.path_kind(fragment) != "other":
-        fail(f"{fragment} is not source")
-    assert_plan(
-        "changes fragment stays wide",
-        fixture("pull_request", None, f"A\t{fragment}\n"),
-        "source_bearing",
-        False,
-    )
-    if route.path_kind(".changes/v0.2.0.md") != "other":
-        fail(".changes markdown is not source")
-    missing = indirect_reader_problems(pinned | {"docs/architecture/missing-indirect.md"}, derived)
-    if not any(item.startswith("missing:") for item in missing):
-        fail("missing indirect path did not fail the check")
-    drifted = indirect_reader_problems(pinned - {"README.md"}, derived)
-    if not any(item.startswith("drift ") for item in drifted):
-        fail("indirect reader drift did not fail the check")
-
-
 def check_consumed_markdown() -> None:
     """Pinned markdown stays wide. A prose sample still narrows."""
     route = load_router()
     derived = guarded_step_markdown()
     pinned = set(route.MACHINE_CONSUMED_MARKDOWN)
-    if len(pinned) != 73:
-        fail(f"machine-consumed markdown pin count {len(pinned)}, expected 73")
     if derived != pinned:
         missing = sorted(derived - pinned)
         extra = sorted(pinned - derived)
         fail(f"machine-consumed markdown pin drifted missing={missing} extra={extra}")
-    prose = "docs/architecture/repo-snapshot.md"
+    if len(pinned) != 92:
+        fail(f"machine-consumed markdown pin count {len(pinned)}, expected 92")
+    prose = "docs/architecture/repo-protocol.md"
     if prose in pinned or route.path_kind(prose) != "docs":
         fail(f"{prose} no longer samples prose docs_only")
     required = (
+        "README.md",
+        "docs/architecture/extraction-shims.md",
+        "docs/architecture/repo-snapshot.md",
         "docs/status/SUPPORT_TIERS.md",
         "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md",
         "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md",
@@ -1838,7 +1777,8 @@ def check_machine_docs() -> None:
         "docs/README.md": "other",
         "docs/status/SUPPORT_TIERS.md": "other",
         "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md": "other",
-        "docs/architecture/repo-snapshot.md": "docs",
+        "docs/architecture/repo-snapshot.md": "other",
+        "docs/architecture/repo-protocol.md": "docs",
         "docs/architecture/extraction-shims.md": "other",
         "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md": "docs",
         ".changes/note.yaml": "other",
@@ -1881,13 +1821,13 @@ def check_machine_docs() -> None:
     mixed = fixture(
         "pull_request",
         None,
-        "M\tdocs/assets/feature-configuration-matrix-v1.json\nM\tdocs/architecture/repo-snapshot.md\n",
+        "M\tdocs/assets/feature-configuration-matrix-v1.json\nM\tdocs/architecture/repo-protocol.md\n",
     )
     assert_plan("machine docs beside prose stays wide", mixed, "source_bearing", False)
     successor = fixture(
         "pull_request",
         "M\tdocs/ci/receipts/direct-floor-proof-cargo-allow-v1.json\n",
-        "M\tdocs/architecture/repo-snapshot.md\n",
+        "M\tdocs/architecture/repo-protocol.md\n",
     )
     assert_plan(
         "receipt successor on a docs pull request stays wide",
@@ -2034,7 +1974,6 @@ def main() -> None:
     check_skipped_lane_fixtures()
     check_machine_docs()
     check_consumed_markdown()
-    check_indirect_readers()
     check_comment_guard_fixture()
     check_contract()
     check_workflow()
