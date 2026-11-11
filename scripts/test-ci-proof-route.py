@@ -48,6 +48,23 @@ TEST_IF = (
     "${{ !cancelled() && needs.pregate.result == 'success' && "
     "(needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}"
 )
+DOCS_ONLY_HEAVY_GUARD = (
+    "!cancelled() && (needs.proof-route.result != 'success' || "
+    "needs.proof-route.outputs.narrow != 'true' || "
+    "needs.proof-route.outputs.class != 'docs_only')"
+)
+TEST_GATE_MARKERS = (
+    "Evidence-surface inventory guard",
+    "cargo fmt --all --check",
+    "cargo run -p cargo-allow -- audit",
+    "check --mode no-new",
+    "--require-change-note",
+)
+TEST_SETUP_USES = (
+    "actions/checkout@",
+    "dtolnay/rust-toolchain@",
+    "./.github/actions/rust-cache",
+)
 ALWAYS_CI_JOBS = [
     "pregate",
     "test",
@@ -773,6 +790,57 @@ def job_bodies(text: str) -> dict[str, str]:
     return found
 
 
+def check_test_docs_only_steps(body: str) -> None:
+    """Heavy test steps carry the docs_only guard. Gate steps do not."""
+    steps_at = body.find("\n    steps:\n")
+    if steps_at < 0:
+        fail("test job has no steps")
+    header = body[:steps_at]
+    if "needs: [pregate, package-smoke, proof-route]" not in header:
+        fail("test dropped pregate, package-smoke, or proof-route from needs")
+    if TEST_IF not in header:
+        fail("test job if no longer keeps the package-smoke success-or-skipped gate")
+    if DOCS_ONLY_HEAVY_GUARD in header:
+        fail("the docs_only guard skipped the test job instead of a heavy step")
+    parts = re.split(r"(?m)^      - ", body[steps_at:])[1:]
+    if not parts:
+        fail("test job steps did not split")
+    gates: list[str] = []
+    heavy = 0
+    uploads = 0
+    setups = 0
+    for part in parts:
+        first = part.splitlines()[0]
+        guarded = DOCS_ONLY_HEAVY_GUARD in part
+        gate_hits = [marker for marker in TEST_GATE_MARKERS if marker in part]
+        if "upload-artifact@" in part:
+            uploads += 1
+            if "if: always()" not in part or guarded or gate_hits:
+                fail("an artifact upload must stay on if: always() without the docs_only guard")
+            continue
+        if gate_hits:
+            if guarded or "if: always()" in part:
+                fail(f"a gate step gained a skip: {gate_hits}")
+            gates.extend(gate_hits)
+            continue
+        if any(marker in first for marker in TEST_SETUP_USES):
+            setups += 1
+            if guarded:
+                fail(f"setup step gained the docs_only guard: {first}")
+            continue
+        if not guarded:
+            fail(f"heavy test step has no docs_only guard:\n{part[:240]}")
+        heavy += 1
+    if gates != list(TEST_GATE_MARKERS):
+        fail(f"gate steps drifted: {gates}")
+    if setups != len(TEST_SETUP_USES):
+        fail(f"expected {len(TEST_SETUP_USES)} setup steps, found {setups}")
+    if uploads != 4:
+        fail(f"expected 4 unconditional artifact uploads, found {uploads}")
+    if heavy != 18:
+        fail(f"expected 18 guarded heavy steps, found {heavy}")
+
+
 def check_workflow() -> None:
     text = CI.read_text(encoding="utf-8")
     on_block, separator, _rest = text.partition("\njobs:\n")
@@ -806,10 +874,11 @@ def check_workflow() -> None:
         if "needs: [pregate" in body or "needs: pregate" in body:
             fail(f"{job} gained a pregate dependency")
     for job in ALWAYS_CI_JOBS:
-        if job in {"proof-route", "package-smoke"}:
+        if job in {"proof-route", "package-smoke", "test"}:
             continue
         if "proof-route" in jobs[job] or "outputs.narrow" in jobs[job]:
             fail(f"{job} reads the narrow plan; required and release lanes must not")
+    check_test_docs_only_steps(jobs["test"])
     smoke = jobs["package-smoke"]
     if "needs: [pregate, proof-route]" not in smoke or PACKAGE_SMOKE_IF not in smoke:
         fail("package-smoke is not conditional on docs_only and test_only")

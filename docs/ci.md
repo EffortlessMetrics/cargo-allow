@@ -104,10 +104,13 @@ The ruleset contexts are `pregate`, `test`, `review-readiness`, and
 `pregate` runs its current assertions, including the no-new guard, on
 every workflow run. The change-note guard (`--require-change-note`)
 belongs to `test` and runs only when `test` executes. `test` also runs
-no-new when it executes. `test` needs `pregate` and `package-smoke`. A failed `pregate` or a
-failed `package-smoke` skips `test`, and the change-note guard with it.
+no-new when it executes. `test` needs `pregate`, `package-smoke`, and
+`proof-route`. A failed `pregate` or a failed `package-smoke` skips
+`test`, and the change-note guard with it.
 That skip is a dependency failure, not a green execution and not a
-narrow plan. A skipped `package-smoke` does not skip `test`. `docs_only`
+narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
+plan skips the heavy steps inside `test`. The inventory guard, fmt,
+audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,
 because those receipts are produced only by `package-smoke`. The
 change-note guard stays in `test` and runs whenever `test` runs. A
