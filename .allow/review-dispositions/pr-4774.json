@@ -1,0 +1,44 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4774,
+  "base_ref": "main",
+  "base_sha": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
+  "head_ref": "docs/4332-docs-only-demonstration",
+  "head_sha": "aa1db3ea67a5a8bebcc6da9f8c68cdbf93575726",
+  "merge_base": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
+  "reviewed_diff_digest": "sha256:v2:c7fcb2fe4492114a88f849634eb0fe16ef973c3928c543d7a08138130f92ad30",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7) only; the bootstrap commit that adds this disposition, its exact-path allow, and the revision note is mechanical review-ledger machinery authored by the same reviewer and is not separately reviewed.",
+  "independent_review": "not_retained",
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "stale-pr-title-body",
+      "severity": "advisory",
+      "owned_seam": "PR metadata and documentation summary",
+      "source_path": "docs/design.md",
+      "source_line": null,
+      "repair_route": "Update the PR title and body to describe the 7-line docs/design.md note, or restore the removed demonstration. Not a merge blocker.",
+      "claim_boundary": "This record keeps the stale title/body as an advisory metadata follow-up. It does not claim the body was updated."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4774#pullrequestreview-5861945981",
+    "Reviewed pair base d15fed212473e6917cb08bbeeeba7e9b81c3bc08, merge-base d15fed212473e6917cb08bbeeeba7e9b81c3bc08, head aa1db3ea67a5a8bebcc6da9f8c68cdbf93575726, tree 79804c7cdf1e9f56648ffb86c746902b27c43d8b. Diff digest sha256:v2:c7fcb2fe4492114a88f849634eb0fe16ef973c3928c543d7a08138130f92ad30 matches the reviewed docs/design.md +7.",
+    "Zero Blocking findings. One advisory: stale PR title/body.",
+    "Five review threads, all resolved and outdated on the removed docs/ci/receipts/docs-only-lane-demonstration-v1.md path; zero unresolved and none on docs/design.md.",
+    "ci.yml run 43057078322 on aa1db3ea completed success: plan docs_only, narrow=true, effective path docs/design.md, 9 execute / 18 not-applicable; pregate 2m5s, test 2m6s with 18 heavy steps skipped; executed-job elapsed sum 9m19s, over the 5-minute target; wall clock 4m42s.",
+    "review-readiness run 43057078318 success; frozen-subject-lock run 43057078344 success.",
+    "Required contexts on aa1db3ea: pregate success, test success, frozen-subject-lock success, review-readiness neutral, workflow-syntax skipped (not required)."
+  ],
+  "required_ci": {
+    "owner": "Review-readiness projector: bind reviewed head aa1db3ea. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43057078322"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4774",
+  "reviewed_at_utc": "2026-11-11T16:25:05Z"
+}
