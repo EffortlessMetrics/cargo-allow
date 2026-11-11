@@ -153,13 +153,13 @@
   "cargo test --locked --target x86_64-unknown-linux-gnu -p allow-core -p allow-diff -p allow-files -p allow-inventory -p allow-match -p allow-policy -p allow-policy-legacy -p allow-report -p allow-rust -p cargo-allow -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -- --skip minimum_direct_version_drift_retained_receipts_are_current_with_the_live_tree --skip check_exits_zero_when_every_release_set_receipt_is_current --skip minimum_direct_version_fixtures_retained_proof_receipt_is_law_clean --skip minimum_direct_version_products_retained_advisory_receipts_are_clean --skip minimum_direct_version_products_cargo_allow_receipt_certifies_its_closure --skip ci_lane_topology_tests::crate_sets_partition_the_workspace_exactly --skip package_topology_enforcement_tests::topology_classifies_every_workspace_package_exactly --skip product_package_topology_tests::current_v2_authorities_drive_package_candidate --skip publish_order_validation_tests::publish_order_covers_all_workspace_members --skip release_prep_tests::published_release_versions_match_workspace",
   "cargo package -p allow-core --locked --target x86_64-unknown-linux-gnu --no-verify --allow-dirty --target-dir target/package-proof"
  ],
- "floor_lock_digest": "sha256:v1:98c8893de8650f06e457f98098db634a028330632d2bfd390fc03b0a102d80df",
+ "floor_lock_digest": "sha256:v1:f9a0bf5e47a5766a754892d08453726b8df7ecc9fa6fffa8f4b3a7b4709ca1a8",
  "execution_provenance": {
   "command": "bash scripts/proof-direct-floors.sh",
   "working_directory": "/home/runner/work/cargo-allow/cargo-allow",
-  "source_commit": "54a867e16fd57de78be8189856057a8976e35dd9",
-  "source_tree": "6d22a99fe66aa66b3636775d09d9c7b62de7436a",
-  "selected_source_digest": "83cb03924dbf90c2c0ecfc123e84eb07240073ef27af45ef0494593dd377007e",
+  "source_commit": "24670d78e6284270cce828ee6e2f4e64cfdbb666",
+  "source_tree": "36e5e0db694b2d9b91a4b3bf5d9f21b803ca544e",
+  "selected_source_digest": "47a9d6310a21d484b6b378571a9569ef4f40ecc7388261a600f62d23beab8924",
   "selected_source_scope": [
    "crates/**/*.rs: every workspace Rust source, CR-stripped, framed path<NUL>content<NUL> in sorted path order"
   ],
@@ -183,8 +183,8 @@
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "package is a single-package --no-verify archive sample; see its exact command",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:87bd2c9bbcf9e089fa8b0134e829de5710ecf607c9c1678a1864a50cdbb758ca; certified members crates/cargo-allow, crates/allow-core, crates/allow-policy, crates/allow-inventory, crates/allow-files, crates/allow-rust, crates/allow-match, crates/allow-report, crates/allow-diff, crates/allow-policy-legacy, crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit; execution members crates/cargo-allow, crates/allow-core, crates/allow-policy, crates/allow-inventory, crates/allow-files, crates/allow-rust, crates/allow-match, crates/allow-report, crates/allow-diff, crates/allow-policy-legacy, crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine",
-  "local floor subject: source 48c408f30e5d7f2503013bc5deb60237078f7ce5; executed commit 54a867e16fd57de78be8189856057a8976e35dd9; tree 6d22a99fe66aa66b3636775d09d9c7b62de7436a; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit",
-  "original-workspace topology preflight: source 48c408f30e5d7f2503013bc5deb60237078f7ce5; tree 55fdd3a077677e10eb4fececd23c8bd72a2ca2eb; 5 passed; stdout sha256:v1:c0ed2675539f3b971f70b1fe3934ad903e93be73de6ab3090184fd16f9b2e0a6; stderr sha256:v1:d3480bc4e50b52f004e171e6380d3bf7647e8f9518c88d50a7110df7858b8ff5; the selection companion records its command and tests; current-lock repository contracts are not direct-floor compatibility evidence"
+  "local floor subject: source 7453c3f134d7b88a0fdbd9e25eadf29a934255a3; executed commit 24670d78e6284270cce828ee6e2f4e64cfdbb666; tree 36e5e0db694b2d9b91a4b3bf5d9f21b803ca544e; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit",
+  "original-workspace topology preflight: source 7453c3f134d7b88a0fdbd9e25eadf29a934255a3; tree 48f1febfbd69e3e0a3e7c890d56ec3363141e458; 5 passed; stdout sha256:v1:b1c2b8533a6264e83cde01793193ca6d9c5f483878e47863bb5e0dc3b63a01df; stderr sha256:v1:80012fc79d26bba2aa64e4186d55453809cc087e27a95b310fe22480e66e36cb; the selection companion records its command and tests; current-lock repository contracts are not direct-floor compatibility evidence"
  ],
  "claim_boundary": "Exact selected proof of the cargo-allow release set's declared direct dependency floors at the claimed MSRV, over the release set's package closure under the bounded classes: check, test, package (package is a single-package archive sample, not closure packaging). Transitive minimal combinations are not certified."
 }

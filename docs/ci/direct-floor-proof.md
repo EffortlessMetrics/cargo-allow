@@ -189,8 +189,10 @@ a complete cross-crate feature graph or promote any proof disposition.
 ### Current retained execution
 
 The four retained receipts were generated from committed source
-`d60511ad507beb50771f2a514c03a5630b83b3da` on 2026-09-18, using observed
-Rust/Cargo/rustdoc 1.95.0 and explicit target `x86_64-pc-windows-msvc`.
+`7453c3f134d7b88a0fdbd9e25eadf29a934255a3` by
+[floor-receipt run 42928361172](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42928361172),
+using observed Rust/Cargo/rustdoc 1.95.0 and explicit target
+`x86_64-unknown-linux-gnu`.
 The collector binds the observed compiler and rustdoc paths to execution and
 disables inherited compiler wrappers before running each proof class.
 
