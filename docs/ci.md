@@ -130,6 +130,52 @@ source, so a receipt pull request stays wide. Issue #4332 accepts a receipt
 or a run record for the docs-only measurement. A docs-only pull request's
 own narrow run is admissible evidence for that record.
 
+### Measured lane reduction
+
+One docs-only pull request was measured before `#4771` landed.
+[PR #4770](https://github.com/EffortlessMetrics/cargo-allow/pull/4770)
+head `6b33aa12b72922e782164be863b4499e68783f01`,
+[ci.yml run 42980600013](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42980600013)
+(`pull_request`, 2026-11-11T07:35:25Z through 2026-11-11T08:14:38Z).
+The hosted plan class was `docs_only` and `narrow` was true.
+The effective path was `docs/ci.md`. Seventeen lane rows were
+NotApplicable, and GitHub skipped those jobs: `msrv`,
+`product-candidates-interop`, `operator-latency`, `integrated-dogfood`,
+`test-core-platforms`, `compat-delegation`, `test-intent-experimental`,
+`test-proof-experimental`, `test-shared-protocol`, `coverage`,
+`workflow-syntax`, `workflow-security`, `workflow-construction`,
+`dependency-graph-delta`, `collect-performance-fixtures`,
+`shallow-diff-smoke`, and `feature-configuration-proof`.
+`package-smoke` was still `execute` on that plan, with reason
+"test restores this lane's cutover receipts", because the `#4771`
+skip had not landed.
+
+| Job | Started (UTC) | Finished (UTC) | Duration |
+| --- | --- | --- | --- |
+| `package-smoke` | 2026-11-11T07:37:51Z | 2026-11-11T07:55:13Z | 17m22s |
+| `test` | 2026-11-11T07:55:15Z | 2026-11-11T08:14:38Z | 19m23s |
+
+`#4771` landed as `b815604f806b39fba39fbf1215cfffd93e274aa9`.
+`package-smoke` is NotApplicable for `docs_only` and `test_only`.
+`test` runs when `package-smoke` succeeds or is skipped. The cutover
+receipt restore and status steps run only when `package-smoke`
+succeeds. `msrv`, the four `test-core-platforms` matrix rows, and
+`coverage` still run for `test_only`, because that class does not set
+`narrow=true`. Unknown, malformed, and non-`pull_request` plans stay
+wide.
+
+After `#4771`, a successful `docs_only` plan (`narrow=true`) runs
+`pregate`, `test`, `proof-route`, `cargo-deny`, and the release graph
+(`release-impact`, `release-rehearsal`, `release-rehearsal-required`).
+`review-readiness` and `frozen-subject-lock` stay in their own
+workflows. Heavy lanes skip only when `proof-route` succeeds with
+`narrow=true`. `package-smoke` is NotApplicable when that plan's class
+is `docs_only` or `test_only`. A failed or missing plan stays wide.
+
+This is one observed run, not a distribution. The live docs-only
+demonstration is this pull request's own run record. The orchestrator
+records that record on issue #4332.
+
 Required lanes (gate cargo-allow patch and release on wide pull-request and
 full-boundary runs; `test` and `cargo-deny` also stay on a narrow plan, and
 `package-smoke` stays unless the class is `docs_only` or `test_only`):
