@@ -6,12 +6,12 @@
   "base_ref": "main",
   "base_sha": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
   "head_ref": "docs/4332-docs-only-demonstration",
-  "head_sha": "ee840ac8d7c088cf71eb8acdf6edf76c51b3948a",
+  "head_sha": "a2c4bbd17ad5bf7619c45535509fc30ae3de445c",
   "merge_base": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
-  "reviewed_diff_digest": "sha256:v2:311673944a5c24e7070995151220fca7036c2c7bfde3707844f3dc11891d6a6a",
+  "reviewed_diff_digest": "sha256:v2:1342574adc7961e5806189c3ec02f792080b6022d542e6e4d1066d7ef5ceea96",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "same_maintainer",
-  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea, the bootstrap review of aa1db3ea..2d35afb0, and the docs wording fix at ee840ac8. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7). The bootstrap review covers the two exact-path allows, the added_allow revision note, and the disposition values added by 2d35afb0. The docs fix at ee840ac8 scopes the tracked non-Rust rule to markdown files under docs/. This disposition binds ee840ac8 so the final disposition-only commit is admitted by the ancestor fallback.",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea, the bootstrap review of aa1db3ea..2d35afb0, and the docs wording fix at ee840ac8. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7). The bootstrap review covers the two exact-path allows, the added_allow revision note, and the disposition values added by 2d35afb0. The docs fix at ee840ac8 scopes the tracked non-Rust rule to markdown files under docs/. This disposition binds a2c4bbd1 so the final disposition-only commit is admitted by the ancestor fallback.",
   "independent_review": "not_retained",
   "claimed_verdict": "review_clean",
   "findings": [
@@ -37,11 +37,12 @@
     "review-readiness run 43057078318 success; frozen-subject-lock run 43057078344 success.",
     "Required contexts on aa1db3ea: pregate success, test success, frozen-subject-lock success, review-readiness neutral, workflow-syntax skipped (not required).",
     "Bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). Rebind commit e330ea35 carries the disposition to the bootstrap head; its ci.yml run 43062952701 completed success (shared_impact, wide). Rebind commit 225247cb is disposition-only; its ci.yml run 43070036372 completed success (review_ledger_only, narrow, 10 execute / 17 not-applicable). Docs fix ee840ac8 is source-bearing; its ci.yml run 43077383742 completed success (shared_impact, wide).",
-    "review-readiness on e330ea35 (run 43062952719), 225247cb (run 43070036365), and ee840ac8 (run 43077383730) completed success via the ancestor fallback."
+    "review-readiness on e330ea35 (run 43062952719), 225247cb (run 43070036365), and a2c4bbd1 (run 43083868302) completed success via the ancestor fallback. ee840ac8's own review-readiness run 43077383730 is failure because the inherited disposition was stale for that source-bearing head; a2c4bbd1 rebinds the disposition to ee840ac8 and is green.",
+    "a2c4bbd1's ci.yml run 43083868494 completed success (unproven_predecessor, wide) because ee840ac8's review-readiness was failure; the final disposition-only commit is admitted by the ancestor fallback."
   ],
   "required_ci": {
-    "owner": "Review-readiness projector: bind docs-fix head ee840ac8. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The docs fix is source-bearing and its wide run completed success. The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43077383742"
+    "owner": "Review-readiness projector: bind rebind head a2c4bbd1. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The docs fix is source-bearing and its wide run completed success. The rebind commit a2c4bbd1 is disposition-only and its review-readiness is green. The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43083868494"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4774",
