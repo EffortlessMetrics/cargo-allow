@@ -372,6 +372,14 @@ def check_classifications() -> None:
             "source_bearing",
             False,
         ),
+        (
+            "changie sensor doc stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/how-to/run-changie-sensor.md\n",
+            "source_bearing",
+            False,
+        ),
         ("push is a full boundary", "push", None, docs, "full_boundary", False),
         (
             "workflow_dispatch is a full boundary",
@@ -1864,6 +1872,350 @@ def indirect_reader_problems(paths: set[str], derived: set[str]) -> list[str]:
     return problems
 
 
+def _skip_rust_string(text: str, index: int) -> int:
+    if index >= len(text) or text[index] != '"':
+        return index
+    index += 1
+    while index < len(text):
+        if text[index] == "\\" and index + 1 < len(text):
+            index += 2
+            continue
+        if text[index] == '"':
+            return index + 1
+        index += 1
+    return index
+
+
+def _match_delim(text: str, open_at: int, open_ch: str, close_ch: str) -> tuple[str, int] | None:
+    depth = 0
+    index = open_at
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            index = _skip_rust_string(text, index)
+            continue
+        if char == open_ch:
+            depth += 1
+        elif char == close_ch:
+            depth -= 1
+            if depth == 0:
+                return text[open_at + 1 : index], index + 1
+        index += 1
+    return None
+
+
+def _split_rust_list(text: str) -> list[str]:
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            nxt = _skip_rust_string(text, index)
+            buf.append(text[index:nxt])
+            index = nxt
+            continue
+        if char in "([{<":
+            depth += 1
+        elif char in ")]}>":
+            depth = max(0, depth - 1)
+        if char == "," and depth == 0:
+            parts.append("".join(buf).strip())
+            buf = []
+            index += 1
+            continue
+        buf.append(char)
+        index += 1
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _rust_functions(text: str) -> list[tuple[str, str, str, int, int]]:
+    found: list[tuple[str, str, str, int, int]] = []
+    pattern = re.compile(r"(?m)^(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\s+([A-Za-z_][\w]*)")
+    index = 0
+    while True:
+        match = pattern.search(text, index)
+        if not match:
+            break
+        cursor = match.end()
+        while cursor < len(text) and text[cursor].isspace():
+            cursor += 1
+        if cursor < len(text) and text[cursor] == "<":
+            generic = _match_delim(text, cursor, "<", ">")
+            if generic is None:
+                break
+            cursor = generic[1]
+            while cursor < len(text) and text[cursor].isspace():
+                cursor += 1
+        if cursor >= len(text) or text[cursor] != "(":
+            index = match.end()
+            continue
+        params = _match_delim(text, cursor, "(", ")")
+        if params is None:
+            break
+        brace = text.find("{", params[1])
+        if brace < 0:
+            break
+        body = _match_delim(text, brace, "{", "}")
+        if body is None:
+            break
+        found.append((match.group(1), params[0], body[0], match.start(), body[1]))
+        index = body[1]
+    return found
+
+
+def _path_param_indexes(params: str) -> list[tuple[int, str]]:
+    indexes: list[tuple[int, str]] = []
+    for index, part in enumerate(_split_rust_list(params)):
+        if ":" not in part or part.startswith("self"):
+            continue
+        name, ty = part.split(":", 1)
+        name = name.strip().removeprefix("mut ").strip()
+        if re.search(r"(?:^|[^A-Za-z])str(?:[^A-Za-z]|$)", ty) or "String" in ty:
+            indexes.append((index, name))
+    return indexes
+
+
+def _helper_reads_param(body: str, param: str) -> bool:
+    direct = re.compile(
+        r"(?:std::fs::|fs::)read(?:_to_string)?\s*\(\s*&?\s*[\w.:]+\.join\(\s*&?\s*"
+        + re.escape(param)
+        + r"\b"
+    )
+    if direct.search(body):
+        return True
+    bind = re.compile(
+        r"(?:let|let mut)\s+(\w+)\s*=\s*[\w.:]+\.join\(\s*&?\s*" + re.escape(param) + r"\b"
+    )
+    locals_for = set(bind.findall(body))
+    if not locals_for:
+        return False
+    read_local = re.compile(r"(?:std::fs::|fs::)read(?:_to_string)?\s*\(\s*&?\s*(\w+)\b")
+    return any(local in locals_for for local in read_local.findall(body))
+
+
+def _is_docs_markdown(value: str) -> bool:
+    parts = value.split("/")
+    return value.startswith("docs/") and value.endswith(".md") and ".." not in parts and len(parts) >= 2
+
+
+def _const_docs(text: str) -> dict[str, str]:
+    found: dict[str, str] = {}
+    for name, value in re.findall(r'(?m)^const\s+([A-Za-z_][\w]*)\s*:\s*&str\s*=\s*"([^"]*)"\s*;', text):
+        if _is_docs_markdown(value):
+            found[name] = value
+    return found
+
+
+def _slice_docs(functions: list[tuple[str, str, str, int, int]]) -> dict[str, set[str]]:
+    found: dict[str, set[str]] = {}
+    for name, _params, body, _start, _end in functions:
+        compact = " ".join(body.split())
+        match = re.fullmatch(r"&?\[(.*)\]", compact)
+        if not match:
+            continue
+        values = {item for item in re.findall(r'"([^"]*)"', match.group(1)) if _is_docs_markdown(item)}
+        if values:
+            found[name] = values
+    return found
+
+
+def _docs_from_expr(expr: str, const_docs: dict[str, str], slice_docs: dict[str, set[str]]) -> set[str]:
+    expr = expr.strip().removeprefix("&").strip()
+    if len(expr) >= 2 and expr[0] == '"' and expr[-1] == '"':
+        value = expr[1:-1]
+        return {value} if _is_docs_markdown(value) else set()
+    if re.fullmatch(r"[A-Za-z_][\w]*", expr):
+        if expr in const_docs:
+            return {const_docs[expr]}
+        if expr in slice_docs:
+            return set(slice_docs[expr])
+    return set()
+
+
+def helper_mediated_markdown(text: str) -> set[str]:
+    """docs/*.md reached through a same-file read helper.
+
+    The helper's body reads ``root.join`` of a ``&str`` parameter with
+    ``fs::read_to_string`` or ``fs::read``. The call passes that path as a
+    literal, a same-file ``&str`` constant, a same-file slice of those
+    literals, or a ``for`` loop over that slice or a const array.
+    """
+    functions = _rust_functions(text)
+    const_docs = _const_docs(text)
+    slice_docs = _slice_docs(functions)
+    helpers: list[tuple[str, list[int]]] = []
+    for name, params, body, _start, _end in functions:
+        indexes = [index for index, param in _path_param_indexes(params) if _helper_reads_param(body, param)]
+        if indexes:
+            helpers.append((name, indexes))
+    found: set[str] = set()
+    call_re_cache: dict[str, re.Pattern[str]] = {}
+    for name, indexes in helpers:
+        pattern = call_re_cache.setdefault(name, re.compile(rf"(?<![\w:]){re.escape(name)}\s*\("))
+        for match in pattern.finditer(text):
+            if text[max(0, match.start() - 4) : match.start()].rstrip().endswith("fn"):
+                continue
+            parsed = _match_delim(text, match.end() - 1, "(", ")")
+            if parsed is None:
+                continue
+            args = _split_rust_list(parsed[0])
+            owner = next(
+                (
+                    body
+                    for _fn_name, _params, body, fn_start, fn_end in functions
+                    if fn_start <= match.start() < fn_end
+                ),
+                "",
+            )
+            for index in indexes:
+                if index >= len(args):
+                    continue
+                expr = args[index].strip()
+                docs = _docs_from_expr(expr, const_docs, slice_docs)
+                bare = expr.removeprefix("&").strip()
+                if not docs and re.fullmatch(r"[A-Za-z_][\w]*", bare):
+                    loop_call = re.search(rf"for\s+{re.escape(bare)}\s+in\s+([A-Za-z_][\w]*)\s*\(", owner)
+                    if loop_call and loop_call.group(1) in slice_docs:
+                        docs = set(slice_docs[loop_call.group(1)])
+                    loop_list = re.search(rf"for\s+{re.escape(bare)}\s+in\s+\[([^\]]*)\]", owner, re.S)
+                    if loop_list:
+                        for item in _split_rust_list(loop_list.group(1)):
+                            docs |= _docs_from_expr(item, const_docs, slice_docs)
+                found |= docs
+    return found
+
+
+def derive_helper_markdown() -> set[str]:
+    """Existing helper-mediated docs a guarded test package reads."""
+    found: set[str] = set()
+    for directory in _package_dirs(_guarded_step_blob()):
+        for src in directory.rglob("*.rs"):
+            text = _strip_rust_comments(src.read_text(encoding="utf-8", errors="replace"))
+            for path in helper_mediated_markdown(text):
+                if (ROOT / path).is_file():
+                    found.add(path)
+    return found
+
+
+def helper_reader_problems(paths: set[str], derived: set[str]) -> list[str]:
+    problems: list[str] = []
+    for path in sorted(paths):
+        if not (ROOT / path).is_file():
+            problems.append(f"missing:{path}")
+    if set(paths) != set(derived):
+        missing = sorted(set(derived) - set(paths))
+        extra = sorted(set(paths) - set(derived))
+        problems.append(f"drift missing={missing} extra={extra}")
+    return problems
+
+
+def check_helper_readers() -> None:
+    """Helper-mediated docs stay wide. A new literal or a missing path fails."""
+    route = load_router()
+    derived = derive_helper_markdown()
+    pinned = set(route.HELPER_CONSUMED_MARKDOWN)
+    machine = set(route.MACHINE_CONSUMED_MARKDOWN)
+    indirect = set(route.INDIRECT_CONSUMED_PATHS)
+    fresh = derived - machine - indirect
+    problems = helper_reader_problems(pinned, fresh)
+    if problems:
+        fail("helper readers " + "; ".join(problems))
+    if len(machine) != 73:
+        fail("helper scan changed the 73-path markdown pin")
+    if pinned & machine or pinned & indirect:
+        fail("helper pin overlaps an existing pin")
+    if set(route.INDIRECT_CONSUMED_PATHS) != {"README.md", "SUPPORT.md"}:
+        fail("helper scan changed the root companion")
+    sensor = "docs/how-to/run-changie-sensor.md"
+    required = (
+        sensor,
+        "docs/release/README.md",
+        "docs/release/0.1.10.md",
+        "docs/release/0.1.11.md",
+    )
+    if set(required) != pinned:
+        fail(f"helper pin is {sorted(pinned)}")
+    for path in required:
+        if route.path_kind(path) != "other":
+            fail(f"{path} helper reader is not source")
+        assert_plan(
+            f"{path} forces a wide plan",
+            fixture("pull_request", None, f"M\t{path}\n"),
+            "source_bearing",
+            False,
+        )
+    already = (
+        "docs/release/0.2.0.md",
+        "docs/release/github/v0.2.0.md",
+        "docs/release/0.2.0-rc.1.md",
+        "docs/release/incidents/2026-08-24-rc1-tag-movement.md",
+    )
+    for path in already:
+        if path not in derived or path not in machine or path in pinned:
+            fail(f"{path} should stay on the 73-path pin")
+    absent = (
+        "docs/identity.md",
+        "docs/design.md",
+        "docs/adr/README.md",
+        "docs/source-of-truth/README.md",
+        "docs/templates/spec.md",
+        "docs/templates/proposal.md",
+    )
+    for path in absent:
+        if path in derived or path in pinned:
+            fail(f"{path} was pinned without a helper read")
+    literal = """
+fn read_workspace_file(root: &Path, rel: &str) -> String {
+    fs::read_to_string(root.join(rel)).unwrap()
+}
+
+fn reads_new_doc() {
+    let _doc = read_workspace_file(&root, "docs/how-to/helper-named-extra.md");
+}
+"""
+    blind = """
+fn read_workspace_file(root: &Path, rel: &str) -> String {
+    rel.to_string()
+}
+
+fn reads_new_doc() {
+    let _doc = read_workspace_file(&root, "docs/how-to/helper-named-extra.md");
+}
+"""
+    extra = "docs/how-to/helper-named-extra.md"
+    if helper_mediated_markdown(blind):
+        fail("a helper that does not read was treated as a reader")
+    if helper_mediated_markdown(literal) != {extra}:
+        fail(f"helper literal fixture parsed {sorted(helper_mediated_markdown(literal))}")
+    const_form = """
+const RELEASE_DOC: &str = "docs/release/helper-const.md";
+
+fn read_workspace_file(root: &Path, relative_path: &str) -> String {
+    fs::read_to_string(root.join(relative_path)).unwrap()
+}
+
+fn reads_release() {
+    let _doc = read_workspace_file(&root, RELEASE_DOC);
+}
+"""
+    if helper_mediated_markdown(const_form) != {"docs/release/helper-const.md"}:
+        fail("helper const fixture was not parsed")
+    before = helper_reader_problems(pinned - {sensor}, fresh)
+    if not any(item.startswith("drift ") for item in before):
+        fail("dropping the changie sensor doc did not fail the drift check")
+    after = helper_reader_problems(pinned, fresh)
+    if after:
+        fail("helper pin did not match after the sensor doc was restored")
+    missing = helper_reader_problems(pinned | {"docs/how-to/missing-helper.md"}, fresh)
+    if not any(item.startswith("missing:") for item in missing):
+        fail("missing helper path did not fail the check")
+
+
 def check_indirect_readers() -> None:
     """Root embeds stay pinned. Every architecture markdown path stays wide."""
     route = load_router()
@@ -2095,6 +2447,8 @@ def check_machine_docs() -> None:
         "docs/architecture/product-move-map.md": "other",
         "docs/architecture/new-reader.md": "other",
         "docs/architecture/nested/new-reader.md": "docs",
+        "docs/how-to/run-changie-sensor.md": "other",
+        "docs/release/README.md": "other",
         "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md": "docs",
         ".changes/note.yaml": "other",
         ".changes/v0.2.0.md": "other",
@@ -2290,6 +2644,7 @@ def main() -> None:
     check_machine_docs()
     check_consumed_markdown()
     check_indirect_readers()
+    check_helper_readers()
     check_comment_guard_fixture()
     check_contract()
     check_workflow()

@@ -90,7 +90,20 @@ is that a docs-only pull request cannot narrow on an architecture doc,
 even when nothing reads that file. Other markdown under `docs/` still
 narrows when it is not pinned.
 `docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md` is the
-unread prose sample. `.changes/` stays source: `.changie.yaml` sets
+unread prose sample. A guarded test can also pass a `docs/*.md` literal,
+or a same-file `&str` constant, to a function whose body does
+`fs::read_to_string(root.join(param))` or `fs::read` of that join.
+`scripts/test-ci-proof-route.py` derives that helper form. Paths the
+73-path pin and the root companion do not already name stay in
+`HELPER_CONSUMED_MARKDOWN`: `docs/how-to/run-changie-sensor.md`,
+`docs/release/README.md`, `docs/release/0.1.10.md`, and
+`docs/release/0.1.11.md`. `docs/how-to/run-changie-sensor.md` forces a
+wide plan. The same audit found no helper read of `docs/templates/*.md`,
+`docs/identity.md`, `docs/design.md`, `docs/adr/README.md`, or
+`docs/source-of-truth/README.md`. Other `docs/release/*.md` files a
+guarded test reads, including `docs/release/0.2.0.md` and
+`docs/release/github/v0.2.0.md`, stay on the 73-path pin. A new helper
+literal fails that recompute until the pin names it. `.changes/` stays source: `.changie.yaml` sets
 `changesDir: .changes`, and the guarded Changie sensor self-dogfood step
 lints that tree, so a fragment-only diff is not `docs_only`.
 The feature-configuration matrix,
@@ -138,7 +151,7 @@ That skip is a dependency failure, not a green execution and not a
 narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
 plan skips the heavy steps inside `test`. Those steps keep `success()`,
 so an earlier failure in `test` still stops the later ones. A diff that
-includes pinned machine-consumed markdown, a companion indirect reader, any `docs/architecture/*.md` path, or a `.changes/` path is not
+includes pinned machine-consumed markdown, a companion indirect reader, a helper-mediated markdown path, any `docs/architecture/*.md` path, or a `.changes/` path is not
 `docs_only`, and the heavy steps run. The inventory guard, fmt,
 audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,

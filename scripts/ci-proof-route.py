@@ -35,7 +35,12 @@ config scan of ``policy/product-move-ledger.toml`` and
 ``policy/extraction-parity.toml`` cannot see every reader form, so the
 directory is the bound and a new architecture reader stays wide without
 another pin edit. A docs-only pull request cannot narrow on an
-architecture doc. ``.changes/`` stays source because
+architecture doc. A ``docs/*.md`` literal or same-file ``&str`` constant
+passed to a function whose body reads ``root.join`` of that parameter
+with ``fs::read_to_string`` or ``fs::read`` is ``HELPER_CONSUMED_MARKDOWN``
+when the 73-path pin and the root companion do not already name it.
+``docs/how-to/run-changie-sensor.md`` is in that set, so a docs-only edit
+does not skip the test that reads it. ``.changes/`` stays source because
 ``.changie.yaml`` sets ``changesDir``
 and the guarded Changie sensor self-dogfood step lints that tree.
 JSON, TOML, and any other
@@ -349,6 +354,18 @@ INDIRECT_CONSUMED_PATHS = frozenset({
     "SUPPORT.md",
 })
 
+# docs/*.md passed to a same-file helper whose body reads root.join of
+# that parameter. The 73-path pin misses this shape because the literal
+# is at the call and the join is inside the helper. Paths already in
+# MACHINE_CONSUMED_MARKDOWN or INDIRECT_CONSUMED_PATHS stay there.
+# scripts/test-ci-proof-route.py recomputes this set.
+HELPER_CONSUMED_MARKDOWN = frozenset({
+    "docs/how-to/run-changie-sensor.md",
+    "docs/release/0.1.10.md",
+    "docs/release/0.1.11.md",
+    "docs/release/README.md",
+})
+
 
 def contract() -> dict[str, object]:
     return {
@@ -641,7 +658,11 @@ def path_kind(path: str) -> str:
     # Before the docs/ prose rule and before ROOT_DOCS. Root README.md is
     # in ROOT_DOCS. Every docs/architecture/*.md path is source, including
     # an unread file and a path that is not on disk yet.
-    if normalized in MACHINE_CONSUMED_MARKDOWN or normalized in INDIRECT_CONSUMED_PATHS:
+    if (
+        normalized in MACHINE_CONSUMED_MARKDOWN
+        or normalized in INDIRECT_CONSUMED_PATHS
+        or normalized in HELPER_CONSUMED_MARKDOWN
+    ):
         return "other"
     if is_architecture_markdown(normalized):
         return "other"
