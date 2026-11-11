@@ -6,12 +6,12 @@
   "base_ref": "main",
   "base_sha": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
   "head_ref": "docs/4332-docs-only-demonstration",
-  "head_sha": "e330ea35b5fdbd7d77614a08e66647eb9c57a3d2",
+  "head_sha": "225247cbbde6a4010a0ddbabcde1413e4c9e802f",
   "merge_base": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
-  "reviewed_diff_digest": "sha256:v2:fd1654ee75ca535575e3119481dcbd23b0a235e54bd31f7dc03a1f1074e29209",
+  "reviewed_diff_digest": "sha256:v2:dc579d06b99a6c78d11f227deb6ea67d9e03e0eec6db9813cb91bd4ed32f4f74",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "same_maintainer",
-  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7) only. The bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note; those are mechanical review-ledger machinery authored by the same reviewer and are not separately reviewed. The rebind commit e330ea35 carries the disposition to the bootstrap head and its wide run 43062952701 completed success. This disposition binds e330ea35 so the final disposition-only commit is admitted by the ancestor fallback.",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7) only. The bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note; those are mechanical review-ledger machinery authored by the same reviewer and are not separately reviewed. The rebind commits e330ea35 and 225247cb carry the disposition forward; e330ea35's wide run 43062952701 and 225247cb's narrow run 43070036372 both completed success. This disposition binds 225247cb so the final disposition-only commit is admitted by the ancestor fallback.",
   "independent_review": "not_retained",
   "claimed_verdict": "review_clean",
   "findings": [
@@ -23,6 +23,15 @@
       "source_line": null,
       "repair_route": "Update the PR title and body to describe the 7-line docs/design.md note, or restore the removed demonstration. Not a merge blocker.",
       "claim_boundary": "This record keeps the stale title/body as an advisory metadata follow-up. It does not claim the body was updated."
+    },
+    {
+      "id": "doc-prefix-overclaim",
+      "severity": "advisory",
+      "owned_seam": "docs/design.md evidence-reference wording",
+      "source_path": "docs/design.md",
+      "source_line": 175,
+      "repair_route": "Rephrase the first sentence so the tracked non-Rust rule applies to Markdown files under docs/, not to every doc: reference; a doc: reference can point at a Rust file such as crates/allow-diff/src/tests/revision_git_parser.rs. CodeRabbit thread PRRT_kwDOSnyN3s62Rl0T. Not a merge blocker.",
+      "claim_boundary": "This record keeps the overbroad doc: sentence as an advisory wording follow-up. It does not claim the sentence was fixed."
     }
   ],
   "threads_inspected": [
@@ -33,12 +42,13 @@
     "ci.yml run 43057078322 on aa1db3ea completed success: plan docs_only, narrow=true, effective path docs/design.md, 9 execute / 18 not-applicable; pregate 2m5s, test 2m6s with 18 heavy steps skipped; executed-job elapsed sum 9m19s, over the 5-minute target; wall clock 4m42s.",
     "review-readiness run 43057078318 success; frozen-subject-lock run 43057078344 success.",
     "Required contexts on aa1db3ea: pregate success, test success, frozen-subject-lock success, review-readiness neutral, workflow-syntax skipped (not required).",
-    "Bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). Rebind commit e330ea35 carries the disposition to the bootstrap head; its ci.yml run 43062952701 completed success (shared_impact, wide). The final commit changes only this disposition file and is admitted by the ancestor fallback.",
-    "review-readiness on e330ea35 (run 43062952719) completed success via the ancestor fallback."
+    "Bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). Rebind commit e330ea35 carries the disposition to the bootstrap head; its ci.yml run 43062952701 completed success (shared_impact, wide). Rebind commit 225247cb is disposition-only; its ci.yml run 43070036372 completed success (review_ledger_only, narrow, 10 execute / 17 not-applicable). The final commit changes only this disposition file and is admitted by the ancestor fallback.",
+    "review-readiness on e330ea35 (run 43062952719) and on 225247cb (run 43070036365) completed success via the ancestor fallback.",
+    "CodeRabbit thread PRRT_kwDOSnyN3s62Rl0K (bootstrap not separately reviewed) is addressed by the reviewer_identity boundary; thread PRRT_kwDOSnyN3s62Rl0T (doc: overclaim) is recorded as advisory finding doc-prefix-overclaim. Neither thread is resolved by this record."
   ],
   "required_ci": {
-    "owner": "Review-readiness projector: bind rebind head e330ea35. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The rebind commit carries the disposition to the bootstrap head and its wide run completed success. The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43062952701"
+    "owner": "Review-readiness projector: bind rebind head 225247cb. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The rebind commits carry the disposition forward; 225247cb's wide run completed success. The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43070036372"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4774",
