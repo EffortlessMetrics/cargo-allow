@@ -29,6 +29,15 @@ feature-configuration matrix, the lane and support tables, and
 direct-floor receipts. An unrecognized docs payload is source, not
 prose.
 
+A pull request whose paths are only crate tests (``crates/<crate>/tests/``),
+``scripts/test-*``, or a ``fixtures`` path segment is ``test_only``. That
+class does not set ``narrow=true``. It records package-smoke,
+product-candidates-interop, operator-latency, integrated-dogfood, and
+compat-delegation NotApplicable, and it still executes msrv,
+test-core-platforms, and coverage. A test path mixed with any other kind
+stays wide. ``docs_only`` also records package-smoke NotApplicable.
+Ledger narrow plans still execute package-smoke.
+
 Unknown, empty, rename/copy, malformed, and shared ledger impact stay
 wide. ``push``, ``workflow_dispatch``, ``merge_group``, ``schedule``,
 ``release``, and every other event stay wide, including before the
@@ -37,10 +46,12 @@ exits non-zero so heavy lanes still run. Lookup failure stays wide and
 exits zero: absence is not proof.
 
 The ruleset contexts (pregate, test, review-readiness,
-frozen-subject-lock), package-smoke, cargo-deny, and the release graph
-always execute. Heavy non-required lanes are NotApplicable only when this
-plan succeeds with ``narrow=true``; GitHub then skips those jobs. A skip
-is not a green execution.
+frozen-subject-lock), cargo-deny, and the release graph always execute.
+package-smoke executes unless the plan succeeds with class ``docs_only``
+or ``test_only``. Heavy non-required lanes are NotApplicable when this
+plan succeeds with ``narrow=true``. The test_only product lanes above are
+NotApplicable when the plan succeeds with that class. GitHub skips a job
+only from that decision. A skip is not a green execution.
 """
 
 from __future__ import annotations
@@ -79,13 +90,35 @@ NARROW_IF_STANDALONE = (
     "${{ !cancelled() && (needs.proof-route.result != 'success' || "
     "needs.proof-route.outputs.narrow != 'true') }}"
 )
+# Item 5 skips. These lanes also skip on narrow=true. msrv, coverage, and
+# test-core-platforms stay on the docs/ledger guard only.
+TEST_ONLY_SKIP = (
+    "product-candidates-interop",
+    "operator-latency",
+    "integrated-dogfood",
+    "compat-delegation",
+)
+TEST_ONLY_IF_WITH_PREGATE = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+PACKAGE_SMOKE_SKIP_CLASSES = ("docs_only", "test_only")
+PACKAGE_SMOKE_IF = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
 
 # Jobs in ci.yml that execute on a narrow plan. review-readiness and
 # frozen-subject-lock are recorded here and live in their own workflows.
 ALWAYS_CI = [
     ("pregate", "ruleset context; current assertions stay on every applicable run"),
     ("test", "ruleset context; no-new and the change-note guard stay unconditional"),
-    ("package-smoke", "test restores this lane's cutover receipts"),
+    (
+        "package-smoke",
+        "cutover receipts; not applicable for docs_only or test_only",
+    ),
     ("cargo-deny", "supply-chain audit stays on every run"),
     ("release-impact", "release qualification stays on every event"),
     ("release-rehearsal", "release qualification stays on every event"),
@@ -137,11 +170,31 @@ def contract() -> dict[str, object]:
     return {
         "narrow_if_with_pregate": NARROW_IF_WITH_PREGATE,
         "narrow_if_standalone": NARROW_IF_STANDALONE,
+        "test_only_if_with_pregate": TEST_ONLY_IF_WITH_PREGATE,
+        "test_only_skip": list(TEST_ONLY_SKIP),
+        "package_smoke_if": PACKAGE_SMOKE_IF,
+        "package_smoke_skip_classes": list(PACKAGE_SMOKE_SKIP_CLASSES),
         "always_ci_jobs": [job for job, _reason in ALWAYS_CI],
         "record_only": [job for job, _reason in RECORD_ONLY],
         "narrow_with_pregate": list(NARROW_WITH_PREGATE),
         "narrow_standalone": list(NARROW_STANDALONE),
     }
+
+
+def is_test_surface(path: str) -> bool:
+    """Return whether ``path`` is a test-only surface (#4332 item 5).
+
+    Crate tests live under ``crates/<crate>/tests/``. ``scripts/test-*``
+    is the script suite. A path segment named ``fixtures`` is a fixture
+    tree. Docs paths are classified before this helper, so a fixture under
+    ``docs/`` stays docs or source.
+    """
+    parts = path.split("/")
+    if len(parts) >= 4 and parts[0] == "crates" and parts[2] == "tests":
+        return True
+    if len(parts) == 2 and parts[0] == "scripts" and parts[1].startswith("test-"):
+        return True
+    return "fixtures" in parts
 
 
 def normalize(path: str) -> str:
@@ -179,6 +232,8 @@ def path_kind(path: str) -> str:
         return "docs"
     if len(parts) == 1 and normalized.endswith(".md"):
         return "docs"
+    if is_test_surface(normalized):
+        return "test"
     return "other"
 
 
@@ -229,6 +284,8 @@ def classify_entries(entries: list[tuple[str, str]] | None) -> str:
         return "review_ledger_only"
     if kinds == {"docs"}:
         return "docs_only"
+    if kinds == {"test"}:
+        return "test_only"
     return "source_bearing"
 
 
@@ -262,6 +319,8 @@ def decide(
         return "docs_only", True
     if effective_class == "review_ledger_only":
         return "review_ledger_only", True
+    if effective_class == "test_only":
+        return "test_only", False
     if effective_class in {"unknown", "shared_impact", "source_bearing"}:
         return effective_class, False
     return "unknown", False
@@ -276,6 +335,15 @@ def lane_rows(class_name: str, narrow: bool) -> list[dict[str, str]]:
         *ALWAYS_CI[2:],
     ]
     for job, reason in ordered:
+        if job == "package-smoke" and class_name in PACKAGE_SMOKE_SKIP_CLASSES:
+            rows.append(
+                {
+                    "id": job,
+                    "decision": "not_applicable",
+                    "reason": f"{class_name} does not build package receipts",
+                }
+            )
+            continue
         rows.append({"id": job, "decision": "execute", "reason": reason})
     for job in NARROW_WITH_PREGATE + NARROW_STANDALONE:
         if narrow:
@@ -284,6 +352,14 @@ def lane_rows(class_name: str, narrow: bool) -> list[dict[str, str]]:
                     "id": job,
                     "decision": "not_applicable",
                     "reason": f"narrow {class_name}",
+                }
+            )
+        elif class_name == "test_only" and job in TEST_ONLY_SKIP:
+            rows.append(
+                {
+                    "id": job,
+                    "decision": "not_applicable",
+                    "reason": "test_only product lane",
                 }
             )
         else:

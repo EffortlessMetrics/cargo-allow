@@ -28,6 +28,26 @@ NARROW_IF_STANDALONE = (
     "${{ !cancelled() && (needs.proof-route.result != 'success' || "
     "needs.proof-route.outputs.narrow != 'true') }}"
 )
+TEST_ONLY_SKIP = [
+    "product-candidates-interop",
+    "operator-latency",
+    "integrated-dogfood",
+    "compat-delegation",
+]
+TEST_ONLY_IF_WITH_PREGATE = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+PACKAGE_SMOKE_IF = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+TEST_IF = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}"
+)
 ALWAYS_CI_JOBS = [
     "pregate",
     "test",
@@ -177,11 +197,19 @@ def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
     for required in REQUIRED_CONTEXTS:
         if decisions.get(required) != "execute":
             fail(f"{name}: {required} decision is {decisions.get(required)}")
-    for job in ("package-smoke", "cargo-deny", "release-impact", "release-rehearsal-required"):
+    for job in ("cargo-deny", "release-impact", "release-rehearsal-required"):
         if decisions.get(job) != "execute":
             fail(f"{name}: {job} decision is {decisions.get(job)}")
-    expected = "not_applicable" if narrow else "execute"
+    package_smoke = "not_applicable" if class_name in {"docs_only", "test_only"} else "execute"
+    if decisions.get("package-smoke") != package_smoke:
+        fail(f"{name}: package-smoke decision is {decisions.get('package-smoke')}, expected {package_smoke}")
     for job in NARROW_WITH_PREGATE + NARROW_STANDALONE:
+        if narrow:
+            expected = "not_applicable"
+        elif class_name == "test_only" and job in TEST_ONLY_SKIP:
+            expected = "not_applicable"
+        else:
+            expected = "execute"
         if decisions.get(job) != expected:
             fail(f"{name}: {job} decision is {decisions.get(job)}, expected {expected}")
     if narrow:
@@ -345,6 +373,80 @@ def check_classifications() -> None:
             "source_bearing",
             False,
         ),
+        (
+            "crate tests are test_only",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/tests/route.rs\n",
+            "test_only",
+            False,
+        ),
+        (
+            "test script is test_only",
+            "pull_request",
+            None,
+            "M\tscripts/test-ci-proof-route.py\n",
+            "test_only",
+            False,
+        ),
+        (
+            "fixture tree is test_only",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/repo-edit/sample.toml\n"
+            "M\tfixtures/unsafe/src/lib.rs\n"
+            "M\ttests/compat/fixtures/sample.toml\n",
+            "test_only",
+            False,
+        ),
+        (
+            "test plus source stays wide",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/tests/route.rs\nM\tcrates/cargo-allow/src/lib.rs\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "unit test inside src stays wide",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/src/refresh_fixtures.rs\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "docs fixture payload stays source",
+            "pull_request",
+            None,
+            "M\tdocs/dogfood/fixtures/sample.json\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "renamed test file stays wide",
+            "pull_request",
+            None,
+            "R100\tcrates/cargo-allow/tests/old.rs\tcrates/cargo-allow/tests/new.rs\n",
+            "unknown",
+            False,
+        ),
+        (
+            "push of tests stays wide",
+            "push",
+            None,
+            "M\tcrates/cargo-allow/tests/route.rs\n",
+            "full_boundary",
+            False,
+        ),
+        (
+            "test successor on a source pull request stays wide",
+            "pull_request",
+            "M\tcrates/cargo-allow/tests/route.rs\n",
+            "M\tcrates/cargo-allow/src/lib.rs\nM\tcrates/cargo-allow/tests/route.rs\n",
+            "source_bearing",
+            False,
+        ),
     ]
     for name, event, successor, effective, class_name, narrow in cases:
         plan = fixture(event, successor, effective)
@@ -441,6 +543,10 @@ def check_contract() -> None:
     expected = {
         "narrow_if_with_pregate": NARROW_IF_WITH_PREGATE,
         "narrow_if_standalone": NARROW_IF_STANDALONE,
+        "test_only_if_with_pregate": TEST_ONLY_IF_WITH_PREGATE,
+        "test_only_skip": TEST_ONLY_SKIP,
+        "package_smoke_if": PACKAGE_SMOKE_IF,
+        "package_smoke_skip_classes": ["docs_only", "test_only"],
         "always_ci_jobs": ALWAYS_CI_JOBS,
         "record_only": RECORD_ONLY,
         "narrow_with_pregate": NARROW_WITH_PREGATE,
@@ -485,8 +591,13 @@ def check_workflow() -> None:
         fail(f"lane authority does not match ci.yml jobs; missing={missing} extra={extra}")
     for job in NARROW_WITH_PREGATE:
         body = jobs[job]
-        if "needs: [pregate, proof-route]" not in body or NARROW_IF_WITH_PREGATE not in body:
-            fail(f"{job} does not keep the pregate gate and the narrow guard")
+        expected_if = TEST_ONLY_IF_WITH_PREGATE if job in TEST_ONLY_SKIP else NARROW_IF_WITH_PREGATE
+        if "needs: [pregate, proof-route]" not in body or expected_if not in body:
+            fail(f"{job} does not keep the pregate gate and its narrow guard")
+        if job in TEST_ONLY_SKIP and NARROW_IF_WITH_PREGATE in body:
+            fail(f"{job} still uses only the docs-only narrow guard")
+        if job not in TEST_ONLY_SKIP and "class != 'test_only'" in body:
+            fail(f"{job} would skip on a test_only plan")
         if body.find("needs:") > body.find("steps:"):
             fail(f"{job} declares needs after steps")
     for job in NARROW_STANDALONE:
@@ -496,10 +607,19 @@ def check_workflow() -> None:
         if "needs: [pregate" in body or "needs: pregate" in body:
             fail(f"{job} gained a pregate dependency")
     for job in ALWAYS_CI_JOBS:
-        if job == "proof-route":
+        if job in {"proof-route", "package-smoke"}:
             continue
         if "proof-route" in jobs[job] or "outputs.narrow" in jobs[job]:
             fail(f"{job} reads the narrow plan; required and release lanes must not")
+    smoke = jobs["package-smoke"]
+    if "needs: [pregate, proof-route]" not in smoke or PACKAGE_SMOKE_IF not in smoke:
+        fail("package-smoke is not conditional on docs_only and test_only")
+    if "outputs.narrow" in smoke:
+        fail("package-smoke must key off class, not the full narrow flag")
+    if TEST_IF not in jobs["test"]:
+        fail("test still skips when package-smoke is skipped")
+    if "needs.package-smoke.result == 'success'" not in jobs["test"]:
+        fail("test restores cutover receipts when package-smoke did not run")
     route = jobs["proof-route"]
     test_at = route.find("run: python3 scripts/test-ci-proof-route.py")
     plan_at = route.find("run: python3 scripts/ci-proof-route.py")

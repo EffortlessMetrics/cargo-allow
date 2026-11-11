@@ -597,7 +597,11 @@ jobs:
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
   package-smoke:
-    needs: pregate
+    needs: [pregate, proof-route]
+    # docs_only and test_only do not build package receipts (#4332). Any other
+    # class, and a failed proof-route, still run this lane. test does not
+    # treat that skip as a missing cutover receipt.
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && needs.proof-route.outputs.class != 'test_only')) }}
     # The linked candidate must not inherit ubuntu-latest's libc upgrades.
     # This image retires 2027-04-17; #3151 owns its successor.
     runs-on: ubuntu-22.04
@@ -758,7 +762,7 @@ jobs:
   # installed cargo-allow binary. Posture: experimental-informational.
   product-candidates-interop:
     needs: [pregate, proof-route]
-    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -860,7 +864,7 @@ jobs:
   # not a universal latency target or hardware claim.
   operator-latency:
     needs: [pregate, proof-route]
-    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -1046,7 +1050,10 @@ jobs:
     needs: [pregate, package-smoke]
     # The cutover status lane restores the build receipts produced by the
     # package-smoke job; artifacts are only downloadable once that job
-    # completes (#3469/#3552).
+    # completes (#3469/#3552). A skipped package-smoke on docs_only or
+    # test_only must not skip this ruleset context. The restore and the
+    # status step run only when that job produced the receipts.
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1107,12 +1114,14 @@ jobs:
       - name: Characterize extraction parity cutover status (#3469)
         run: bash scripts/test-extraction-cutover-status.sh
       - name: Restore cutover build receipts (#3469/#3552)
+        if: needs.package-smoke.result == 'success'
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: extraction-cutover-build-receipts
           path: target
         continue-on-error: true
       - name: Extraction parity cutover status (#3469)
+        if: needs.package-smoke.result == 'success'
         run: bash scripts/extraction-cutover-status.sh
         env:
           # #3469 slice B: parity execution, ownership derivation, receipt
@@ -1246,7 +1255,7 @@ jobs:
   # cargo-allow-required test lane. Posture: integrated-informational.
   integrated-dogfood:
     needs: [pregate, proof-route]
-    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1338,7 +1347,7 @@ jobs:
   # Windows.
   compat-delegation:
     needs: [pregate, proof-route]
-    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -1539,7 +1548,8 @@ jobs:
     # wide. Unknown, malformed, shared impact, missing proof, and every
     # non-pull_request event stay wide, including push, workflow_dispatch,
     # and merge_group. Heavy lanes skip only when this job succeeds with
-    # narrow=true; a failure still runs them. pregate, test, package-smoke,
+    # narrow=true; a failure still runs them. package-smoke also skips when
+    # this job succeeds with class docs_only or test_only. pregate, test,
     # cargo-deny, and the release graph do not read this output.
     # review-readiness and frozen-subject-lock are separate workflows and
     # are not filtered. Feature-configuration row selection stays inside
