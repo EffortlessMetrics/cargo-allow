@@ -399,6 +399,46 @@ def check_classifications() -> None:
             False,
         ),
         (
+            "hawk boundary fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "ripr boundary fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/proof-adapter-ripr/parity-boundary-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "cargo-proof plan fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/cargo-proof/proof-plan-smoke-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "cargo-proof obligation fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "dogfood stage fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/three-product-dogfood/pipeline-stages-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
             "package byte authority stays source",
             "pull_request",
             None,
@@ -1473,6 +1513,53 @@ def check_machine_docs_git() -> None:
         assert_plan(f"git {relative} stays wide", plan, "source_bearing", False)
 
 
+REQUIRED_SKIPPED_FIXTURES = (
+    "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json",
+    "tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml",
+    "tests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml",
+    "tests/fixtures/proof-adapter-ripr/parity-boundary-v1.toml",
+    "tests/fixtures/three-product-dogfood/pipeline-stages-v1.toml",
+)
+
+
+def check_skipped_lane_fixtures() -> None:
+    module = load_router()
+    module._SURFACE_CACHE.pop("fixtures", None)
+    status, derived = module.derive_skipped_lane_fixtures()
+    if status != "ok":
+        fail(f"ci.yml fixture map: {status}")
+    missing = sorted(set(REQUIRED_SKIPPED_FIXTURES) - derived)
+    if missing:
+        fail(f"skipped-lane fixtures missing from the job map: {missing}")
+    for path in sorted(derived):
+        if module.is_test_surface(path) or module.path_kind(path) == "test":
+            fail(f"{path} is consumed by a skipped lane and still test_only")
+    ordinary = (
+        "tests/fixtures/repo-edit/sample.toml",
+        "fixtures/unsafe/src/lib.rs",
+        "tests/fixtures/proof-adapter-hawk/parity-analysis-receipt-v1.toml",
+        "tests/fixtures/proof-adapter-hawk/parity-finding-mapping-v1.toml",
+        "tests/fixtures/proof-adapter-ripr/parity-grip-receipt-v1.toml",
+    )
+    for path in ordinary:
+        if not module.is_test_surface(path):
+            fail(f"{path} is not a skipped-lane fixture and no longer classifies test_only")
+    module._SURFACE_CACHE.clear()
+    original = module.CI_WORKFLOW
+    module.CI_WORKFLOW = "ci-proof-route-missing.yml"
+    try:
+        broken, _found = module.derive_skipped_lane_fixtures()
+        if broken == "ok":
+            fail("a missing ci.yml still produced a fixture map")
+        if module.is_test_surface("tests/fixtures/repo-edit/sample.toml"):
+            fail("an unreadable job map still classified a fixture test_only")
+        if module.path_kind("fixtures/unsafe/src/lib.rs") == "test":
+            fail("an unreadable job map still classified a fixture as test")
+    finally:
+        module.CI_WORKFLOW = original
+        module._SURFACE_CACHE.clear()
+
+
 def check_script_decisions() -> None:
     module = load_router()
     status, derived = module.derive_live_scripts()
@@ -1527,6 +1614,7 @@ def check_script_decisions() -> None:
 def main() -> None:
     check_classifications()
     check_script_decisions()
+    check_skipped_lane_fixtures()
     check_machine_docs()
     check_contract()
     check_workflow()

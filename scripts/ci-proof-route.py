@@ -39,7 +39,9 @@ integrated-dogfood, and compat-delegation NotApplicable, and it still
 executes msrv, test-core-platforms, and coverage. Scripts those skipped
 lanes run, including one callee hop, stay source, as do
 ``crates/cargo-allow/tests/intent_staged_precommit_delegate.rs`` and
-``tests/compat/fixtures/``. Every ``scripts/test-exact-candidate-*`` file
+``tests/compat/fixtures/``. Fixture paths those lanes read, again including
+one callee hop, also stay source. An unreadable or unparsed job map keeps
+every such fixture source. Every ``scripts/test-exact-candidate-*`` file
 stays source. A ``scripts/test-*`` file with no job-map hit and no
 explicit decision stays source, and the routing control fails until a
 decision is recorded. There is no bare ``scripts/test-*`` prefix. A test
@@ -177,6 +179,12 @@ TEST_ONLY_SCRIPT_DECISIONS = frozenset(
     }
 )
 SCRIPT_FILE = re.compile(r"scripts/([A-Za-z0-9_.-]+\.(?:py|sh))")
+_FIXTURE_TOKEN = re.compile(
+    r"(?:tests/fixtures|fixtures)/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*"
+)
+_PATH_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_./-"
+)
 _SURFACE_CACHE: dict[str, tuple[str, frozenset[str]]] = {}
 
 # Jobs in ci.yml that execute on a narrow plan. review-readiness and
@@ -370,15 +378,102 @@ def _is_compat_fixture(path: str) -> bool:
     return path == COMPAT_FIXTURE_PREFIX.rstrip("/") or path.startswith(COMPAT_FIXTURE_PREFIX)
 
 
+def _fixture_tokens(text: str) -> set[str]:
+    """Return fixture paths named on non-comment lines.
+
+    A ``docs/.../fixtures/`` path is left out. ``path_kind`` already treats
+    that tree as docs or source before the test-surface check.
+    """
+    found: set[str] = set()
+    for line in text.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        for match in _FIXTURE_TOKEN.finditer(line):
+            start = match.start()
+            while start > 0 and line[start - 1] in _PATH_CHARS:
+                start -= 1
+            full = line[start : match.end()].lstrip("./").rstrip(".")
+            if full.startswith("docs/"):
+                continue
+            if full.startswith("tests/fixtures/") or full.startswith("fixtures/"):
+                found.add(full)
+    return found
+
+
+def derive_skipped_lane_fixtures() -> tuple[str, frozenset[str]]:
+    """Return fixture paths that a test_only-skipped lane reads.
+
+    The set is path tokens in those ci.yml jobs, plus one callee hop into
+    the scripts those jobs name. ``status`` is ``ok`` or a failure reason.
+    An unreadable map fails closed in :func:`is_test_surface`.
+    """
+    cached = _SURFACE_CACHE.get("fixtures")
+    if cached is not None:
+        return cached
+    workflow = repo_root() / CI_WORKFLOW
+    try:
+        text = workflow.read_text(encoding="utf-8")
+    except OSError:
+        result = ("unreadable-workflow", frozenset())
+        _SURFACE_CACHE["fixtures"] = result
+        return result
+    jobs = workflow_job_bodies(text)
+    if jobs is None:
+        result = ("unparsed-workflow", frozenset())
+        _SURFACE_CACHE["fixtures"] = result
+        return result
+    missing = sorted(SKIPPED_TEST_ONLY_JOBS - set(jobs))
+    if missing:
+        result = (f"missing-jobs:{','.join(missing)}", frozenset())
+        _SURFACE_CACHE["fixtures"] = result
+        return result
+    texts: list[str] = []
+    named: set[str] = set()
+    root = repo_root()
+    for job in SKIPPED_TEST_ONLY_JOBS:
+        texts.append(jobs[job])
+        named.update(_script_tokens(jobs[job]))
+    hop: set[str] = set()
+    for path in sorted(named):
+        try:
+            callee_text = (root / path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        texts.append(callee_text)
+        hop.update(_script_tokens(callee_text))
+    for path in sorted(hop - named):
+        try:
+            texts.append((root / path).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    result = ("ok", frozenset(token for blob in texts for token in _fixture_tokens(blob)))
+    _SURFACE_CACHE["fixtures"] = result
+    return result
+
+
+def _consumed_by_skipped_lane(path: str) -> bool:
+    """Return whether ``path`` must stay source because a skipped lane reads it.
+
+    A map that is not ``ok`` treats every fixture path as consumed, so the
+    plan stays source-bearing instead of test_only.
+    """
+    status, found = derive_skipped_lane_fixtures()
+    if status != "ok":
+        return True
+    if path in found:
+        return True
+    return any(path.startswith(f"{token}/") for token in found)
+
+
 def is_test_surface(path: str) -> bool:
     """Return whether ``path`` is a test-only surface (#4332 item 5).
 
     Crate tests live under ``crates/<crate>/tests/``, except the compat
     delegation test. A ``scripts/test-*`` file is test-only only when
     :func:`script_surface_decision` says so. A path segment named
-    ``fixtures`` is a fixture tree, except ``tests/compat/fixtures/``.
-    Docs paths are classified before this helper, so a fixture under
-    ``docs/`` stays docs or source.
+    ``fixtures`` is a fixture tree, except ``tests/compat/fixtures/`` and
+    fixtures a skipped lane reads. Docs paths are classified before this
+    helper, so a fixture under ``docs/`` stays docs or source.
     """
     if path == DELEGATION_TEST or _is_compat_fixture(path):
         return False
@@ -387,7 +482,9 @@ def is_test_surface(path: str) -> bool:
         return True
     if len(parts) == 2 and parts[0] == "scripts" and parts[1].startswith("test-"):
         return script_surface_decision(path) == "test_only"
-    return "fixtures" in parts
+    if "fixtures" not in parts:
+        return False
+    return not _consumed_by_skipped_lane(path)
 
 
 def normalize(path: str) -> str:

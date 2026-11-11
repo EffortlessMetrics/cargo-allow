@@ -83,7 +83,12 @@ test path mixed with any other kind stays wide. Ordinary crate tests under
 `crates/cargo-allow/tests/intent_staged_precommit_delegate.rs` stays source,
 because only `compat-delegation` runs that test with a candidate.
 A `fixtures` path segment outside `docs/` is test-only except
-`tests/compat/fixtures/`, which stays source for the same lane.
+`tests/compat/fixtures/`, which stays source for the same lane, and except
+fixture paths that a test_only-skipped lane reads. `package-smoke` and the
+four test_only product lanes contribute those paths from their steps, plus
+one callee hop. `docs/dogfood/fixtures/` is already source or docs and is
+not part of that set. An unreadable or unparsed job map keeps every fixture
+path source.
 A `scripts/test-*` file is test-only only when the ci.yml job map shows
 that no test_only-skipped lane runs it, or an explicit decision records
 that fact. `package-smoke` and the four test_only product lanes contribute
