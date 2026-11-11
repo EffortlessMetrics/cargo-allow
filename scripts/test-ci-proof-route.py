@@ -1711,12 +1711,29 @@ def guarded_step_markdown() -> set[str]:
     return found
 
 
-def _scan_indirect_readers() -> tuple[set[str], set[str], set[str]]:
-    """Return generalized readers, the assigned-join subset, and the old special case.
+def _config_doc_literals(text: str) -> set[str]:
+    """Quoted ``docs/*.md`` paths in one policy file."""
+    return set(re.findall(r'"(docs/[^"]+\.md)"', text))
+
+
+def _projection_docs(text: str) -> set[str]:
+    """``projection = "docs/*.md"`` values in one policy file."""
+    return set(re.findall(r'(?m)^\s*projection\s*=\s*"(docs/[^"]+\.md)"', text))
+
+
+def _scan_indirect_readers() -> tuple[set[str], set[str], set[str], set[str], frozenset[str]]:
+    """Return readers, assigned-join subset, old special case, config docs, scanned policy.
 
     The assigned-join subset omits a projection-field read. The special case
     is repository-root ``include_str!`` markdown plus extraction-shims.md only.
+    Config docs are ``docs/*.md`` paths named by a ``policy/*.toml`` file a
+    guarded test loads, when a guarded test also reads that path. The
+    product-move ledger projection is one of those paths.
+    ``policy/extraction-parity.toml`` is scanned when a guarded test loads it.
     """
+    cached = getattr(_scan_indirect_readers, "cached", None)
+    if cached is not None:
+        return cached
     include_str_re = re.compile(r'include_str!\s*\(\s*"([^"]+)"', re.S)
     assigned_join_re = re.compile(
         r'(?:let|let mut)\s+(\w+)\s*=\s*[\w.:]+\.join\(\s*"(docs/[^"]+\.md)"\s*\)\s*;',
@@ -1731,16 +1748,19 @@ def _scan_indirect_readers() -> tuple[set[str], set[str], set[str]]:
         re.S,
     )
     projection_literal_re = re.compile(r'projection\s*(?:!=|=)\s*"(docs/[^"]+\.md)"')
-    ledger_projection_re = re.compile(r'(?m)^\s*projection\s*=\s*"(docs/[^"]+\.md)"')
+    policy_re = re.compile(r'"(policy/[^"]+\.toml)"')
     read_binding_re = r"(?:read_to_string|fs::read)\s*\(\s*&?{name}\b"
     shim = "docs/architecture/extraction-shims.md"
     roots: set[str] = set()
     assigned: set[str] = set()
     projection: set[str] = set()
+    mentioned_policy: set[str] = set()
+    reads_projection = False
     legacy_shim = False
     for directory in _package_dirs(_guarded_step_blob()):
         for src in directory.rglob("*.rs"):
             text = _strip_rust_comments(src.read_text(encoding="utf-8", errors="replace"))
+            mentioned_policy.update(policy_re.findall(text))
             for literal in include_str_re.findall(text):
                 resolved = (src.parent / literal).resolve()
                 try:
@@ -1754,24 +1774,51 @@ def _scan_indirect_readers() -> tuple[set[str], set[str], set[str]]:
                     assigned.add(path)
             if f'.join("{shim}")' in text and "read_to_string" in text:
                 legacy_shim = True
-            reads_projection = bool(inline_projection_re.search(text))
+            file_reads_projection = bool(inline_projection_re.search(text))
             for name in assigned_projection_re.findall(text):
                 if re.search(read_binding_re.format(name=re.escape(name)), text):
-                    reads_projection = True
-            if not reads_projection:
+                    file_reads_projection = True
+            if not file_reads_projection:
                 continue
+            reads_projection = True
             named = set(projection_literal_re.findall(text))
-            named.update(ledger_projection_re.findall(text))
             if not named and "policy/product-move-ledger.toml" in text:
                 ledger = (ROOT / "policy/product-move-ledger.toml").read_text(encoding="utf-8")
-                named.update(ledger_projection_re.findall(ledger))
+                named.update(_projection_docs(ledger))
             for path in named:
                 if (ROOT / path).is_file():
                     projection.add(path)
+    config: set[str] = set()
+    scanned: set[str] = set()
+    read_docs = assigned | projection
+    for rel in sorted(mentioned_policy):
+        if not rel.startswith("policy/") or rel.count("/") != 1:
+            continue
+        file = ROOT / rel
+        if not file.is_file():
+            continue
+        scanned.add(rel)
+        toml_text = file.read_text(encoding="utf-8")
+        if reads_projection:
+            for path in _projection_docs(toml_text):
+                if (ROOT / path).is_file():
+                    config.add(path)
+                    projection.add(path)
+        for path in _config_doc_literals(toml_text):
+            if path in read_docs and (ROOT / path).is_file():
+                config.add(path)
     legacy = set(roots)
     if legacy_shim:
         legacy.add(shim)
-    return roots | assigned | projection, roots | assigned, legacy
+    result = (
+        roots | assigned | projection,
+        roots | assigned,
+        legacy,
+        config,
+        frozenset(scanned),
+    )
+    _scan_indirect_readers.cached = result
+    return result
 
 
 def derive_indirect_readers() -> set[str]:
@@ -1779,8 +1826,9 @@ def derive_indirect_readers() -> set[str]:
 
     Repository-root markdown embedded with include_str!, an assigned
     ``join("docs/...md")`` later passed to ``read_to_string`` or ``fs::read``,
-    and a projection field read whose docs path is named in that file or in
-    the product-move ledger.
+    and a ``docs/*.md`` path named by a ``policy/*.toml`` file a guarded
+    test loads, including the product-move ledger projection and
+    ``policy/extraction-parity.toml``.
     """
     return _scan_indirect_readers()[0]
 
@@ -1801,7 +1849,7 @@ def check_indirect_readers() -> None:
     """Indirect readers stay wide. Drift and a missing path fail the check."""
     route = load_router()
     pinned = set(route.INDIRECT_CONSUMED_PATHS)
-    generalized, assigned_only, legacy = _scan_indirect_readers()
+    generalized, assigned_only, legacy, config, scanned = _scan_indirect_readers()
     derived = derive_indirect_readers()
     if derived != generalized:
         fail("derive_indirect_readers diverged from the indirect scan")
@@ -1874,6 +1922,33 @@ def check_indirect_readers() -> None:
     drifted = indirect_reader_problems(pinned - {"README.md"}, derived)
     if not any(item.startswith("drift ") for item in drifted):
         fail("indirect reader drift did not fail the check")
+    for required_policy in (
+        "policy/product-move-ledger.toml",
+        "policy/extraction-parity.toml",
+    ):
+        if required_policy not in scanned:
+            fail(f"{required_policy} was not scanned for config-named docs")
+    if move_map not in config or not config <= pinned:
+        fail(f"config-named docs drifted: {sorted(config)}")
+    parity_text = (ROOT / "policy/extraction-parity.toml").read_text(encoding="utf-8")
+    config_extra = "docs/architecture/config-named-extra.md"
+    injected = _config_doc_literals(
+        parity_text + f'\nnote = "{config_extra}"\n'
+    )
+    if injected != {config_extra}:
+        fail("a new extraction-parity docs path was not parsed")
+    config_drift = indirect_reader_problems(pinned, derived | injected)
+    if not any(item.startswith("drift ") for item in config_drift):
+        fail("config-named docs path did not fail the drift check")
+    config_missing = indirect_reader_problems(
+        config | {"docs/architecture/missing-config.md"},
+        config,
+    )
+    if not any(item.startswith("missing:") for item in config_missing):
+        fail("missing config path did not fail the check")
+    config_removed = indirect_reader_problems(config - {move_map}, config)
+    if not any(item.startswith("drift ") for item in config_removed):
+        fail("removed config-named docs path did not fail the drift check")
 
 
 def check_consumed_markdown() -> None:

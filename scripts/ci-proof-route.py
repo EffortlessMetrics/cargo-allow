@@ -27,9 +27,11 @@ prose under ``docs/`` that may narrow. Markdown a guarded ``test`` step
 reads is pinned in ``MACHINE_CONSUMED_MARKDOWN`` and stays source, so
 that step still runs. Root markdown embedded by ``include_str!``, a
 ``docs/*.md`` path assigned from ``join`` and later passed to
-``read_to_string`` or ``fs::read``, and the product-move projection
-read of ``docs/architecture/product-move-map.md`` are
-``INDIRECT_CONSUMED_PATHS``. ``path_kind`` checks that companion set
+``read_to_string`` or ``fs::read``, and a ``docs/*.md`` path named by
+``policy/product-move-ledger.toml`` or another ``policy/*.toml`` a
+guarded test loads (including ``policy/extraction-parity.toml``) are
+``INDIRECT_CONSUMED_PATHS``. The ledger projection is
+``docs/architecture/product-move-map.md``. ``path_kind`` checks that companion set
 before the docs prose rule and before ``ROOT_DOCS``. The markdown pin
 scan does not see those reads. ``.changes/`` stays source because
 ``.changie.yaml`` sets ``changesDir``
@@ -337,8 +339,10 @@ MACHINE_CONSUMED_MARKDOWN = frozenset({
 # Readers the 73-path pin does not see. scripts/test-ci-proof-route.py
 # recomputes this set from every guarded package: repository-root
 # include_str! markdown, an assigned join("docs/...md") later passed to
-# read_to_string or fs::read, and a projection field read whose path is
-# docs markdown. path_kind checks this set before the docs prose rule
+# read_to_string or fs::read, and a docs path named by a policy/*.toml
+# file a guarded test loads. That includes the product-move ledger
+# projection and policy/extraction-parity.toml. path_kind checks this
+# set before the docs prose rule
 # and before ROOT_DOCS. A new or removed reader fails that recompute.
 INDIRECT_CONSUMED_PATHS = frozenset({
     "README.md",

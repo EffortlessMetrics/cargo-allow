@@ -75,8 +75,10 @@ markdown pin. A companion set, checked in `path_kind` before the docs
 rule and before `ROOT_DOCS`, holds readers that pin does not see:
 repository-root markdown embedded with `include_str!`, a `docs/*.md`
 path assigned from `join` and later passed to `read_to_string` or
-`fs::read`, and the projection read of
-`docs/architecture/product-move-map.md`. That covers root `README.md`,
+`fs::read`, and a `docs/*.md` path named by a `policy/*.toml` file a
+guarded test loads. That config scan reads `policy/product-move-ledger.toml`
+(`projection = "docs/architecture/product-move-map.md"`) and
+`policy/extraction-parity.toml`. That covers root `README.md`,
 `SUPPORT.md`, `docs/architecture/extraction-shims.md`,
 `docs/architecture/repo-snapshot.md`, and the other architecture docs
 those tests read. `.changes/` stays source: `.changie.yaml` sets
