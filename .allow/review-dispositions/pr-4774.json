@@ -6,12 +6,12 @@
   "base_ref": "main",
   "base_sha": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
   "head_ref": "docs/4332-docs-only-demonstration",
-  "head_sha": "aa1db3ea67a5a8bebcc6da9f8c68cdbf93575726",
+  "head_sha": "2d35afb0913898df6a511deb08f73ac2146d6ee6",
   "merge_base": "d15fed212473e6917cb08bbeeeba7e9b81c3bc08",
-  "reviewed_diff_digest": "sha256:v2:c7fcb2fe4492114a88f849634eb0fe16ef973c3928c543d7a08138130f92ad30",
+  "reviewed_diff_digest": "sha256:v2:5e78ec850253d9effa4c5f88d4815989f18e1839d716db7deff1bb42df41c30a",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "same_maintainer",
-  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7) only; the bootstrap commit that adds this disposition, its exact-path allow, and the revision note is mechanical review-ledger machinery authored by the same reviewer and is not separately reviewed.",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of review 5861945981 on aa1db3ea. Same account and model context as the author. No independent-human approval is claimed. Review 5861945981 covers aa1db3ea (docs/design.md +7) only. The bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note; those are mechanical review-ledger machinery authored by the same reviewer and are not separately reviewed. This disposition binds the bootstrap head so the final disposition-only commit is admitted by the ancestor fallback.",
   "independent_review": "not_retained",
   "claimed_verdict": "review_clean",
   "findings": [
@@ -32,10 +32,11 @@
     "Five review threads, all resolved and outdated on the removed docs/ci/receipts/docs-only-lane-demonstration-v1.md path; zero unresolved and none on docs/design.md.",
     "ci.yml run 43057078322 on aa1db3ea completed success: plan docs_only, narrow=true, effective path docs/design.md, 9 execute / 18 not-applicable; pregate 2m5s, test 2m6s with 18 heavy steps skipped; executed-job elapsed sum 9m19s, over the 5-minute target; wall clock 4m42s.",
     "review-readiness run 43057078318 success; frozen-subject-lock run 43057078344 success.",
-    "Required contexts on aa1db3ea: pregate success, test success, frozen-subject-lock success, review-readiness neutral, workflow-syntax skipped (not required)."
+    "Required contexts on aa1db3ea: pregate success, test success, frozen-subject-lock success, review-readiness neutral, workflow-syntax skipped (not required).",
+    "Bootstrap commit 2d35afb0 adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The final commit changes only this disposition file and is admitted by the ancestor fallback."
   ],
   "required_ci": {
-    "owner": "Review-readiness projector: bind reviewed head aa1db3ea. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "owner": "Review-readiness projector: bind bootstrap head 2d35afb0. The bootstrap commit adds this disposition, its exact-path allow, and the revision note (source-bearing, wide CI). The final commit is disposition-only and is admitted by the ancestor fallback. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
     "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43057078322"
   },
   "evidence_class": "current_observation",
