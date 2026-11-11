@@ -1054,7 +1054,9 @@ jobs:
     # test_only must not skip this ruleset context. The restore and the
     # status step run only when that job produced the receipts.
     # Heavy steps run unless proof-route succeeds with narrow=true and
-    # class docs_only. Any other result keeps them. This job is not skipped.
+    # class docs_only. Their if keeps success(), so an earlier failure in
+    # this job stops the later heavy steps. Any other proof-route result
+    # keeps them. This job is not skipped.
     # Inventory, fmt, audit, no-new, the change-note gate, and if: always()
     # uploads stay unconditional.
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}
@@ -1077,45 +1079,45 @@ jobs:
       # Formatting step for the merged-ancestor-discovery rationale.
       - run: cargo fmt --all --check -- --config-path rustfmt.toml
       - name: cargo-allow release-set clippy (#3358)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo clippy --locked --all-targets \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
       - name: Changie sensor projections and falsifiers (#3623)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo test -p cargo-allow --locked changie_source_view -- --nocapture
           cargo test -p cargo-allow --locked changie_command -- --nocapture
       - name: Changie fragment schema independent-validation smoke (#3613)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/test-changie-fragment-schema-smoke.sh
       - name: Changie sensor self-dogfood (#3623)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # cargo-allow analyzes its own .changie.yaml and complete
         # fragment population with the Rust-native sensor: no Go,
         # Aqua, or Changie on the runner, no ledger mutation.
         run: cargo run -p cargo-allow --locked -- changie lint --format json
       - name: Changie sensor packaged external-consumer proof (#3621)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # Packages the workspace candidate set, extracts the exact
         # packaged allow-files bytes, patches crates-io to the packaged
         # siblings, and runs an isolated offline fixture crate against
         # the facade with the source checkout unneeded.
         run: bash scripts/test-changie-sensor-external-consumer.sh
       - name: Changie sensor feature proof (#3588)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # The allow-files changie module is feature-gated; without this
         # step nothing in CI compiles or tests it.
         run: cargo test -p allow-files --locked --features changie
       - name: Candidate harness lifecycle characterization (#3509)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
 
 
         run: python scripts/test-candidate-harness-lifecycle.py
       - name: Extraction readiness receipt (#2559)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/extraction-readiness-receipt.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -1124,17 +1126,17 @@ jobs:
           path: target/extraction-readiness/extraction-readiness.receipt.json
           if-no-files-found: warn
       - name: Characterize extraction parity cutover status (#3469)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/test-extraction-cutover-status.sh
       - name: Restore cutover build receipts (#3469/#3552)
-        if: ${{ needs.package-smoke.result == 'success' && !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ needs.package-smoke.result == 'success' && success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: extraction-cutover-build-receipts
           path: target
         continue-on-error: true
       - name: Extraction parity cutover status (#3469)
-        if: ${{ needs.package-smoke.result == 'success' && !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ needs.package-smoke.result == 'success' && success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/extraction-cutover-status.sh
         env:
           # #3469 slice B: parity execution, ownership derivation, receipt
@@ -1148,7 +1150,7 @@ jobs:
           path: target/extraction-cutover/
           if-no-files-found: warn
       - name: Verify cargo-allow proof classes are non-empty
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1168,25 +1170,25 @@ jobs:
             echo "contract_seconds=$((contract_end-contract_start))"
           } | tee target/cargo-allow/test-proof-classes.txt
       - name: Fast cargo-allow package proof
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: cargo test -p cargo-allow --bins --locked
       - name: Contract cargo-allow package proof
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: cargo test -p cargo-allow --tests --locked
       - name: Cargo-allow release-set proof union (#3358)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo test --locked \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
 
       - name: Cargo-allow release-set doc tests (#3358)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo test --doc --locked \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
 
       - name: Cargo-allow release-set docs (#3358)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo doc --no-deps --locked \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
@@ -1198,7 +1200,7 @@ jobs:
       - name: Verify PR template diff evidence
         run: cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note
       - name: Spec-system cutover receipt (#2568)
-        if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/spec-system-cutover-receipt.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()

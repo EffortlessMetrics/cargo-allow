@@ -49,7 +49,7 @@ TEST_IF = (
     "(needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}"
 )
 DOCS_ONLY_HEAVY_GUARD = (
-    "!cancelled() && (needs.proof-route.result != 'success' || "
+    "success() && (needs.proof-route.result != 'success' || "
     "needs.proof-route.outputs.narrow != 'true' || "
     "needs.proof-route.outputs.class != 'docs_only')"
 )
@@ -241,7 +241,7 @@ def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
 def check_classifications() -> None:
     ledger = "M\t.allow/review-dispositions/pr-4332-narrow-route.json\n"
     source = "M\tcrates/cargo-allow/src/lib.rs\n"
-    docs = "M\tdocs/ci.md\n"
+    docs = "M\tdocs/architecture/repo-snapshot.md\n"
     cases = [
         (
             "ledger successor on a source pull request",
@@ -790,6 +790,47 @@ def job_bodies(text: str) -> dict[str, str]:
     return found
 
 
+def step_if_expression(part: str) -> str:
+    """Return the step's if expression. Comments are not conditions."""
+    for line in part.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        match = re.match(r"if:\s*(.*)$", stripped)
+        if match:
+            return match.group(1)
+    return ""
+
+
+def step_is_docs_guarded(part: str) -> bool:
+    return DOCS_ONLY_HEAVY_GUARD in step_if_expression(part)
+
+
+def check_comment_guard_fixture() -> None:
+    """The old whole-body search accepts a comment-only guard. The if parser does not."""
+    comment_only = "\n".join(
+        (
+            "name: Comment guard",
+            "        # if: ${{ " + DOCS_ONLY_HEAVY_GUARD + " }}",
+            "        run: 'true'",
+        )
+    )
+    if DOCS_ONLY_HEAVY_GUARD not in comment_only:
+        fail("comment-guard fixture lost the guard text the old whole-body search matched")
+    if step_is_docs_guarded(comment_only):
+        fail("a guard that appears only in a comment counted as the step if")
+    real = "\n".join(
+        (
+            "name: Real guard",
+            "        if: ${{ " + DOCS_ONLY_HEAVY_GUARD + " }}",
+            "        # " + DOCS_ONLY_HEAVY_GUARD,
+            "        run: 'true'",
+        )
+    )
+    if not step_is_docs_guarded(real):
+        fail("the if expression lost the docs_only guard")
+
+
 def check_test_docs_only_steps(body: str) -> None:
     """Heavy test steps carry the docs_only guard. Gate steps do not."""
     steps_at = body.find("\n    steps:\n")
@@ -811,7 +852,7 @@ def check_test_docs_only_steps(body: str) -> None:
     setups = 0
     for part in parts:
         first = part.splitlines()[0]
-        guarded = DOCS_ONLY_HEAVY_GUARD in part
+        guarded = step_is_docs_guarded(part)
         gate_hits = [marker for marker in TEST_GATE_MARKERS if marker in part]
         if "upload-artifact@" in part:
             uploads += 1
@@ -990,8 +1031,8 @@ def check_git_history() -> None:
     git(docs_repo, "add", "README.md")
     git(docs_repo, "commit", "-m", "base")
     docs_base = git(docs_repo, "rev-parse", "HEAD")
-    write_repo(docs_repo, "docs/ci.md", "docs\n")
-    git(docs_repo, "add", "docs/ci.md")
+    write_repo(docs_repo, "docs/architecture/repo-snapshot.md", "docs\n")
+    git(docs_repo, "add", "docs/architecture/repo-snapshot.md")
     git(docs_repo, "commit", "-m", "docs")
     docs_plan = run_router(
         [],
@@ -1489,12 +1530,204 @@ def check_matrix_job_names() -> None:
         fail("non-object job row was accepted")
 
 
+def _strip_rust_comments(text: str) -> str:
+    out: list[str] = []
+    index = 0
+    length = len(text)
+    while index < length:
+        if text.startswith("//", index):
+            newline = text.find("\n", index)
+            if newline < 0:
+                break
+            out.append("\n")
+            index = newline + 1
+            continue
+        if text.startswith("/*", index):
+            end = text.find("*/", index + 2)
+            if end < 0:
+                break
+            out.append("\n" * text.count("\n", index, end))
+            index = end + 2
+            continue
+        if text[index] == '"':
+            out.append(text[index])
+            index += 1
+            while index < length:
+                out.append(text[index])
+                if text[index] == "\\" and index + 1 < length:
+                    out.append(text[index + 1])
+                    index += 2
+                    continue
+                if text[index] == '"':
+                    index += 1
+                    break
+                index += 1
+            continue
+        out.append(text[index])
+        index += 1
+    return "".join(out)
+
+
+def guarded_step_markdown() -> set[str]:
+    """docs/*.md that a guarded test step reads.
+
+    include_str!, read/read_to_string of a literal docs path, product-doc
+    kinds walked by the support-matrix test, repo files copied into a
+    rehearsal fixture, the doc-artifact ledger when a guarded test validates
+    it, and read_text or shell reads in a guarded step's script.
+    """
+    include_str_re = re.compile(r'include_str!\s*\(\s*"([^"]+)"', re.S)
+    read_re = re.compile(
+        r'\bread\s*\(\s*&?[A-Za-z_][\w.]*\s*,\s*"(docs/[^"]+\.md)"\s*,?\s*\)',
+        re.S,
+    )
+    join_re = re.compile(
+        r'(?:read_to_string|fs::read|std::fs::read)\s*\(\s*[\w.:]+\.join\(\s*"(docs/[^"]+\.md)"\s*\)',
+        re.S,
+    )
+    read_text_re = re.compile(
+        r"""\(\s*(?:root|ROOT)\s*/\s*["'](docs/[^"']+\.md)["']\s*\)\s*\.read_text""",
+        re.S,
+    )
+    shell_re = re.compile(r"(?:^|\n)\s*(?:cat|head|tail)\s+(docs/\S+\.md)|<\s*(docs/\S+\.md)")
+    ledger_re = re.compile(r'(?m)^path\s*=\s*"(docs/[^"]+\.md)"')
+    test = job_bodies(CI.read_text(encoding="utf-8"))["test"]
+    steps_at = test.find("\n    steps:\n")
+    parts = re.split(r"(?m)^      - ", test[steps_at:])[1:]
+    guarded_lines: list[str] = []
+    for part in parts:
+        kept: list[str] = []
+        expr = ""
+        for line in part.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            kept.append(line)
+            match = re.match(r"if:\s*(.*)$", stripped)
+            if match and not expr:
+                expr = match.group(1)
+        if "outputs.class != 'docs_only'" in expr and "outputs.narrow" in expr:
+            guarded_lines.append("\n".join(kept))
+    blob = "\n".join(guarded_lines)
+    scripts = sorted(set(re.findall(r"scripts/[\w./-]+\.(?:sh|py)", blob)))
+    packages = sorted(set(re.findall(r"(?:^|\s)-p ([A-Za-z0-9_-]+)", blob)))
+    name_to_dir: dict[str, Path] = {}
+    for cargo in (ROOT / "crates").glob("*/Cargo.toml"):
+        cargo_text = cargo.read_text(encoding="utf-8")
+        name = re.search(r'(?m)^name\s*=\s*"([^"]+)"', cargo_text)
+        if name:
+            name_to_dir[name.group(1)] = cargo.parent
+    found: set[str] = set()
+
+    def add(path: str) -> None:
+        norm = path.replace("\\", "/")
+        if norm.startswith("docs/") and norm.endswith(".md") and ".." not in norm.split("/"):
+            found.add(norm)
+
+    ledger = False
+    for package in packages:
+        directory = name_to_dir.get(package)
+        if directory is None:
+            continue
+        for src in directory.rglob("*.rs"):
+            text = _strip_rust_comments(src.read_text(encoding="utf-8", errors="replace"))
+            for literal in include_str_re.findall(text):
+                resolved = (src.parent / literal).resolve()
+                try:
+                    add(resolved.relative_to(ROOT.resolve()).as_posix())
+                except ValueError:
+                    continue
+            for literal in read_re.findall(text):
+                add(literal)
+            for literal in join_re.findall(text):
+                add(literal)
+            if "docs/products/{product}/{kind}.md" in text:
+                kind_block = re.search(r"const DOC_KINDS:[^=]*=\s*&\[(.*?)\]", text, re.S)
+                kinds = re.findall(r'"([^"]+)"', kind_block.group(1)) if kind_block else []
+                named = re.findall(r'\(\s*"([a-z0-9-]+)"\s*,\s*vec!\[', text)
+                for product in named:
+                    for kind in kinds:
+                        add(f"docs/products/{product}/{kind}.md")
+            if "std::fs::copy" in text and "repo.join" in text:
+                for block in re.findall(r"\[(.*?)\]", text, re.S):
+                    if "docs/" not in block:
+                        continue
+                    for literal in re.findall(r'"(docs/[^"]+\.md)"', block):
+                        add(literal)
+            if (
+                "validate_doc_artifact_files" in text
+                and ".allow/artifacts/doc-artifacts.toml" in text
+            ):
+                ledger = True
+    if ledger:
+        ledger_text = (ROOT / ".allow/artifacts/doc-artifacts.toml").read_text(encoding="utf-8")
+        for literal in ledger_re.findall(ledger_text):
+            add(literal)
+    for script in scripts:
+        path = ROOT / script
+        if not path.is_file():
+            continue
+        body = "\n".join(
+            line
+            for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
+            if not line.lstrip().startswith("#")
+        )
+        for literal in read_text_re.findall(body):
+            add(literal)
+        for left, right in shell_re.findall(body):
+            add(left or right)
+    return found
+
+
+def check_consumed_markdown() -> None:
+    """Pinned markdown stays wide. A prose sample still narrows."""
+    route = load_router()
+    derived = guarded_step_markdown()
+    pinned = set(route.MACHINE_CONSUMED_MARKDOWN)
+    if derived != pinned:
+        missing = sorted(derived - pinned)
+        extra = sorted(pinned - derived)
+        fail(f"machine-consumed markdown pin drifted missing={missing} extra={extra}")
+    prose = "docs/architecture/repo-snapshot.md"
+    if prose in pinned or route.path_kind(prose) != "docs":
+        fail(f"{prose} no longer samples prose docs_only")
+    required = (
+        "docs/status/SUPPORT_TIERS.md",
+        "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md",
+        "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md",
+    )
+    for path in required:
+        if path not in pinned or route.path_kind(path) != "other":
+            fail(f"{path} is not pinned source")
+        assert_plan(
+            f"{path} forces a wide plan",
+            fixture("pull_request", None, f"M\t{path}\n"),
+            "source_bearing",
+            False,
+        )
+    assert_plan(
+        "unpinned markdown stays docs-only",
+        fixture("pull_request", None, f"M\t{prose}\n"),
+        "docs_only",
+        True,
+    )
+    assert_plan(
+        "pinned markdown beside prose stays wide",
+        fixture("pull_request", None, f"M\t{required[0]}\nM\t{prose}\n"),
+        "source_bearing",
+        False,
+    )
+
+
 def check_machine_docs() -> None:
     """Machine-read docs stay source. Markdown prose can still narrow."""
     route = load_router()
     expected = {
-        "docs/ci.md": "docs",
-        "docs/README.md": "docs",
+        "docs/ci.md": "other",
+        "docs/README.md": "other",
+        "docs/status/SUPPORT_TIERS.md": "other",
+        "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md": "other",
+        "docs/architecture/repo-snapshot.md": "docs",
         "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md": "docs",
         ".changes/note.yaml": "docs",
         "README.md": "docs",
@@ -1533,13 +1766,13 @@ def check_machine_docs() -> None:
     mixed = fixture(
         "pull_request",
         None,
-        "M\tdocs/assets/feature-configuration-matrix-v1.json\nM\tdocs/ci.md\n",
+        "M\tdocs/assets/feature-configuration-matrix-v1.json\nM\tdocs/architecture/repo-snapshot.md\n",
     )
     assert_plan("machine docs beside prose stays wide", mixed, "source_bearing", False)
     successor = fixture(
         "pull_request",
         "M\tdocs/ci/receipts/direct-floor-proof-cargo-allow-v1.json\n",
-        "M\tdocs/ci.md\n",
+        "M\tdocs/architecture/repo-snapshot.md\n",
     )
     assert_plan(
         "receipt successor on a docs pull request stays wide",
@@ -1685,6 +1918,8 @@ def main() -> None:
     check_script_decisions()
     check_skipped_lane_fixtures()
     check_machine_docs()
+    check_consumed_markdown()
+    check_comment_guard_fixture()
     check_contract()
     check_workflow()
     check_git_history()

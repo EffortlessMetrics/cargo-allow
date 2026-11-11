@@ -23,7 +23,9 @@ does not narrow a source-bearing effective diff unless that predecessor
 proof exists. Missing, stale, wrong-source, failed, pending, cancelled,
 ambiguous, skipped, and base-moved proof stays wide. ``docs/schemas/``
 and any ``*.schema.json`` are source, not docs. Markdown is the only
-prose under ``docs/`` that may narrow. JSON, TOML, and any other
+prose under ``docs/`` that may narrow. Markdown a guarded ``test`` step
+reads is pinned in ``MACHINE_CONSUMED_MARKDOWN`` and stays source, so
+that step still runs. JSON, TOML, and any other
 non-markdown path under ``docs/`` are source, including the
 feature-configuration matrix, the lane and support tables, and
 direct-floor receipts. An unrecognized docs payload is source, not
@@ -241,6 +243,84 @@ ROOT_DOCS = {
     "README.md",
     "SECURITY.md",
 }
+
+# Markdown read by a guarded test step. scripts/test-ci-proof-route.py
+# recomputes this set from those steps and fails when the pin drifts.
+MACHINE_CONSUMED_MARKDOWN = frozenset({
+    "docs/README.md",
+    "docs/adr/CARGO-ALLOW-ADR-0001-multi-ledger-federation.md",
+    "docs/adr/CARGO-ALLOW-ADR-0002-three-product-ownership.md",
+    "docs/adr/CARGO-ALLOW-ADR-0003-package-identity-and-versioning.md",
+    "docs/adr/CARGO-ALLOW-ADR-0004-source-syntax-only-scan.md",
+    "docs/adr/CARGO-ALLOW-ADR-0005-baseline-debt-window.md",
+    "docs/adr/CARGO-ALLOW-ADR-0006-structural-identity-v1.md",
+    "docs/adr/CARGO-ALLOW-ADR-0007-crate-namespace-policy.md",
+    "docs/ci.md",
+    "docs/claim-boundaries.md",
+    "docs/dogfood/fixtures/getting-started/expected-markers.md",
+    "docs/getting-started.md",
+    "docs/how-to/README.md",
+    "docs/how-to/adopt-cargo-allow.md",
+    "docs/how-to/manage-an-exception.md",
+    "docs/how-to/operate-source-exception-ledger.md",
+    "docs/how-to/review-pr-posture.md",
+    "docs/how-to/rollback-cargo-allow-adoption.md",
+    "docs/how-to/run-in-ci.md",
+    "docs/how-to/troubleshoot-cargo-allow.md",
+    "docs/how-to/upgrade-and-rollback-0.1.11-to-0.2.0.md",
+    "docs/onboarding.md",
+    "docs/pilots/0.2.0-rc.1-pilot-selection.md",
+    "docs/products/cargo-allow/command-reference.md",
+    "docs/products/cargo-allow/compatibility.md",
+    "docs/products/cargo-allow/getting-started.md",
+    "docs/products/cargo-allow/limitations.md",
+    "docs/products/cargo-allow/release-notes.md",
+    "docs/products/cargo-allow/schemas.md",
+    "docs/products/cargo-allow/support-and-security.md",
+    "docs/products/cargo-intent/command-reference.md",
+    "docs/products/cargo-intent/compatibility.md",
+    "docs/products/cargo-intent/getting-started.md",
+    "docs/products/cargo-intent/limitations.md",
+    "docs/products/cargo-intent/release-notes.md",
+    "docs/products/cargo-intent/schemas.md",
+    "docs/products/cargo-intent/support-and-security.md",
+    "docs/products/cargo-proof/command-reference.md",
+    "docs/products/cargo-proof/compatibility.md",
+    "docs/products/cargo-proof/getting-started.md",
+    "docs/products/cargo-proof/limitations.md",
+    "docs/products/cargo-proof/release-notes.md",
+    "docs/products/cargo-proof/schemas.md",
+    "docs/products/cargo-proof/support-and-security.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0001-spec-system-profile.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0002-migration-parity.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0003-readiness-policy.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0004-allow-import-profile.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0005-structural-identity-quality.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0006-adoption-trust-0.1.10.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0007-multi-ledger-federation.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0008-ledger-coherence-change-control.md",
+    "docs/proposals/CARGO-ALLOW-PROP-0010-three-product-design.md",
+    "docs/release/0.2.0-rc.1.md",
+    "docs/release/0.2.0.md",
+    "docs/release/github/v0.2.0.md",
+    "docs/release/incidents/2026-08-24-rc1-tag-movement.md",
+    "docs/source-of-truth/agent-operating-model.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0001-spec-system-profile.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0002-migration-parity.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0003-readiness-policy.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0004-allow-import-profile.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0005-structural-identity-quality.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0006-adoption-trust-0.1.10.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0007-multi-ledger-federation.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0008-ledger-coherence-change-control.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0010-three-product-boundaries.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0011-three-product-convergence.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0012-source-exception-ledger.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md",
+    "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md",
+    "docs/status/SUPPORT_TIERS.md",
+})
 
 
 def contract() -> dict[str, object]:
@@ -505,7 +585,8 @@ def path_kind(path: str) -> str:
         return "other"
     # Schemas are load-bearing for the consumers that read them, including
     # operator-latency. A docs/ prefix must not skip that assertion.
-    # Markdown is the only prose under docs/ that may narrow. The
+    # Markdown is the only prose under docs/ that may narrow. Markdown a
+    # guarded test step reads is pinned and stays source. The
     # feature-configuration matrix, ci-lanes, the support matrix, and
     # direct-floor receipts are parsed by proof jobs. Any other
     # non-markdown docs path is source too: an unrecognized payload must
@@ -513,6 +594,8 @@ def path_kind(path: str) -> str:
     if normalized.startswith("docs/schemas/") or normalized.endswith(".schema.json"):
         return "other"
     if normalized.startswith("docs/"):
+        if normalized in MACHINE_CONSUMED_MARKDOWN:
+            return "other"
         if normalized.endswith(".md"):
             return "docs"
         return "other"

@@ -66,7 +66,11 @@ base-moved proof stays wide and is not reused. An effective diff that is
 provably docs-only also records those lanes NotApplicable. Paths under
 `docs/schemas/` and any `*.schema.json` are source, so an
 operator-latency schema change keeps that lane. Markdown is the only
-prose under `docs/` that narrows. The feature-configuration matrix,
+prose under `docs/` that narrows. Markdown a guarded `test` step reads
+is pinned in `scripts/ci-proof-route.py` and stays source, so a change
+to that file is not `docs_only` and the heavy `test` steps still run.
+`scripts/test-ci-proof-route.py` fails when a guarded step reads a
+`docs/*.md` path the pin does not name. The feature-configuration matrix,
 `docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
 other non-markdown path under `docs/` stay source, so those changes
 keep `feature-configuration-proof` and the other heavy lanes. An
@@ -109,7 +113,10 @@ no-new when it executes. `test` needs `pregate`, `package-smoke`, and
 `test`, and the change-note guard with it.
 That skip is a dependency failure, not a green execution and not a
 narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
-plan skips the heavy steps inside `test`. The inventory guard, fmt,
+plan skips the heavy steps inside `test`. Those steps keep `success()`,
+so an earlier failure in `test` still stops the later ones. A diff that
+includes pinned machine-consumed markdown is not `docs_only`, and the
+heavy steps run. The inventory guard, fmt,
 audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,
 because those receipts are produced only by `package-smoke`. The
@@ -141,7 +148,9 @@ head `6b33aa12b72922e782164be863b4499e68783f01`,
 [ci.yml run 42980600013](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42980600013)
 (`pull_request`, 2026-11-11T07:35:25Z through 2026-11-11T08:14:38Z).
 The hosted plan class was `docs_only` and `narrow` was true.
-The effective path was `docs/ci.md`. Seventeen lane rows were
+The effective path was `docs/ci.md`. That classification is the record
+from before machine-consumed markdown was pinned. Guarded tests embed
+`docs/ci.md`, so a later edit of that file is source. Seventeen lane rows were
 NotApplicable, and GitHub skipped those jobs: `msrv`,
 `product-candidates-interop`, `operator-latency`, `integrated-dogfood`,
 `test-core-platforms`, `compat-delegation`, `test-intent-experimental`,
