@@ -25,7 +25,12 @@ ambiguous, skipped, and base-moved proof stays wide. ``docs/schemas/``
 and any ``*.schema.json`` are source, not docs. Markdown is the only
 prose under ``docs/`` that may narrow. Markdown a guarded ``test`` step
 reads is pinned in ``MACHINE_CONSUMED_MARKDOWN`` and stays source, so
-that step still runs. JSON, TOML, and any other
+that step still runs. Root markdown embedded by ``include_str!`` and
+``docs/architecture/extraction-shims.md`` are ``INDIRECT_CONSUMED_PATHS``
+and stay source; the markdown pin scan does not see those reads.
+``.changes/`` stays source because ``.changie.yaml`` sets ``changesDir``
+and the guarded Changie sensor self-dogfood step lints that tree.
+JSON, TOML, and any other
 non-markdown path under ``docs/`` are source, including the
 feature-configuration matrix, the lane and support tables, and
 direct-floor receipts. An unrecognized docs payload is source, not
@@ -240,7 +245,6 @@ ROOT_DOCS = {
     "COPYING",
     "LICENSE",
     "NOTICE",
-    "README.md",
     "SECURITY.md",
 }
 
@@ -320,6 +324,16 @@ MACHINE_CONSUMED_MARKDOWN = frozenset({
     "docs/specs/CARGO-ALLOW-SPEC-0013-diff-posture.md",
     "docs/specs/CARGO-ALLOW-SPEC-0014-policy-matching.md",
     "docs/status/SUPPORT_TIERS.md",
+})
+
+# Guarded tests read these paths through include_str! or read_to_string.
+# The markdown pin scan does not see a repository-root include_str! or a
+# joined path that is read on a later line. scripts/test-ci-proof-route.py
+# fails when this set drifts from those readers or a listed path is missing.
+INDIRECT_CONSUMED_PATHS = frozenset({
+    "README.md",
+    "SUPPORT.md",
+    "docs/architecture/extraction-shims.md",
 })
 
 
@@ -593,14 +607,19 @@ def path_kind(path: str) -> str:
     # not be assumed prose.
     if normalized.startswith("docs/schemas/") or normalized.endswith(".schema.json"):
         return "other"
+    if normalized in INDIRECT_CONSUMED_PATHS:
+        return "other"
     if normalized.startswith("docs/"):
         if normalized in MACHINE_CONSUMED_MARKDOWN:
             return "other"
         if normalized.endswith(".md"):
             return "docs"
         return "other"
+    # .changie.yaml sets changesDir: .changes. The guarded Changie sensor
+    # self-dogfood step runs `cargo-allow changie lint` on that tree, so a
+    # fragment-only diff stays source.
     if normalized.startswith(".changes/"):
-        return "docs"
+        return "other"
     if len(parts) == 1 and (normalized in ROOT_DOCS or normalized.startswith("LICENSE")):
         return "docs"
     if len(parts) == 1 and normalized.endswith(".md"):

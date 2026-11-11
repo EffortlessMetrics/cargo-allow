@@ -320,15 +320,32 @@ def check_classifications() -> None:
             "source_bearing",
             False,
         ),
-        ("root markdown is docs-only", "pull_request", None, "M\tREADME.md\n", "docs_only", True),
+        ("root README stays wide", "pull_request", None, "M\tREADME.md\n", "source_bearing", False),
         (
-            "changelog fragment is docs-only",
+            "root changelog stays docs-only",
             "pull_request",
             None,
-            "A\t.changes/note.yaml\n",
+            "M\tCHANGELOG.md\n",
             "docs_only",
             True,
         ),
+        (
+            "changes fragment stays wide",
+            "pull_request",
+            None,
+            "A\t.changes/note.yaml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "extraction shim doc stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/architecture/extraction-shims.md\n",
+            "source_bearing",
+            False,
+        ),
+        ("repo snapshot stays docs-only", "pull_request", None, docs, "docs_only", True),
         ("push is a full boundary", "push", None, docs, "full_boundary", False),
         (
             "workflow_dispatch is a full boundary",
@@ -1568,6 +1585,39 @@ def _strip_rust_comments(text: str) -> str:
     return "".join(out)
 
 
+def _guarded_step_blob() -> str:
+    """Non-comment text of test steps whose if expression guards on docs_only."""
+    test = job_bodies(CI.read_text(encoding="utf-8"))["test"]
+    steps_at = test.find("\n    steps:\n")
+    parts = re.split(r"(?m)^      - ", test[steps_at:])[1:]
+    guarded_lines: list[str] = []
+    for part in parts:
+        kept: list[str] = []
+        expr = ""
+        for line in part.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("#"):
+                continue
+            kept.append(line)
+            match = re.match(r"if:\s*(.*)$", stripped)
+            if match and not expr:
+                expr = match.group(1)
+        if "outputs.class != 'docs_only'" in expr and "outputs.narrow" in expr:
+            guarded_lines.append("\n".join(kept))
+    return "\n".join(guarded_lines)
+
+
+def _package_dirs(blob: str) -> list[Path]:
+    packages = sorted(set(re.findall(r"(?:^|\s)-p ([A-Za-z0-9_-]+)", blob)))
+    name_to_dir: dict[str, Path] = {}
+    for cargo in (ROOT / "crates").glob("*/Cargo.toml"):
+        cargo_text = cargo.read_text(encoding="utf-8")
+        name = re.search(r'(?m)^name\s*=\s*"([^"]+)"', cargo_text)
+        if name:
+            name_to_dir[name.group(1)] = cargo.parent
+    return [name_to_dir[package] for package in packages if package in name_to_dir]
+
+
 def guarded_step_markdown() -> set[str]:
     """docs/*.md that a guarded test step reads.
 
@@ -1591,32 +1641,8 @@ def guarded_step_markdown() -> set[str]:
     )
     shell_re = re.compile(r"(?:^|\n)\s*(?:cat|head|tail)\s+(docs/\S+\.md)|<\s*(docs/\S+\.md)")
     ledger_re = re.compile(r'(?m)^path\s*=\s*"(docs/[^"]+\.md)"')
-    test = job_bodies(CI.read_text(encoding="utf-8"))["test"]
-    steps_at = test.find("\n    steps:\n")
-    parts = re.split(r"(?m)^      - ", test[steps_at:])[1:]
-    guarded_lines: list[str] = []
-    for part in parts:
-        kept: list[str] = []
-        expr = ""
-        for line in part.splitlines():
-            stripped = line.strip()
-            if stripped.startswith("#"):
-                continue
-            kept.append(line)
-            match = re.match(r"if:\s*(.*)$", stripped)
-            if match and not expr:
-                expr = match.group(1)
-        if "outputs.class != 'docs_only'" in expr and "outputs.narrow" in expr:
-            guarded_lines.append("\n".join(kept))
-    blob = "\n".join(guarded_lines)
+    blob = _guarded_step_blob()
     scripts = sorted(set(re.findall(r"scripts/[\w./-]+\.(?:sh|py)", blob)))
-    packages = sorted(set(re.findall(r"(?:^|\s)-p ([A-Za-z0-9_-]+)", blob)))
-    name_to_dir: dict[str, Path] = {}
-    for cargo in (ROOT / "crates").glob("*/Cargo.toml"):
-        cargo_text = cargo.read_text(encoding="utf-8")
-        name = re.search(r'(?m)^name\s*=\s*"([^"]+)"', cargo_text)
-        if name:
-            name_to_dir[name.group(1)] = cargo.parent
     found: set[str] = set()
 
     def add(path: str) -> None:
@@ -1625,10 +1651,7 @@ def guarded_step_markdown() -> set[str]:
             found.add(norm)
 
     ledger = False
-    for package in packages:
-        directory = name_to_dir.get(package)
-        if directory is None:
-            continue
+    for directory in _package_dirs(blob):
         for src in directory.rglob("*.rs"):
             text = _strip_rust_comments(src.read_text(encoding="utf-8", errors="replace"))
             for literal in include_str_re.findall(text):
@@ -1679,11 +1702,99 @@ def guarded_step_markdown() -> set[str]:
     return found
 
 
+SHIM_DOC = "docs/architecture/extraction-shims.md"
+
+
+def derive_indirect_readers() -> set[str]:
+    """Readers the docs-markdown pin scan does not keep.
+
+    Repository-root markdown embedded with include_str!, plus the shim
+    registry doc read on a later line from a joined path.
+    """
+    include_str_re = re.compile(r'include_str!\s*\(\s*"([^"]+)"', re.S)
+    found: set[str] = set()
+    for directory in _package_dirs(_guarded_step_blob()):
+        for src in directory.rglob("*.rs"):
+            text = _strip_rust_comments(src.read_text(encoding="utf-8", errors="replace"))
+            for literal in include_str_re.findall(text):
+                resolved = (src.parent / literal).resolve()
+                try:
+                    rel = resolved.relative_to(ROOT.resolve()).as_posix()
+                except ValueError:
+                    continue
+                if "/" not in rel and rel.endswith(".md"):
+                    found.add(rel)
+            if f'.join("{SHIM_DOC}")' in text and "read_to_string" in text:
+                found.add(SHIM_DOC)
+    return found
+
+
+def indirect_reader_problems(paths: set[str], derived: set[str]) -> list[str]:
+    problems: list[str] = []
+    for path in sorted(paths):
+        if not (ROOT / path).is_file():
+            problems.append(f"missing:{path}")
+    if set(paths) != set(derived):
+        missing = sorted(set(derived) - set(paths))
+        extra = sorted(set(paths) - set(derived))
+        problems.append(f"drift missing={missing} extra={extra}")
+    return problems
+
+
+def check_indirect_readers() -> None:
+    """Indirect readers and .changes stay wide. A missing path fails the check."""
+    route = load_router()
+    pinned = set(route.INDIRECT_CONSUMED_PATHS)
+    derived = derive_indirect_readers()
+    problems = indirect_reader_problems(pinned, derived)
+    if problems:
+        fail("indirect readers " + "; ".join(problems))
+    if pinned & set(route.MACHINE_CONSUMED_MARKDOWN):
+        fail("indirect readers were folded into the markdown pin")
+    for path in sorted(pinned):
+        if route.path_kind(path) != "other":
+            fail(f"{path} indirect reader is not source")
+        assert_plan(
+            f"{path} forces a wide plan",
+            fixture("pull_request", None, f"M\t{path}\n"),
+            "source_bearing",
+            False,
+        )
+    prose = "docs/architecture/repo-snapshot.md"
+    if prose in pinned or route.path_kind(prose) != "docs":
+        fail(f"{prose} no longer samples prose docs_only")
+    assert_plan(
+        "repo snapshot stays docs-only",
+        fixture("pull_request", None, f"M\t{prose}\n"),
+        "docs_only",
+        True,
+    )
+    fragment = ".changes/note.yaml"
+    if route.path_kind(fragment) != "other":
+        fail(f"{fragment} is not source")
+    assert_plan(
+        "changes fragment stays wide",
+        fixture("pull_request", None, f"A\t{fragment}\n"),
+        "source_bearing",
+        False,
+    )
+    if route.path_kind(".changes/v0.2.0.md") != "other":
+        fail(".changes markdown is not source")
+    missing = indirect_reader_problems(pinned | {"docs/architecture/missing-indirect.md"}, derived)
+    if not any(item.startswith("missing:") for item in missing):
+        fail("missing indirect path did not fail the check")
+    drifted = indirect_reader_problems(pinned - {"README.md"}, derived)
+    if not any(item.startswith("drift ") for item in drifted):
+        fail("indirect reader drift did not fail the check")
+
+
 def check_consumed_markdown() -> None:
     """Pinned markdown stays wide. A prose sample still narrows."""
     route = load_router()
     derived = guarded_step_markdown()
     pinned = set(route.MACHINE_CONSUMED_MARKDOWN)
+    if len(pinned) != 73:
+        fail(f"machine-consumed markdown pin count {len(pinned)}, expected 73")
     if derived != pinned:
         missing = sorted(derived - pinned)
         extra = sorted(pinned - derived)
@@ -1728,9 +1839,13 @@ def check_machine_docs() -> None:
         "docs/status/SUPPORT_TIERS.md": "other",
         "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md": "other",
         "docs/architecture/repo-snapshot.md": "docs",
+        "docs/architecture/extraction-shims.md": "other",
         "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md": "docs",
-        ".changes/note.yaml": "docs",
-        "README.md": "docs",
+        ".changes/note.yaml": "other",
+        ".changes/v0.2.0.md": "other",
+        "README.md": "other",
+        "SUPPORT.md": "other",
+        "CHANGELOG.md": "docs",
         "docs/assets/feature-configuration-matrix-v1.json": "other",
         "docs/ci-lanes.toml": "other",
         "docs/support-matrix.toml": "other",
@@ -1919,6 +2034,7 @@ def main() -> None:
     check_skipped_lane_fixtures()
     check_machine_docs()
     check_consumed_markdown()
+    check_indirect_readers()
     check_comment_guard_fixture()
     check_contract()
     check_workflow()

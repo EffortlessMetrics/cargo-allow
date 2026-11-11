@@ -70,7 +70,15 @@ prose under `docs/` that narrows. Markdown a guarded `test` step reads
 is pinned in `scripts/ci-proof-route.py` and stays source, so a change
 to that file is not `docs_only` and the heavy `test` steps still run.
 `scripts/test-ci-proof-route.py` fails when a guarded step reads a
-`docs/*.md` path the pin does not name. The feature-configuration matrix,
+`docs/*.md` path the pin does not name. Root `README.md` and `SUPPORT.md`
+are `include_str!` inputs of guarded tests, and
+`docs/architecture/extraction-shims.md` is read by the shim-registry test.
+Those paths are `INDIRECT_CONSUMED_PATHS`, separate from the markdown pin.
+The route test fails when that set drifts or a listed path is missing.
+`.changes/` stays source: `.changie.yaml` sets `changesDir: .changes`, and
+the guarded Changie sensor self-dogfood step lints that tree, so a
+fragment-only diff is not `docs_only`. `docs/architecture/repo-snapshot.md`
+remains the prose sample. The feature-configuration matrix,
 `docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
 other non-markdown path under `docs/` stay source, so those changes
 keep `feature-configuration-proof` and the other heavy lanes. An
@@ -115,8 +123,8 @@ That skip is a dependency failure, not a green execution and not a
 narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
 plan skips the heavy steps inside `test`. Those steps keep `success()`,
 so an earlier failure in `test` still stops the later ones. A diff that
-includes pinned machine-consumed markdown is not `docs_only`, and the
-heavy steps run. The inventory guard, fmt,
+includes pinned machine-consumed markdown, an indirect reader, or a
+`.changes/` path is not `docs_only`, and the heavy steps run. The inventory guard, fmt,
 audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,
 because those receipts are produced only by `package-smoke`. The
@@ -150,7 +158,9 @@ head `6b33aa12b72922e782164be863b4499e68783f01`,
 The hosted plan class was `docs_only` and `narrow` was true.
 The effective path was `docs/ci.md`. That classification is the record
 from before machine-consumed markdown was pinned. Guarded tests embed
-`docs/ci.md`, so a later edit of that file is source. Seventeen lane rows were
+`docs/ci.md`, so a later edit of that file is source. That record does not
+cover the later source pins for root `README.md`, `SUPPORT.md`,
+`docs/architecture/extraction-shims.md`, and `.changes/`. Seventeen lane rows were
 NotApplicable, and GitHub skipped those jobs: `msrv`,
 `product-candidates-interop`, `operator-latency`, `integrated-dogfood`,
 `test-core-platforms`, `compat-delegation`, `test-intent-experimental`,
