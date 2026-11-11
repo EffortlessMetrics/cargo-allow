@@ -125,7 +125,11 @@ fn validate_readiness_api_calls(script: &str) -> Result<(), String> {
         // could override the default GET or implicitly select POST.
         match call {
             r#""${API}/git/ref/heads/${encoded}" 2>/dev/null)"; then"# => {}
-            r#""${API}/commits/${head_sha}/check-runs?check_name=${CHECK_NAME}" \"#
+            // Publication reads the check on the subject SHA: the reviewed
+            // head, or the merge-group checkout after that identity is
+            // proved. The fail-closed queue path reads GITHUB_SHA directly.
+            r#""${API}/commits/${check_sha}/check-runs?check_name=${CHECK_NAME}" \"#
+            | r#""${API}/commits/${GITHUB_SHA}/check-runs?check_name=${CHECK_NAME}" \"#
             | r#""${API}/check-runs/${existing_id}" -X PATCH \"#
             | r#""${API}/check-runs" -X POST \"# => found_check_run = true,
             _ => return Err(format!("unexpected readiness API command: {call}")),

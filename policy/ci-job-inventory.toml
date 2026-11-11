@@ -233,6 +233,12 @@ routing_owner = "core/ci"
 blocking = true
 
 [[jobs]]
+name = "proof-route"
+purpose = "StaticPreGate"
+routing_owner = "core/ci"
+blocking = false
+
+[[jobs]]
 name = "collect-performance-fixtures"
 purpose = "StaticPreGate"
 routing_owner = "core/ci"

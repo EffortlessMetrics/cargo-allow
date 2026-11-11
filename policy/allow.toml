@@ -28934,3 +28934,113 @@ glob = ".allow/revisions/4725-4725-experience-mutation-1.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4332-proof-route"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/ci-proof-route.py"
+owner = "repo-infra"
+classification = "ci_routing_script"
+reason = "Classifies pull-request lane applicability for #2569/#4332. A review-ledger successor or a docs-only effective diff skips non-required heavy lanes; unknown and shared impact stay wide."
+evidence = ["issue:4332", "issue:2569", "doc:docs/ci.md"]
+created = "2026-11-10"
+review_after = "2027-05-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/ci-proof-route.py"
+target_fingerprint = "py"
+glob = "scripts/ci-proof-route.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4332-proof-route-test"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-ci-proof-route.py"
+owner = "repo-infra"
+classification = "ci_routing_script"
+reason = "Discriminating controls for the #4332 lane plan: ledger-only, docs-only, source-bearing, unknown, shared impact, and the rule that required contexts are never skipped."
+evidence = ["issue:4332", "issue:2569", "doc:docs/ci.md"]
+created = "2026-11-10"
+review_after = "2027-05-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-ci-proof-route.py"
+target_fingerprint = "py"
+glob = "scripts/test-ci-proof-route.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4332-ledger-fixture"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4332-narrow-route.json"
+owner = "core/ci"
+classification = "ci_routing_fixture"
+reason = "Scratch review-ledger path for the #4332 successor-delta route. It is not a disposition for any open pull request and does not authorize merge, bypass, or release."
+evidence = ["issue:4332"]
+created = "2026-11-10"
+review_after = "2027-05-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4332-narrow-route.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4332-narrow-route.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4332-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4332-narrow-proof-route.toml"
+owner = "core/governance"
+classification = "dogfood_evidence"
+reason = "#4332 revision note authorizing the narrow proof-route receipts; covers the note file itself as tracked configuration."
+evidence = ["issue:4332"]
+created = "2026-11-10"
+review_after = "2027-05-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4332-narrow-proof-route.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4332-narrow-proof-route.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11501"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4767.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Retained exact-head review evidence for PR #4767 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
+evidence = ["pr:4767", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-11"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4767.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4767.json"
+
+[allow.last_seen]
+line = 1
+column = 1

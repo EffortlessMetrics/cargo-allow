@@ -128,15 +128,36 @@ publish() {
   # it otherwise. Pair identity is part of the published output so a
   # consumer can identify the observed pair. This is not an atomic CAS.
   local head_sha="$1" conclusion="$2" summary="$3" base_sha="$4" merge_base="$5" diff_digest="$6"
-  local pr_number="$7" pr_snapshot="$8" output
-  output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v2:%s\n\n%s' \
-    "${base_sha}" "${merge_base}" "${diff_digest}" "${summary}")"
+  local pr_number="$7" pr_snapshot="$8" output check_sha
+  # Pull-request and base-push checks are attached to the reviewed PR
+  # head. A merge queue reads checks on the merge-group commit, so that
+  # event publishes on the checkout SHA after the caller has proved it
+  # is the two-parent merge of this same PR head.
+  check_sha="${head_sha}"
+  if [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+    if ! valid_commit "${GITHUB_SHA:-}"; then
+      echo 'review-readiness: instrument failure: merge group SHA missing; no check published' >&2
+      return 1
+    fi
+    check_sha="${GITHUB_SHA}"
+  fi
+  # The pair line stays first. Existing consumers and the adapter
+  # characterization match output[summary]=pair: base=. The queue
+  # subject is extra evidence when the check is attached to a
+  # different commit than the reviewed head.
+  if [ "${check_sha}" != "${head_sha}" ]; then
+    output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v2:%s\nqueue subject: %s\nreviewed head: %s\n\n%s' \
+      "${base_sha}" "${merge_base}" "${diff_digest}" "${check_sha}" "${head_sha}" "${summary}")"
+  else
+    output="$(printf 'pair: base=%s merge-base=%s diff=sha256:v2:%s\n\n%s' \
+      "${base_sha}" "${merge_base}" "${diff_digest}" "${summary}")"
+  fi
   # These functions run in conditional contexts, where Bash disables
   # errexit. Check every API status explicitly, and keep raw tool
   # diagnostics (which can contain credentials or response bodies) out
   # of the publication log.
   local existing_id api_status
-  if existing_id="$(gh api "${API}/commits/${head_sha}/check-runs?check_name=${CHECK_NAME}" \
+  if existing_id="$(gh api "${API}/commits/${check_sha}/check-runs?check_name=${CHECK_NAME}" \
     --jq '.check_runs | map(select(.name == "review-readiness")) | first | .id // empty' 2>/dev/null)"; then
     if [ -n "${existing_id}" ] && ! [[ "${existing_id}" =~ ^[0-9]+$ ]]; then
       echo "review-readiness: instrument failure: check-run lookup returned an invalid id" >&2
@@ -157,7 +178,8 @@ publish() {
       -f "output[title]=review-readiness: ${conclusion}" \
       -f "output[summary]=${output}" >/dev/null 2>&1; then
       printf 'review-readiness: updated run %s -> %s at %s\n' \
-        "${existing_id}" "${conclusion}" "${head_sha:0:12}"
+        "${existing_id}" "${conclusion}" "${check_sha:0:12}"
+      published_check=1
     else
       api_status=$?
       printf 'review-readiness: check-run PATCH failed (exit %s); no update confirmed\n' "${api_status}" >&2
@@ -166,12 +188,13 @@ publish() {
   else
     if gh api "${API}/check-runs" -X POST \
       -f "name=${CHECK_NAME}" \
-      -f "head_sha=${head_sha}" \
+      -f "head_sha=${check_sha}" \
       -f "status=completed" \
       -f "conclusion=${conclusion}" \
       -f "output[title]=review-readiness: ${conclusion}" \
       -f "output[summary]=${output}" >/dev/null 2>&1; then
-      printf 'review-readiness: published %s at %s\n' "${conclusion}" "${head_sha:0:12}"
+      printf 'review-readiness: published %s at %s\n' "${conclusion}" "${check_sha:0:12}"
+      published_check=1
     else
       api_status=$?
       printf 'review-readiness: check-run POST failed (exit %s); no publication confirmed\n' "${api_status}" >&2
@@ -225,7 +248,16 @@ project_pr() {
     echo 'review-readiness: instrument failure: invalid PR snapshot' >&2
     return 1
   fi
-  if [ "${GITHUB_EVENT_NAME}" != push ] && [ "$head_sha" != "${PR_HEAD_SHA:-}" ]; then
+  if [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+    # The reviewed head stays the pull request head. The queue commit is
+    # accepted only when it is exactly that head merged onto the base,
+    # which the parent check below enforces. Do not treat the queue SHA
+    # as the reviewed head.
+    if ! valid_commit "${MERGE_GROUP_HEAD_SHA:-}" || [ "${MERGE_GROUP_HEAD_SHA}" != "${GITHUB_SHA:-}" ]; then
+      echo 'review-readiness: merge group subject does not match the checkout; fails closed' >&2
+      return 1
+    fi
+  elif [ "${GITHUB_EVENT_NAME}" != push ] && [ "$head_sha" != "${PR_HEAD_SHA:-}" ]; then
     echo 'review-readiness: stale or missing PR event head; no check published' >&2
     return 1
   fi
@@ -427,6 +459,80 @@ project_pr() {
   [ "${conclusion}" != "failure" ] || return 1
 }
 
+# A merge-group ref names one pull request:
+# gh-readonly-queue/<base>/pr-<number>-<sha>
+# The trailing sha is not trusted. The number is accepted only when the
+# ref base matches the event base and the checkout commit's parents are
+# exactly that pull request's base and head. Anything else fails closed
+# and still publishes a failure check on the queue commit.
+resolve_merge_group_pr() {
+  local ref base_ref resolved
+  ref="${MERGE_GROUP_HEAD_REF:-}"
+  ref="${ref#refs/heads/}"
+  base_ref="${MERGE_GROUP_BASE_REF:-}"
+  base_ref="${base_ref#refs/heads/}"
+  if ! valid_commit "${GITHUB_SHA:-}" || ! valid_commit "${MERGE_GROUP_HEAD_SHA:-}" ||
+    [ "${MERGE_GROUP_HEAD_SHA}" != "${GITHUB_SHA}" ] || [ -z "${base_ref}" ] ||
+    [[ ! "${ref}" =~ ^gh-readonly-queue/([^/]+)/pr-([0-9]+)-([0-9a-f]{40}|[0-9a-f]{64})$ ]] ||
+    [ "${BASH_REMATCH[1]}" != "${base_ref}" ]; then
+    echo 'review-readiness: missing or ambiguous merge group identity; fails closed' >&2
+    return 1
+  fi
+  resolved="${BASH_REMATCH[2]}"
+  if [ -n "${PR_NUMBER:-}" ] && [ "${PR_NUMBER}" != "${resolved}" ]; then
+    echo 'review-readiness: conflicting pull request numbers; fails closed' >&2
+    return 1
+  fi
+  printf '%s\n' "${resolved}"
+}
+
+publish_queue_failure() {
+  local reason="$1" existing_id api_status
+  echo "review-readiness: ${reason}; fails closed" >&2
+  if ! valid_commit "${GITHUB_SHA:-}"; then
+    echo 'review-readiness: merge group SHA missing; no check published' >&2
+    return 1
+  fi
+  if existing_id="$(gh api "${API}/commits/${GITHUB_SHA}/check-runs?check_name=${CHECK_NAME}" \
+    --jq '.check_runs | map(select(.name == "review-readiness")) | first | .id // empty' 2>/dev/null)"; then
+    if [ -n "${existing_id}" ] && ! [[ "${existing_id}" =~ ^[0-9]+$ ]]; then
+      echo 'review-readiness: instrument failure: check-run lookup returned an invalid id' >&2
+      return 1
+    fi
+  else
+    api_status=$?
+    printf 'review-readiness: instrument failure: check-run lookup failed (exit %s)\n' "${api_status}" >&2
+    return 1
+  fi
+  if [ -n "${existing_id}" ]; then
+    if gh api "${API}/check-runs/${existing_id}" -X PATCH \
+      -f "status=completed" \
+      -f "conclusion=failure" \
+      -f "output[title]=review-readiness: failure" \
+      -f "output[summary]=${reason}; fails closed" >/dev/null 2>&1; then
+      printf 'review-readiness: updated run %s -> failure at %s\n' \
+        "${existing_id}" "${GITHUB_SHA:0:12}"
+    else
+      api_status=$?
+      printf 'review-readiness: check-run PATCH failed (exit %s); no update confirmed\n' "${api_status}" >&2
+      return 1
+    fi
+  elif gh api "${API}/check-runs" -X POST \
+    -f "name=${CHECK_NAME}" \
+    -f "head_sha=${GITHUB_SHA}" \
+    -f "status=completed" \
+    -f "conclusion=failure" \
+    -f "output[title]=review-readiness: failure" \
+    -f "output[summary]=${reason}; fails closed" >/dev/null 2>&1; then
+    printf 'review-readiness: published failure at %s\n' "${GITHUB_SHA:0:12}"
+  else
+    api_status=$?
+    printf 'review-readiness: check-run POST failed (exit %s); no publication confirmed\n' "${api_status}" >&2
+    return 1
+  fi
+  return 1
+}
+
 overall=0
 if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
   # Base-branch movement: no pull_request event fires, so recompute
@@ -446,6 +552,21 @@ if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
     echo "review-readiness: base movement recompute for PR #${open_pr}"
     project_pr "$open_pr" "base_moved" || overall=1
   done <<<"$open_prs"
+elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+  resolved_pr=""
+  published_check=0
+  if resolved_pr="$(resolve_merge_group_pr)"; then
+    PR_NUMBER="${resolved_pr}"
+    project_pr "${PR_NUMBER}" "checks_requested" || overall=1
+  else
+    overall=1
+  fi
+  # A typed failure already published on the queue commit must keep its
+  # disposition reason. The generic failure is only for the paths that
+  # returned before any check existed.
+  if [ "${overall}" -ne 0 ] && [ "${published_check}" -eq 0 ]; then
+    publish_queue_failure "merge group review-readiness did not prove one exact pull request" || true
+  fi
 else
   : "${PR_NUMBER:?PR_NUMBER is required}"
   : "${PR_EVENT_ACTION:?PR_EVENT_ACTION is required}"

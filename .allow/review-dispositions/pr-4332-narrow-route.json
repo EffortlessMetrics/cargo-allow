@@ -1,0 +1,8 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 0,
+  "head_sha": "0000000000000000000000000000000000000000",
+  "note": "Scratch path fixture for the #4332 ledger-only successor route. Not a review of any open pull request."
+}

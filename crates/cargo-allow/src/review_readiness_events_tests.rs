@@ -97,6 +97,7 @@ fn review_readiness_events_recompute_on_every_readiness_relevant_event() {
         ReviewReadinessEventV1::MergeBaseMoved,
         ReviewReadinessEventV1::DispositionUpdated,
         ReviewReadinessEventV1::WorkflowConfigMoved,
+        ReviewReadinessEventV1::ChecksRequested,
     ] {
         let projection = evaluate_review_readiness_projection(&input(
             ReviewReadinessDispositionInputV1::Present(Box::new(disposition())),
@@ -156,6 +157,7 @@ fn review_readiness_events_keep_a_green_current_across_posture_only_events() {
         ReviewReadinessEventV1::ConvertedToDraft,
         ReviewReadinessEventV1::Opened,
         ReviewReadinessEventV1::Reopened,
+        ReviewReadinessEventV1::ChecksRequested,
     ] {
         let prior = ReviewReadinessObservationV1 {
             conclusion: ReviewReadinessConclusionV1::Success,

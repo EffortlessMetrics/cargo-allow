@@ -54,6 +54,7 @@ pub(crate) enum ReviewReadinessEventArg {
     MergeBaseMoved,
     DispositionUpdated,
     WorkflowConfigMoved,
+    ChecksRequested,
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -152,6 +153,7 @@ pub(super) fn cmd_review_readiness(args: &ReviewReadinessArgs) -> CargoAllowResu
         ReviewReadinessEventArg::MergeBaseMoved => ReviewReadinessEventV1::MergeBaseMoved,
         ReviewReadinessEventArg::DispositionUpdated => ReviewReadinessEventV1::DispositionUpdated,
         ReviewReadinessEventArg::WorkflowConfigMoved => ReviewReadinessEventV1::WorkflowConfigMoved,
+        ReviewReadinessEventArg::ChecksRequested => ReviewReadinessEventV1::ChecksRequested,
     };
     let draft_state = match project.draft_state {
         ReviewReadinessDraftStateArg::Draft => ReviewReadinessDraftStateV1::Draft,
@@ -304,6 +306,7 @@ mod tests {
             "merge_base_moved",
             "disposition_updated",
             "workflow_config_moved",
+            "checks_requested",
         ] {
             assert!(
                 ReviewReadinessEventArg::from_str(name, false).is_ok(),

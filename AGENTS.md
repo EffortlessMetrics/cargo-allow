@@ -41,7 +41,7 @@ Use the actual installed interface and inspect its triggers. Current automatic
 PR/push workflows are not changed by these instructions; coordinate their existing
 CI-economy owners rather than silently skipping proof or inventing a command.
 `premerge-ci-request` / `request-premerge-ci` are proposals, not installed names.
-No routine auto-merge or merge queue. A retained label, sibling's green result or
+No routine auto-merge. The workflows that publish `pregate`, `test`, `review-readiness`, and `frozen-subject-lock` also trigger on `merge_group` so those checks can be reported if a merge queue is later enabled. This file does not enable a queue or add a bypass. A retained label, sibling's green result or
 successful source review cannot authorize a different head. Reconcile an existing
 run before requesting another; classify a failure before repair or justified retry.
 
@@ -171,7 +171,7 @@ If the target operation is absent, report the actual qualified route and
 migration gap. Do not invent a command, bypass checks, or claim a source-only
 instruction change activated the new lifecycle.
 
-No routine auto-merge or PR merge queue is part of the selected normal flow.
+No routine auto-merge is part of the selected normal flow. A merge queue is not enabled by these instructions; the `merge_group` workflow triggers only let the four required checks report if a queue rule is enabled separately.
 Ordinary main health is separately admitted only after both one hour and ten
 merges from its accepted baseline. Release, incident, deep-analysis, Windows,
 MSRV, package, and final-freeze obligations retain their separately governed
