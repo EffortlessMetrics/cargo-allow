@@ -51,8 +51,8 @@ Lane applicability on a pull request is `scripts/ci-proof-route.py`
 (#2569/#4332), not a workflow `paths:` filter and not a second registry
 beside feature-configuration row selection or release-impact. A successor
 diff that is only `.allow/review-dispositions/` records narrows the heavy
-non-required lanes only when the predecessor's proof is exact, terminal,
-and admissible for the same source paths and base. Missing, stale,
+lanes that are not ruleset contexts only when the predecessor's proof is
+exact, terminal, and admissible for the same source paths and base. Missing, stale,
 wrong-source, failed, pending, cancelled, skipped, ambiguous, or
 base-moved proof stays wide and is not reused. An effective diff that is
 provably docs-only also records those lanes NotApplicable. Paths under
@@ -62,14 +62,18 @@ when the plan succeeds with `narrow=true`; a skip is not a green
 execution. Unknown, malformed, and shared ledger impact stay wide. A
 docs-only last commit on a source-bearing pull request stays wide.
 `push`, `workflow_dispatch`, `merge_group`, and release events stay wide.
-`pregate` and `test` always execute their current assertions, including
-no-new and the change-note guard. A pregate failure remains a failure.
-`package-smoke` stays because `test` consumes its cutover receipts.
-`cargo-deny` and the release-impact graph stay. `review-readiness` and
-`frozen-subject-lock` are separate workflows and are not path-filtered.
+The ruleset contexts are `pregate`, `test`, `review-readiness`, and
+`frozen-subject-lock`. `pregate` and `test` always execute their current
+assertions, including no-new and the change-note guard. A pregate failure
+remains a failure. `package-smoke` stays because `test` consumes its
+cutover receipts. `cargo-deny` and the release-impact graph stay.
+`review-readiness` and `frozen-subject-lock` are separate workflows and
+are not path-filtered. `package-smoke`, `cargo-deny`, `proof-route`, and
+the release graph stay on a narrow plan and are not ruleset contexts.
 
-Required lanes (gate cargo-allow patch and release on source-bearing and
-full-boundary runs):
+Required lanes (gate cargo-allow patch and release on wide pull-request and
+full-boundary runs; `test`, `package-smoke`, and `cargo-deny` also stay on
+a narrow plan):
 
 - **`msrv`**: cargo-allow release-set `cargo check --all-targets` on the
   declared `rust-version` (`1.95`). cargo-allow-scoped by policy — cargo-intent

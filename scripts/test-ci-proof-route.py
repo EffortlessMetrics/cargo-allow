@@ -7,6 +7,7 @@ four required contexts are never filtered. Stdlib only.
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -943,12 +944,170 @@ def check_predecessor_policy() -> None:
     expect_reason("proof identity without the wide run", no_wide, "absent")
 
 
+MATRIX_DISPLAY = {
+    "test-core-platforms": (
+        "test-core-platforms (ubuntu-latest, x86_64-unknown-linux-gnu)",
+        "test-core-platforms (windows-latest, x86_64-pc-windows-msvc)",
+        "test-core-platforms (macos-26, aarch64-apple-darwin)",
+        "test-core-platforms (macos-15-intel, x86_64-apple-darwin)",
+    ),
+    "compat-delegation": (
+        "compat-delegation (ubuntu-latest)",
+        "compat-delegation (windows-latest)",
+    ),
+    "test-proof-experimental": (
+        "test-proof-experimental (ubuntu-latest)",
+        "test-proof-experimental (windows-latest)",
+    ),
+}
+
+
+def load_router():
+    spec = importlib.util.spec_from_file_location("ci_proof_route_under_test", ROUTER)
+    if spec is None or spec.loader is None:
+        fail("router module did not load")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def api_job_rows(changes: dict[str, tuple[str, str]] | None = None, drop: set[str] | None = None) -> list[dict]:
+    """Jobs API rows. ``changes`` maps a display name to (status, conclusion)."""
+    rows: list[dict] = []
+    number = 1
+    skipped = drop or set()
+    for job in CI_JOBS:
+        if job in skipped:
+            continue
+        for name in MATRIX_DISPLAY.get(job, (job,)):
+            status, conclusion = "completed", "success"
+            if changes and name in changes:
+                status, conclusion = changes[name]
+            rows.append(
+                {
+                    "id": number,
+                    "run_id": 10,
+                    "name": name,
+                    "status": status,
+                    "conclusion": conclusion,
+                    "steps": [{"name": "run", "status": status, "conclusion": conclusion}],
+                }
+            )
+            number += 1
+    return rows
+
+
+def check_matrix_job_names() -> None:
+    route = load_router()
+    keys = frozenset(route.proof_job_rules())
+    indexed = route.conclusions_from_job_rows(api_job_rows(), keys)
+    for job in CI_JOBS:
+        if indexed.get(job) != "success":
+            fail(f"matrix display names did not prove {job}: {indexed.get(job)}")
+    if any("(" in key for key in indexed):
+        fail(f"display names leaked into job keys: {sorted(indexed)}")
+    admitted = wide_observation(PROVEN)
+    admitted["runs"][0]["jobs"] = indexed
+    result = reduce_observation(admitted)
+    if not result.get("admitted"):
+        fail(f"API-shaped successful matrix jobs were not proof: {result}")
+
+    failed_name = MATRIX_DISPLAY["test-core-platforms"][1]
+    failed = route.conclusions_from_job_rows(
+        api_job_rows({failed_name: ("completed", "failure")}),
+        keys,
+    )
+    if failed.get("test-core-platforms") == "success":
+        fail("an unsuccessful matrix row counted as success")
+    rejected = wide_observation(PROVEN)
+    rejected["runs"][0]["jobs"] = failed
+    expect_reason("unsuccessful matrix row", rejected, "failed")
+
+    pending_name = MATRIX_DISPLAY["compat-delegation"][0]
+    pending = route.conclusions_from_job_rows(
+        api_job_rows({pending_name: ("in_progress", "")}),
+        keys,
+    )
+    if pending.get("compat-delegation") != "pending":
+        fail(f"unfinished matrix row was {pending.get('compat-delegation')}")
+    waiting = wide_observation(PROVEN)
+    waiting["runs"][0]["jobs"] = pending
+    expect_reason("unfinished matrix row", waiting, "pending")
+
+    skipped_name = MATRIX_DISPLAY["test-proof-experimental"][0]
+    skipped = route.conclusions_from_job_rows(
+        api_job_rows({skipped_name: ("completed", "skipped")}),
+        keys,
+    )
+    if skipped.get("test-proof-experimental") == "success":
+        fail("a skipped matrix row counted as success")
+
+    missing = route.conclusions_from_job_rows(api_job_rows(drop={"msrv"}), keys)
+    if "msrv" in missing:
+        fail("a missing job key was invented")
+    absent = wide_observation(PROVEN)
+    absent["runs"][0]["jobs"] = missing
+    expect_reason("missing job row", absent, "absent")
+
+    open_name = "pregate (ubuntu"
+    open_rows = [row for row in api_job_rows() if row["name"] != "pregate"]
+    open_rows.append({"id": 99, "name": open_name, "status": "completed", "conclusion": "success"})
+    opened = route.conclusions_from_job_rows(open_rows, keys)
+    if opened.get("pregate") == "success":
+        fail("an unclosed display name satisfied pregate")
+
+    longer = route.display_job_key(
+        "release-rehearsal-required (ubuntu-latest)",
+        frozenset({"release-rehearsal", "release-rehearsal-required"}),
+    )
+    if longer != "release-rehearsal-required":
+        fail(f"shorter job key absorbed a longer key: {longer}")
+
+    extra = api_job_rows() + [
+        {"id": 100, "name": "Build", "status": "completed", "conclusion": "failure"}
+    ]
+    ignored = route.conclusions_from_job_rows(extra, keys)
+    if "Build" in ignored or any(value != "success" for value in ignored.values()):
+        fail(f"an unrelated job changed proof: {ignored}")
+
+    duplicate = api_job_rows() + [
+        {"id": 101, "name": "pregate", "status": "completed", "conclusion": "success"}
+    ]
+    try:
+        route.conclusions_from_job_rows(duplicate, keys)
+    except route._LookupStop as stop:
+        if stop.reason != "ambiguous":
+            fail(f"duplicate display name was {stop.reason}")
+    else:
+        fail("duplicate display name was accepted")
+
+    try:
+        route.conclusions_from_job_rows(
+            [{"id": 1, "name": "", "status": "completed", "conclusion": "success"}],
+            keys,
+        )
+    except route._LookupStop as stop:
+        if stop.reason != "malformed":
+            fail(f"empty job name was {stop.reason}")
+    else:
+        fail("empty job name was accepted")
+
+    try:
+        route.conclusions_from_job_rows(["not-a-job"], keys)
+    except route._LookupStop as stop:
+        if stop.reason != "malformed":
+            fail(f"non-object job row was {stop.reason}")
+    else:
+        fail("non-object job row was accepted")
+
+
 def main() -> None:
     check_classifications()
     check_contract()
     check_workflow()
     check_git_history()
     check_predecessor_policy()
+    check_matrix_job_names()
     print("ci-proof-route controls passed")
 
 

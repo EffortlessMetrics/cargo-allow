@@ -727,20 +727,87 @@ def paged_items(path: str, query: dict[str, str], key: str) -> list[object]:
     raise _LookupStop("ambiguous")
 
 
-def list_job_conclusions(repo: str, run_id: str) -> dict[str, str]:
-    jobs: dict[str, str] = {}
-    rows = paged_items(f"/repos/{repo}/actions/runs/{run_id}/jobs", {}, "jobs")
+def display_job_key(name: str, keys: frozenset[str]) -> str | None:
+    """Map one Actions job ``name`` onto an expected workflow job key.
+
+    The jobs API reports the display name. A plain job uses its key. A
+    matrix cell is ``<key> (<matrix values>)``. An exact key wins. Otherwise
+    the longest key that is a ``"<key> ("`` prefix of a closed display name
+    wins, so ``release-rehearsal`` does not absorb
+    ``release-rehearsal-required``. Two equal-length matches are ambiguous.
+    A name that matches nothing is not a proof row.
+    """
+    if name in keys:
+        return name
+    matches = [
+        key
+        for key in keys
+        if name.startswith(key + " (") and name.endswith(")") and len(name) > len(key) + 3
+    ]
+    if not matches:
+        return None
+    longest = max(len(key) for key in matches)
+    best = [key for key in matches if len(key) == longest]
+    if len(best) != 1:
+        raise _LookupStop("ambiguous")
+    return best[0]
+
+
+def _cell_kind(conclusion: str) -> str:
+    text = conclusion.strip().lower()
+    if text == "success":
+        return "success"
+    if text in {"cancelled", "canceled"}:
+        return "cancelled"
+    if text == "skipped":
+        return "skipped"
+    if text in {"pending", "queued", "in_progress", "waiting", "requested"}:
+        return "pending"
+    return "failure"
+
+
+def combine_cell_conclusions(values: list[str]) -> str:
+    """One job key succeeds only when every associated row succeeded."""
+    kinds = [_cell_kind(value) for value in values]
+    for kind in ("pending", "cancelled", "skipped", "failure"):
+        if kind in kinds:
+            return kind
+    return "success" if kinds else "failure"
+
+
+def conclusions_from_job_rows(rows: list[object], keys: frozenset[str]) -> dict[str, str]:
+    """Index Actions job rows by expected key.
+
+    Duplicate display names are ambiguous. A key with no row is omitted so
+    the caller rejects it as missing. Any unsuccessful, skipped, or
+    unfinished row keeps that key from counting as success. Rows whose
+    names match no expected key are ignored.
+    """
+    grouped: dict[str, list[str]] = {}
+    seen: set[str] = set()
     for job in rows:
         if not isinstance(job, dict):
             raise _LookupStop("malformed")
         name = job.get("name")
-        if not isinstance(name, str) or not name or name in jobs:
-            raise _LookupStop("ambiguous" if isinstance(name, str) and name in jobs else "malformed")
+        if not isinstance(name, str) or not name:
+            raise _LookupStop("malformed")
+        if name in seen:
+            raise _LookupStop("ambiguous")
+        seen.add(name)
+        key = display_job_key(name, keys)
+        if key is None:
+            continue
         if str(job.get("status") or "") != "completed":
-            jobs[name] = "pending"
+            conclusion = "pending"
         else:
-            jobs[name] = str(job.get("conclusion") or "")
-    return jobs
+            conclusion = str(job.get("conclusion") or "")
+        grouped.setdefault(key, []).append(conclusion)
+    return {key: combine_cell_conclusions(values) for key, values in grouped.items()}
+
+
+def list_job_conclusions(repo: str, run_id: str) -> dict[str, str]:
+    rows = paged_items(f"/repos/{repo}/actions/runs/{run_id}/jobs", {}, "jobs")
+    return conclusions_from_job_rows(rows, frozenset(proof_job_rules()))
 
 
 def download_plan(repo: str, run_id: str) -> dict[str, object] | None:
