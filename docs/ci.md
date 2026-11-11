@@ -90,6 +90,17 @@ cutover receipts. `cargo-deny` and the release-impact graph stay.
 are not path-filtered. `package-smoke`, `cargo-deny`, `proof-route`, and
 the release graph stay on a narrow plan and are not ruleset contexts.
 
+Measurement receipts in `docs/ci/receipts/` are admitted one file at a time.
+Each has an exact-path `non_rust_file` allow in `policy/allow.toml`.
+`allow-11245` names
+`docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json`, and the selector
+glob is that same path. There is no directory glob, so a new receipt needs
+its own allow. That addition is an `added_allow` change of severity Review,
+so the change-note guard also requires a revision note. Receipt JSON stays
+source, so a receipt pull request stays wide. Issue #4332 accepts a receipt
+or a run record for the docs-only measurement. A docs-only pull request's
+own narrow run is admissible evidence for that record.
+
 Required lanes (gate cargo-allow patch and release on wide pull-request and
 full-boundary runs; `test`, `package-smoke`, and `cargo-deny` also stay on
 a narrow plan):
