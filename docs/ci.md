@@ -160,8 +160,8 @@ change-note guard stays in `test` and runs whenever `test` runs. A
 pregate failure remains a failure. `cargo-deny` stays on every plan.
 The release graph (`release-impact`, `release-rehearsal`,
 `release-rehearsal-required`) is NotApplicable only when `proof-route`
-succeeds for a `docs_only` plan whose paths are all provably unrelated
-under the release-impact denominator. `docs/release/`, `CHANGELOG.md`,
+succeeds for a `docs_only` plan with `narrow=true` whose paths are all
+provably unrelated under the release-impact denominator. `docs/release/`, `CHANGELOG.md`,
 and any other release-sensitive or unknown path keep those three jobs
 executing, including on a ledger narrow plan.
 `review-readiness` and `frozen-subject-lock` are separate workflows and
