@@ -70,9 +70,33 @@ prose under `docs/` that narrows. The feature-configuration matrix,
 `docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
 other non-markdown path under `docs/` stay source, so those changes
 keep `feature-configuration-proof` and the other heavy lanes. An
-unrecognized docs payload is source, not prose. GitHub skips a lane only
-when the plan succeeds with `narrow=true`; a skip is not a green
+unrecognized docs payload is source, not prose. GitHub skips a heavy lane only
+when the plan succeeds with `narrow=true`. A `test_only` plan does not
+set that flag: it records `product-candidates-interop`,
+`operator-latency`, `integrated-dogfood`, and `compat-delegation`
+NotApplicable, and it still runs `msrv`, `test-core-platforms`, and
+`coverage`. `package-smoke` is NotApplicable only for `docs_only` and
+`test_only`. A skip is not a green
 execution. Unknown, malformed, and shared ledger impact stay wide. A
+test path mixed with any other kind stays wide. Ordinary crate tests under
+`crates/<crate>/tests/` are test-only.
+`crates/cargo-allow/tests/intent_staged_precommit_delegate.rs` stays source,
+because only `compat-delegation` runs that test with a candidate.
+A `fixtures` path segment outside `docs/` is test-only except
+`tests/compat/fixtures/`, which stays source for the same lane, and except
+fixture paths that a test_only-skipped lane reads. `package-smoke` and the
+four test_only product lanes contribute those paths from their steps, plus
+one callee hop. `docs/dogfood/fixtures/` is already source or docs and is
+not part of that set. An unreadable or unparsed job map keeps every fixture
+path source.
+A `scripts/test-*` file is test-only only when the ci.yml job map shows
+that no test_only-skipped lane runs it, or an explicit decision records
+that fact. `package-smoke` and the four test_only product lanes contribute
+their `scripts/test-*` steps, plus one callee hop, to the source set.
+Every `scripts/test-exact-candidate-*` file stays source.
+A new `scripts/test-*` file with neither a job-map hit nor an explicit
+decision stays source, and `scripts/test-ci-proof-route.py` fails until
+that decision is recorded. There is no bare `scripts/test-*` prefix. A
 docs-only last commit on a source-bearing pull request stays wide.
 `push`, `workflow_dispatch`, `merge_group`, and release events stay wide.
 The ruleset contexts are `pregate`, `test`, `review-readiness`, and
@@ -80,15 +104,20 @@ The ruleset contexts are `pregate`, `test`, `review-readiness`, and
 `pregate` runs its current assertions, including the no-new guard, on
 every workflow run. The change-note guard (`--require-change-note`)
 belongs to `test` and runs only when `test` executes. `test` also runs
-no-new when it executes. `test` needs `pregate` and `package-smoke`, so
-GitHub skips `test`, and the change-note guard with it, if either fails.
+no-new when it executes. `test` needs `pregate` and `package-smoke`. A failed `pregate` or a
+failed `package-smoke` skips `test`, and the change-note guard with it.
 That skip is a dependency failure, not a green execution and not a
-narrow plan. A pregate failure remains a
-failure. `package-smoke` stays because `test` consumes its
-cutover receipts. `cargo-deny` and the release-impact graph stay.
+narrow plan. A skipped `package-smoke` does not skip `test`. `docs_only`
+and `test_only` leave the cutover receipt restore and status unrun,
+because those receipts are produced only by `package-smoke`. The
+change-note guard stays in `test` and runs whenever `test` runs. A
+pregate failure remains a failure. `cargo-deny` and the release-impact
+graph stay.
 `review-readiness` and `frozen-subject-lock` are separate workflows and
-are not path-filtered. `package-smoke`, `cargo-deny`, `proof-route`, and
+are not path-filtered. `cargo-deny`, `proof-route`, and
 the release graph stay on a narrow plan and are not ruleset contexts.
+`package-smoke` stays for a ledger narrow plan and for every wide plan.
+It does not run for `docs_only` or `test_only`.
 
 Measurement receipts in `docs/ci/receipts/` are admitted one file at a time.
 Each has an exact-path `non_rust_file` allow in `policy/allow.toml`.
@@ -102,8 +131,8 @@ or a run record for the docs-only measurement. A docs-only pull request's
 own narrow run is admissible evidence for that record.
 
 Required lanes (gate cargo-allow patch and release on wide pull-request and
-full-boundary runs; `test`, `package-smoke`, and `cargo-deny` also stay on
-a narrow plan):
+full-boundary runs; `test` and `cargo-deny` also stay on a narrow plan, and
+`package-smoke` stays unless the class is `docs_only` or `test_only`):
 
 - **`msrv`**: cargo-allow release-set `cargo check --all-targets` on the
   declared `rust-version` (`1.95`). cargo-allow-scoped by policy — cargo-intent

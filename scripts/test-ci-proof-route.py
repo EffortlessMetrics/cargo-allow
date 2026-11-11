@@ -28,6 +28,26 @@ NARROW_IF_STANDALONE = (
     "${{ !cancelled() && (needs.proof-route.result != 'success' || "
     "needs.proof-route.outputs.narrow != 'true') }}"
 )
+TEST_ONLY_SKIP = [
+    "product-candidates-interop",
+    "operator-latency",
+    "integrated-dogfood",
+    "compat-delegation",
+]
+TEST_ONLY_IF_WITH_PREGATE = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+PACKAGE_SMOKE_IF = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+TEST_IF = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}"
+)
 ALWAYS_CI_JOBS = [
     "pregate",
     "test",
@@ -177,11 +197,19 @@ def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
     for required in REQUIRED_CONTEXTS:
         if decisions.get(required) != "execute":
             fail(f"{name}: {required} decision is {decisions.get(required)}")
-    for job in ("package-smoke", "cargo-deny", "release-impact", "release-rehearsal-required"):
+    for job in ("cargo-deny", "release-impact", "release-rehearsal-required"):
         if decisions.get(job) != "execute":
             fail(f"{name}: {job} decision is {decisions.get(job)}")
-    expected = "not_applicable" if narrow else "execute"
+    package_smoke = "not_applicable" if class_name in {"docs_only", "test_only"} else "execute"
+    if decisions.get("package-smoke") != package_smoke:
+        fail(f"{name}: package-smoke decision is {decisions.get('package-smoke')}, expected {package_smoke}")
     for job in NARROW_WITH_PREGATE + NARROW_STANDALONE:
+        if narrow:
+            expected = "not_applicable"
+        elif class_name == "test_only" and job in TEST_ONLY_SKIP:
+            expected = "not_applicable"
+        else:
+            expected = "execute"
         if decisions.get(job) != expected:
             fail(f"{name}: {job} decision is {decisions.get(job)}, expected {expected}")
     if narrow:
@@ -345,6 +373,279 @@ def check_classifications() -> None:
             "source_bearing",
             False,
         ),
+        (
+            "crate tests are test_only",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/tests/route.rs\n",
+            "test_only",
+            False,
+        ),
+        (
+            "test script is test_only",
+            "pull_request",
+            None,
+            "M\tscripts/test-ci-proof-route.py\n",
+            "test_only",
+            False,
+        ),
+        (
+            "fixture tree is test_only",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/repo-edit/sample.toml\n"
+            "M\tfixtures/unsafe/src/lib.rs\n",
+            "test_only",
+            False,
+        ),
+        (
+            "hawk boundary fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "ripr boundary fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/proof-adapter-ripr/parity-boundary-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "cargo-proof plan fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/cargo-proof/proof-plan-smoke-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "cargo-proof obligation fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "dogfood stage fixture stays source",
+            "pull_request",
+            None,
+            "M\ttests/fixtures/three-product-dogfood/pipeline-stages-v1.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "package byte authority stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-package-byte-authority.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "perf budget smoke stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-perf-budget-smoke.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate package candidate stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-package-candidate.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate staged packaging stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-staged-packaging.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate index checksum stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-index-checksum.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate isolated install stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-isolated-install.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate install journey stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-install-journey.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate install journey py stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-install-journey.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate package identity stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-package-identity.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact upgrade rollback journey stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-upgrade-rollback-journey.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "release binary contract stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-release-binary.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "linux gnu candidate stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-linux-gnu-candidate.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "final package docs stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-final-package-docs.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "release topology publisher stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-release-topology-publisher.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "qualify worklist pages stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-qualify-worklist-pages.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "exact candidate interop characterization stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-exact-candidate-interop-smoke.sh\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "delegation test stays source",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/tests/intent_staged_precommit_delegate.rs\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "compat fixtures stay source",
+            "pull_request",
+            None,
+            "M\ttests/compat/fixtures/sample.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "nested compat fixtures stay source",
+            "pull_request",
+            None,
+            "M\ttests/compat/fixtures/nested/sample.toml\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "undecided test script stays source",
+            "pull_request",
+            None,
+            "M\tscripts/test-not-a-real-decision.py\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "test plus source stays wide",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/tests/route.rs\nM\tcrates/cargo-allow/src/lib.rs\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "unit test inside src stays wide",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/src/refresh_fixtures.rs\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "docs fixture payload stays source",
+            "pull_request",
+            None,
+            "M\tdocs/dogfood/fixtures/sample.json\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "renamed test file stays wide",
+            "pull_request",
+            None,
+            "R100\tcrates/cargo-allow/tests/old.rs\tcrates/cargo-allow/tests/new.rs\n",
+            "unknown",
+            False,
+        ),
+        (
+            "push of tests stays wide",
+            "push",
+            None,
+            "M\tcrates/cargo-allow/tests/route.rs\n",
+            "full_boundary",
+            False,
+        ),
+        (
+            "test successor on a source pull request stays wide",
+            "pull_request",
+            "M\tcrates/cargo-allow/tests/route.rs\n",
+            "M\tcrates/cargo-allow/src/lib.rs\nM\tcrates/cargo-allow/tests/route.rs\n",
+            "source_bearing",
+            False,
+        ),
     ]
     for name, event, successor, effective, class_name, narrow in cases:
         plan = fixture(event, successor, effective)
@@ -441,6 +742,10 @@ def check_contract() -> None:
     expected = {
         "narrow_if_with_pregate": NARROW_IF_WITH_PREGATE,
         "narrow_if_standalone": NARROW_IF_STANDALONE,
+        "test_only_if_with_pregate": TEST_ONLY_IF_WITH_PREGATE,
+        "test_only_skip": TEST_ONLY_SKIP,
+        "package_smoke_if": PACKAGE_SMOKE_IF,
+        "package_smoke_skip_classes": ["docs_only", "test_only"],
         "always_ci_jobs": ALWAYS_CI_JOBS,
         "record_only": RECORD_ONLY,
         "narrow_with_pregate": NARROW_WITH_PREGATE,
@@ -485,8 +790,13 @@ def check_workflow() -> None:
         fail(f"lane authority does not match ci.yml jobs; missing={missing} extra={extra}")
     for job in NARROW_WITH_PREGATE:
         body = jobs[job]
-        if "needs: [pregate, proof-route]" not in body or NARROW_IF_WITH_PREGATE not in body:
-            fail(f"{job} does not keep the pregate gate and the narrow guard")
+        expected_if = TEST_ONLY_IF_WITH_PREGATE if job in TEST_ONLY_SKIP else NARROW_IF_WITH_PREGATE
+        if "needs: [pregate, proof-route]" not in body or expected_if not in body:
+            fail(f"{job} does not keep the pregate gate and its narrow guard")
+        if job in TEST_ONLY_SKIP and NARROW_IF_WITH_PREGATE in body:
+            fail(f"{job} still uses only the docs-only narrow guard")
+        if job not in TEST_ONLY_SKIP and "class != 'test_only'" in body:
+            fail(f"{job} would skip on a test_only plan")
         if body.find("needs:") > body.find("steps:"):
             fail(f"{job} declares needs after steps")
     for job in NARROW_STANDALONE:
@@ -496,10 +806,19 @@ def check_workflow() -> None:
         if "needs: [pregate" in body or "needs: pregate" in body:
             fail(f"{job} gained a pregate dependency")
     for job in ALWAYS_CI_JOBS:
-        if job == "proof-route":
+        if job in {"proof-route", "package-smoke"}:
             continue
         if "proof-route" in jobs[job] or "outputs.narrow" in jobs[job]:
             fail(f"{job} reads the narrow plan; required and release lanes must not")
+    smoke = jobs["package-smoke"]
+    if "needs: [pregate, proof-route]" not in smoke or PACKAGE_SMOKE_IF not in smoke:
+        fail("package-smoke is not conditional on docs_only and test_only")
+    if "outputs.narrow" in smoke:
+        fail("package-smoke must key off class, not the full narrow flag")
+    if TEST_IF not in jobs["test"]:
+        fail("test still skips when package-smoke is skipped")
+    if "needs.package-smoke.result == 'success'" not in jobs["test"]:
+        fail("test restores cutover receipts when package-smoke did not run")
     route = jobs["proof-route"]
     test_at = route.find("run: python3 scripts/test-ci-proof-route.py")
     plan_at = route.find("run: python3 scripts/ci-proof-route.py")
@@ -1194,8 +1513,108 @@ def check_machine_docs_git() -> None:
         assert_plan(f"git {relative} stays wide", plan, "source_bearing", False)
 
 
+REQUIRED_SKIPPED_FIXTURES = (
+    "tests/fixtures/cargo-proof/intent-obligation-plan-smoke-v1.json",
+    "tests/fixtures/cargo-proof/proof-plan-smoke-v1.toml",
+    "tests/fixtures/proof-adapter-hawk/parity-boundary-v1.toml",
+    "tests/fixtures/proof-adapter-ripr/parity-boundary-v1.toml",
+    "tests/fixtures/three-product-dogfood/pipeline-stages-v1.toml",
+)
+
+
+def check_skipped_lane_fixtures() -> None:
+    module = load_router()
+    module._SURFACE_CACHE.pop("fixtures", None)
+    status, derived = module.derive_skipped_lane_fixtures()
+    if status != "ok":
+        fail(f"ci.yml fixture map: {status}")
+    missing = sorted(set(REQUIRED_SKIPPED_FIXTURES) - derived)
+    if missing:
+        fail(f"skipped-lane fixtures missing from the job map: {missing}")
+    for path in sorted(derived):
+        if module.is_test_surface(path) or module.path_kind(path) == "test":
+            fail(f"{path} is consumed by a skipped lane and still test_only")
+    ordinary = (
+        "tests/fixtures/repo-edit/sample.toml",
+        "fixtures/unsafe/src/lib.rs",
+        "tests/fixtures/proof-adapter-hawk/parity-analysis-receipt-v1.toml",
+        "tests/fixtures/proof-adapter-hawk/parity-finding-mapping-v1.toml",
+        "tests/fixtures/proof-adapter-ripr/parity-grip-receipt-v1.toml",
+    )
+    for path in ordinary:
+        if not module.is_test_surface(path):
+            fail(f"{path} is not a skipped-lane fixture and no longer classifies test_only")
+    module._SURFACE_CACHE.clear()
+    original = module.CI_WORKFLOW
+    module.CI_WORKFLOW = "ci-proof-route-missing.yml"
+    try:
+        broken, _found = module.derive_skipped_lane_fixtures()
+        if broken == "ok":
+            fail("a missing ci.yml still produced a fixture map")
+        if module.is_test_surface("tests/fixtures/repo-edit/sample.toml"):
+            fail("an unreadable job map still classified a fixture test_only")
+        if module.path_kind("fixtures/unsafe/src/lib.rs") == "test":
+            fail("an unreadable job map still classified a fixture as test")
+    finally:
+        module.CI_WORKFLOW = original
+        module._SURFACE_CACHE.clear()
+
+
+def check_script_decisions() -> None:
+    module = load_router()
+    status, derived = module.derive_live_scripts()
+    if status != "ok":
+        fail(f"ci.yml job map: {status}")
+    live = module.live_script_surfaces()
+    decided = module.TEST_ONLY_SCRIPT_DECISIONS
+    disk = module.disk_test_scripts()
+    error = module.partition_test_scripts(disk, live, decided)
+    if error:
+        fail(f"scripts/test-* decision: {error}")
+    if not derived <= live:
+        fail("derived live scripts were dropped")
+    if not module.PINNED_SOURCE_SCRIPTS <= live:
+        fail("pinned source scripts were dropped")
+    exact = {path for path in disk if Path(path).name.startswith("test-exact-candidate-")}
+    if not exact <= live:
+        fail(f"test-exact-candidate-* left test_only: {sorted(exact - live)}")
+    required = {
+        "scripts/test-package-byte-authority.py",
+        "scripts/test-perf-budget-smoke.sh",
+        "scripts/test-release-binary.sh",
+        "scripts/test-linux-gnu-candidate.py",
+    }
+    if not required <= live:
+        fail(f"required live scripts missing: {sorted(required - live)}")
+    injected = module.partition_test_scripts(
+        disk | {"scripts/test-not-a-real-decision.py"},
+        live,
+        decided,
+    )
+    if injected is None or "scripts/test-not-a-real-decision.py" not in injected:
+        fail("a new scripts/test-* without a decision was accepted")
+    if module.script_surface_decision("scripts/test-not-a-real-decision.py") != "undecided":
+        fail("an unknown scripts/test-* file received a test_only decision")
+    if module.is_test_surface("scripts/test-not-a-real-decision.py"):
+        fail("an unknown scripts/test-* file used the bare prefix")
+    if not module.is_test_surface("scripts/test-ci-proof-route.py"):
+        fail("a decided test script no longer classifies test_only")
+    if module.is_test_surface(module.DELEGATION_TEST):
+        fail("the delegation test is still a test surface")
+    if module.is_test_surface("tests/compat/fixtures/sample.toml"):
+        fail("compat fixtures are still a test surface")
+    for path in sorted(decided):
+        if module.script_surface_decision(path) != "test_only":
+            fail(f"{path} lost its test_only decision")
+    for path in sorted(live):
+        if module.script_surface_decision(path) != "source":
+            fail(f"{path} is live but not source")
+
+
 def main() -> None:
     check_classifications()
+    check_script_decisions()
+    check_skipped_lane_fixtures()
     check_machine_docs()
     check_contract()
     check_workflow()

@@ -29,6 +29,26 @@ feature-configuration matrix, the lane and support tables, and
 direct-floor receipts. An unrecognized docs payload is source, not
 prose.
 
+A pull request whose paths are only ordinary crate tests
+(``crates/<crate>/tests/`` except the compat delegation test), a
+``scripts/test-*`` file with an explicit test-only decision, or a
+``fixtures`` path segment other than ``tests/compat/fixtures/`` is
+``test_only``. That class does not set ``narrow=true``. It records
+package-smoke, product-candidates-interop, operator-latency,
+integrated-dogfood, and compat-delegation NotApplicable, and it still
+executes msrv, test-core-platforms, and coverage. Scripts those skipped
+lanes run, including one callee hop, stay source, as do
+``crates/cargo-allow/tests/intent_staged_precommit_delegate.rs`` and
+``tests/compat/fixtures/``. Fixture paths those lanes read, again including
+one callee hop, also stay source. An unreadable or unparsed job map keeps
+every such fixture source. Every ``scripts/test-exact-candidate-*`` file
+stays source. A ``scripts/test-*`` file with no job-map hit and no
+explicit decision stays source, and the routing control fails until a
+decision is recorded. There is no bare ``scripts/test-*`` prefix. A test
+path mixed with any other kind stays wide. ``docs_only`` also records
+package-smoke NotApplicable. Ledger narrow plans still execute
+package-smoke.
+
 Unknown, empty, rename/copy, malformed, and shared ledger impact stay
 wide. ``push``, ``workflow_dispatch``, ``merge_group``, ``schedule``,
 ``release``, and every other event stay wide, including before the
@@ -37,10 +57,12 @@ exits non-zero so heavy lanes still run. Lookup failure stays wide and
 exits zero: absence is not proof.
 
 The ruleset contexts (pregate, test, review-readiness,
-frozen-subject-lock), package-smoke, cargo-deny, and the release graph
-always execute. Heavy non-required lanes are NotApplicable only when this
-plan succeeds with ``narrow=true``; GitHub then skips those jobs. A skip
-is not a green execution.
+frozen-subject-lock), cargo-deny, and the release graph always execute.
+package-smoke executes unless the plan succeeds with class ``docs_only``
+or ``test_only``. Heavy non-required lanes are NotApplicable when this
+plan succeeds with ``narrow=true``. The test_only product lanes above are
+NotApplicable when the plan succeeds with that class. GitHub skips a job
+only from that decision. A skip is not a green execution.
 """
 
 from __future__ import annotations
@@ -79,13 +101,101 @@ NARROW_IF_STANDALONE = (
     "${{ !cancelled() && (needs.proof-route.result != 'success' || "
     "needs.proof-route.outputs.narrow != 'true') }}"
 )
+# Item 5 skips. These lanes also skip on narrow=true. msrv, coverage, and
+# test-core-platforms stay on the docs/ledger guard only.
+TEST_ONLY_SKIP = (
+    "product-candidates-interop",
+    "operator-latency",
+    "integrated-dogfood",
+    "compat-delegation",
+)
+TEST_ONLY_IF_WITH_PREGATE = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+PACKAGE_SMOKE_SKIP_CLASSES = ("docs_only", "test_only")
+PACKAGE_SMOKE_IF = (
+    "${{ !cancelled() && needs.pregate.result == 'success' && "
+    "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
+    "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+# Jobs whose test_only skip would hide a change to the scripts they run.
+SKIPPED_TEST_ONLY_JOBS = frozenset({"package-smoke", *TEST_ONLY_SKIP})
+# product-candidates-interop runs scripts/exact-candidate-interop-smoke.sh,
+# not this characterization. The repair still requires every
+# scripts/test-exact-candidate-* path to stay source.
+PINNED_SOURCE_SCRIPTS = frozenset(
+    {
+        "scripts/test-exact-candidate-interop-smoke.sh",
+    }
+)
+DELEGATION_TEST = "crates/cargo-allow/tests/intent_staged_precommit_delegate.rs"
+COMPAT_FIXTURE_PREFIX = "tests/compat/fixtures/"
+# scripts/test-* files that no skipped lane runs. A file on disk that is
+# neither here nor derived from the ci.yml job map has no decision.
+TEST_ONLY_SCRIPT_DECISIONS = frozenset(
+    {
+        "scripts/test-agent-context-contract.py",
+        "scripts/test-audit-default-sensor-burden.sh",
+        "scripts/test-campaign-issue-closeout.py",
+        "scripts/test-candidate-harness-lifecycle.py",
+        "scripts/test-changie-fragment-schema-smoke.sh",
+        "scripts/test-changie-history-roundtrip.sh",
+        "scripts/test-changie-sensor-external-consumer.sh",
+        "scripts/test-check-msrv-consistency.sh",
+        "scripts/test-check-msrv-resolved.sh",
+        "scripts/test-check-toolchain-profile.sh",
+        "scripts/test-ci-proof-route.py",
+        "scripts/test-collect-ci-performance.sh",
+        "scripts/test-command-case-evidence.py",
+        "scripts/test-command-mutation-evidence.py",
+        "scripts/test-dependency-delta-inputs.py",
+        "scripts/test-extraction-cutover-status.sh",
+        "scripts/test-feature-config-routing.py",
+        "scripts/test-final-packaged-surface.py",
+        "scripts/test-final-registry-observation.py",
+        "scripts/test-generate-release-manifest.sh",
+        "scripts/test-intent-candidate-smoke.sh",
+        "scripts/test-package-candidate-smoke.sh",
+        "scripts/test-project-review-readiness.sh",
+        "scripts/test-proof-direct-floors-protocol.sh",
+        "scripts/test-proof-direct-floors.sh",
+        "scripts/test-qualify-release-freeze.py",
+        "scripts/test-release-escaped-defect-corpus.py",
+        "scripts/test-release-final-tag.py",
+        "scripts/test-release-identity-projection-reader.py",
+        "scripts/test-release-install-smoke.sh",
+        "scripts/test-release-operation-store.py",
+        "scripts/test-release-rehearsal.py",
+        "scripts/test-release-source-candidate-smoke-gate.py",
+        "scripts/test-release-version-preflight.sh",
+        "scripts/test-review-readiness-digest-stability.sh",
+        "scripts/test-shallow-diff-base-failure.sh",
+        "scripts/test-shallow-diff-base-smoke.sh",
+        "scripts/test-three-product-dogfood-smoke.sh",
+        "scripts/test-verify-crate-registry-version.sh",
+        "scripts/test-verify-evidence-surface-inventory.py",
+    }
+)
+SCRIPT_FILE = re.compile(r"scripts/([A-Za-z0-9_.-]+\.(?:py|sh))")
+_FIXTURE_TOKEN = re.compile(
+    r"(?:tests/fixtures|fixtures)/[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*"
+)
+_PATH_CHARS = frozenset(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_./-"
+)
+_SURFACE_CACHE: dict[str, tuple[str, frozenset[str]]] = {}
 
 # Jobs in ci.yml that execute on a narrow plan. review-readiness and
 # frozen-subject-lock are recorded here and live in their own workflows.
 ALWAYS_CI = [
     ("pregate", "ruleset context; current assertions stay on every applicable run"),
     ("test", "ruleset context; no-new and the change-note guard stay unconditional"),
-    ("package-smoke", "test restores this lane's cutover receipts"),
+    (
+        "package-smoke",
+        "cutover receipts; not applicable for docs_only or test_only",
+    ),
     ("cargo-deny", "supply-chain audit stays on every run"),
     ("release-impact", "release qualification stays on every event"),
     ("release-rehearsal", "release qualification stays on every event"),
@@ -137,11 +247,244 @@ def contract() -> dict[str, object]:
     return {
         "narrow_if_with_pregate": NARROW_IF_WITH_PREGATE,
         "narrow_if_standalone": NARROW_IF_STANDALONE,
+        "test_only_if_with_pregate": TEST_ONLY_IF_WITH_PREGATE,
+        "test_only_skip": list(TEST_ONLY_SKIP),
+        "package_smoke_if": PACKAGE_SMOKE_IF,
+        "package_smoke_skip_classes": list(PACKAGE_SMOKE_SKIP_CLASSES),
         "always_ci_jobs": [job for job, _reason in ALWAYS_CI],
         "record_only": [job for job, _reason in RECORD_ONLY],
         "narrow_with_pregate": list(NARROW_WITH_PREGATE),
         "narrow_standalone": list(NARROW_STANDALONE),
     }
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parent.parent
+
+
+def workflow_job_bodies(text: str) -> dict[str, str] | None:
+    """Return ci.yml job bodies keyed by job id, or None when the map is unreadable."""
+    _on, separator, body = text.partition("\njobs:\n")
+    if not separator:
+        return None
+    matches = list(re.finditer(r"(?m)^  ([a-z0-9-]+):\n", body))
+    found: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(body)
+        found[match.group(1)] = body[start:end]
+    return found
+
+
+def disk_test_scripts() -> frozenset[str]:
+    """Return one-segment ``scripts/test-*`` files in this checkout."""
+    root = repo_root() / "scripts"
+    found: set[str] = set()
+    try:
+        entries = list(root.iterdir())
+    except OSError:
+        return frozenset()
+    for file in entries:
+        if file.is_file() and file.name.startswith("test-"):
+            found.add(f"scripts/{file.name}")
+    return frozenset(found)
+
+
+def _script_tokens(text: str) -> set[str]:
+    found: set[str] = set()
+    for line in text.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        for name in SCRIPT_FILE.findall(line):
+            found.add(f"scripts/{name}")
+    return found
+
+
+def derive_live_scripts() -> tuple[str, frozenset[str]]:
+    """Return scripts/test-* paths that a test_only-skipped lane runs.
+
+    The set is the ci.yml run steps of those jobs, plus one callee hop into
+    the scripts those steps name. ``status`` is ``ok`` or a failure reason.
+    An unreadable map fails closed in ``live_script_surfaces``.
+    """
+    cached = _SURFACE_CACHE.get("derived")
+    if cached is not None:
+        return cached
+    workflow = repo_root() / CI_WORKFLOW
+    try:
+        text = workflow.read_text(encoding="utf-8")
+    except OSError:
+        result = ("unreadable-workflow", frozenset())
+        _SURFACE_CACHE["derived"] = result
+        return result
+    jobs = workflow_job_bodies(text)
+    if jobs is None:
+        result = ("unparsed-workflow", frozenset())
+        _SURFACE_CACHE["derived"] = result
+        return result
+    missing = sorted(SKIPPED_TEST_ONLY_JOBS - set(jobs))
+    if missing:
+        result = (f"missing-jobs:{','.join(missing)}", frozenset())
+        _SURFACE_CACHE["derived"] = result
+        return result
+    named: set[str] = set()
+    for job in SKIPPED_TEST_ONLY_JOBS:
+        named.update(_script_tokens(jobs[job]))
+    live = {path for path in named if Path(path).name.startswith("test-")}
+    root = repo_root()
+    for path in sorted(named):
+        try:
+            callee_text = (root / path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for callee in _script_tokens(callee_text):
+            if Path(callee).name.startswith("test-"):
+                live.add(callee)
+    result = ("ok", frozenset(live))
+    _SURFACE_CACHE["derived"] = result
+    return result
+
+
+def live_script_surfaces() -> frozenset[str]:
+    """Return scripts/test-* paths that must stay source-bearing."""
+    status, derived = derive_live_scripts()
+    if status != "ok":
+        return disk_test_scripts() | PINNED_SOURCE_SCRIPTS
+    return derived | PINNED_SOURCE_SCRIPTS
+
+
+def partition_test_scripts(
+    disk: frozenset[str], live: frozenset[str], decided: frozenset[str]
+) -> str | None:
+    """Return an error when a scripts/test-* file lacks exactly one decision."""
+    overlap = sorted(live & decided)
+    undecided = sorted(disk - live - decided)
+    stale = sorted((live | decided) - disk)
+    if not overlap and not undecided and not stale:
+        return None
+    return f"overlap={overlap} undecided={undecided} stale={stale}"
+
+
+def script_surface_decision(path: str) -> str:
+    """Return ``source``, ``test_only``, or ``undecided`` for one script path."""
+    if path in live_script_surfaces():
+        return "source"
+    if path in TEST_ONLY_SCRIPT_DECISIONS:
+        return "test_only"
+    return "undecided"
+
+
+def _is_compat_fixture(path: str) -> bool:
+    return path == COMPAT_FIXTURE_PREFIX.rstrip("/") or path.startswith(COMPAT_FIXTURE_PREFIX)
+
+
+def _fixture_tokens(text: str) -> set[str]:
+    """Return fixture paths named on non-comment lines.
+
+    A ``docs/.../fixtures/`` path is left out. ``path_kind`` already treats
+    that tree as docs or source before the test-surface check.
+    """
+    found: set[str] = set()
+    for line in text.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        for match in _FIXTURE_TOKEN.finditer(line):
+            start = match.start()
+            while start > 0 and line[start - 1] in _PATH_CHARS:
+                start -= 1
+            full = line[start : match.end()].lstrip("./").rstrip(".")
+            if full.startswith("docs/"):
+                continue
+            if full.startswith("tests/fixtures/") or full.startswith("fixtures/"):
+                found.add(full)
+    return found
+
+
+def derive_skipped_lane_fixtures() -> tuple[str, frozenset[str]]:
+    """Return fixture paths that a test_only-skipped lane reads.
+
+    The set is path tokens in those ci.yml jobs, plus one callee hop into
+    the scripts those jobs name. ``status`` is ``ok`` or a failure reason.
+    An unreadable map fails closed in :func:`is_test_surface`.
+    """
+    cached = _SURFACE_CACHE.get("fixtures")
+    if cached is not None:
+        return cached
+    workflow = repo_root() / CI_WORKFLOW
+    try:
+        text = workflow.read_text(encoding="utf-8")
+    except OSError:
+        result = ("unreadable-workflow", frozenset())
+        _SURFACE_CACHE["fixtures"] = result
+        return result
+    jobs = workflow_job_bodies(text)
+    if jobs is None:
+        result = ("unparsed-workflow", frozenset())
+        _SURFACE_CACHE["fixtures"] = result
+        return result
+    missing = sorted(SKIPPED_TEST_ONLY_JOBS - set(jobs))
+    if missing:
+        result = (f"missing-jobs:{','.join(missing)}", frozenset())
+        _SURFACE_CACHE["fixtures"] = result
+        return result
+    texts: list[str] = []
+    named: set[str] = set()
+    root = repo_root()
+    for job in SKIPPED_TEST_ONLY_JOBS:
+        texts.append(jobs[job])
+        named.update(_script_tokens(jobs[job]))
+    hop: set[str] = set()
+    for path in sorted(named):
+        try:
+            callee_text = (root / path).read_text(encoding="utf-8")
+        except OSError:
+            continue
+        texts.append(callee_text)
+        hop.update(_script_tokens(callee_text))
+    for path in sorted(hop - named):
+        try:
+            texts.append((root / path).read_text(encoding="utf-8"))
+        except OSError:
+            continue
+    result = ("ok", frozenset(token for blob in texts for token in _fixture_tokens(blob)))
+    _SURFACE_CACHE["fixtures"] = result
+    return result
+
+
+def _consumed_by_skipped_lane(path: str) -> bool:
+    """Return whether ``path`` must stay source because a skipped lane reads it.
+
+    A map that is not ``ok`` treats every fixture path as consumed, so the
+    plan stays source-bearing instead of test_only.
+    """
+    status, found = derive_skipped_lane_fixtures()
+    if status != "ok":
+        return True
+    if path in found:
+        return True
+    return any(path.startswith(f"{token}/") for token in found)
+
+
+def is_test_surface(path: str) -> bool:
+    """Return whether ``path`` is a test-only surface (#4332 item 5).
+
+    Crate tests live under ``crates/<crate>/tests/``, except the compat
+    delegation test. A ``scripts/test-*`` file is test-only only when
+    :func:`script_surface_decision` says so. A path segment named
+    ``fixtures`` is a fixture tree, except ``tests/compat/fixtures/`` and
+    fixtures a skipped lane reads. Docs paths are classified before this
+    helper, so a fixture under ``docs/`` stays docs or source.
+    """
+    if path == DELEGATION_TEST or _is_compat_fixture(path):
+        return False
+    parts = path.split("/")
+    if len(parts) >= 4 and parts[0] == "crates" and parts[2] == "tests":
+        return True
+    if len(parts) == 2 and parts[0] == "scripts" and parts[1].startswith("test-"):
+        return script_surface_decision(path) == "test_only"
+    if "fixtures" not in parts:
+        return False
+    return not _consumed_by_skipped_lane(path)
 
 
 def normalize(path: str) -> str:
@@ -179,6 +522,8 @@ def path_kind(path: str) -> str:
         return "docs"
     if len(parts) == 1 and normalized.endswith(".md"):
         return "docs"
+    if is_test_surface(normalized):
+        return "test"
     return "other"
 
 
@@ -229,6 +574,8 @@ def classify_entries(entries: list[tuple[str, str]] | None) -> str:
         return "review_ledger_only"
     if kinds == {"docs"}:
         return "docs_only"
+    if kinds == {"test"}:
+        return "test_only"
     return "source_bearing"
 
 
@@ -262,6 +609,8 @@ def decide(
         return "docs_only", True
     if effective_class == "review_ledger_only":
         return "review_ledger_only", True
+    if effective_class == "test_only":
+        return "test_only", False
     if effective_class in {"unknown", "shared_impact", "source_bearing"}:
         return effective_class, False
     return "unknown", False
@@ -276,6 +625,15 @@ def lane_rows(class_name: str, narrow: bool) -> list[dict[str, str]]:
         *ALWAYS_CI[2:],
     ]
     for job, reason in ordered:
+        if job == "package-smoke" and class_name in PACKAGE_SMOKE_SKIP_CLASSES:
+            rows.append(
+                {
+                    "id": job,
+                    "decision": "not_applicable",
+                    "reason": f"{class_name} does not build package receipts",
+                }
+            )
+            continue
         rows.append({"id": job, "decision": "execute", "reason": reason})
     for job in NARROW_WITH_PREGATE + NARROW_STANDALONE:
         if narrow:
@@ -284,6 +642,14 @@ def lane_rows(class_name: str, narrow: bool) -> list[dict[str, str]]:
                     "id": job,
                     "decision": "not_applicable",
                     "reason": f"narrow {class_name}",
+                }
+            )
+        elif class_name == "test_only" and job in TEST_ONLY_SKIP:
+            rows.append(
+                {
+                    "id": job,
+                    "decision": "not_applicable",
+                    "reason": "test_only product lane",
                 }
             )
         else:
