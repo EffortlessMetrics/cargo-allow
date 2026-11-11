@@ -57,7 +57,10 @@ terminal, and admissible for the same source paths and base. That
 successor route is the one that reuses predecessor proof. An effective
 diff that is entirely `.allow/review-dispositions/` records, with no
 other paths, narrows those lanes on its own and does not claim that
-missing source proof is reusable. Missing, stale,
+missing source proof is reusable. A source-bearing successor does not
+use that route. A successor that reverts a source change remains
+source-bearing, so the plan stays wide even when the effective diff
+contains only those ledger records. Missing, stale,
 wrong-source, failed, pending, cancelled, skipped, ambiguous, or
 base-moved proof stays wide and is not reused. An effective diff that is
 provably docs-only also records those lanes NotApplicable. Paths under
@@ -69,11 +72,13 @@ docs-only last commit on a source-bearing pull request stays wide.
 `push`, `workflow_dispatch`, `merge_group`, and release events stay wide.
 The ruleset contexts are `pregate`, `test`, `review-readiness`, and
 `frozen-subject-lock`. Proof routing never skips `pregate` or `test`.
-`pregate` runs its current assertions, including no-new and the
-change-note guard, on every workflow run. `test` runs those assertions
-when it executes. `test` needs `pregate` and `package-smoke`, so GitHub
-skips `test` if either fails. That skip is a dependency failure, not a
-green execution and not a narrow plan. A pregate failure remains a
+`pregate` runs its current assertions, including the no-new guard, on
+every workflow run. The change-note guard (`--require-change-note`)
+belongs to `test` and runs only when `test` executes. `test` also runs
+no-new when it executes. `test` needs `pregate` and `package-smoke`, so
+GitHub skips `test`, and the change-note guard with it, if either fails.
+That skip is a dependency failure, not a green execution and not a
+narrow plan. A pregate failure remains a
 failure. `package-smoke` stays because `test` consumes its
 cutover receipts. `cargo-deny` and the release-impact graph stay.
 `review-readiness` and `frozen-subject-lock` are separate workflows and
