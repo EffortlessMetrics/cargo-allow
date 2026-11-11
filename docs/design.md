@@ -172,6 +172,12 @@ practical and reports unstructured or unknown-prefix references as weak
 evidence. It must not claim semantic proof from the presence of a reference,
 and it must not execute external evidence tools as part of its own scan.
 
+A `doc:` path is also a tracked non-Rust file. Every markdown file under
+`docs/` is admitted by its own exact-path allow. There is no directory
+glob, so a new file there is a new finding until that allow exists.
+Editing an already-allowed prose document that no guarded test reads does
+not add a finding and does not by itself change the source-exception ledger.
+
 ## Reports
 
 Reports should serve three audiences:
