@@ -1101,11 +1101,106 @@ def check_matrix_job_names() -> None:
         fail("non-object job row was accepted")
 
 
+def check_machine_docs() -> None:
+    """Machine-read docs stay source. Markdown prose can still narrow."""
+    route = load_router()
+    expected = {
+        "docs/ci.md": "docs",
+        "docs/README.md": "docs",
+        "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md": "docs",
+        ".changes/note.yaml": "docs",
+        "README.md": "docs",
+        "docs/assets/feature-configuration-matrix-v1.json": "other",
+        "docs/ci-lanes.toml": "other",
+        "docs/support-matrix.toml": "other",
+        "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json": "other",
+        "docs/ci/receipts/direct-floor-proof-shared-v1.json": "other",
+        "docs/schemas/operator-latency.v4.schema.json": "other",
+        "docs/schemas/README.md": "other",
+        "docs/ci/payload.bin": "other",
+        "docs/notes": "other",
+    }
+    for path, kind in expected.items():
+        got = route.path_kind(path)
+        if got != kind:
+            fail(f"path_kind {path}: {got}, expected {kind}")
+    prose = "M\tdocs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md\n"
+    assert_plan(
+        "receipt selection markdown stays docs-only",
+        fixture("pull_request", None, prose),
+        "docs_only",
+        True,
+    )
+    named = (
+        "docs/assets/feature-configuration-matrix-v1.json",
+        "docs/ci-lanes.toml",
+        "docs/support-matrix.toml",
+        "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json",
+        "docs/ci/payload.bin",
+        "docs/notes",
+    )
+    for path in named:
+        plan = fixture("pull_request", None, f"M\t{path}\n")
+        assert_plan(f"{path} stays source", plan, "source_bearing", False)
+    mixed = fixture(
+        "pull_request",
+        None,
+        "M\tdocs/assets/feature-configuration-matrix-v1.json\nM\tdocs/ci.md\n",
+    )
+    assert_plan("machine docs beside prose stays wide", mixed, "source_bearing", False)
+    successor = fixture(
+        "pull_request",
+        "M\tdocs/ci/receipts/direct-floor-proof-cargo-allow-v1.json\n",
+        "M\tdocs/ci.md\n",
+    )
+    assert_plan(
+        "receipt successor on a docs pull request stays wide",
+        successor,
+        "source_bearing",
+        False,
+    )
+
+
+def check_machine_docs_git() -> None:
+    samples = (
+        "docs/assets/feature-configuration-matrix-v1.json",
+        "docs/ci-lanes.toml",
+        "docs/support-matrix.toml",
+        "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json",
+        "docs/ci/payload.bin",
+    )
+    for relative in samples:
+        repo = Path(tempfile.mkdtemp())
+        git(repo, "init", "-b", "main")
+        git(repo, "config", "user.email", "ci-proof-route@example.invalid")
+        git(repo, "config", "user.name", "ci-proof-route")
+        git(repo, "config", "core.autocrlf", "false")
+        write_repo(repo, "README.md", "base\n")
+        git(repo, "add", "README.md")
+        git(repo, "commit", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        write_repo(repo, relative, "{}\n")
+        git(repo, "add", "--", relative)
+        git(repo, "commit", "-m", "machine")
+        plan = run_router(
+            [],
+            env={
+                "PROOF_EVENT": "pull_request",
+                "PROOF_BEFORE": "0" * 40,
+                "PROOF_BASE_SHA": base,
+            },
+            cwd=repo,
+        )
+        assert_plan(f"git {relative} stays wide", plan, "source_bearing", False)
+
+
 def main() -> None:
     check_classifications()
+    check_machine_docs()
     check_contract()
     check_workflow()
     check_git_history()
+    check_machine_docs_git()
     check_predecessor_policy()
     check_matrix_job_names()
     print("ci-proof-route controls passed")

@@ -65,7 +65,12 @@ wrong-source, failed, pending, cancelled, skipped, ambiguous, or
 base-moved proof stays wide and is not reused. An effective diff that is
 provably docs-only also records those lanes NotApplicable. Paths under
 `docs/schemas/` and any `*.schema.json` are source, so an
-operator-latency schema change keeps that lane. GitHub skips a lane only
+operator-latency schema change keeps that lane. Markdown is the only
+prose under `docs/` that narrows. The feature-configuration matrix,
+`docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
+other non-markdown path under `docs/` stay source, so those changes
+keep `feature-configuration-proof` and the other heavy lanes. An
+unrecognized docs payload is source, not prose. GitHub skips a lane only
 when the plan succeeds with `narrow=true`; a skip is not a green
 execution. Unknown, malformed, and shared ledger impact stay wide. A
 docs-only last commit on a source-bearing pull request stays wide.

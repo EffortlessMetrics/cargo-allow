@@ -22,7 +22,12 @@ routing uses the effective diff, not the last commit. A ledger successor
 does not narrow a source-bearing effective diff unless that predecessor
 proof exists. Missing, stale, wrong-source, failed, pending, cancelled,
 ambiguous, skipped, and base-moved proof stays wide. ``docs/schemas/``
-and any ``*.schema.json`` are source, not docs.
+and any ``*.schema.json`` are source, not docs. Markdown is the only
+prose under ``docs/`` that may narrow. JSON, TOML, and any other
+non-markdown path under ``docs/`` are source, including the
+feature-configuration matrix, the lane and support tables, and
+direct-floor receipts. An unrecognized docs payload is source, not
+prose.
 
 Unknown, empty, rename/copy, malformed, and shared ledger impact stay
 wide. ``push``, ``workflow_dispatch``, ``merge_group``, ``schedule``,
@@ -157,9 +162,18 @@ def path_kind(path: str) -> str:
         return "other"
     # Schemas are load-bearing for the consumers that read them, including
     # operator-latency. A docs/ prefix must not skip that assertion.
+    # Markdown is the only prose under docs/ that may narrow. The
+    # feature-configuration matrix, ci-lanes, the support matrix, and
+    # direct-floor receipts are parsed by proof jobs. Any other
+    # non-markdown docs path is source too: an unrecognized payload must
+    # not be assumed prose.
     if normalized.startswith("docs/schemas/") or normalized.endswith(".schema.json"):
         return "other"
-    if normalized.startswith("docs/") or normalized.startswith(".changes/"):
+    if normalized.startswith("docs/"):
+        if normalized.endswith(".md"):
+            return "docs"
+        return "other"
+    if normalized.startswith(".changes/"):
         return "docs"
     if len(parts) == 1 and (normalized in ROOT_DOCS or normalized.startswith("LICENSE")):
         return "docs"
