@@ -14,6 +14,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -45,6 +46,21 @@ PACKAGE_SMOKE_IF = (
     "${{ !cancelled() && needs.pregate.result == 'success' && "
     "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
     "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+RELEASE_LANE_JOBS = (
+    "release-impact",
+    "release-rehearsal",
+    "release-rehearsal-required",
+)
+RELEASE_LANES_NOT_APPLICABLE_REASON = "docs_only has no release-affecting path"
+RELEASE_LANES_IF = (
+    "${{ !cancelled() && (needs.proof-route.result != 'success' || "
+    "needs.proof-route.outputs.release_lanes != 'not_applicable') }}"
+)
+RELEASE_REHEARSAL_IF = (
+    "${{ !cancelled() && needs.release-impact.result == 'success' && "
+    "(needs.proof-route.result != 'success' || "
+    "needs.proof-route.outputs.release_lanes != 'not_applicable') }}"
 )
 TEST_IF = (
     "${{ !cancelled() && needs.pregate.result == 'success' && "
@@ -216,9 +232,26 @@ def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
     for required in REQUIRED_CONTEXTS:
         if decisions.get(required) != "execute":
             fail(f"{name}: {required} decision is {decisions.get(required)}")
-    for job in ("cargo-deny", "release-impact", "release-rehearsal-required"):
-        if decisions.get(job) != "execute":
-            fail(f"{name}: {job} decision is {decisions.get(job)}")
+    if decisions.get("cargo-deny") != "execute":
+        fail(f"{name}: cargo-deny decision is {decisions.get('cargo-deny')}")
+    paths = list(plan.get("effective_paths") or []) + list(plan.get("successor_paths") or [])
+    route = router()
+    if (
+        class_name == "docs_only"
+        and narrow
+        and paths
+        and all(route.release_path_decision(path) == "unrelated" for path in paths)
+    ):
+        release = "not_applicable"
+    else:
+        release = "execute"
+    for job in RELEASE_LANE_JOBS:
+        if decisions.get(job) != release:
+            fail(f"{name}: {job} decision is {decisions.get(job)}, expected {release}")
+        if release == "not_applicable":
+            lane = next(item for item in plan["lanes"] if item["id"] == job)
+            if lane["reason"] != RELEASE_LANES_NOT_APPLICABLE_REASON:
+                fail(f"{name}: {job} reason is {lane['reason']}")
     package_smoke = "not_applicable" if class_name in {"docs_only", "test_only"} else "execute"
     if decisions.get("package-smoke") != package_smoke:
         fail(f"{name}: package-smoke decision is {decisions.get('package-smoke')}, expected {package_smoke}")
@@ -814,6 +847,8 @@ def check_contract() -> None:
         "test_only_skip": TEST_ONLY_SKIP,
         "package_smoke_if": PACKAGE_SMOKE_IF,
         "package_smoke_skip_classes": ["docs_only", "test_only"],
+        "release_lanes_if": RELEASE_LANES_IF,
+        "release_rehearsal_if": RELEASE_REHEARSAL_IF,
         "always_ci_jobs": ALWAYS_CI_JOBS,
         "record_only": RECORD_ONLY,
         "narrow_with_pregate": NARROW_WITH_PREGATE,
@@ -966,10 +1001,36 @@ def check_workflow() -> None:
         if "needs: [pregate" in body or "needs: pregate" in body:
             fail(f"{job} gained a pregate dependency")
     for job in ALWAYS_CI_JOBS:
-        if job in {"proof-route", "package-smoke", "test"}:
+        if job in {"proof-route", "package-smoke", "test", *RELEASE_LANE_JOBS}:
             continue
         if "proof-route" in jobs[job] or "outputs.narrow" in jobs[job]:
-            fail(f"{job} reads the narrow plan; required and release lanes must not")
+            fail(f"{job} reads the narrow plan; required lanes must not")
+    for job in ("release-impact", "release-rehearsal-required"):
+        header = jobs[job].split("\n    steps:\n", 1)[0]
+        if RELEASE_LANES_IF not in header:
+            fail(f"{job} does not keep the release-lane guard")
+        if "outputs.narrow" in jobs[job]:
+            fail(f"{job} keys the release graph off narrow")
+        if header.find("needs:") > header.find("if:"):
+            fail(f"{job} declares needs after its if")
+    if "needs: proof-route\n" not in jobs["release-impact"]:
+        fail("release-impact does not wait for proof-route")
+    rehearsal = jobs["release-rehearsal"]
+    rehearsal_header = rehearsal.split("\n    steps:\n", 1)[0]
+    if "needs: [release-impact, proof-route]" not in rehearsal_header:
+        fail("release-rehearsal dropped release-impact or proof-route")
+    if RELEASE_REHEARSAL_IF not in rehearsal_header:
+        fail("release-rehearsal no longer requires a successful impact receipt")
+    if "outputs.narrow" in rehearsal:
+        fail("release-rehearsal keys the release graph off narrow")
+    required_header = jobs["release-rehearsal-required"].split("\n    steps:\n", 1)[0]
+    if "needs: [release-impact, release-rehearsal, proof-route]" not in required_header:
+        fail("release-rehearsal-required dropped a release graph need")
+    if "if: always()" in required_header:
+        fail("release-rehearsal-required still uses always() and cannot skip unrelated docs")
+    route = jobs["proof-route"]
+    if "release_lanes: ${{ steps.plan.outputs.release_lanes }}" not in route:
+        fail("proof-route does not publish release_lanes")
     check_test_docs_only_steps(jobs["test"])
     smoke = jobs["package-smoke"]
     if "needs: [pregate, proof-route]" not in smoke or PACKAGE_SMOKE_IF not in smoke:
@@ -1449,6 +1510,16 @@ def load_router():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+_ROUTER_MODULE = None
+
+
+def router():
+    global _ROUTER_MODULE
+    if _ROUTER_MODULE is None:
+        _ROUTER_MODULE = load_router()
+    return _ROUTER_MODULE
 
 
 def api_job_rows(changes: dict[str, tuple[str, str]] | None = None, drop: set[str] | None = None) -> list[dict]:
@@ -2637,8 +2708,282 @@ def check_script_decisions() -> None:
             fail(f"{path} is live but not source")
 
 
+def _release_output(plan_args: list[str], expected: str) -> None:
+    output = Path(tempfile.mkdtemp()) / "github-output.txt"
+    plan = run_router(plan_args, env={"GITHUB_OUTPUT": str(output)})
+    text = output.read_text(encoding="utf-8")
+    if f"release_lanes={expected}" not in text:
+        fail(f"GITHUB_OUTPUT release_lanes drifted for {plan_args}: {text}")
+    if plan["class"] == "docs_only" and expected == "execute":
+        kept = next(item for item in plan["lanes"] if item["id"] == "release-impact")
+        if kept["reason"] != "release qualification stays on every event":
+            fail(f"release-impact keep reason drifted: {kept['reason']}")
+    return None
+
+
+def check_release_lanes() -> None:
+    """Hardcoded release-lane decisions, plus drift control for the denominator."""
+    raw = (
+        ROOT / "crates" / "allow-report" / "src" / "artifacts" / "release_impact_v1.rs"
+    ).read_text(encoding="utf-8")
+
+    def raw_const(name: str) -> str:
+        marker = f"pub const {name}: &[ReleaseImpactPathRuleV1] = &["
+        start = raw.find(marker)
+        if start < 0 or raw.find(marker, start + len(marker)) >= 0:
+            fail(f"{name} is missing or repeated")
+        end = raw.find("\n];", start)
+        if end < 0:
+            fail(f"{name} terminator drifted")
+        return raw[start:end]
+
+    sensitive = raw_const("RELEASE_SENSITIVE_PATH_RULES_V1")
+    unrelated = raw_const("RELEASE_UNRELATED_PATH_RULES_V1")
+    governance = raw_const("RELEASE_UNRESOLVED_GOVERNANCE_RULES_V1")
+    if 'name: "release-docs"' not in sensitive or 'Prefix("docs/release/")' not in sensitive:
+        fail("release-docs prefix left the sensitive rules")
+    if 'name: "changelog"' not in sensitive or 'Exact("CHANGELOG.md")' not in sensitive:
+        fail("changelog exact path left the sensitive rules")
+    if 'name: "docs-non-release"' not in unrelated or 'Prefix("docs/")' not in unrelated:
+        fail("docs-non-release prefix left the unrelated rules")
+    if 'Exact("AGENTS.md")' not in governance or 'Exact("GEMINI.md")' not in governance:
+        fail("governance exact paths left the unresolved rules")
+    route = router()
+    try:
+        denominator = route.release_denominator()
+    except route.ReleaseDenominatorError as error:
+        fail(f"release denominator did not parse: {error}")
+    counted = {
+        "sensitive": len(re.findall(r"ReleaseImpactPathRuleV1\s*\{", sensitive)),
+        "unrelated": len(re.findall(r"ReleaseImpactPathRuleV1\s*\{", unrelated)),
+        "governance": len(re.findall(r"ReleaseImpactPathRuleV1\s*\{", governance)),
+    }
+    parsed = {
+        "sensitive": len(denominator.sensitive),
+        "unrelated": len(denominator.unrelated),
+        "governance": len(denominator.governance),
+    }
+    if counted != parsed:
+        fail(f"release-rule parser dropped rules: source {counted} parsed {parsed}")
+    parsed_sensitive = {
+        (rule.name, rule.kind, rule.prefix or rule.exact) for rule in denominator.sensitive
+    }
+    if ("release-docs", "prefix", "docs/release/") not in parsed_sensitive:
+        fail("planner parse lost the docs/release/ prefix")
+    if ("changelog", "exact", "CHANGELOG.md") not in parsed_sensitive:
+        fail("planner parse lost CHANGELOG.md")
+    parsed_unrelated = {(rule.name, rule.kind, rule.prefix) for rule in denominator.unrelated}
+    if ("docs-non-release", "prefix", "docs/") not in parsed_unrelated:
+        fail("planner parse lost the docs/ unrelated prefix")
+    fn_at = raw.find("fn decide_path(")
+    validate_at = raw.find("pub fn validate_release_impact_receipt_v1(", fn_at)
+    if fn_at < 0 or validate_at < 0:
+        fail("decide_path could not be isolated")
+    function = raw[fn_at:validate_at]
+    needles = [
+        "RELEASE_SENSITIVE_PATH_RULES_V1",
+        "semantic_owner_paths",
+        "package_roots",
+        "packaged_asset_roots",
+        "RELEASE_UNRESOLVED_GOVERNANCE_RULES_V1",
+        "RELEASE_UNRELATED_PATH_RULES_V1",
+        "unmatched-path",
+    ]
+    positions = [function.find(needle) for needle in needles]
+    if any(position < 0 for position in positions) or positions != sorted(positions):
+        fail(f"decide_path order drifted: {list(zip(needles, positions))}")
+    identity = tomllib.loads(
+        (ROOT / "policy" / "release-identity-consumers.toml").read_text(encoding="utf-8")
+    )
+    topology = tomllib.loads(
+        (ROOT / "policy" / "product-package-topology-v2.toml").read_text(encoding="utf-8")
+    )
+    owner_paths = sorted(row["path"] for row in identity["consumers"])
+    if sorted(denominator.semantic_owner_paths) != owner_paths:
+        fail("semantic-owner paths drifted from policy/release-identity-consumers.toml")
+    package_roots: set[str] = set()
+    asset_roots: set[str] = set()
+    for row in topology["package"]:
+        if not row["publish"]:
+            continue
+        package_roots.add(f"crates/{row['cargo_package_name']}/")
+        for asset_root in row.get("asset_roots", []):
+            asset_roots.add(f"{asset_root.rstrip('/')}/")
+    if set(denominator.package_roots) != package_roots:
+        fail("published package roots drifted from the generation-2 topology")
+    if set(denominator.asset_roots) != asset_roots:
+        fail("packaged asset roots drifted from the generation-2 topology")
+    for path in owner_paths:
+        if route.release_path_decision(path) != "release_sensitive":
+            fail(f"semantic owner {path} is not release-sensitive")
+    expected_paths = {
+        "docs/design.md": "unrelated",
+        "docs/release/0.1.8.md": "release_sensitive",
+        "docs/release/0.1.10.md": "release_sensitive",
+        "CHANGELOG.md": "release_sensitive",
+        "AGENTS.md": "unknown",
+        "GEMINI.md": "unknown",
+        "LICENSE": "unknown",
+        "docs/support-matrix.toml": "release_sensitive",
+        ".github/dependabot.yml": "unrelated",
+    }
+    for path, decision in expected_paths.items():
+        got = route.release_path_decision(path)
+        if got != decision:
+            fail(f"{path} release decision is {got}, expected {decision}")
+    cases = [
+        (
+            "docs/design.md release lanes not applicable",
+            "pull_request",
+            None,
+            "M\tdocs/design.md\n",
+            "docs_only",
+            True,
+            "not_applicable",
+        ),
+        (
+            "docs/release/0.1.8.md release lanes execute",
+            "pull_request",
+            None,
+            "M\tdocs/release/0.1.8.md\n",
+            "docs_only",
+            True,
+            "execute",
+        ),
+        (
+            "pinned docs/release/0.1.10.md release lanes execute",
+            "pull_request",
+            None,
+            "M\tdocs/release/0.1.10.md\n",
+            "source_bearing",
+            False,
+            "execute",
+        ),
+        (
+            "CHANGELOG.md release lanes execute",
+            "pull_request",
+            None,
+            "M\tCHANGELOG.md\n",
+            "docs_only",
+            True,
+            "execute",
+        ),
+        (
+            "mixed design and release doc release lanes execute",
+            "pull_request",
+            None,
+            "M\tdocs/design.md\nM\tdocs/release/0.1.8.md\n",
+            "docs_only",
+            True,
+            "execute",
+        ),
+        (
+            "release doc successor keeps release lanes",
+            "pull_request",
+            "M\tdocs/release/0.1.8.md\n",
+            "M\tdocs/design.md\n",
+            "docs_only",
+            True,
+            "execute",
+        ),
+        (
+            "AGENTS.md release lanes execute",
+            "pull_request",
+            None,
+            "M\tAGENTS.md\n",
+            "docs_only",
+            True,
+            "execute",
+        ),
+        (
+            "unknown rename release lanes execute",
+            "pull_request",
+            None,
+            "R100\told.rs\tnew.rs\n",
+            "unknown",
+            False,
+            "execute",
+        ),
+        (
+            "malformed empty diff release lanes execute",
+            "pull_request",
+            None,
+            "",
+            "unknown",
+            False,
+            "execute",
+        ),
+        (
+            "shared impact release lanes execute",
+            "pull_request",
+            None,
+            "M\t.allow/review-dispositions/pr-4332-narrow-route.json\nM\tcrates/cargo-allow/src/lib.rs\n",
+            "shared_impact",
+            False,
+            "execute",
+        ),
+        (
+            "source-bearing release lanes execute",
+            "pull_request",
+            None,
+            "M\tcrates/cargo-allow/src/lib.rs\n",
+            "source_bearing",
+            False,
+            "execute",
+        ),
+        (
+            "ledger narrow release lanes execute",
+            "pull_request",
+            None,
+            "M\t.allow/review-dispositions/pr-4332-narrow-route.json\n",
+            "review_ledger_only",
+            True,
+            "execute",
+        ),
+    ]
+    for name, event, successor, effective, class_name, narrow, release in cases:
+        plan = fixture(event, successor, effective)
+        assert_plan(name, plan, class_name, narrow)
+        for job in RELEASE_LANE_JOBS:
+            decision = next(item["decision"] for item in plan["lanes"] if item["id"] == job)
+            if decision != release:
+                fail(f"{name}: {job} is {decision}, expected {release}")
+    for event in ("push", "workflow_dispatch", "merge_group", "release"):
+        plan = fixture(event, None, "M\tdocs/design.md\n")
+        assert_plan(f"{event} release lanes execute", plan, "full_boundary", False)
+        for job in RELEASE_LANE_JOBS:
+            decision = next(item["decision"] for item in plan["lanes"] if item["id"] == job)
+            if decision != "execute":
+                fail(f"{event}: {job} is {decision}")
+    with tempfile.TemporaryDirectory() as tmp:
+        design_path = Path(tmp) / "design.txt"
+        release_path = Path(tmp) / "release.txt"
+        design_path.write_text("M\tdocs/design.md\n", encoding="utf-8", newline="\n")
+        release_path.write_text("M\tdocs/release/0.1.8.md\n", encoding="utf-8", newline="\n")
+        _release_output(
+            ["--fixture", "--event", "pull_request", "--no-successor", "--effective-file", str(design_path)],
+            "not_applicable",
+        )
+        _release_output(
+            [
+                "--fixture",
+                "--event",
+                "pull_request",
+                "--no-successor",
+                "--effective-file",
+                str(release_path),
+            ],
+            "execute",
+        )
+    if "docs/schemas/" not in denominator.asset_roots or "examples/" not in denominator.asset_roots:
+        fail(f"asset roots drifted: {denominator.asset_roots}")
+    if any(path.startswith("docs/") and path.endswith(".md") for path in owner_paths):
+        fail(f"a docs markdown semantic owner needs a docs_only characterization: {owner_paths}")
+
+
 def main() -> None:
     check_classifications()
+    check_release_lanes()
     check_script_decisions()
     check_skipped_lane_fixtures()
     check_machine_docs()

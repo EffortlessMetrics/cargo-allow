@@ -157,11 +157,16 @@ audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,
 because those receipts are produced only by `package-smoke`. The
 change-note guard stays in `test` and runs whenever `test` runs. A
-pregate failure remains a failure. `cargo-deny` and the release-impact
-graph stay.
+pregate failure remains a failure. `cargo-deny` stays on every plan.
+The release graph (`release-impact`, `release-rehearsal`,
+`release-rehearsal-required`) is NotApplicable only when `proof-route`
+succeeds for a `docs_only` plan whose paths are all provably unrelated
+under the release-impact denominator. `docs/release/`, `CHANGELOG.md`,
+and any other release-sensitive or unknown path keep those three jobs
+executing, including on a ledger narrow plan.
 `review-readiness` and `frozen-subject-lock` are separate workflows and
-are not path-filtered. `cargo-deny`, `proof-route`, and
-the release graph stay on a narrow plan and are not ruleset contexts.
+are not path-filtered. `cargo-deny` and `proof-route` stay on a narrow
+plan. The release graph is not a ruleset context.
 `package-smoke` stays for a ledger narrow plan and for every wide plan.
 It does not run for `docs_only` or `test_only`.
 
@@ -215,13 +220,17 @@ succeeds. `msrv`, the four `test-core-platforms` matrix rows, and
 `narrow=true`. Unknown, malformed, and non-`pull_request` plans stay
 wide.
 
-After `#4771`, a successful `docs_only` plan (`narrow=true`) runs
+After `#4771`, a successful `docs_only` plan (`narrow=true`) ran
 `pregate`, `test`, `proof-route`, `cargo-deny`, and the release graph
 (`release-impact`, `release-rehearsal`, `release-rehearsal-required`).
-`review-readiness` and `frozen-subject-lock` stay in their own
-workflows. Heavy lanes skip only when `proof-route` succeeds with
-`narrow=true`. `package-smoke` is NotApplicable when that plan's class
-is `docs_only` or `test_only`. A failed or missing plan stays wide.
+That release graph is now NotApplicable only when every path is
+provably unrelated under the release-impact denominator. `docs/release/`,
+`CHANGELOG.md`, and any other release-sensitive or unknown path keep
+the three jobs executing. `review-readiness` and `frozen-subject-lock`
+stay in their own workflows. Heavy lanes skip only when `proof-route`
+succeeds with `narrow=true`. `package-smoke` is NotApplicable when
+that plan's class is `docs_only` or `test_only`. A failed or missing
+plan stays wide.
 
 This is one observed run, not a distribution. The live docs-only
 demonstration is this pull request's own run record. The orchestrator
