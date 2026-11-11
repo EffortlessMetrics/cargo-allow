@@ -19,6 +19,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ROUTER = ROOT / "scripts" / "ci-proof-route.py"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
+# Unread prose outside docs/architecture and outside both pins.
+PROSE_DOC = "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md"
 
 NARROW_IF_WITH_PREGATE = (
     "${{ !cancelled() && needs.pregate.result == 'success' && "
@@ -241,7 +243,7 @@ def assert_plan(name: str, plan: dict, class_name: str, narrow: bool) -> None:
 def check_classifications() -> None:
     ledger = "M\t.allow/review-dispositions/pr-4332-narrow-route.json\n"
     source = "M\tcrates/cargo-allow/src/lib.rs\n"
-    docs = "M\tdocs/architecture/repo-protocol.md\n"
+    docs = f"M\t{PROSE_DOC}\n"
     cases = [
         (
             "ledger successor on a source pull request",
@@ -353,7 +355,23 @@ def check_classifications() -> None:
             "source_bearing",
             False,
         ),
-        ("repo protocol stays docs-only", "pull_request", None, docs, "docs_only", True),
+        ("unpinned prose stays docs-only", "pull_request", None, docs, "docs_only", True),
+        (
+            "product move map stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/architecture/product-move-map.md\n",
+            "source_bearing",
+            False,
+        ),
+        (
+            "new architecture reader stays wide",
+            "pull_request",
+            None,
+            "M\tdocs/architecture/new-reader.md\n",
+            "source_bearing",
+            False,
+        ),
         ("push is a full boundary", "push", None, docs, "full_boundary", False),
         (
             "workflow_dispatch is a full boundary",
@@ -1056,8 +1074,8 @@ def check_git_history() -> None:
     git(docs_repo, "add", "README.md")
     git(docs_repo, "commit", "-m", "base")
     docs_base = git(docs_repo, "rev-parse", "HEAD")
-    write_repo(docs_repo, "docs/architecture/repo-protocol.md", "docs\n")
-    git(docs_repo, "add", "docs/architecture/repo-protocol.md")
+    write_repo(docs_repo, PROSE_DOC, "docs\n")
+    git(docs_repo, "add", "--", PROSE_DOC)
     git(docs_repo, "commit", "-m", "docs")
     docs_plan = run_router(
         [],
@@ -1633,7 +1651,7 @@ def guarded_step_markdown() -> set[str]:
     kinds walked by the support-matrix test, repo files copied into a
     rehearsal fixture, the doc-artifact ledger when a guarded test validates
     it, and read_text or shell reads in a guarded step's script.
-    Assigned-join and projection readers stay in the companion set.
+    Architecture markdown stays out of this pin and is source by directory.
     """
     include_str_re = re.compile(r'include_str!\s*\(\s*"([^"]+)"', re.S)
     read_re = re.compile(
@@ -1828,7 +1846,8 @@ def derive_indirect_readers() -> set[str]:
     ``join("docs/...md")`` later passed to ``read_to_string`` or ``fs::read``,
     and a ``docs/*.md`` path named by a ``policy/*.toml`` file a guarded
     test loads, including the product-move ledger projection and
-    ``policy/extraction-parity.toml``.
+    ``policy/extraction-parity.toml``. Architecture paths in this set are
+    source by directory, not by ``INDIRECT_CONSUMED_PATHS``.
     """
     return _scan_indirect_readers()[0]
 
@@ -1846,14 +1865,21 @@ def indirect_reader_problems(paths: set[str], derived: set[str]) -> list[str]:
 
 
 def check_indirect_readers() -> None:
-    """Indirect readers stay wide. Drift and a missing path fail the check."""
+    """Root embeds stay pinned. Every architecture markdown path stays wide."""
     route = load_router()
     pinned = set(route.INDIRECT_CONSUMED_PATHS)
     generalized, assigned_only, legacy, config, scanned = _scan_indirect_readers()
     derived = derive_indirect_readers()
     if derived != generalized:
         fail("derive_indirect_readers diverged from the indirect scan")
-    problems = indirect_reader_problems(pinned, derived)
+    architecture = {path for path in derived if route.is_architecture_markdown(path)}
+    outside = derived - architecture
+    if outside != pinned:
+        fail(
+            "root indirect readers drifted "
+            f"pinned={sorted(pinned)} derived={sorted(outside)}"
+        )
+    problems = indirect_reader_problems(pinned, outside)
     if problems:
         fail("indirect readers " + "; ".join(problems))
     if pinned & set(route.MACHINE_CONSUMED_MARKDOWN):
@@ -1861,11 +1887,22 @@ def check_indirect_readers() -> None:
     move_map = "docs/architecture/product-move-map.md"
     if move_map in assigned_only:
         fail("assigned-join scan claimed the projection reader")
-    if move_map not in derived:
+    if move_map not in derived or move_map not in architecture:
         fail("projection reader was missed")
-    required = (
-        "README.md",
-        "SUPPORT.md",
+    if move_map in pinned:
+        fail("projection reader was folded into the root companion")
+    for path in ("README.md", "SUPPORT.md"):
+        if path not in derived or path not in pinned:
+            fail(f"{path} indirect reader was not derived")
+        if route.path_kind(path) != "other":
+            fail(f"{path} indirect reader is not source")
+        assert_plan(
+            f"{path} forces a wide plan",
+            fixture("pull_request", None, f"M\t{path}\n"),
+            "source_bearing",
+            False,
+        )
+    known = (
         "docs/architecture/cargo-proof.md",
         "docs/architecture/extraction-parity.md",
         "docs/architecture/extraction-shims.md",
@@ -1885,23 +1922,54 @@ def check_indirect_readers() -> None:
         "docs/architecture/repo-snapshot.md",
         "docs/architecture/rust-source-index.md",
     )
-    for path in required:
-        if path not in derived or path not in pinned:
+    for path in known:
+        if path not in derived:
             fail(f"{path} indirect reader was not derived")
-        if route.path_kind(path) != "other":
-            fail(f"{path} indirect reader is not source")
+    on_disk = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "docs" / "architecture").glob("*.md")
+        if path.is_file()
+    )
+    if move_map not in on_disk:
+        fail(f"{move_map} is not on disk")
+    nested = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "docs" / "architecture").rglob("*.md")
+        if path.is_file() and path.parent.name != "architecture"
+    )
+    if nested:
+        fail(f"nested architecture markdown is outside the directory rule: {nested}")
+    for path in on_disk:
+        if not route.is_architecture_markdown(path) or route.path_kind(path) != "other":
+            fail(f"{path} architecture markdown is not source")
+        if path in pinned or path in route.MACHINE_CONSUMED_MARKDOWN:
+            fail(f"{path} architecture markdown was hand-pinned")
         assert_plan(
             f"{path} forces a wide plan",
             fixture("pull_request", None, f"M\t{path}\n"),
             "source_bearing",
             False,
         )
-    prose = "docs/architecture/repo-protocol.md"
-    if prose in pinned or prose in derived or route.path_kind(prose) != "docs":
-        fail(f"{prose} no longer samples unread prose")
+    new_reader = "docs/architecture/new-reader.md"
+    if (ROOT / new_reader).exists():
+        fail("synthetic architecture reader must not already exist")
+    if new_reader in pinned or new_reader in route.MACHINE_CONSUMED_MARKDOWN:
+        fail("synthetic architecture reader was pinned")
+    if route.path_kind(new_reader) != "other":
+        fail("a newly added architecture reader is not source")
     assert_plan(
-        "repo protocol stays docs-only",
-        fixture("pull_request", None, f"M\t{prose}\n"),
+        "new architecture reader forces a wide plan",
+        fixture("pull_request", None, f"M\t{new_reader}\n"),
+        "source_bearing",
+        False,
+    )
+    if PROSE_DOC in pinned or PROSE_DOC in derived or route.path_kind(PROSE_DOC) != "docs":
+        fail(f"{PROSE_DOC} no longer samples unread prose")
+    if route.is_architecture_markdown(PROSE_DOC):
+        fail(f"{PROSE_DOC} is architecture markdown")
+    assert_plan(
+        "unpinned prose stays docs-only",
+        fixture("pull_request", None, f"M\t{PROSE_DOC}\n"),
         "docs_only",
         True,
     )
@@ -1916,10 +1984,13 @@ def check_indirect_readers() -> None:
     legacy_problems = indirect_reader_problems(legacy, derived)
     if not any(item.startswith("drift ") for item in legacy_problems):
         fail("extraction-shims-only set did not drift")
-    missing = indirect_reader_problems(pinned | {"docs/architecture/missing-indirect.md"}, derived)
+    missing = indirect_reader_problems(
+        pinned | {"docs/architecture/missing-indirect.md"},
+        outside,
+    )
     if not any(item.startswith("missing:") for item in missing):
         fail("missing indirect path did not fail the check")
-    drifted = indirect_reader_problems(pinned - {"README.md"}, derived)
+    drifted = indirect_reader_problems(pinned - {"README.md"}, outside)
     if not any(item.startswith("drift ") for item in drifted):
         fail("indirect reader drift did not fail the check")
     for required_policy in (
@@ -1928,8 +1999,15 @@ def check_indirect_readers() -> None:
     ):
         if required_policy not in scanned:
             fail(f"{required_policy} was not scanned for config-named docs")
-    if move_map not in config or not config <= pinned:
-        fail(f"config-named docs drifted: {sorted(config)}")
+    if move_map not in config:
+        fail(f"config-named docs missed the projection: {sorted(config)}")
+    for path in config:
+        if route.is_architecture_markdown(path):
+            if path in pinned or route.path_kind(path) != "other":
+                fail(f"{path} config-named architecture doc is not directory source")
+            continue
+        if path not in pinned and path not in route.MACHINE_CONSUMED_MARKDOWN:
+            fail(f"config-named docs path is outside the directory rule and unpinned: {path}")
     parity_text = (ROOT / "policy/extraction-parity.toml").read_text(encoding="utf-8")
     config_extra = "docs/architecture/config-named-extra.md"
     injected = _config_doc_literals(
@@ -1937,9 +2015,16 @@ def check_indirect_readers() -> None:
     )
     if injected != {config_extra}:
         fail("a new extraction-parity docs path was not parsed")
-    config_drift = indirect_reader_problems(pinned, derived | injected)
-    if not any(item.startswith("drift ") for item in config_drift):
-        fail("config-named docs path did not fail the drift check")
+    if config_extra in pinned or config_extra in route.MACHINE_CONSUMED_MARKDOWN:
+        fail("injected architecture reader was pinned")
+    if route.path_kind(config_extra) != "other":
+        fail("injected architecture reader is not source")
+    assert_plan(
+        "injected architecture reader forces a wide plan",
+        fixture("pull_request", None, f"M\t{config_extra}\n"),
+        "source_bearing",
+        False,
+    )
     config_missing = indirect_reader_problems(
         config | {"docs/architecture/missing-config.md"},
         config,
@@ -1962,7 +2047,7 @@ def check_consumed_markdown() -> None:
         fail(f"machine-consumed markdown pin drifted missing={missing} extra={extra}")
     if len(pinned) != 73:
         fail(f"machine-consumed markdown pin count {len(pinned)}, expected 73")
-    prose = "docs/architecture/repo-protocol.md"
+    prose = PROSE_DOC
     if prose in pinned or route.path_kind(prose) != "docs":
         fail(f"{prose} no longer samples prose docs_only")
     required = (
@@ -2003,9 +2088,13 @@ def check_machine_docs() -> None:
         "docs/status/SUPPORT_TIERS.md": "other",
         "docs/specs/CARGO-ALLOW-SPEC-0009-design-to-proof-walking-skeleton.md": "other",
         "docs/architecture/repo-snapshot.md": "other",
-        "docs/architecture/repo-protocol.md": "docs",
+        "docs/architecture/repo-protocol.md": "other",
+        "docs/architecture/cargo-intent.md": "other",
+        "docs/architecture/product-package-topology.md": "other",
         "docs/architecture/extraction-shims.md": "other",
         "docs/architecture/product-move-map.md": "other",
+        "docs/architecture/new-reader.md": "other",
+        "docs/architecture/nested/new-reader.md": "docs",
         "docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md": "docs",
         ".changes/note.yaml": "other",
         ".changes/v0.2.0.md": "other",
@@ -2047,13 +2136,13 @@ def check_machine_docs() -> None:
     mixed = fixture(
         "pull_request",
         None,
-        "M\tdocs/assets/feature-configuration-matrix-v1.json\nM\tdocs/architecture/repo-protocol.md\n",
+        f"M\tdocs/assets/feature-configuration-matrix-v1.json\nM\t{PROSE_DOC}\n",
     )
     assert_plan("machine docs beside prose stays wide", mixed, "source_bearing", False)
     successor = fixture(
         "pull_request",
         "M\tdocs/ci/receipts/direct-floor-proof-cargo-allow-v1.json\n",
-        "M\tdocs/architecture/repo-protocol.md\n",
+        f"M\t{PROSE_DOC}\n",
     )
     assert_plan(
         "receipt successor on a docs pull request stays wide",

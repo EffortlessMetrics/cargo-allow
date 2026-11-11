@@ -25,15 +25,17 @@ ambiguous, skipped, and base-moved proof stays wide. ``docs/schemas/``
 and any ``*.schema.json`` are source, not docs. Markdown is the only
 prose under ``docs/`` that may narrow. Markdown a guarded ``test`` step
 reads is pinned in ``MACHINE_CONSUMED_MARKDOWN`` and stays source, so
-that step still runs. Root markdown embedded by ``include_str!``, a
-``docs/*.md`` path assigned from ``join`` and later passed to
-``read_to_string`` or ``fs::read``, and a ``docs/*.md`` path named by
-``policy/product-move-ledger.toml`` or another ``policy/*.toml`` a
-guarded test loads (including ``policy/extraction-parity.toml``) are
-``INDIRECT_CONSUMED_PATHS``. The ledger projection is
-``docs/architecture/product-move-map.md``. ``path_kind`` checks that companion set
-before the docs prose rule and before ``ROOT_DOCS``. The markdown pin
-scan does not see those reads. ``.changes/`` stays source because
+that step still runs. ``docs/ci.md`` stays on that 73-path pin. Root
+markdown embedded by ``include_str!`` is ``INDIRECT_CONSUMED_PATHS``.
+``path_kind`` checks that companion before the docs prose rule and
+before ``ROOT_DOCS``. The markdown pin scan does not see those reads.
+Every ``docs/architecture/*.md`` path is source as well, including
+prose no guarded test reads and a path that is not on disk yet. The
+config scan of ``policy/product-move-ledger.toml`` and
+``policy/extraction-parity.toml`` cannot see every reader form, so the
+directory is the bound and a new architecture reader stays wide without
+another pin edit. A docs-only pull request cannot narrow on an
+architecture doc. ``.changes/`` stays source because
 ``.changie.yaml`` sets ``changesDir``
 and the guarded Changie sensor self-dogfood step lints that tree.
 JSON, TOML, and any other
@@ -258,8 +260,8 @@ ROOT_DOCS = {
 # Markdown a guarded test step reads through include_str!, a literal
 # docs path, product-doc kinds, a rehearsal copy, or the doc-artifact
 # ledger. scripts/test-ci-proof-route.py recomputes this set and fails
-# when the pin drifts. Assigned-join and projection readers stay in
-# INDIRECT_CONSUMED_PATHS so this pin remains the 73-path recompute.
+# when the pin drifts. Architecture markdown is source by directory, so
+# this pin remains the 73-path recompute. docs/ci.md stays in it.
 MACHINE_CONSUMED_MARKDOWN = frozenset({
     "docs/README.md",
     "docs/adr/CARGO-ALLOW-ADR-0001-multi-ledger-federation.md",
@@ -336,35 +338,15 @@ MACHINE_CONSUMED_MARKDOWN = frozenset({
     "docs/status/SUPPORT_TIERS.md",
 })
 
-# Readers the 73-path pin does not see. scripts/test-ci-proof-route.py
-# recomputes this set from every guarded package: repository-root
-# include_str! markdown, an assigned join("docs/...md") later passed to
-# read_to_string or fs::read, and a docs path named by a policy/*.toml
-# file a guarded test loads. That includes the product-move ledger
-# projection and policy/extraction-parity.toml. path_kind checks this
-# set before the docs prose rule
-# and before ROOT_DOCS. A new or removed reader fails that recompute.
+# Root include_str! markdown the 73-path pin does not see.
+# scripts/test-ci-proof-route.py recomputes this set. Architecture
+# markdown is not listed here: the config scan cannot see every reader
+# form, and a hand list misses the next one. path_kind checks this set
+# and is_architecture_markdown before the docs prose rule and before
+# ROOT_DOCS.
 INDIRECT_CONSUMED_PATHS = frozenset({
     "README.md",
     "SUPPORT.md",
-    "docs/architecture/cargo-proof.md",
-    "docs/architecture/extraction-parity.md",
-    "docs/architecture/extraction-shims.md",
-    "docs/architecture/intent-edit.md",
-    "docs/architecture/intent-engine.md",
-    "docs/architecture/intent-model.md",
-    "docs/architecture/intent-protocol.md",
-    "docs/architecture/product-crate-law.md",
-    "docs/architecture/product-move-map.md",
-    "docs/architecture/proof-adapter-cargo-allow.md",
-    "docs/architecture/proof-adapter-command.md",
-    "docs/architecture/proof-adapter-hawk.md",
-    "docs/architecture/proof-adapter-ripr.md",
-    "docs/architecture/proof-engine.md",
-    "docs/architecture/proof-protocol.md",
-    "docs/architecture/repo-edit.md",
-    "docs/architecture/repo-snapshot.md",
-    "docs/architecture/rust-source-index.md",
 })
 
 
@@ -616,6 +598,24 @@ def normalize(path: str) -> str:
     return path.strip().replace("\\", "/").removeprefix("./")
 
 
+def is_architecture_markdown(path: str) -> bool:
+    """True for one markdown file directly under ``docs/architecture/``.
+
+    Nested paths stay on the ordinary docs rule. A file that is not on
+    disk still matches, so a newly added reader is source before anyone
+    pins it.
+    """
+    parts = normalize(path).split("/")
+    name = parts[2] if len(parts) == 3 else ""
+    return (
+        len(parts) == 3
+        and parts[0] == "docs"
+        and parts[1] == "architecture"
+        and name.endswith(".md")
+        and len(name) > 3
+    )
+
+
 def path_kind(path: str) -> str:
     """Return ledger, docs, other, or unknown for one changed path."""
     normalized = normalize(path)
@@ -638,10 +638,12 @@ def path_kind(path: str) -> str:
     # not be assumed prose.
     if normalized.startswith("docs/schemas/") or normalized.endswith(".schema.json"):
         return "other"
-    # Before ROOT_DOCS and the docs/ prose rule. Root README.md is in
-    # ROOT_DOCS. Assigned-join architecture markdown and the product-move
-    # projection would otherwise be prose.
+    # Before the docs/ prose rule and before ROOT_DOCS. Root README.md is
+    # in ROOT_DOCS. Every docs/architecture/*.md path is source, including
+    # an unread file and a path that is not on disk yet.
     if normalized in MACHINE_CONSUMED_MARKDOWN or normalized in INDIRECT_CONSUMED_PATHS:
+        return "other"
+    if is_architecture_markdown(normalized):
         return "other"
     if normalized.startswith("docs/"):
         if normalized.endswith(".md"):

@@ -71,21 +71,29 @@ is pinned in `scripts/ci-proof-route.py` and stays source, so a change
 to that file is not `docs_only` and the heavy `test` steps still run.
 `scripts/test-ci-proof-route.py` fails when a guarded step reads a
 `docs/*.md` path the pin does not name. That recompute is the 73-path
-markdown pin. A companion set, checked in `path_kind` before the docs
-rule and before `ROOT_DOCS`, holds readers that pin does not see:
-repository-root markdown embedded with `include_str!`, a `docs/*.md`
-path assigned from `join` and later passed to `read_to_string` or
-`fs::read`, and a `docs/*.md` path named by a `policy/*.toml` file a
-guarded test loads. That config scan reads `policy/product-move-ledger.toml`
+markdown pin. `docs/ci.md` stays on that pin because guarded tests embed
+it. The 92-path fold is not restored: a counted equality set that lists
+architecture docs fails again when the next reader appears. A companion
+set, checked in `path_kind` before the docs rule and before `ROOT_DOCS`,
+holds repository-root markdown embedded with `include_str!` (`README.md`
+and `SUPPORT.md`). The config scan still reads
+`policy/product-move-ledger.toml`
 (`projection = "docs/architecture/product-move-map.md"`) and
-`policy/extraction-parity.toml`. That covers root `README.md`,
-`SUPPORT.md`, `docs/architecture/extraction-shims.md`,
-`docs/architecture/repo-snapshot.md`, and the other architecture docs
-those tests read. `.changes/` stays source: `.changie.yaml` sets
+`policy/extraction-parity.toml`, and it still fails when that projection
+disappears. It cannot see every reader form (`format!`, `concat!`, a
+non-`join` path, another config key, or a reader outside the guarded
+set). Every `docs/architecture/*.md` path is therefore source, including
+prose no guarded test reads and a path that is not on disk yet. A new
+architecture reader stays wide without a pin edit.
+`docs/architecture/product-move-map.md` forces a wide plan. The tradeoff
+is that a docs-only pull request cannot narrow on an architecture doc,
+even when nothing reads that file. Other markdown under `docs/` still
+narrows when it is not pinned.
+`docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md` is the
+unread prose sample. `.changes/` stays source: `.changie.yaml` sets
 `changesDir: .changes`, and the guarded Changie sensor self-dogfood step
 lints that tree, so a fragment-only diff is not `docs_only`.
-`docs/architecture/repo-protocol.md` remains a prose sample because no
-guarded reader loads it. The feature-configuration matrix,
+The feature-configuration matrix,
 `docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
 other non-markdown path under `docs/` stay source, so those changes
 keep `feature-configuration-proof` and the other heavy lanes. An
@@ -130,7 +138,7 @@ That skip is a dependency failure, not a green execution and not a
 narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
 plan skips the heavy steps inside `test`. Those steps keep `success()`,
 so an earlier failure in `test` still stops the later ones. A diff that
-includes pinned machine-consumed markdown, a companion indirect reader, or a `.changes/` path is not
+includes pinned machine-consumed markdown, a companion indirect reader, any `docs/architecture/*.md` path, or a `.changes/` path is not
 `docs_only`, and the heavy steps run. The inventory guard, fmt,
 audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,
@@ -166,8 +174,8 @@ The hosted plan class was `docs_only` and `narrow` was true.
 The effective path was `docs/ci.md`. That classification is the record
 from before machine-consumed markdown was pinned. Guarded tests embed
 `docs/ci.md`, so a later edit of that file is source. That record does not
-cover later source pins: root `include_str!` markdown, assigned-join
-architecture docs, the product-move-map projection, and `.changes/`.
+cover later source pins: root `include_str!` markdown, every
+`docs/architecture/*.md` path, and `.changes/`.
 Seventeen lane rows were
 NotApplicable, and GitHub skipped those jobs: `msrv`,
 `product-candidates-interop`, `operator-latency`, `integrated-dogfood`,
