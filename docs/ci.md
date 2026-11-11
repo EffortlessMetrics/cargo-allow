@@ -70,16 +70,20 @@ prose under `docs/` that narrows. Markdown a guarded `test` step reads
 is pinned in `scripts/ci-proof-route.py` and stays source, so a change
 to that file is not `docs_only` and the heavy `test` steps still run.
 `scripts/test-ci-proof-route.py` fails when a guarded step reads a
-`docs/*.md` path the pin does not name. The same recompute includes
-repository-root markdown embedded with `include_str!`, and a `docs/*.md`
-path assigned from `join` and later passed to `read_to_string`. That covers
-root `README.md`, `SUPPORT.md`, `docs/architecture/extraction-shims.md`, and
-the other architecture docs those tests read, including
-`docs/architecture/repo-snapshot.md`. `path_kind` checks the pin before
-`ROOT_DOCS`. `.changes/` stays source: `.changie.yaml` sets
+`docs/*.md` path the pin does not name. That recompute is the 73-path
+markdown pin. A companion set, checked in `path_kind` before the docs
+rule and before `ROOT_DOCS`, holds readers that pin does not see:
+repository-root markdown embedded with `include_str!`, a `docs/*.md`
+path assigned from `join` and later passed to `read_to_string` or
+`fs::read`, and the projection read of
+`docs/architecture/product-move-map.md`. That covers root `README.md`,
+`SUPPORT.md`, `docs/architecture/extraction-shims.md`,
+`docs/architecture/repo-snapshot.md`, and the other architecture docs
+those tests read. `.changes/` stays source: `.changie.yaml` sets
 `changesDir: .changes`, and the guarded Changie sensor self-dogfood step
 lints that tree, so a fragment-only diff is not `docs_only`.
-`docs/architecture/repo-protocol.md` remains a prose sample. The feature-configuration matrix,
+`docs/architecture/repo-protocol.md` remains a prose sample because no
+guarded reader loads it. The feature-configuration matrix,
 `docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
 other non-markdown path under `docs/` stay source, so those changes
 keep `feature-configuration-proof` and the other heavy lanes. An
@@ -124,7 +128,7 @@ That skip is a dependency failure, not a green execution and not a
 narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
 plan skips the heavy steps inside `test`. Those steps keep `success()`,
 so an earlier failure in `test` still stops the later ones. A diff that
-includes pinned machine-consumed markdown or a `.changes/` path is not
+includes pinned machine-consumed markdown, a companion indirect reader, or a `.changes/` path is not
 `docs_only`, and the heavy steps run. The inventory guard, fmt,
 audit, no-new, and the change-note guard still run. `docs_only`
 and `test_only` leave the cutover receipt restore and status unrun,
@@ -161,7 +165,8 @@ The effective path was `docs/ci.md`. That classification is the record
 from before machine-consumed markdown was pinned. Guarded tests embed
 `docs/ci.md`, so a later edit of that file is source. That record does not
 cover later source pins: root `include_str!` markdown, assigned-join
-architecture docs, and `.changes/`. Seventeen lane rows were
+architecture docs, the product-move-map projection, and `.changes/`.
+Seventeen lane rows were
 NotApplicable, and GitHub skipped those jobs: `msrv`,
 `product-candidates-interop`, `operator-latency`, `integrated-dogfood`,
 `test-core-platforms`, `compat-delegation`, `test-intent-experimental`,
