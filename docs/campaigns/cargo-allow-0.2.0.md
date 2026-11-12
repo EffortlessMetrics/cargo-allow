@@ -31,6 +31,18 @@ deferred to 0.3 under #3878. #3761 is bookkeeping only — its six proof suites
 landed 2026-11-03 in #4730 (`ba6f8ab0`, an ancestor of main) and the issue's own
 last comment says it closes; nothing waits on it.
 
+## Current bounded objective (O3, ratified 2026-11-12)
+
+Release-path closeout, target 2026-11-26, interim checkpoint 2026-11-19. In order:
+
+1. #4744 — land the merge-queue step-1 cutover with the frozen-subject invalidation record and the sentinel concurrency fix.
+2. #3792 — the seven `zero_mutation_proof` flags in `scripts/release-rehearsal.py` become measured outcomes with falsifiers instead of hardcoded `False`.
+3. #3151 — retire the three unconditional `NotProven` holds in `release_freeze_experience.rs::retain_dependencies`, each by its producer or a recorded disposition.
+4. #2501 — refreeze on the post-#4744 merged tree.
+5. Stop at #2502/#3760 for the user's authorization.
+
+Standing non-goal: no new release-control subsystem, gate or `NotProven` hold before 0.2.0 ships; every new safety surface must retire at least one existing hold. The review-readiness publisher suite-binding repair is deferred to after 0.2.0, behind #2501.
+
 ## Selected product and release boundary
 
 - Product target: `cargo-allow 0.2.0`, stable channel, `v0.2.0`.
