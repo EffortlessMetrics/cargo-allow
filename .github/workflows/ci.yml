@@ -1251,14 +1251,21 @@ jobs:
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
       - name: Verify exact merge-group policy-change evidence
-        # Only pull_request and merge_group carry a comparison pair. On push
-        # and workflow_dispatch both event objects are empty, so the
-        # exact-subject diff would reject an empty revision.
-        if: ${{ github.event_name == 'merge_group' || github.event_name == 'pull_request' }}
+        # Resolve the exact comparison pair for every event that runs the
+        # step. pull_request and merge_group supply it directly; push uses
+        # before..sha; workflow_dispatch and a branch-creation all-zeros
+        # before have no pair and skip with a recorded reason.
         env:
-          QUEUE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-          QUEUE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
-        run: cargo run -p cargo-allow -- diff --base "$QUEUE_BASE_SHA" --head "$QUEUE_HEAD_SHA" --format markdown --require-change-note
+          QUEUE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          QUEUE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch" ] ||
+            [ -z "${QUEUE_BASE_SHA:-}" ] || [ -z "${QUEUE_BASE_SHA//0/}" ]; then
+            echo "review-readiness: no exact comparison pair for ${GITHUB_EVENT_NAME:-unknown} (empty or all-zeros base); skipping the policy-change evidence step"
+            exit 0
+          fi
+          cargo run -p cargo-allow -- diff --base "$QUEUE_BASE_SHA" --head "$QUEUE_HEAD_SHA" --format markdown --require-change-note
       - name: Spec-system cutover receipt (#2568)
         if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/spec-system-cutover-receipt.sh

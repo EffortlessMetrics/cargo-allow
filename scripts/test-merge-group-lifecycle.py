@@ -365,6 +365,61 @@ class WorkflowWiringTests(unittest.TestCase):
                     self.assertEqual(completed.returncode, 0, completed.stderr)
                     self.assertEqual(completed.stdout.strip(), base)
 
+    def test_policy_change_evidence_resolves_each_event_pair(self):
+        step = next(
+            s for s in self.workflows["ci.yml"]["jobs"]["test"]["steps"]
+            if "QUEUE_BASE_SHA" in s.get("env", {})
+        )
+        self.assertIn("github.event.pull_request.base.sha", step["env"]["QUEUE_BASE_SHA"])
+        self.assertIn("github.event.merge_group.base_sha", step["env"]["QUEUE_BASE_SHA"])
+        self.assertIn("github.event.before", step["env"]["QUEUE_BASE_SHA"])
+        self.assertIn("github.event.pull_request.head.sha", step["env"]["QUEUE_HEAD_SHA"])
+        self.assertIn("github.event.merge_group.head_sha", step["env"]["QUEUE_HEAD_SHA"])
+        self.assertIn("github.sha", step["env"]["QUEUE_HEAD_SHA"])
+
+        bash = shutil.which("bash")
+        if os.name == "nt":
+            git_bash = Path(r"C:\Program Files\Git\bin\bash.exe")
+            if git_bash.exists():
+                bash = str(git_bash)
+        if not bash:
+            self.skipTest("bash is unavailable for the policy-change characterization")
+
+        with tempfile.TemporaryDirectory(prefix="policy-change-evidence-") as tmp:
+            root = Path(tmp)
+            args = root / "cargo-args"
+            base = "1" * 40
+            head = "2" * 40
+            script = 'cargo() { printf "%s\\n" "$*" > "$CARGO_ARGS_OUT"; }\n' + step["run"]
+            for label, event, base_sha, expect_run in [
+                ("push-before", "push", base, True),
+                ("push-all-zeros", "push", "0" * 40, False),
+                ("workflow-dispatch", "workflow_dispatch", "", False),
+            ]:
+                with self.subTest(case=label):
+                    if args.exists():
+                        args.unlink()
+                    env = dict(
+                        os.environ,
+                        GITHUB_EVENT_NAME=event,
+                        QUEUE_BASE_SHA=base_sha,
+                        QUEUE_HEAD_SHA=head,
+                        CARGO_ARGS_OUT=str(args),
+                    )
+                    completed = subprocess.run(
+                        [bash, "-c", script], cwd=root, env=env,
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertEqual(args.exists(), expect_run, completed.stdout)
+                    if expect_run:
+                        self.assertIn(
+                            f"diff --base {base_sha} --head {head}",
+                            args.read_text(encoding="utf-8"),
+                        )
+                    else:
+                        self.assertIn("skipping the policy-change evidence step", completed.stdout)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
