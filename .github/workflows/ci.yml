@@ -1300,10 +1300,15 @@ jobs:
       - name: Derive affected feature-configuration rows (#3905)
         id: routing
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: |
           set -euo pipefail
           # Use the event's immutable base, including every queued predecessor.
+          # A push event has no PR or merge-group base; use github.event.before
+          # and fall back to HEAD~1 when it is empty or all zeros.
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${BASE_SHA//0/}" ]; then
+            BASE_SHA="$(git rev-parse HEAD~1)"
+          fi
           # A failed diff must not become an empty/docs-only proof selection.
           git diff --name-only "$BASE_SHA" HEAD \
             | python3 scripts/feature-config-routing.py > "$RUNNER_TEMP/routing-rows.json"

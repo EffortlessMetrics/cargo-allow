@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -315,6 +316,54 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("github.event.merge_group.head_sha", policy["env"]["QUEUE_HEAD_SHA"])
         self.assertIn('--base "$QUEUE_BASE_SHA" --head "$QUEUE_HEAD_SHA"', policy["run"])
         self.assertNotIn("origin/", policy["run"])
+
+    def test_feature_configuration_routing_base_falls_back_on_push(self):
+        routing = next(
+            s for s in self.workflows["ci.yml"]["jobs"]["feature-configuration-proof"]["steps"]
+            if s.get("id") == "routing"
+        )
+        self.assertIn("github.event.before", routing["env"]["BASE_SHA"])
+        run_lines = routing["run"].splitlines()
+        start = next(i for i, line in enumerate(run_lines) if "${BASE_SHA//0/}" in line)
+        end = next(i for i in range(start, len(run_lines)) if run_lines[i].strip() == "fi")
+        guard = "\n".join(run_lines[start:end + 1])
+        self.assertIn('BASE_SHA="$(git rev-parse HEAD~1)"', guard)
+
+        bash = shutil.which("bash")
+        if os.name == "nt":
+            git_bash = Path(r"C:\Program Files\Git\bin\bash.exe")
+            if git_bash.exists():
+                bash = str(git_bash)
+        if not bash:
+            self.skipTest("bash is unavailable for the routing-base characterization")
+
+        with tempfile.TemporaryDirectory(prefix="feature-routing-base-") as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-b", "main"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.name", "Fixture"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.email", "fixture@example.invalid"], cwd=root, check=True)
+            (root / "base.txt").write_text("base\n")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "base"], cwd=root, check=True, capture_output=True)
+            base = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+            (root / "head.txt").write_text("head\n")
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(["git", "commit", "-m", "head"], cwd=root, check=True, capture_output=True)
+
+            script = guard + '\ngit rev-parse --verify "${BASE_SHA}^{commit}"\n'
+            for label, value in [
+                ("event.before", base),
+                ("all zeros", "0" * 40),
+                ("empty", ""),
+            ]:
+                with self.subTest(case=label):
+                    env = dict(os.environ, BASE_SHA=value)
+                    completed = subprocess.run(
+                        [bash, "-c", script], cwd=root, env=env,
+                        capture_output=True, text=True,
+                    )
+                    self.assertEqual(completed.returncode, 0, completed.stderr)
+                    self.assertEqual(completed.stdout.strip(), base)
 
 
 if __name__ == "__main__":
