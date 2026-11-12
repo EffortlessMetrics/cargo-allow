@@ -1960,7 +1960,7 @@ class TestZeroMutationDrills(unittest.TestCase):
         self.assertTrue(drill["attempted"])
         self.assertTrue(drill["argv_denied"])
         self.assertTrue(drill["direct_route_discriminating"])
-        self.assertTrue(drill["direct_denied"], "the isolated write was not denied")
+        self.assertTrue(drill["direct_denied"], drill["reason"])
         self.assertTrue(drill["canary_unchanged"])
         self.assertTrue(drill["prevented"])
         self.assertIn("unshare", drill["boundary"])

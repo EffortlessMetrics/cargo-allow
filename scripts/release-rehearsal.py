@@ -1526,12 +1526,15 @@ def _drill_tag(root: Path) -> dict[str, Any]:
     except (OSError, subprocess.SubprocessError):
         completed = None
     if completed is None or completed.returncode != 0:
+        detail = "no worker stderr"
+        if completed is not None and completed.stderr.strip():
+            detail = completed.stderr.strip().splitlines()[-1][:200]
         return _drill_result(
             argv_denied=argv, direct_denied=False,
             boundary=boundary,
             reason=(
                 "the Linux isolation worker did not complete, so the direct "
-                "Git metadata denial is unproven"
+                f"Git metadata denial is unproven: {detail}"
             ),
             direct_route_discriminating=False,
         )
