@@ -12,10 +12,10 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Projected manifest digest: sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index
-- Executed floor commit: 492b9eb629194cc7eae71b8cad581a83ad57c08e
+- Executed floor commit: 1f9f27cc15cf3c6423645ff5081ec5ec2e8d107b
 - Executed floor tree: 3401db0eb45cd799b0b2b4473584929ec7b4c73e
 - Receipt: direct-floor-proof-shared-v1.json
-- Receipt SHA-256: sha256:v1:56d82a71624fe4c9e2a85b767e7a7a2bc198bfdb396c8e90aec33bef32043741
+- Receipt SHA-256: sha256:v1:2e46d817a4fab4009049a36d9e303bfff9099889919cdb970d3d9a34609322a8
 - Manifest-set digest: 71bcdc199f3925f034b42c4e90d16150f4b45eeffb3325799d75ec0bce1e3ea6
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
 - Executed floor-lock digest: sha256:v1:e2881e846c3f7e17f29883262fb91cccbbb96e74a8b9a81f668223ae51e4a6c5
