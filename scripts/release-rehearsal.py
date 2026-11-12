@@ -1473,21 +1473,22 @@ def _drill_tag(root: Path) -> dict[str, Any]:
         )
         if setup.returncode != 0 or not (repo / ".git").is_dir():
             git = None
-    try:
-        if git is not None:
-            subprocess.run(
-                [git, "update-ref", "refs/tags/canary",
-                 "4b825dc642cb6eb9a060e54bf8d69288fbee4904"],
-                cwd=repo, env=_sanitized_environment(),
-                capture_output=True, text=True, timeout=15, check=False,
-            )
-        else:
-            # No git on PATH: a direct ref write is still a Git metadata mutation.
+    if git is not None:
+        subprocess.run(
+            [git, "update-ref", "refs/tags/canary",
+             "4b825dc642cb6eb9a060e54bf8d69288fbee4904"],
+            cwd=repo, env=_sanitized_environment(),
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+    if not ref.exists():
+        # A direct ref write is still a Git metadata mutation, and it keeps the
+        # attempt real when git is absent or its write was refused.
+        try:
             ref.write_text(
                 "4b825dc642cb6eb9a060e54bf8d69288fbee4904", encoding="utf-8",
             )
-    except OSError:
-        pass
+        except OSError:
+            pass
     direct = not ref.exists()
     return _drill_result(
         argv_denied=argv, direct_denied=direct,
