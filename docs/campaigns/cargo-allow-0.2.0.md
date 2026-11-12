@@ -137,7 +137,7 @@ handoff. Finish them before trusting a successor final freeze.
 | --- | --- |
 | [#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426), under #2501/#3842/#3774; PR #4438 | Replace shared-row-count currentness with the existing typed registry evaluator. Bind all 10+3 identities/checksums, independently assembled expected context, a real evaluation clock and a selected freshness window. Missing authority remains NotProven; stale, malformed and provider-failed observations remain non-clean. #3792/#2501 retain the production-input wiring. |
 | [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | Bookkeeping only: the six proof suites landed 2026-11-03 in #4730 (an ancestor of main) and the issue's own last comment says it closes. The bounded #4457 classifier repair is merged and the `release-manifest` release role consumes the typed evidence. What remains is the real-release generation proof for the selected package set, which is #2501's obligation, not a new frozen-manifest decision. |
-| [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The private invocation-boundary slice and one usable qualifying-worker enforcement path remain; neither foundation establishes every prevention control or a Complete producer. |
+| [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The first slice is one Linux worker profile plus the tag-mutation denial family end to end, with the invocation-boundary guard inside that slice, and it produces the first true flag; a usable qualifying-worker enforcement path for the remaining families follows. Neither foundation establishes every prevention control or a Complete producer. |
 
 The delivered #4425 rehearsal admission and #4427 receipt-preservation repairs
 above are foundations for these remaining owners, not duplicate pending tasks.
@@ -148,16 +148,18 @@ authorization/aggregate posture. Keep those claims unproven until their real
 controls are demonstrated. A stricter consumer cannot manufacture missing proof.
 
 The [bounded #3792 engineering sequence](https://github.com/EffortlessMetrics/cargo-allow/issues/3792#issuecomment-6101981804)
-first guards each existing operation's selected executable, complete argv, root
-and output before the real process adapter, including the nested publisher.
-That slice leaves every prevention flag false. One selected worker must then
-enforce the filesystem, credential, descendant and network boundaries with
-allowed positives and actual forbidden-effect controls. Prefetch inputs outside
-the worker, obtain independently bound registry context, run all eight existing
-phases and seven denial families, and retain the original producer evidence
-through #4452's qualification/custody/replay path. Host/launcher, producer
-workflow/job, retention and observation-window selection remain explicit inputs;
-a fixture or plan alone cannot qualify them.
+puts the invocation-boundary guard - each existing operation's selected
+executable, complete argv, root and output, including the nested publisher -
+inside the first slice rather than ahead of it. The first slice is one Linux
+worker profile plus the tag-mutation denial family end to end, and it produces
+the first true flag because the profile, not the guard, is what confines the
+direct route. Later slices enforce the filesystem, credential, descendant and
+network boundaries with allowed positives and actual forbidden-effect controls.
+Prefetch inputs outside the worker, obtain independently bound registry
+context, run all eight existing phases and seven denial families, and retain the
+original producer evidence through #4452's qualification/custody/replay path.
+Host/launcher, producer workflow/job, retention and observation-window selection
+remain explicit inputs; a fixture or plan alone cannot qualify them.
 
 #4249 remains the separate per-field rehearsal subject-binding test gap. Tests
 for the new admission defects must invoke the real consumer and distinguish the
