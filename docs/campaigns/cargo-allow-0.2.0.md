@@ -87,7 +87,7 @@ fixture repairs are merged at the checkpoint above:
 | [#4444](https://github.com/EffortlessMetrics/cargo-allow/pull/4444), under #3790/#3792 | Shared-registry preflight runs before selected-token environment expressions are evaluated, using the actual runner ordering. The bounded source repair preserves token-free nonpublishing paths; full authorization, custody and rehearsal isolation remain unproven. |
 | [#4442](https://github.com/EffortlessMetrics/cargo-allow/pull/4442), under #4441/#3792 | The rehearsal rejects selected-token key presence before admission/output work and checks again after its phases and final checkout. Owned child environments exclude those keys before retrieving values. This bounded foundation does not establish whole-process credential or mutation prevention. |
 | [#4443](https://github.com/EffortlessMetrics/cargo-allow/pull/4443), under #4362 | Actual outer hooks CLI tests prove selected child-root inheritance, clean/finding results and missing-policy refusal without the override. Hostile Git-selector controls preserve the foreign index/canary bytes and prevent outside policy writes. Production hook behavior is unchanged. |
-| [#4457](https://github.com/EffortlessMetrics/cargo-allow/pull/4457), one #3761 slice | Matching checksums require a confirming publication state before typed package rows become manifest-ready. Missing/ProviderUnavailable and malformed-evidence distinctions survive both package classes, row/batch consumers and the real CLI. The shell manifest generator already refused those incomplete states; frozen-manifest role and workflow work remain open. |
+| [#4457](https://github.com/EffortlessMetrics/cargo-allow/pull/4457), one #3761 slice (#3761 is bookkeeping only; its six proof suites landed 2026-11-03 in #4730) | Matching checksums require a confirming publication state before typed package rows become manifest-ready. Missing/ProviderUnavailable and malformed-evidence distinctions survive both package classes, row/batch consumers and the real CLI. The shell manifest generator already refused those incomplete states; frozen-manifest role and workflow work remain open. |
 
 The two latest merges retain separate process exceptions:
 
@@ -115,7 +115,7 @@ Earlier delivered foundations remain available:
 | Registry observation #3850 | Credential-free adapter merged through #4287. Refresh actual observations for the selected candidate; do not build another observer. |
 | Authorization #3789 / #3790 | Production model/compiler and post-tag gate exist through #4291/#4292; #4299 binds the annotated tag object. Complete production composition remains below. |
 | Dependencies and security-update routing | #4204/#4170 and #4273/#4274 are resolved source lanes. #4284 closed unmerged after evidence transfer. |
-| Configuration #3875 / #3876 | Shared resolution and supported-consumer cutover are complete. #3877 still owns the selection decision. |
+| Configuration #3875 / #3876 | Shared resolution and supported-consumer cutover are complete. #3877 was ratified 2026-11-12: the implemented precedence is preserved unchanged for 0.2.x, with advanced opt-in deferred to 0.3 under #3878. |
 | Default burden #3883 | The measured corpus is delivered. #3884/#3885 own the profile decision and implementation. |
 | Installed candidate #3151 | #4390 delivered a nonpublishing glibc 2.35-compatible candidate and bounded installed-host journey. It did not complete external adoption or final ReleaseExperience. |
 | Supporting tools #4403 | All six reported items are delivered through #4410–#4414 and #4416; the issue is closed. |
@@ -134,7 +134,7 @@ handoff. Finish them before trusting a successor final freeze.
 | Owner | Required production result |
 | --- | --- |
 | [#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426), under #2501/#3842/#3774; PR #4438 | Replace shared-row-count currentness with the existing typed registry evaluator. Bind all 10+3 identities/checksums, independently assembled expected context, a real evaluation clock and a selected freshness window. Missing authority remains NotProven; stale, malformed and provider-failed observations remain non-clean. #3792/#2501 retain the production-input wiring. |
-| [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | The bounded #4457 classifier repair is merged. The frozen-manifest role still needs an explicit decision and implementation through the actual manifest/workflow consumers, preserving full frozen-envelope bytes and later public completion evidence. The classifier alone does not settle that role, causal dependency or release qualification. |
+| [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | Bookkeeping only: the six proof suites landed 2026-11-03 in #4730 (an ancestor of main) and the issue's own last comment says it closes. The bounded #4457 classifier repair is merged. The frozen-manifest role still needs an explicit decision and implementation through the actual manifest/workflow consumers, preserving full frozen-envelope bytes and later public completion evidence. The classifier alone does not settle that role, causal dependency or release qualification. |
 | [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The private invocation-boundary slice and one usable qualifying-worker enforcement path remain; neither foundation establishes every prevention control or a Complete producer. |
 
 The delivered #4425 rehearsal admission and #4427 receipt-preservation repairs
@@ -190,7 +190,7 @@ proves this complete sequence:
    downloaded checkpoints and exact registry checksum equality before unlocking
    dependent rows. Retain partial, conflicting and ambiguous outcomes with their
    original-candidate recovery lineage.
-5. **#3761/#2497/#3726/#3933:** preserve publication/install evidence, produce
+5. **#2497/#3726/#3933 (#3761 is bookkeeping only):** preserve publication/install evidence, produce
    the typed public manifest, verify provenance, and independently read back the
    actual draft asset set before public finalization. Draft creation plus
    upload success is not actual-asset closeout.
@@ -210,7 +210,7 @@ current clock or borrowing a fixture freshness window supplies no independent
 authority. These adapters can be developed and negatively tested reversibly;
 unratified config/default/support choices do not block that engineering.
 
-#3761 still owns the explicit frozen-manifest role and the later public
+The explicit frozen-manifest role and the later public
 completion result. Preserve attested frozen asset bytes through publication;
 do not rewrite them to break an authorization/manifest dependency. The bounded
 classifier repair in #4457 does not select that role or complete the workflow.
@@ -291,7 +291,7 @@ reopening the entire scanner design.
 | [#3777](https://github.com/EffortlessMetrics/cargo-allow/issues/3777) support policy | Resolve maintenance, security response, backports, platform commitment and MSRV changes. SECURITY.md already publishes targets that SUPPORT.md calls undecided; record an explicit retain-or-replace ruling before reconciling the projections. | #3795 / #3796 |
 | #3150 clean-pilot/claim scope | Preserve the current typed clean-adoption NotProven and brownfield NotIncludedBeforeFirstFinal selection. A new external pilot requires repository selection and consent; the exact installed release experience remains required. | #3771 / #2466 / #3151 |
 
-The first two rows are the latest unratified release-scope recommendations;
+The first two rows are the latest release-scope recommendations. #3877 is ratified as of 2026-11-12 (implemented precedence preserved for 0.2.x); #3884, #3777 and #3150 remain open;
 the earlier SimpleCore-first and smaller-default proposals are not accepted
 0.2 requirements. The current resolver selects explicit `--config`, then a
 valid federation registry's canonical source ledger, then ancestor discovery
