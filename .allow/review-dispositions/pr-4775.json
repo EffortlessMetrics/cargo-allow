@@ -6,12 +6,12 @@
   "base_ref": "main",
   "base_sha": "7128bddbcbd2cf1b64aab951611a75886645d4fe",
   "head_ref": "ci/4332-docs-only-release-lane-pruning",
-  "head_sha": "cbad3f09596108db429c43391a6092a5f33610cd",
+  "head_sha": "5c8cbe3bf87adaaa77c4ade8a6056e178661c398",
   "merge_base": "7128bddbcbd2cf1b64aab951611a75886645d4fe",
   "reviewed_diff_digest": "sha256:v2:8b725aadb179cad89199b776f17456cff14ed98c9e5d36bbdac85c1df342202b",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "same_maintainer",
-  "reviewer_identity": "EffortlessSteven exact-pair readback of PR #4775 at d1f27fb62fcd29aae27c907c13cdd12afab529c2, including the removal of the generated proof-plan.json at 761d0f95 and the docs narrow=true correction at d1f27fb6. The disposition commit cbad3f09 is review-ledger bookkeeping authored by the same reviewer. Same account and model context as the author. No independent-human approval is claimed.",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of PR #4775 at 2831ebf16560577b0712223b961ecf604e6fcdc2, including the removal of the generated proof-plan.json at d941b5c476369d42cc44edcc3b7aa9bb65931ed1 and the docs narrow=true correction at 2831ebf1. The disposition commit 5c8cbe3bf87adaaa77c4ade8a6056e178661c398 is review-ledger bookkeeping authored by the same reviewer. Same account and model context as the author. No independent-human approval is claimed.",
   "independent_review": "not_retained",
   "claimed_verdict": "review_clean",
   "findings": [
@@ -36,15 +36,15 @@
   ],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4775",
-    "Reviewed pair base 7128bddbcbd2cf1b64aab951611a75886645d4fe, merge-base 7128bddb, head d1f27fb62fcd29aae27c907c13cdd12afab529c2, tree 6a875e419f347116380d98d97fbb654a654dbdb2. Diff digest sha256:v2:41258e429065a5d99084feb9a752a853f8181b5d46cfd7bf2acd8c2796003fa1.",
+    "Reviewed pair base 7128bddbcbd2cf1b64aab951611a75886645d4fe, merge-base 7128bddb, head 2831ebf16560577b0712223b961ecf604e6fcdc2, tree 6a875e419f347116380d98d97fbb654a654dbdb2. Diff digest sha256:v2:41258e429065a5d99084feb9a752a853f8181b5d46cfd7bf2acd8c2796003fa1.",
     "Zero Blocking findings. Two advisory follow-ups: a release-sensitive doc outside docs/release/ classified unrelated; an added unrelated rule is not characterized by the drift test.",
     "pregate success with no-new clean, test success, frozen-subject-lock success, workflow-syntax success; review-readiness was neutral before this disposition.",
     "ci.yml run 43113068718 success; ci-proof-plan artifact 13896732963 is class source_bearing, narrow=false, and all three release lanes execute.",
-    "The generated proof-plan.json was removed at 761d0f95 and .gitignore now covers the router default, so the always() upload can no longer publish a stale committed plan.",
+    "The generated proof-plan.json was removed at d941b5c476369d42cc44edcc3b7aa9bb65931ed1 and .gitignore now covers the router default, so the always() upload can no longer publish a stale committed plan.",
     "Two earlier threads on proof-plan.json were replied to and resolved; zero unresolved."
   ],
   "required_ci": {
-    "owner": "Review-readiness projector: bind disposition head cbad3f09596108db429c43391a6092a5f33610cd, which carries the d1f27fb6 review. The final commit is disposition-only and is admitted by the ancestor fallback; required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "owner": "Review-readiness projector: bind disposition head 5c8cbe3bf87adaaa77c4ade8a6056e178661c398, which carries the 2831ebf1 review. The final commit is disposition-only and is admitted by the ancestor fallback; required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
     "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43113068718"
   },
   "evidence_class": "current_observation",
