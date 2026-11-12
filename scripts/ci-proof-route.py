@@ -195,6 +195,7 @@ TEST_ONLY_SCRIPT_DECISIONS = frozenset(
         "scripts/test-changie-fragment-schema-smoke.sh",
         "scripts/test-changie-history-roundtrip.sh",
         "scripts/test-changie-sensor-external-consumer.sh",
+        "scripts/test-check-merge-group-checkout-refs.py",
         "scripts/test-check-msrv-consistency.sh",
         "scripts/test-check-msrv-resolved.sh",
         "scripts/test-check-toolchain-profile.sh",
