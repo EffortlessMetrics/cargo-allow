@@ -1417,6 +1417,7 @@ class _RecordingEndpoint:
         try:
             connection, _ = self._socket.accept()
             with connection:
+                connection.settimeout(5)
                 self.received.append(connection.recv(64))
         except OSError:
             pass
@@ -1426,25 +1427,33 @@ class _RecordingEndpoint:
         self._thread.join(timeout=5)
 
 
-def _direct_socket_denied(port: int) -> bool:
-    import socket
+def _direct_child(root: Path, script: str) -> subprocess.CompletedProcess[str] | None:
+    """Run one direct-route attempt in a child process, or None when refused.
 
+    The child is the positive control: when the host does not confine it, the
+    forbidden effect really happens and the drill records that it was not
+    prevented. A drill that never attempts the effect cannot report denial.
+    """
     try:
-        with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
-            connection.sendall(b"mutation")
-        return False
-    except OSError:
-        return True
+        return subprocess.run(
+            [sys.executable, "-c", script],
+            cwd=root, env=_sanitized_environment(),
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 
 def _drill_result(
     *, argv_denied: bool, direct_denied: bool, boundary: str, reason: str,
+    attempted: bool = True,
 ) -> dict[str, Any]:
-    prevented = argv_denied and direct_denied
+    prevented = attempted and argv_denied and direct_denied
     return {
-        "attempted": True,
+        "attempted": attempted,
         "argv_denied": argv_denied,
         "direct_denied": direct_denied,
+        "attempt_succeeded": attempted and not direct_denied,
         "canary_unchanged": direct_denied,
         "prevented": prevented,
         "boundary": boundary,
@@ -1457,15 +1466,31 @@ def _drill_result(
 
 def _drill_tag(root: Path) -> dict[str, Any]:
     repo = root / "tag-canary"
-    ref = repo / "refs" / "tags" / "canary"
-    ref.parent.mkdir(parents=True, exist_ok=True)
-    ref.write_text("0" * 40, encoding="utf-8")
+    repo.mkdir()
+    setup = subprocess.run(
+        ["git", "init", "--quiet", str(repo)],
+        cwd=root, env=_sanitized_environment(),
+        capture_output=True, text=True, timeout=15, check=False,
+    )
+    if setup.returncode != 0 or not (repo / ".git").is_dir():
+        return _drill_result(
+            argv_denied=False, direct_denied=False, attempted=False,
+            boundary="tag/update-ref/push and direct Git metadata writes",
+            reason="the tag canary repository could not be created",
+        )
+    ref = repo / ".git" / "refs" / "tags" / "canary"
     argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
+    _direct_child(
+        repo,
+        "import subprocess,sys;"
+        "sys.exit(subprocess.run(['git','update-ref','refs/tags/canary',"
+        "'4b825dc642cb6eb9a060e54bf8d69288fbee4904']).returncode)",
+    )
     direct = not ref.exists()
     return _drill_result(
         argv_denied=argv, direct_denied=direct,
         boundary="tag/update-ref/push and direct Git metadata writes",
-        reason="direct writes to Git metadata are not confined by the rehearsal",
+        reason="a direct child wrote Git tag metadata in the quarantine",
     )
 
 
@@ -1475,18 +1500,22 @@ def _drill_token(root: Path) -> dict[str, Any]:
     child_env = _filtered_environment(
         {CARGO_TOKEN_ENV: "canary-token", "PATH": "canary"}
     )
-    argv = CARGO_TOKEN_ENV not in child_env
-    try:
-        with token_file.open("rb") as handle:
-            handle.read(1)
-        direct = False
-    except OSError:
-        direct = True
-    return _drill_result(
-        argv_denied=argv, direct_denied=direct,
-        boundary="selected token environment entry and child environment",
-        reason="alternate credential sources and direct file reads are not confined",
+    boundary = _argv_denied(
+        "token-read", [sys.executable, "-c", "print(1)"], root,
     )
+    filtered = CARGO_TOKEN_ENV not in child_env
+    completed = _direct_child(
+        root,
+        f"import pathlib;print(pathlib.Path({str(token_file)!r}).read_text())",
+    )
+    direct = completed is None or "canary-token" not in completed.stdout
+    result = _drill_result(
+        argv_denied=boundary and filtered, direct_denied=direct,
+        boundary="selected token environment entry and child environment",
+        reason="a direct child read the token canary outside the selected boundary",
+    )
+    result["environment_filtered"] = filtered
+    return result
 
 
 def _drill_network(
@@ -1495,13 +1524,17 @@ def _drill_network(
     endpoint = _RecordingEndpoint()
     try:
         argv = _argv_denied(operation, command, root)
-        direct = _direct_socket_denied(endpoint.port)
-        endpoint.close()
-        canary_unchanged = not endpoint.received
+        _direct_child(
+            root,
+            "import socket;"
+            f"s=socket.create_connection(('127.0.0.1',{endpoint.port}),timeout=2);"
+            "s.sendall(b'mutation');s.close()",
+        )
     finally:
         endpoint.close()
+    canary_unchanged = not endpoint.received
     result = _drill_result(
-        argv_denied=argv, direct_denied=direct,
+        argv_denied=argv, direct_denied=canary_unchanged,
         boundary=boundary, reason=reason,
     )
     result["canary_unchanged"] = canary_unchanged
@@ -1510,21 +1543,23 @@ def _drill_network(
 
 
 def _drill_external(root: Path) -> dict[str, Any]:
-    outside = root.parent / f"{root.name}-outside"
-    outside.mkdir()
+    outside = Path(tempfile.mkdtemp(prefix="rehearsal-outside-"))
     try:
         argv = _argv_denied(
             "external-repository-mutation", ["git", "push", "origin", "HEAD"], root,
         )
         canary = outside / "canary"
-        canary.write_text("mutated", encoding="utf-8")
+        _direct_child(
+            root,
+            f"import pathlib;pathlib.Path({str(canary)!r}).write_text('mutated')",
+        )
         direct = not canary.exists()
     finally:
         shutil.rmtree(outside, ignore_errors=True)
     return _drill_result(
         argv_denied=argv, direct_denied=direct,
         boundary="remote push and writes outside owned roots",
-        reason="writes outside the owned root are not confined by the rehearsal",
+        reason="a direct child wrote outside the owned root",
     )
 
 
@@ -1532,10 +1567,12 @@ def run_zero_mutation_drills() -> dict[str, dict[str, Any]]:
     """Exercise each mutation family in a disposable quarantine.
 
     Each drill attempts the forbidden effect through the rehearsal's selected
-    invocation boundary and on a direct route, then checks a disposable
-    canary. A family is prevented only when both routes are denied and the
-    canary is unchanged. The drills do not create a sandbox: a direct
-    filesystem or socket route that succeeds keeps its flag false.
+    invocation boundary and again from a child process on a direct route, then
+    observes a disposable canary. A family is prevented only when both routes
+    are denied and the canary is unchanged. The drills do not create a
+    sandbox: a direct child that really mutates the canary keeps its flag
+    false, and that successful attempt is the positive control proving the
+    drill is discriminating rather than vacuous.
     """
     root = _quarantine_root()
     try:
@@ -1719,10 +1756,10 @@ def _build_rehearsal_receipt(
             "prevention remain unproven, so the aggregate cannot satisfy a release gate. "
             "The zero_mutation_proof flags are derived from executed quarantine "
             "drills: each family is attempted through the selected invocation "
-            "boundary and on a direct route against a disposable canary. A direct "
-            "filesystem or socket route that succeeds keeps its flag false, so the "
-            "receipt records the remaining confinement gap rather than asserting "
-            "prevention."
+            "boundary and again from a child process on a direct route against a "
+            "disposable canary. A direct child that really mutates the canary keeps "
+            "its flag false, so the receipt records the remaining confinement gap "
+            "rather than asserting prevention."
         ),
     }
 

@@ -1149,9 +1149,16 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.assertEqual(receipt["commit_sha"], self.head)
         self.assertTrue(run.call_args_list)
         for call in run.call_args_list:
-            self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
+            argv = call.args[0]
             self.assertIsInstance(call.kwargs.get("env"), dict)
             self.assertNotIn("CARGO_REGISTRY_TOKEN", call.kwargs["env"])
+            if argv[:2] == ["git", "init"]:
+                # Quarantine setup for the tag drill, not an admission inspection.
+                continue
+            if argv[0] != "git":
+                # Drill child process on the direct route.
+                continue
+            self.assertEqual(argv[:2], ["git", "--no-replace-objects"])
             if "status" in call.args[0]:
                 for setting in ("core.checkStat=default", "core.ignoreStat=false", "core.trustctime=true"):
                     self.assertIn(setting, call.args[0])
@@ -1870,6 +1877,19 @@ class TestZeroMutationDrills(unittest.TestCase):
                     and drill["canary_unchanged"],
                 )
 
+    def test_direct_routes_are_real_attempts_not_tautologies(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        for name, drill in drills.items():
+            with self.subTest(family=name):
+                self.assertTrue(drill["attempted"], "drill did not run")
+                self.assertTrue(
+                    drill["attempt_succeeded"],
+                    "the direct route never attempted the forbidden effect",
+                )
+                self.assertFalse(drill["canary_unchanged"])
+                self.assertFalse(drill["prevented"])
+
     def test_direct_routes_keep_unconfined_families_false(self) -> None:
         with REHEARSAL._invocation_scope():
             drills = REHEARSAL.run_zero_mutation_drills()
@@ -1903,6 +1923,11 @@ class TestZeroMutationDrills(unittest.TestCase):
         self.assertFalse(
             any(REHEARSAL._zero_mutation_proof_from_drills({}).values())
         )
+        unrun = REHEARSAL._drill_result(
+            argv_denied=True, direct_denied=True, attempted=False,
+            boundary="b", reason="r",
+        )
+        self.assertFalse(unrun["prevented"], "an unrun drill claimed prevention")
 
     def test_receipt_proof_matches_its_drills(self) -> None:
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
