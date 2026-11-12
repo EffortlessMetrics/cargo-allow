@@ -77,6 +77,12 @@ with contextlib.ExitStack() as stack:
                  'docs_and_support', 'manifest_and_assets', 'workflow_graph_permissions',
                  'escaped_defect_corpus'):
         stack.enter_context(mock.patch.object(producer, 'run_phase_' + name, return_value=producer.PHASE_COMPLETE))
+    # The consumer fixture is host-independent: it exercises the unproven-flag
+    # path, so the drills are pinned to all-false rather than measured.
+    stack.enter_context(mock.patch.object(
+        producer, 'run_zero_mutation_drills',
+        return_value={name: {'prevented': False} for name in producer.ZERO_MUTATION_FLAGS},
+    ))
     receipt = producer.build_rehearsal_receipt('HEAD')
 
 # Canonical-shape #3793 corpus fixture: statuses mirror the committed corpus
