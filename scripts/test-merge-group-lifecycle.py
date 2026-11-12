@@ -392,6 +392,8 @@ class WorkflowWiringTests(unittest.TestCase):
             head = "2" * 40
             script = 'cargo() { printf "%s\\n" "$*" > "$CARGO_ARGS_OUT"; }\n' + step["run"]
             for label, event, base_sha, expect_run in [
+                ("merge-group", "merge_group", base, True),
+                ("pull-request", "pull_request", base, True),
                 ("push-before", "push", base, True),
                 ("push-all-zeros", "push", "0" * 40, False),
                 ("workflow-dispatch", "workflow_dispatch", "", False),
@@ -418,7 +420,7 @@ class WorkflowWiringTests(unittest.TestCase):
                             args.read_text(encoding="utf-8"),
                         )
                     else:
-                        self.assertIn("skipping the policy-change evidence step", completed.stdout)
+                        self.assertIn("no comparison base for", completed.stdout)
 
 
 if __name__ == "__main__":
