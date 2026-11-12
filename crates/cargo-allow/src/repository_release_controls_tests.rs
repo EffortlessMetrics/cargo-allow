@@ -24,9 +24,14 @@ fn repository_release_controls_retain_the_typed_context_without_an_actions_wrapp
     let root = workspace_root();
     let script = read_workspace_file(&root, "scripts/project-review-readiness.sh");
     assert!(script.contains(concat!("CHECK_NAME=", "\"review-readiness\"")));
+    let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
     assert!(
-        !root.join(".github/workflows/review-readiness.yml").exists(),
-        "development review observations must not allocate an Actions wrapper"
+        workflow.contains("  merge_group:"),
+        "the required review-readiness context must still publish for the queue"
+    );
+    assert!(
+        !workflow.contains("  pull_request:"),
+        "ordinary pull_request events must not allocate the review-readiness wrapper"
     );
 }
 
@@ -44,7 +49,11 @@ fn repository_release_controls_allocate_ordinary_work_only_for_merge_groups() {
         assert!(workflow.contains("types: [checks_requested]"), "{path}");
         assert!(!workflow.contains("  pull_request:"), "{path}");
         assert!(!workflow.contains("  pull_request_target:"), "{path}");
-        assert!(!workflow.contains("  push:"), "{path}");
+        // ci.yml keeps the main push proof; the other queue roots stay
+        // merge_group-only.
+        if path != ".github/workflows/ci.yml" {
+            assert!(!workflow.contains("  push:"), "{path}");
+        }
     }
 }
 

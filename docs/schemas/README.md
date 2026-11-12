@@ -344,6 +344,7 @@ detection claim.
 | Extraction cutover evidence manifest | `cargo-allow.extraction-cutover-evidence.v2` | `scripts/extraction-cutover-status.sh` / `cargo-allow extraction-parity --cutover-evidence` |
 | Extraction cutover ownership receipt | `cargo-allow.extraction-cutover-ownership.v1` | `scripts/extraction-cutover-status.sh` |
 | Extraction cutover build/package receipt | `cargo-allow.extraction-cutover-build-package.v1` | independent package/build harness consumed by `cargo-allow extraction-parity --cutover-evidence` |
+| Merge-group subject/result receipt | `cargo-allow.merge-group-subject.v1` / `cargo-allow.merge-group-result.v1` | `scripts/merge-group-subject.py` |
 
 The operator-latency receipt binds end-to-end wall-clock observations to the
 tested binary, host, repository fixture, ordered command arguments, output
@@ -367,6 +368,13 @@ contracts. They are validated by the extraction-parity adapter but are not
 ordinary cargo-allow source-scan artifacts and therefore are not part of
 `allow-report::ARTIFACT_CONTRACTS`. Their exact-source and digest checks do not
 promote policy, authorize publication, or establish release readiness.
+
+The merge-group receipt schema is a script-emitted supporting contract for the
+actual merge-group subject and required-result observations produced by
+`scripts/merge-group-subject.py`. It binds the observed G, its base, tree,
+parents, run identity and the mandatory producer results. It is not a CLI
+artifact renderer, is not part of `allow-report::ARTIFACT_CONTRACTS`, and grants
+no merge, queue, or release authority.
 
 ## Files
 
@@ -402,6 +410,7 @@ promote policy, authorize publication, or establish release readiness.
 - [sensor-capabilities.schema.json](sensor-capabilities.schema.json) self-description contract for the `cargo-allow capabilities --format json` sensor catalog (not a governed artifact)
 - [operator-latency.schema.json](operator-latency.schema.json) v1, [operator-latency.v2.schema.json](operator-latency.v2.schema.json) v2, and [operator-latency.v3.schema.json](operator-latency.v3.schema.json) v3 historical compatibility schemas; [operator-latency.v4.schema.json](operator-latency.v4.schema.json) current hosted performance receipt (not governed artifacts)
 - [extraction-cutover-evidence.schema.json](extraction-cutover-evidence.schema.json), [extraction-cutover-ownership.schema.json](extraction-cutover-ownership.schema.json), and [extraction-cutover-build-package.schema.json](extraction-cutover-build-package.schema.json) supporting cutover evidence-input contracts (not governed source-tree artifacts)
+- [merge-group-receipt-v1.schema.json](merge-group-receipt-v1.schema.json) supporting merge-group subject/result receipt emitted by `scripts/merge-group-subject.py` (not a governed source-tree artifact)
 - [release-manifest-v2.schema.json](release-manifest-v2.schema.json) topology-derived release contract (contract-only; not a publication authorization)
 - [cargo-allow.release-authorization-custody.v1.schema.json](cargo-allow.release-authorization-custody.v1.schema.json) operator-side authorization custody, consumption, and selection-payload contract (model-only; not a mint or execution authority)
 - [cargo-allow.release-operation-lease.v1.schema.json](cargo-allow.release-operation-lease.v1.schema.json) durable one-operation lease contract (serialization-only; not an operation authorization)
