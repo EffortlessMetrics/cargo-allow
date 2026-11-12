@@ -7,17 +7,26 @@ squash proposal and the periodic main-health proposal.
 
 ## Source contract and activation boundary
 
-This source generation removes ordinary PR/push/schedule triggers. It does not
-activate a repository rule, prove an enqueue operation, replace the trusted H
-publisher, or authorize a release. Keep it unmerged until the coordinating owner
-has a satisfiable source/settings migration. Do not remove an existing required
-context before its replacement and admission path have been qualified together.
+This source generation is **step 1**: it adds the `merge_group` trigger and the
+exact-G proof path while retaining the existing `pull_request` and `push: main`
+triggers. It does not remove those triggers, activate a repository rule, prove
+an enqueue operation, replace the trusted H publisher, or authorize a release.
+Keep it unmerged until the coordinating owner has a satisfiable source/settings
+migration. Do not remove an existing required context before its replacement
+and admission path have been qualified together.
+
+Because the retained triggers are still live, a `push: main` run still starts
+`ci.yml`'s `queue-subject` job and, when `proof-route` stays wide for a push
+event, the ordinary proof jobs. A `pull_request` run still starts the same
+graph. Step 2 removes those triggers only after one real merge-group run and one
+queue landing have been observed; until then, ordinary main updates do replay
+proof and their results must be read back.
 
 Development commit, push, PR open/synchronize/reopen, Draft, Ready, labels and
-body edits allocate no Actions jobs, including metadata wrappers. The owning
-session runs focused checks, substantive review, repairs and current product
-judgment. Ordinary main updates do not replay proof. Explicit deep/audit and
-release operations retain their distinct purposes and authority.
+body edits allocate no Actions jobs, including metadata wrappers, **only after
+step 2 lands**. The owning session runs focused checks, substantive review,
+repairs and current product judgment. Explicit deep/audit and release operations
+retain their distinct purposes and authority.
 
 ## H, G and M answer different questions
 
@@ -53,7 +62,7 @@ additional required context until its obligation has a reviewed disposition.
 
 | Existing surface | This source generation | Enforcement disposition |
 | --- | --- | --- |
-| `ci.yml` PR/draft/main proof | `merge_group` only; exact G checkout | Require `queue-qualification` on the actual G after admission/control qualification. |
+| `ci.yml` PR/draft/main proof | `merge_group` with exact G checkout, plus the retained `pull_request` and `push: main` triggers until step 2 | Require `queue-qualification` on the actual G after admission/control qualification. Retained main-push and PR runs still execute the proof graph and must be read back. |
 | `pregate` | Same syntax/fmt/no-new denominator, now bound to G/base | Required dependency of `queue-qualification`; failed/skipped result cannot pass it. |
 | `msrv`, `package-smoke`, `shallow-diff-smoke`, `operator-latency`, `test`, `feature-configuration-proof`, `test-core-platforms`, `compat-delegation`, `coverage`, `cargo-deny` | Existing mandatory commands, platform matrices and toolchain requirements retained | All are dependencies of `queue-qualification`, derived from `docs/ci-lanes.toml`; matrix jobs must succeed. |
 | New `queue-subject` | Verify event/repository/ref, fetched base ancestry, exact G checkout/tree and run/attempt; execute local regression controls | Required dependency of all `ci.yml` producers and the aggregate. |
@@ -61,7 +70,7 @@ additional required context until its obligation has a reviewed disposition.
 | `sentinel.yml` / `sentinel` | Independent `merge_group` root parsing the actual G workflows | Require separately; its independent root preserves a signal when `ci.yml` is malformed. |
 | `frozen-subject-lock.yml` / `frozen-subject-lock` | Existing freeze check on G | Require separately; no freeze/publication obligation is waived. |
 | `ub-review.yml` / `changie-contract`, `changelog-hook-contract` | Deterministic review/changelog contracts on G | Require separately; Go/Changie/module identity and nonmutation tests are retained. |
-| `review-readiness.yml` publisher | Actions root removed; typed review projection/disposition code retained | Replace through an observed, trusted H admission/publisher join before retiring any live requirement. No green substitute is emitted by this patch. |
+| `review-readiness.yml` publisher | Retained with its `push` and `merge_group` triggers; it resolves the PR from the merge group. Typed review projection/disposition code retained | Replace through an observed, trusted H admission/publisher join before retiring any live requirement. No green substitute is emitted by this patch. |
 | Model-backed `ub-review.yml` / `review` | Actions job removed | Review and disposition remain in-session obligations under #3977/#4252/#4255. Missing, quota-limited or failed review is not clean. |
 | Feature-configuration full union and sensor-burden audit | Explicit `workflow_dispatch` only | Separate deep/audit requests; no recurring main proof or development-event bridge. |
 | Floor-receipt regeneration | Existing explicit dispatch | Existing exact-source regeneration purpose/owner retained. |
@@ -116,7 +125,9 @@ central read gateway.
    recomposition. Record actual G, base, queue membership/order, run/attempt,
    context publisher and M/readback—not just the intended settings file.
 4. Observe Draft/open/synchronize/Ready/body/label cases creating zero Actions
-   runs and a normal landing creating no ordinary main replay. Verify the
+   runs and a normal landing creating no ordinary main replay **after step 2**.
+   Until step 2 lands, a landing still starts the retained `push: main` proof
+   graph; read those results back rather than assuming no replay. Verify the
    release trigger paths independently without publishing a test release.
 5. If any gate or admission assumption fails, retain the blocker and restore
    the recorded coherent source/settings generation. Do not revert just the

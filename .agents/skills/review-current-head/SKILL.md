@@ -282,7 +282,9 @@ failed, cancelled, malformed or silently skipped evidence is not green.
 
 Green CI alone is not merge readiness. Review readiness is not queue admission;
 admission is not a qualification result; merge is not objective closeout. The owner reads back M and reconciles evidence,
-acceptance and residual work without routine main replay. Follow
+acceptance and residual work. Until step 2 removes the retained `push: main`
+trigger, landing M starts that proof graph, so read its results back rather than
+assuming no routine main replay. Follow
 `docs/ci/merge-queue-cutover.md`; source changes alone do not activate the route.
 
 ## Failure Conditions
