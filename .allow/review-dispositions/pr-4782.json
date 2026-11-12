@@ -1,0 +1,48 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4782,
+  "base_ref": "main",
+  "base_sha": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
+  "head_ref": "fix/4780-clippy-needless-bool",
+  "head_sha": "71f277e1e580b44d75ec41d7cca40d33ec875788",
+  "merge_base": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
+  "reviewed_diff_digest": "sha256:v2:c447ee8ba7c16347a5c44e8633afe4f254a897eef932a636ac0777b25758a02a",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4782 at 71f277e1e580b44d75ec41d7cca40d33ec875788 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). The source change is byte-identical to the b06bff90 head I approved (blob d3ea4a74e8e29758fae2c005b1ea784b495f3eeb); the later deltas are the regenerated docs/ci/receipts files, now the runner-produced artifact from floor-receipt-regeneration run 43321339328. Verified the Windows reparse-point arm survives, non-Windows is unchanged, the needless_bool shape is gone, and the cargo-allow receipt's selected_source_digest is 75aa670a4f49a213a839e40ed4b997c0e85b6eb8eec132db03d72193292a384c, matching the live tree. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4782#issuecomment-6838237233 and #issuecomment-6837576523: non-author model review of b06bff90 and the refreshed receipt heads, with the Windows reparse arm, the needless_bool shape, and the receipt provenance verified. No independent-human approval; shared account and model context are a correlated-failure limit."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "windows-junction-test-gap",
+      "severity": "advisory",
+      "owned_seam": "is_indirection Windows reparse-point coverage",
+      "source_path": "crates/cargo-allow/src/core_command_migration_readback.rs",
+      "source_line": 346,
+      "repair_route": "Add a #[cfg(windows)] test that creates a directory junction (the repo already has create_dir_junction at crates/allow-inventory/tests/fixture_parity.rs:449) and asserts is_indirection or open_regular refuses it, so the reparse-point arm cannot be silently dropped again. Pre-existing gap; the change is correct without it.",
+      "claim_boundary": "The in-file mod tests has two tests, neither exercises is_indirection against a reparse point; test-core-platforms (windows-latest) would stay green if the branch were dropped."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4782",
+    "Reviewed pair base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, merge-base 3e1d3fab, head 71f277e1e580b44d75ec41d7cca40d33ec875788. Diff digest sha256:v2:c447ee8ba7c16347a5c44e8633afe4f254a897eef932a636ac0777b25758a02a.",
+    "Delta b06bff90..71f277e1 is the regenerated docs/ci/receipts files only; crates/cargo-allow/src/core_command_migration_readback.rs is blob d3ea4a74e8e29758fae2c005b1ea784b495f3eeb at both heads, so the clippy-fix approval carries.",
+    "Windows behaviour: the #[cfg(windows)] arm ORs is_symlink() with FILE_ATTRIBUTE_REPARSE_POINT, so no reparse point falls through to the is_symlink-only path; #[cfg(not(windows))] returns is_symlink() as before. Call sites :192, :294, :384 unchanged.",
+    "Pregate passes on the receipt heads (run 43322270213); floor-freshness is satisfied because selected_source_digest is 75aa670a4f49a213a839e40ed4b997c0e85b6eb8eec132db03d72193292a384c. test-core-platforms (ubuntu) passes; windows/macos, coverage and package-smoke were pending at review time.",
+    "Receipt provenance resolved at 71f277e1: the committed receipts now carry working_directory /home/runner/work/cargo-allow/cargo-allow and source_commit 2e99ae81311eca23575a385a1f0f709b2a00d525, the canonical artifact from floor-receipt-regeneration run 43321339328. The proof fields (selected_source_digest, floor_lock_digest, manifest_set_digest, lock_digest) are unchanged from 957c2ac0, so the gate is unaffected.",
+    "Threads: no review threads on this PR at review time. One non-blocking finding retained above: the missing #[cfg(windows)] junction test."
+  ],
+  "required_ci": {
+    "owner": "PR #4782 orchestrator: verify the exact-head review, live review-readiness success, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4782",
+  "reviewed_at_utc": "2026-11-12T23:00:00Z"
+}
