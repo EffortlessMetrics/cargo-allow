@@ -21,4 +21,4 @@ after_fingerprint = "sha256:v1:f25f4207388da569c29e4b5275857f52d6a0f25f2bd2dfe5d
 allow_ids = ["allow-11502"]
 reason = "Self-covering added_allow receipt for this revision note file, matching the #2497/#3793/#4214/#4716 precedents; note retention only, no new scanned surface beyond this file."
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:dcc0227734dbc42320428cbf8622205272eae91311b97000749266febc215a94"
+after_fingerprint = "sha256:v1:7a7a98732d44d1f7b3ecf108540db9b5fd2d317ad212dcdca3c65a347add4f13"
