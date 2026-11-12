@@ -251,7 +251,7 @@ fn fixture_7_base_movement_with_an_identical_head_is_a_new_subject() -> Result<(
         "the moved base changes the changed-path set and flips the decision",
     )?;
     require(
-        !validate_release_impact_receipt_v1(&before).is_err(),
+        validate_release_impact_receipt_v1(&before).is_ok(),
         "the pre-movement receipt stays valid for its own subject",
     )?;
     Ok(())

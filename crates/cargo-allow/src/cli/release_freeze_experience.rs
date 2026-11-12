@@ -9,15 +9,23 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use allow_core::sha256_v1_bytes;
 use allow_report::{
-    CargoAllowReleaseExperienceV1, ExactCandidatePayloadV2, ExactCandidateResultV2,
-    FinalEvidenceCurrentnessV1, FinalEvidenceGraphV1, FinalEvidenceNodeResultV1,
-    FinalEvidencePackageRoleV1, FinalEvidencePackageSubjectV1, IsolatedInstallPayloadV2,
-    IsolatedInstallResultV2, PackageCandidateFamilyV2, PackageCandidatePayloadV2,
-    PackageCandidateResultV2, ReleaseExperienceInputV1, ReleaseExperienceResultV1,
-    evaluate_release_experience_v1, validate_exact_candidate_v2, validate_isolated_install_v2,
-    validate_package_candidate_v2,
+    CargoAllowReleaseDocsExecutionEvaluationV1, CargoAllowReleaseExperienceV1,
+    ExactCandidatePayloadV2, ExactCandidateResultV2, FinalEvidenceCurrentnessV1,
+    FinalEvidenceGraphV1, FinalEvidenceNodeResultV1, FinalEvidencePackageRoleV1,
+    FinalEvidencePackageSubjectV1, IsolatedInstallPayloadV2, IsolatedInstallResultV2,
+    PackageCandidateFamilyV2, PackageCandidatePayloadV2, PackageCandidateResultV2,
+    RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID, RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION,
+    ReleaseExperienceDocsExecutionV1, ReleaseExperienceInputV1, ReleaseExperienceResultV1,
+    evaluate_release_experience_docs_execution_v1, evaluate_release_experience_v1,
+    rust_floor_satisfied, rust_floor_token, validate_exact_candidate_v2,
+    validate_isolated_install_v2, validate_package_candidate_v2,
 };
 use serde::de::DeserializeOwned;
+
+use crate::core_command_migration::{
+    ADMISSION_SCHEMA, Admission as NativeCaseAdmission, CATALOGUE_DIGEST, CATALOGUE_SCHEMA,
+    CONTEXT_SCHEMA, Catalogue, ExpectedContext, SemanticValidity,
+};
 
 use super::{EvidenceInput, FreezeEvidenceRole, SubjectIdentity, qualification::ReadbackInput};
 
@@ -57,15 +65,270 @@ impl Admission {
         }
     }
 
-    fn retain_dependencies(&mut self) {
-        for note in [
+    fn retain_dependencies(&mut self, command_case: CommandCaseJoin) {
+        self.record(
+            State::NotProven,
             "#2466: the clean-pilot target/steps/friction producer and semantic reader are absent; retained opaque bytes do not prove a pilot",
-            "#3149: the executed supported-case denominator and human/machine parity producer are absent",
-            "#3151: installed help/reference/man/completion and selected documentation coherence production are absent",
-        ] {
-            self.record(State::NotProven, note);
+        );
+        match command_case {
+            CommandCaseJoin::Absent => self.record(
+                State::NotProven,
+                "#3149: the executed supported-case denominator and human/machine parity producer are absent",
+            ),
+            // A retained projection is not a replay of its native bundle and
+            // members. Its claimed coverage cannot discharge this hold.
+            CommandCaseJoin::Partial(note) => self.record(State::NotProven, note),
+            CommandCaseJoin::Defect(result, note) => self.record(result, note),
+        }
+        self.record(
+            State::NotProven,
+            "#3151: the checked selected-case documentation producer and exact documentation-byte oracle are absent; v1 observation declarations do not prove execution",
+        );
+    }
+}
+
+/// Outcome of joining the retained command-case originals into the #3149
+/// executed-denominator hold. Every note names the owning hold so the claim
+/// boundary distinguishes a bound declaration from replayed semantic proof.
+enum CommandCaseJoin {
+    /// No retained originals: the delivered absence hold stands unchanged.
+    Absent,
+    /// Retained projection/context metadata binds, but the underlying native
+    /// bundle/member replay is absent. Every selected case stays unproven.
+    Partial(String),
+    /// The retained originals carry a binding defect; the hold remains.
+    Defect(State, String),
+}
+
+/// Join the retained command-case admission and its expected context into the
+/// executed-denominator hold. Metadata checks cannot authenticate a native
+/// evaluation. The small-record freeze transport does not carry the original
+/// executable, snapshots and case members required by the native reader, so
+/// even a self-consistent full-coverage projection must remain NotProven.
+fn command_case_join(
+    subject: &SubjectIdentity,
+    input: &ReleaseExperienceInputV1,
+    evidence: &[EvidenceInput],
+    catalogue_bytes: Option<&[u8]>,
+) -> CommandCaseJoin {
+    let original = |role| {
+        let mut matching = evidence.iter().filter(|item| item.role == role);
+        let first = matching.next();
+        (first, matching.next().is_none())
+    };
+    let (admission_input, admission_unique) = original(FreezeEvidenceRole::CommandCaseAdmission);
+    let (context_input, context_unique) = original(FreezeEvidenceRole::CommandCaseContext);
+    if !admission_unique || !context_unique {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            "#3149: duplicate command-case admission or expected-context original".to_string(),
+        );
+    }
+    let (Some(admission_input), Some(context_input)) = (admission_input, context_input) else {
+        return match (admission_input, context_input) {
+            (None, None) => CommandCaseJoin::Absent,
+            _ => CommandCaseJoin::Defect(
+                State::Malformed,
+                "#3149: the native command-case admission and its expected context must be retained together".to_string(),
+            ),
+        };
+    };
+    let admission: NativeCaseAdmission = match serde_json::from_value(admission_input.value.clone())
+    {
+        Ok(value) => value,
+        Err(error) => {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!("#3149: command-case admission original contract: {error}"),
+            );
+        }
+    };
+    let context: ExpectedContext = match serde_json::from_value(context_input.value.clone()) {
+        Ok(value) => value,
+        Err(error) => {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!("#3149: command-case expected-context original contract: {error}"),
+            );
+        }
+    };
+    if admission.schema_id != ADMISSION_SCHEMA || admission.schema_version != 1 {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            format!(
+                "#3149: retained command-case admission is generation {} ({}), not the current native admission",
+                admission.schema_version, admission.schema_id
+            ),
+        );
+    }
+    if context.schema_id != CONTEXT_SCHEMA || context.schema_version != 1 {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            format!(
+                "#3149: retained command-case expected context is generation {} ({}), not the current context generation",
+                context.schema_version, context.schema_id
+            ),
+        );
+    }
+    if admission.collection_id.trim().is_empty() || admission.collection_id != context.collection_id
+    {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case projection and expected context name different or empty collections".to_string(),
+        );
+    }
+    if super::hex_payload(&admission.bundle_digest).is_none() {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            "#3149: retained command-case projection has a malformed bundle digest".to_string(),
+        );
+    }
+    if !same_digest(&admission.context_digest, &context_input.sha256) {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case admission does not bind the retained expected-context bytes".to_string(),
+        );
+    }
+    if !same_digest(&input.migration_denominator_digest, CATALOGUE_DIGEST)
+        || !same_digest(&context.catalogue_digest, CATALOGUE_DIGEST)
+        || !same_digest(&admission.catalogue_digest, CATALOGUE_DIGEST)
+    {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case originals or the experience denominator reference a different case catalogue".to_string(),
+        );
+    }
+    // The catalogue member bytes are checked only in a readback-bound
+    // admission; the compose-time pass conservatively keeps the hold.
+    let Some(catalogue_bytes) = catalogue_bytes else {
+        return CommandCaseJoin::Defect(
+            State::NotProven,
+            "#3149: retained command-case originals were not checked against the referenced accepted catalogue in this admission; the executed-denominator hold remains".to_string(),
+        );
+    };
+    let catalogue: Catalogue = match super::rehearsal::decode(catalogue_bytes) {
+        Ok(value) => match serde_json::from_value(value) {
+            Ok(catalogue) => catalogue,
+            Err(error) => {
+                return CommandCaseJoin::Defect(
+                    State::Malformed,
+                    format!("#3149: referenced accepted case catalogue original: {error}"),
+                );
+            }
+        },
+        Err(error) => {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!("#3149: referenced accepted case catalogue original: {error}"),
+            );
+        }
+    };
+    if catalogue.schema_id != CATALOGUE_SCHEMA || catalogue.schema_version != 1 {
+        return CommandCaseJoin::Defect(
+            State::Malformed,
+            "#3149: referenced case catalogue is not the accepted generation".to_string(),
+        );
+    }
+    if !same_digest(&context.binary.digest, &input.binary_digest) {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case observations were executed by a different executable"
+                .to_string(),
+        );
+    }
+    if context.binary.source_generation != subject.commit {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case observations bind a different source generation"
+                .to_string(),
+        );
+    }
+    if context.binary.path != input.invocation_path
+        || context.binary.tool_version != subject.version
+        || context.binary.size_bytes == 0
+    {
+        return CommandCaseJoin::Defect(
+            State::Mismatch,
+            "#3149: retained command-case executable path, version or size differs from the selected candidate".to_string(),
+        );
+    }
+    let installed = match context.binary.provenance {
+        crate::core_command_migration::BinaryProvenance::SourceBuild => {
+            if context.binary.candidate_identity.is_some()
+                || context.binary.install_identity.is_some()
+            {
+                return CommandCaseJoin::Defect(
+                    State::Malformed,
+                    "#3149: source-build command-case context claims installed identities"
+                        .to_string(),
+                );
+            }
+            false
+        }
+        crate::core_command_migration::BinaryProvenance::SuppliedInstalledCandidate => {
+            if context
+                .binary
+                .candidate_identity
+                .as_deref()
+                .is_none_or(|value| super::hex_payload(value).is_none())
+                || context
+                    .binary
+                    .install_identity
+                    .as_deref()
+                    .is_none_or(|value| super::hex_payload(value).is_none())
+            {
+                return CommandCaseJoin::Defect(
+                    State::Malformed,
+                    "#3149: installed command-case context lacks well-formed candidate/install identities".to_string(),
+                );
+            }
+            true
+        }
+    };
+    let total = catalogue.cases.len();
+    let mut admitted_ids = BTreeSet::new();
+    for case in &admission.cases {
+        if !admitted_ids.insert(case.case_id.as_str()) {
+            return CommandCaseJoin::Defect(
+                State::Malformed,
+                format!(
+                    "#3149: duplicate command-case admission row {}",
+                    case.case_id
+                ),
+            );
+        }
+        if !catalogue.cases.iter().any(|spec| spec.id == case.case_id) {
+            return CommandCaseJoin::Defect(
+                State::Mismatch,
+                format!(
+                    "#3149: command-case admission row {} is not an accepted catalogue case",
+                    case.case_id
+                ),
+            );
         }
     }
+    let claimed = admission
+        .cases
+        .iter()
+        .filter(|case| case.semantic_validity == SemanticValidity::Valid)
+        .count();
+    let collection: String = admission.collection_id.chars().take(100).collect();
+    let errors = if admission.errors.is_empty() {
+        String::new()
+    } else {
+        format!(
+            "; the retained projection reports {} collection errors",
+            admission.errors.len()
+        )
+    };
+    let provenance = if installed {
+        "declared installed-candidate"
+    } else {
+        "source-build"
+    };
+    CommandCaseJoin::Partial(format!(
+        "#3149: retained {provenance} projection claims {claimed}/{total} valid selected cases (collection {collection}){errors}; the native bundle/member originals have not been replayed and candidate/install authority has not been reconciled, so all {total} selected case executions remain unproven at this boundary; installed-candidate execution stays required (#4705)"
+    ))
 }
 
 fn same_digest(left: &str, right: &str) -> bool {
@@ -156,7 +419,7 @@ pub(super) fn reconcile(
         Ok(pair) => pair,
         Err(problem) => {
             admission.record(problem.result, problem.notes.join("; "));
-            admission.retain_dependencies();
+            admission.retain_dependencies(CommandCaseJoin::Absent);
             return admission;
         }
     };
@@ -185,6 +448,7 @@ pub(super) fn reconcile(
             "duplicate experience documentation identity",
         );
     }
+    let mut catalogue_bytes = None;
     if let (Some(readback), Some(now)) = (readback, now) {
         if input.evaluated_at_unix_seconds > now
             || !now
@@ -198,14 +462,228 @@ pub(super) fn reconcile(
                 "experience is future-dated or expired at the checked provider observation",
             );
         }
-        if let Err(problem) = bind_references(subject, selected_packages, &input, readback) {
-            admission.record(problem.result, problem.notes.join("; "));
+        catalogue_bytes = match bind_references(subject, selected_packages, &input, readback) {
+            Ok(bytes) => Some(bytes),
+            Err(problem) => {
+                admission.record(problem.result, problem.notes.join("; "));
+                None
+            }
+        };
+        match admit_docs_execution(subject, &input, readback, now) {
+            DocsExecution::Unclaimed => {}
+            DocsExecution::Defect(problem) => {
+                admission.record(problem.result, problem.notes.join("; "));
+            }
         }
     }
     // An authentic download or matching model output is not a semantic proof.
-    // No supported producer/reader currently discharges these three obligations.
-    admission.retain_dependencies();
+    // Metadata and byte custody cannot substitute for the required producers.
+    // In particular the v1 docs record contains declarations, not a checked
+    // selected-case/documentation-byte oracle, so #3151 always stays required.
+    let command_case = command_case_join(subject, &input, evidence, catalogue_bytes.as_deref());
+    admission.retain_dependencies(command_case);
     admission
+}
+
+/// Outcome of the executed-documentation admission (#4706) for one input.
+enum DocsExecution {
+    /// No claim on the input; the standing hold note stays unchanged.
+    Unclaimed,
+    /// A named defect or a non-Complete reader result; the hold stays.
+    Defect(Admission),
+}
+
+/// Admit one original executed-documentation record against the selected
+/// subject. Byte custody, role, and digest binding reuse the existing
+/// reference path; every binding below ties the record to the exact input,
+/// installed executable, channel/version claim, and selected documentation
+/// identities. The v1 record remains non-authoritative and cannot lift a hold.
+fn admit_docs_execution(
+    subject: &SubjectIdentity,
+    input: &ReleaseExperienceInputV1,
+    readback: &ReadbackInput,
+    now: u64,
+) -> DocsExecution {
+    let Some(claim) = &input.docs_execution else {
+        return DocsExecution::Unclaimed;
+    };
+    let bytes = match reference(readback, "experience:docs-execution", &claim.record_digest) {
+        Ok(bytes) => bytes,
+        Err(problem) => return DocsExecution::Defect(problem),
+    };
+    let record: ReleaseExperienceDocsExecutionV1 =
+        match decode(bytes, "docs execution", docs_execution_fields) {
+            Ok(record) => record,
+            Err(problem) => return DocsExecution::Defect(problem),
+        };
+    if record.schema_id != RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_ID
+        || record.schema_version != RELEASE_EXPERIENCE_DOCS_EXECUTION_SCHEMA_VERSION
+    {
+        return DocsExecution::Defect(Admission::issue(
+            State::Unsupported,
+            "docs execution record is a non-current generation",
+        ));
+    }
+    let expected_version = format!("cargo-allow {}", subject.version);
+    let binding_failure =
+        |detail: String| DocsExecution::Defect(Admission::issue(State::Mismatch, detail));
+    if !same_digest(&record.binary_digest, &input.binary_digest) {
+        return binding_failure(
+            "docs execution ran against a different installed executable".to_string(),
+        );
+    }
+    if record.invocation_path != input.invocation_path {
+        return binding_failure(
+            "docs execution invocation path differs from the selected install".to_string(),
+        );
+    }
+    if record.version_claim != expected_version
+        || record.installed_version_output != expected_version
+    {
+        return binding_failure(format!(
+            "docs execution version or channel claim differs from the selected subject {expected_version}"
+        ));
+    }
+    if record.channel_claim != subject.channel && record.channel_claim != "source-candidate" {
+        return binding_failure(
+            "docs execution channel claim differs from the selected subject".to_string(),
+        );
+    }
+    let Some(floor) = rust_floor_token(&record.rust_floor_claim) else {
+        return DocsExecution::Defect(Admission::issue(
+            State::Malformed,
+            "docs execution rust floor claim is not a comparable version",
+        ));
+    };
+    let Some(toolchain) = rust_toolchain_version(&record.toolchain) else {
+        return DocsExecution::Defect(Admission::issue(
+            State::Malformed,
+            "docs execution toolchain does not identify a comparable Rust compiler version",
+        ));
+    };
+    if !rust_floor_satisfied(&floor, &toolchain) {
+        return binding_failure(format!(
+            "docs execution rust floor {} exceeds the installed toolchain {}",
+            record.rust_floor_claim, record.toolchain
+        ));
+    }
+    let installed: IsolatedInstallPayloadV2 = match reference(
+        readback,
+        "experience:isolated-install",
+        &input.install_digest,
+    )
+    .and_then(|bytes| decode(bytes, "isolated install", install_fields))
+    {
+        Ok(installed) => installed,
+        Err(problem) => return DocsExecution::Defect(problem),
+    };
+    if record.platform != installed.platform || record.toolchain != installed.toolchain {
+        return binding_failure(
+            "docs execution platform or toolchain differs from the selected install".to_string(),
+        );
+    }
+    let selected_identities: BTreeSet<_> = input
+        .docs_identities
+        .iter()
+        .map(|identity| identity.name.as_str())
+        .collect();
+    if let Some(check) = record
+        .checks
+        .iter()
+        .find(|check| !selected_identities.contains(check.docs_name.as_str()))
+    {
+        return binding_failure(format!(
+            "docs execution check {} does not bind a selected documentation identity",
+            check.id
+        ));
+    }
+    let evaluated: CargoAllowReleaseDocsExecutionEvaluationV1 =
+        evaluate_release_experience_docs_execution_v1(&record);
+    // Keep reader, claim and freshness defects together. A later disagreement
+    // must not downgrade a malformed result or hide an observed mismatch.
+    let mut admission = Admission::issue(
+        evaluated.result,
+        format!("docs execution: {}", evaluated.gaps.join("; ")),
+    );
+    if evaluated.result != claim.result {
+        admission.record(
+            State::Mismatch,
+            format!(
+                "docs execution claim {claim:?} differs from the computed reader result {:?}",
+                evaluated.result
+            ),
+        );
+    }
+    if record.observed_at_unix_seconds > now
+        || !now
+            .checked_sub(record.observed_at_unix_seconds)
+            .is_some_and(|age| record.maximum_age_seconds > 0 && age <= record.maximum_age_seconds)
+    {
+        admission.record(
+            State::Stale,
+            "docs execution record is future-dated or expired at the checked provider observation",
+        );
+    }
+    DocsExecution::Defect(admission)
+}
+
+/// A Cargo version is not evidence of the compiler used by the install.
+/// Accept canonical numeric versions or the version token in rustc's output.
+fn rust_toolchain_version(value: &str) -> Option<Vec<u32>> {
+    if let Some(output) = value.strip_prefix("rustc ") {
+        output.split_whitespace().next().and_then(rust_floor_token)
+    } else {
+        rust_floor_token(value)
+    }
+}
+
+fn docs_execution_fields(value: &serde_json::Value) -> Result<(), Admission> {
+    object_fields(
+        value,
+        &[
+            "schema_id",
+            "schema_version",
+            "binary_digest",
+            "installed_version_output",
+            "invocation_path",
+            "platform",
+            "toolchain",
+            "channel_claim",
+            "version_claim",
+            "rust_floor_claim",
+            "checks",
+            "limitations",
+            "claim_boundary",
+            "observed_at_unix_seconds",
+            "maximum_age_seconds",
+        ],
+        "docs execution",
+    )?;
+    if let Some(checks) = value.get("checks").and_then(serde_json::Value::as_array) {
+        for (index, check) in checks.iter().enumerate() {
+            object_fields(
+                check,
+                &[
+                    "id",
+                    "docs_name",
+                    "kind",
+                    "command",
+                    "argv",
+                    "exit_code",
+                    "expected_exit_code",
+                    "stdout_excerpt",
+                    "stderr_excerpt",
+                    "declared_writes",
+                    "observed_writes",
+                    "documented_claim",
+                    "observed_summary",
+                    "outcome",
+                ],
+                &format!("docs execution checks[{index}]"),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn apply(graph: &mut FinalEvidenceGraphV1, admission: &Admission) {
@@ -477,12 +955,14 @@ fn decode<T: DeserializeOwned>(
     })
 }
 
+/// Bind every referenced original member and predecessor, returning the
+/// migration-denominator member bytes for the command-case join.
 fn bind_references(
     subject: &SubjectIdentity,
     selected_packages: &[FinalEvidencePackageSubjectV1],
     input: &ReleaseExperienceInputV1,
     readback: &ReadbackInput,
-) -> Result<(), Admission> {
+) -> Result<Vec<u8>, Admission> {
     let candidate_bytes = reference(
         readback,
         "experience:package-candidate",
@@ -544,11 +1024,12 @@ fn bind_references(
     // root locks. Their original validators/producers own those meanings; do
     // not equate either with the raw workspace lock or rewrite a receipt.
     bind_packages(selected_packages, &candidate, &install, &journey)?;
-    reference(
+    let migration_catalogue = reference(
         readback,
         "experience:migration-denominator",
         &input.migration_denominator_digest,
-    )?;
+    )?
+    .to_vec();
     for identity in &input.docs_identities {
         reference(
             readback,
@@ -567,7 +1048,7 @@ fn bind_references(
     if let Some(digest) = &input.brownfield_receipt_digest {
         reference(readback, "experience:brownfield-pilot", digest)?;
     }
-    Ok(())
+    Ok(migration_catalogue)
 }
 
 fn validate_predecessors(
@@ -691,7 +1172,7 @@ fn bind_packages(
             || qualified.package_version != row.cargo_package_version
             || qualified.logical_id != row.logical_id
             || !family_matches
-            || !row.crate_size_bytes.is_some_and(|size| size > 0)
+            || row.crate_size_bytes.is_none_or(|size| size == 0)
             || !same_digest(digest, &installed.crate_digest)
             || !same_digest(digest, &installed.index_checksum)
             || !same_digest(digest, &qualified.crate_digest)

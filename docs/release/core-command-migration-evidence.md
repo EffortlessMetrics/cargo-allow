@@ -128,6 +128,53 @@ Hard failures with absent detail retain their native error classification and
 error-receipt readback as incomplete observations; a process that never
 started is a separate incomplete observation.
 
+## Read-only A presentation and human-receipt routes (#4724)
+
+Five A cases require separate actual invocations per presentation route
+instead of one JSON execution: `A.check.human_receipt` owns the receipt-only
+human check route (`receipt_only`, `receipt_only_tty`) plus its JSON-route
+receipt/detail correspondence authority, and the four `*.presentation` cases
+own `human`, `json`, `quiet`, `file`, and `tty` routes. Every route is a
+separate actual invocation of the supplied binary against the same committed
+fixture, with its own before/after snapshots, retained streams and artifacts.
+The collector attaches the `tty` routes to a pseudo-terminal without falling
+back to pipes. Its transport test observes the child's stdin/stdout/stderr
+terminal status on the executing host. That transport test is not a retained
+child-terminal attestation for each collected command. The reader checks the
+declared route/terminal binding, but neither that declaration nor nonempty
+console bytes establishes terminal presentation semantics.
+
+Native presentation admission checks the exact accepted route set per case,
+per-invocation source immutability, exit agreement across routes, and typed
+common-summary equality across routes: subject, result class, completeness,
+posture, currentness, reason, primary action, next proof and effect flags.
+The JSON route's detail is projected through the existing first-family
+projections; a hard failure without detail caps the case at incomplete. For
+`A.check.human_receipt`, each receipt-only receipt is validated against the
+JSON route's retained evaluated detail. Receipt-only and file routes keep
+stdout clean; a successful file route must retain its requested nonempty
+human report. Non-TTY human, quiet, and file reports must begin with the exact
+common-summary block produced by the native human renderer. Arbitrary or
+contradictory summary prose is invalid even if its separate sidecar is valid.
+Human streams and files are bounded. The remaining human detail has no native
+semantic projection in this reader and stays incomplete, as do all terminal
+presentation routes. Correct summary prefixes do not prove arbitrary report
+tails; ANSI framing does not prove terminal content. Styled color output is
+not exercised under the pinned `NO_COLOR` environment. Missing, failed, and
+unprojected routes cannot become a full presentation pass, and the 107-case
+denominator is never marked complete by this reader.
+
+The retained public-prerelease run for these five cases, its digests, and its
+typed rc.1 findings are recorded in
+[evidence/core-command-presentation-4724.v1.json](evidence/core-command-presentation-4724.v1.json).
+The retained collections stay outside any repository checkout; the record's
+digests make them auditable, and version disagreements with the public
+`0.2.0-rc.1` prerelease are retained as-is rather than normalized.
+The record's non-TTY `valid` dispositions predate the stronger human-summary
+and unparsed-detail gates above. They are historical reader results, not
+current presentation proof. This repair does not recapture those external
+collections or qualify the corrected ConPTY path on Windows.
+
 ## Semantic validity and qualification
 
 The admission result distinguishes `valid`, `incomplete`, and `invalid`

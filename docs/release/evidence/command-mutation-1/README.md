@@ -2,7 +2,7 @@
 
 This directory retains the committed evidence manifest for the 20 accepted
 `C.init.*`, `C.propose.*`, `C.add.*`, and `C.add_from_plan.*` obligations of
-[`docs/release/core-command-migration-cases.v1.json`](../../core-command-migration-cases.v1.json)
+the historical [`catalogue.v1.json`](catalogue.v1.json)
 (blob `fec59acff35d1baa92fbc4b5a82c3a95df1e6af6`), executed as real stateful
 mutation flows against disposable Git fixtures outside any repository
 checkout. The parent obligations are [#4725](https://github.com/EffortlessMetrics/cargo-allow/issues/4725)
@@ -83,16 +83,29 @@ observation, and missing-rollback-state failure.
 ## Admission and replay
 
 `scripts/verify-command-mutation-evidence.py verify-manifest --catalogue
-docs/release/core-command-migration-cases.v1.json --manifest
+docs/release/evidence/command-mutation-1/catalogue.v1.json --manifest
 docs/release/evidence/command-mutation-1/manifest.v1.json` replays the
 committed records inside the repository (also driven by
-`crates/cargo-allow/tests/command_mutation_evidence_cli.rs`). The same reader,
+`crates/cargo-allow/tests/release_command_mutation_evidence_cli.rs`). The same reader,
 in `verify-collection` mode, admitted the full lane collection against a
 caller-pinned expected context before the manifest was emitted; that mode
 recomputes every retained member digest, snapshot diff, argv template, exit
 expectation, and declared-write boundary, and rejects wrong subject, wrong
 case family, duplicate/unknown/missing case IDs, replacement bytes,
 undeclared writes, stale values, fake successes, and contract-probe escapes.
+
+The historical catalogue is retained byte-for-byte from Git blob
+`fec59acff35d1baa92fbc4b5a82c3a95df1e6af6`, SHA-256
+`5a582458f7b8d71d3983690214de62b3c7c5bf33e47a88385ad07540eb16cc08`.
+The original manifest SHA-256 is
+`cfa63044496f17c121c911b234a9e7bec15b55345afa32eda750e6336d433b44`.
+Both files retain their original bytes across platform checkouts. The reader
+must reject this manifest against the expanded live catalogue even when the
+selected C-case definitions have not changed: its catalogue identity came from
+the retained collection bundle, not a later compatibility declaration.
+Synthetic controls and new collections still use the live catalogue. A new
+execution or collection requires its own admitted bundle/context and emitted
+manifest; advancing the live catalogue does not rewrite this observation.
 
 ## Claim boundary
 

@@ -3,17 +3,28 @@
 
 use super::super::super as command;
 use super::*;
+use crate::core_command_migration::{
+    ADMISSION_SCHEMA, Admission as NativeCaseAdmission, BinaryContext as NativeBinaryContext,
+    BinaryProvenance as NativeProvenance, CATALOGUE_DIGEST, CONTEXT_SCHEMA,
+    CaseAdmission as NativeCaseRow, CaseContext as NativeCaseContext, Catalogue,
+    Dimension as NativeDimension, ExpectedContext, SemanticValidity,
+};
 use allow_report::{
-    CargoAllowReleaseExperienceV1, ExactCandidatePayloadV2, ExactCandidateResultV2,
-    FinalEvidenceCurrentnessV1, FinalEvidenceNodeResultV1, FinalEvidencePackageRoleV1,
-    FinalEvidencePackageSubjectV1, FinalReadinessVerdictV1, IsolatedInstallPayloadV2,
-    IsolatedInstallResultV2, PackageCandidatePayloadV2, PackageCandidateResultV2,
-    RELEASE_EXPERIENCE_REQUIRED_DOCS, ReleaseExperienceBrownfieldPostureV1,
+    CargoAllowReleaseDocsExecutionEvaluationV1, CargoAllowReleaseExperienceV1,
+    ExactCandidatePayloadV2, ExactCandidateResultV2, FinalEvidenceCurrentnessV1,
+    FinalEvidenceNodeResultV1, FinalEvidencePackageRoleV1, FinalEvidencePackageSubjectV1,
+    FinalReadinessVerdictV1, IsolatedInstallPayloadV2, IsolatedInstallResultV2,
+    PackageCandidatePayloadV2, PackageCandidateResultV2, RELEASE_EXPERIENCE_REQUIRED_DOCS,
+    ReleaseExperienceBrownfieldPostureV1, ReleaseExperienceDocsCheckKindV1,
+    ReleaseExperienceDocsCheckOutcomeV1, ReleaseExperienceDocsCheckV1,
+    ReleaseExperienceDocsExecutionClaimV1, ReleaseExperienceDocsExecutionV1,
     ReleaseExperienceDocsIdentityV1, ReleaseExperienceFrictionDispositionV1,
     ReleaseExperienceFrictionV1, ReleaseExperienceInputV1, ReleaseExperiencePilotResultV1,
-    ReleaseExperiencePilotV1, ReleaseExperienceResultV1, evaluate_release_experience_v1,
+    ReleaseExperiencePilotV1, ReleaseExperienceResultV1,
+    evaluate_release_experience_docs_execution_v1, evaluate_release_experience_v1,
     validate_exact_candidate_v2, validate_isolated_install_v2, validate_package_candidate_v2,
 };
+use std::collections::BTreeMap;
 
 type ExperienceResult<T = ()> = Result<T, Box<dyn std::error::Error>>;
 type State = ReleaseExperienceResultV1;
@@ -98,6 +109,14 @@ impl OriginalBundle {
             (
                 FreezeEvidenceRole::ReleaseExperience,
                 "evidence:release-experience",
+            ),
+            (
+                FreezeEvidenceRole::CommandCaseAdmission,
+                "evidence:command-case-admission",
+            ),
+            (
+                FreezeEvidenceRole::CommandCaseContext,
+                "evidence:command-case-context",
             ),
         ] {
             if let Some((_, member)) = self.readback.member(id)? {
@@ -211,7 +230,7 @@ fn bundle() -> ExperienceResult<OriginalBundle> {
         "source_checkout_denied":true, "install_root_identity":digest(b"install root identity"),
         "cargo_home_identity":digest(b"isolated cargo home identity"),
         "installed_executable_digest":binary_digest, "installed_version_output":"cargo-allow 0.2.0",
-        "platform":"x86_64-unknown-linux-gnu", "toolchain":"selected-toolchain",
+        "platform":"x86_64-unknown-linux-gnu", "toolchain":"1.95.0",
         "package_rows":install_rows,
         "graph_comparison":{"expected_packages":13, "matched_packages":13, "unexpected_packages":[],
             "missing_packages":[], "version_mismatches":[], "path_sources":[]},
@@ -225,7 +244,7 @@ fn bundle() -> ExperienceResult<OriginalBundle> {
         "repository_commit":subject.commit, "repository_tree":subject.tree,
         "cargo_lock_digest":subject.cargo_lock_digest, "installed_executable_digest":binary_digest,
         "installed_version_output":"cargo-allow 0.2.0", "platform":"x86_64-unknown-linux-gnu",
-        "toolchain":"selected-toolchain", "support_matrix_generation":"selected-support",
+        "toolchain":"1.95.0", "support_matrix_generation":"selected-support",
         "package_rows":journey_rows, "journey_steps":[{"id":"existing-synthetic-step", "exit_code":0}],
         "artifact_schema_results":[], "scanner_completeness":"complete", "diff_base_identity":"selected-base",
         "limitations":["not the missing #3149 execution catalogue"], "not_included":[],
@@ -253,6 +272,7 @@ fn bundle() -> ExperienceResult<OriginalBundle> {
                 ReleaseExperienceBrownfieldPostureV1::NotIncludedPendingPublishedPilot,
             brownfield_receipt_digest: None,
             docs_identities: Vec::new(),
+            docs_execution: None,
             frictions: Vec::new(),
             claimed_result: State::NotProven,
             not_proven_reason: "No clean external pilot was executed".to_string(),
@@ -1169,6 +1189,1480 @@ fn checked_readback_keeps_pair_defects_distinct_from_provider_unavailability() -
             // The dependent result may remain transitively Stale. Do not
             // change aggregate precedence or graph dependency semantics.
         }
+    }
+    Ok(())
+}
+
+#[test]
+fn package_size_absence_and_zero_remain_mismatch_not_ordinary_producer_holds() -> ExperienceResult {
+    for value in [
+        None,
+        Some(serde_json::Value::Null),
+        Some(serde_json::json!(0)),
+    ] {
+        let mut original = bundle()?;
+        let mut predecessors = original.predecessors()?;
+        let row = predecessors
+            .first_mut()
+            .and_then(|candidate| candidate.pointer_mut("/rows/0"))
+            .and_then(serde_json::Value::as_object_mut)
+            .ok_or("candidate first package row missing")?;
+        if let Some(value) = value {
+            row.insert("crate_size_bytes".to_string(), value);
+        } else {
+            row.remove("crate_size_bytes");
+        }
+        original.reseal_predecessors(predecessors)?;
+        assert_admission(
+            &original,
+            State::Mismatch,
+            "disagrees across original producers or selected upload bytes",
+        )?;
+    }
+    Ok(())
+}
+
+// --- retained command-case originals joined into the #3149 hold ---
+
+fn digest_payload(value: &str) -> &str {
+    value
+        .strip_prefix("sha256:v1:")
+        .or_else(|| value.strip_prefix("sha256:"))
+        .unwrap_or(value)
+}
+
+fn real_catalogue_bytes() -> ExperienceResult<Vec<u8>> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/release/core-command-migration-cases.v1.json");
+    Ok(std::fs::read(path)?)
+}
+
+fn native_rows(ids: &[String], validity: SemanticValidity) -> Vec<NativeCaseRow> {
+    ids.iter()
+        .map(|case_id| NativeCaseRow {
+            case_id: case_id.clone(),
+            semantic_validity: validity.clone(),
+            process_observed: true,
+            detail_reconciled: validity == SemanticValidity::Valid,
+            observed_result_class: Some("completed".to_string()),
+            observed_completeness: Some("complete".to_string()),
+            errors: Vec::new(),
+            binding_gaps: vec![
+                "existing reader binding gaps remain retained in the original".to_string(),
+            ],
+            routes: Vec::new(),
+        })
+        .collect()
+}
+
+fn native_admission(
+    rows: Vec<NativeCaseRow>,
+    missing_cases: Vec<String>,
+    semantic_validity: SemanticValidity,
+) -> NativeCaseAdmission {
+    NativeCaseAdmission {
+        schema_id: ADMISSION_SCHEMA.to_string(),
+        schema_version: 1,
+        catalogue_digest: String::new(),
+        context_digest: String::new(),
+        bundle_digest: digest(b"retained command-case bundle bytes"),
+        collection_id: "command-case-test".to_string(),
+        semantic_validity,
+        qualification: "partial".to_string(),
+        cases: rows,
+        missing_cases,
+        dimensions: vec![NativeDimension {
+            id: "output-parity".to_string(),
+            description: "human/machine parity observations".to_string(),
+        }],
+        errors: Vec::new(),
+        qualification_gaps: vec![
+            "the first-family reader cannot satisfy the full A-C, diff-D and #3882 denominator"
+                .to_string(),
+        ],
+        claim_boundary: "existing native admission projection shape only".to_string(),
+    }
+}
+
+fn native_context(
+    original: &OriginalBundle,
+    ids: &[String],
+    provenance: NativeProvenance,
+) -> ExpectedContext {
+    let subject = &original.subject;
+    let (candidate, install) = match provenance {
+        NativeProvenance::SourceBuild => (None, None),
+        NativeProvenance::SuppliedInstalledCandidate => (
+            Some(digest(b"selected candidate identity")),
+            Some(digest(b"selected install identity")),
+        ),
+    };
+    ExpectedContext {
+        schema_id: CONTEXT_SCHEMA.to_string(),
+        schema_version: 1,
+        collection_id: "command-case-test".to_string(),
+        catalogue_digest: String::new(),
+        binary: NativeBinaryContext {
+            path: original.input.invocation_path.clone(),
+            size_bytes: 1,
+            digest: original.input.binary_digest.clone(),
+            tool_version: subject.version.clone(),
+            provenance,
+            source_generation: subject.commit.clone(),
+            candidate_identity: candidate,
+            install_identity: install,
+        },
+        cases: ids
+            .iter()
+            .map(|case_id| NativeCaseContext {
+                case_id: case_id.clone(),
+                root: format!("/collection/fixtures/{case_id}"),
+                cwd: format!("/collection/fixtures/{case_id}"),
+                argv: vec![
+                    original.input.invocation_path.clone(),
+                    "audit".to_string(),
+                    "--root".to_string(),
+                    format!("/collection/fixtures/{case_id}"),
+                ],
+                environment: BTreeMap::new(),
+                source_snapshot_digest: digest(format!("snapshot {case_id}").as_bytes()),
+                fixture_commit: subject.commit.clone(),
+                output_digests: BTreeMap::new(),
+                policy_digest: None,
+                config_path: None,
+                mode: None,
+                profile: None,
+                resolved_config_identity: None,
+            })
+            .collect(),
+        presentation_cases: None,
+    }
+}
+
+impl OriginalBundle {
+    /// Retain synthetic projection/context bytes bound to the real accepted
+    /// catalogue and fixture executable/subject identities. These are not
+    /// native execution originals and cannot establish semantic coverage.
+    /// Empty binding digests are sealed from the retained bytes; a patch may
+    /// preset a foreign digest to forge exactly that binding.
+    fn join_command_case(
+        &mut self,
+        catalogue: &[u8],
+        mut admission: NativeCaseAdmission,
+        mut context: ExpectedContext,
+        patch: impl FnOnce(&mut NativeCaseAdmission, &mut ExpectedContext, &mut OriginalBundle),
+    ) -> ExperienceResult {
+        let catalogue_digest = self.put(
+            "experience:migration-denominator",
+            "ExperienceReference",
+            catalogue.to_vec(),
+        )?;
+        self.input.migration_denominator_digest = catalogue_digest.clone();
+        if context.catalogue_digest.is_empty() {
+            context.catalogue_digest = catalogue_digest.clone();
+        }
+        if admission.catalogue_digest.is_empty() {
+            admission.catalogue_digest = catalogue_digest;
+        }
+        patch(&mut admission, &mut context, self);
+        let context_bytes = serde_json::to_vec(&context)?;
+        if admission.context_digest.is_empty() {
+            admission.context_digest = sha256_v1_bytes(&context_bytes);
+        }
+        self.put(
+            "evidence:command-case-context",
+            "Evidence:command-case-context",
+            context_bytes,
+        )?;
+        self.put(
+            "evidence:command-case-admission",
+            "Evidence:command-case-admission",
+            serde_json::to_vec(&admission)?,
+        )?;
+        self.pair()
+    }
+}
+
+#[test]
+fn retained_partial_command_case_projections_do_not_prove_their_claimed_cases() -> ExperienceResult
+{
+    let catalogue_bytes = real_catalogue_bytes()?;
+    if digest_payload(&digest(&catalogue_bytes)) != digest_payload(CATALOGUE_DIGEST) {
+        return Err(
+            "the repository case catalogue drifted from the native reader's accepted digest".into(),
+        );
+    }
+    let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
+    let selected: Vec<String> = catalogue
+        .cases
+        .iter()
+        .filter(|case| case.first_family_collector)
+        .map(|case| case.id.clone())
+        .collect();
+    let missing: Vec<String> = catalogue
+        .cases
+        .iter()
+        .filter(|case| !case.first_family_collector)
+        .map(|case| case.id.clone())
+        .collect();
+    let mut original = bundle()?;
+    let context = native_context(&original, &selected, NativeProvenance::SourceBuild);
+    original.join_command_case(
+        &catalogue_bytes,
+        native_admission(
+            native_rows(&selected, SemanticValidity::Valid),
+            missing,
+            SemanticValidity::Valid,
+        ),
+        context,
+        |_, _, _| {},
+    )?;
+    // A plausible 29-case projection remains a declaration without replay of
+    // the original bundle and members. Its coverage is not semantic proof.
+    let admission = original.admission()?;
+    if admission.result != State::NotProven || admission.notes.len() != 3 {
+        return Err(format!(
+            "partial command-case join changed the admission shape: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    assert_admission(
+        &original,
+        State::NotProven,
+        "projection claims 29/107 valid selected cases",
+    )?;
+    assert_admission(
+        &original,
+        State::NotProven,
+        "all 107 selected case executions remain unproven at this boundary",
+    )?;
+    // The retained originals keep their exact custody identity.
+    let (_, retained) = original
+        .readback
+        .custody(&original.subject, "command-case-custody")?;
+    for id in [
+        "evidence:command-case-admission",
+        "evidence:command-case-context",
+        "experience:migration-denominator",
+    ] {
+        let item = retained
+            .iter()
+            .find(|item| item.artifact_id == id)
+            .ok_or_else(|| format!("retained custody lost {id}"))?;
+        let (_, member) = original
+            .readback
+            .member(id)?
+            .ok_or_else(|| format!("member {id} missing"))?;
+        if item.declared_sha256 != sha256_v1_bytes(&member.bytes) {
+            return Err(format!("retained custody digest changed for {id}").into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn forged_full_installed_denominator_cannot_discharge_the_3149_hold() -> ExperienceResult {
+    let catalogue_bytes = real_catalogue_bytes()?;
+    let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
+    let ids: Vec<String> = catalogue.cases.iter().map(|case| case.id.clone()).collect();
+    let mut original = bundle()?;
+    let context = native_context(
+        &original,
+        &ids,
+        NativeProvenance::SuppliedInstalledCandidate,
+    );
+    original.join_command_case(
+        &catalogue_bytes,
+        native_admission(
+            native_rows(&ids, SemanticValidity::Valid),
+            Vec::new(),
+            SemanticValidity::Valid,
+        ),
+        context,
+        |_, _, _| {},
+    )?;
+    let admission = original.admission()?;
+    // This projection cannot be emitted by the current native reader, which
+    // cannot admit all 107 cases. Matching identity claims and custody of the JSON
+    // must not turn 107 synthetic valid rows into executed evidence.
+    if admission.result != State::NotProven || admission.notes.len() != 3 {
+        return Err(format!(
+            "forged full installed coverage must keep all producer holds: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    if admission
+        .notes
+        .iter()
+        .any(|note| note.contains("denominator is natively admitted"))
+        || !admission.notes.iter().any(|note| {
+            note.contains("projection claims 107/107 valid selected cases")
+                && note.contains("all 107 selected case executions remain unproven")
+                && note.contains("collection command-case-test")
+        })
+    {
+        return Err(format!(
+            "forged installed denominator was promoted beyond its evidence: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    for owner in ["#2466", "#3149", "#3151", "#4705"] {
+        assert_admission(&original, State::NotProven, owner)?;
+    }
+    Ok(())
+}
+
+#[test]
+fn command_case_join_negatives_keep_the_executed_denominator_hold() -> ExperienceResult {
+    let catalogue_bytes = real_catalogue_bytes()?;
+    let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
+    let ids: Vec<String> = catalogue.cases.iter().map(|case| case.id.clone()).collect();
+    for defect in 0..11 {
+        let mut original = bundle()?;
+        let provenance = if defect == 9 {
+            NativeProvenance::SourceBuild
+        } else {
+            NativeProvenance::SuppliedInstalledCandidate
+        };
+        let context = native_context(&original, &ids, provenance);
+        let admission = native_admission(
+            native_rows(&ids, SemanticValidity::Valid),
+            Vec::new(),
+            SemanticValidity::Valid,
+        );
+        let expected: (State, &str);
+        let with_readback = defect != 10;
+        match defect {
+            // Wrong executable.
+            0 => {
+                let forged = digest(b"another executable");
+                expected = (State::Mismatch, "different executable");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |_, ctx, _| {
+                        ctx.binary.digest = forged;
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Wrong case catalogue.
+            1 => {
+                let foreign = digest(b"another catalogue");
+                expected = (State::Mismatch, "different case catalogue");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
+                        adm.catalogue_digest = foreign;
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Stale subject generation.
+            2 => {
+                expected = (State::Mismatch, "different source generation");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |_, ctx, _| {
+                        ctx.binary.source_generation = "f".repeat(40);
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Duplicate admission row.
+            3 => {
+                expected = (State::Malformed, "duplicate command-case admission row");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
+                        let Some(row) = adm.cases.first() else {
+                            return;
+                        };
+                        let row = row.clone();
+                        adm.cases.push(row);
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Admission row outside the accepted catalogue.
+            4 => {
+                expected = (State::Mismatch, "not an accepted catalogue case");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
+                        if let Some(row) = adm.cases.last_mut() {
+                            row.case_id = "A.not.in.catalogue".to_string();
+                        }
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Partial coverage labelled as nothing missing.
+            5 => {
+                expected = (
+                    State::NotProven,
+                    "projection claims 106/107 valid selected cases",
+                );
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
+                        adm.cases.pop();
+                        adm.missing_cases.clear();
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Exit/result disagreement reported by the retained admission.
+            6 => {
+                expected = (State::NotProven, "collection errors");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
+                        let failed = adm
+                            .cases
+                            .last()
+                            .map(|row| row.case_id.clone())
+                            .unwrap_or_default();
+                        let disagreement =
+                            format!("{failed}: observed exit disagreed with the typed result");
+                        if let Some(row) = adm.cases.last_mut() {
+                            row.semantic_validity = SemanticValidity::Invalid;
+                            row.detail_reconciled = false;
+                            row.errors = vec![disagreement.clone()];
+                        }
+                        // The native reader surfaces a case chain error at the
+                        // admission level; the consumer note names its count.
+                        adm.errors = vec![disagreement];
+                        adm.semantic_validity = SemanticValidity::Invalid;
+                        adm.missing_cases = vec![failed];
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Half-retained original pair.
+            7 => {
+                expected = (State::Malformed, "must be retained together");
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |_, _, _| {})
+                    .map_err(|error| error.to_string())?;
+                let artifact = original
+                    .readback
+                    .artifacts
+                    .first_mut()
+                    .ok_or("artifact missing")?;
+                artifact
+                    .members
+                    .retain(|member| member.logical_id != "evidence:command-case-context");
+                original.refresh()?;
+            }
+            // Forged expected-context binding.
+            8 => {
+                expected = (
+                    State::Mismatch,
+                    "does not bind the retained expected-context bytes",
+                );
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |adm, _, _| {
+                        adm.context_digest = digest(b"forged context");
+                    })
+                    .map_err(|error| error.to_string())?;
+            }
+            // Full source-build denominator: still not installed evidence.
+            9 => {
+                expected = (
+                    State::NotProven,
+                    "installed-candidate execution stays required",
+                );
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |_, _, _| {})
+                    .map_err(|error| error.to_string())?;
+            }
+            // Compose-time pass without checked readback must not discharge.
+            _ => {
+                expected = (
+                    State::NotProven,
+                    "not checked against the referenced accepted catalogue",
+                );
+                original
+                    .join_command_case(&catalogue_bytes, admission, context, |_, _, _| {})
+                    .map_err(|error| error.to_string())?;
+            }
+        }
+        let readback = if with_readback {
+            Some(&original.readback)
+        } else {
+            None
+        };
+        let admission = command::experience::reconcile(
+            &original.subject,
+            &original.packages,
+            &original.evidence()?,
+            readback,
+        );
+        if admission.result != expected.0
+            || !admission.notes.iter().any(|note| note.contains(expected.1))
+        {
+            return Err(format!(
+                "defect {defect} expected {:?}/{:?}, got {:?}/{:?}",
+                expected.0, expected.1, admission.result, admission.notes
+            )
+            .into());
+        }
+        // Every negative keeps the #3149 hold NotProven-visible and never
+        // reaches a Complete admission.
+        if !admission.notes.iter().any(|note| note.contains("#3149")) {
+            return Err(format!("defect {defect} lost the #3149 hold note").into());
+        }
+        if admission.result == State::Complete {
+            return Err(format!("defect {defect} discharged the hold to Complete").into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn duplicate_command_case_evidence_role_is_malformed_before_the_join() -> ExperienceResult {
+    let catalogue_bytes = real_catalogue_bytes()?;
+    let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
+    let ids: Vec<String> = catalogue.cases.iter().map(|case| case.id.clone()).collect();
+    let mut original = bundle()?;
+    let context = native_context(
+        &original,
+        &ids,
+        NativeProvenance::SuppliedInstalledCandidate,
+    );
+    original
+        .join_command_case(
+            &catalogue_bytes,
+            native_admission(
+                native_rows(&ids, SemanticValidity::Valid),
+                Vec::new(),
+                SemanticValidity::Valid,
+            ),
+            context,
+            |_, _, _| {},
+        )
+        .map_err(|error| error.to_string())?;
+    let mut evidence = original.evidence()?;
+    let source = evidence
+        .iter()
+        .find(|item| item.role == FreezeEvidenceRole::CommandCaseAdmission)
+        .ok_or("admission evidence missing")?;
+    let duplicate = EvidenceInput {
+        role: source.role,
+        path: source.path.clone(),
+        sha256: source.sha256.clone(),
+        value: source.value.clone(),
+        binding_notes: Vec::new(),
+    };
+    evidence.push(duplicate);
+    let admission = command::experience::reconcile(
+        &original.subject,
+        &original.packages,
+        &evidence,
+        Some(&original.readback),
+    );
+    if admission.result != State::Malformed
+        || !admission
+            .notes
+            .iter()
+            .any(|note| note.contains("duplicate command-case admission"))
+    {
+        return Err(format!(
+            "duplicate command-case role was not malformed: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn command_case_projection_metadata_cannot_substitute_for_native_originals() -> ExperienceResult {
+    let catalogue_bytes = real_catalogue_bytes()?;
+    let catalogue: Catalogue = serde_json::from_slice(&catalogue_bytes)?;
+    let ids: Vec<String> = catalogue.cases.iter().map(|case| case.id.clone()).collect();
+    for defect in 0..10 {
+        let mut original = bundle()?;
+        let context = native_context(
+            &original,
+            &ids,
+            NativeProvenance::SuppliedInstalledCandidate,
+        );
+        let projection = native_admission(
+            native_rows(&ids, SemanticValidity::Valid),
+            Vec::new(),
+            SemanticValidity::Valid,
+        );
+        let expected = match defect {
+            0 | 1 => (State::Mismatch, "different or empty collections"),
+            2 => (State::Malformed, "malformed bundle digest"),
+            3..=5 => (State::Mismatch, "executable path, version or size"),
+            6 | 7 => (State::Malformed, "well-formed candidate/install identities"),
+            _ => (
+                State::NotProven,
+                "all 107 selected case executions remain unproven",
+            ),
+        };
+        original.join_command_case(&catalogue_bytes, projection, context, |adm, ctx, _| {
+            match defect {
+                0 => adm.collection_id = "another collection".to_string(),
+                1 => {
+                    adm.collection_id.clear();
+                    ctx.collection_id.clear();
+                }
+                2 => adm.bundle_digest = "not-a-digest".to_string(),
+                3 => ctx.binary.path = "/foreign/bin/cargo-allow".to_string(),
+                4 => ctx.binary.tool_version = "99.0.0".to_string(),
+                5 => ctx.binary.size_bytes = 0,
+                6 => ctx.binary.candidate_identity = Some(String::new()),
+                7 => ctx.binary.install_identity = None,
+                8 => {
+                    // A self-consistent digest does not retain its referent.
+                    adm.bundle_digest = digest(b"invented but unretained bundle");
+                    adm.qualification_gaps.clear();
+                    adm.qualification = "complete".to_string();
+                }
+                _ => {
+                    // Labels claiming observed execution cannot replace bytes.
+                    for row in &mut adm.cases {
+                        row.process_observed = false;
+                        row.detail_reconciled = false;
+                        row.binding_gaps.clear();
+                    }
+                }
+            }
+        })?;
+        assert_admission(&original, expected.0, expected.1)?;
+        assert_admission(&original, expected.0, "#3149")?;
+    }
+    Ok(())
+}
+
+// ---- Installed executed-documentation admission (#4706) ----
+
+/// Receipt-free positional accessor over recorded docs checks: no bracket
+/// indexing, no `unwrap`.
+fn docs_check_at<'a>(
+    checks: &'a mut [ReleaseExperienceDocsCheckV1],
+    index: usize,
+    label: &'static str,
+) -> &'a mut ReleaseExperienceDocsCheckV1 {
+    checks
+        .get_mut(index)
+        .unwrap_or_else(|| std::panic::panic_any(label))
+}
+
+fn docs_check(
+    id: &str,
+    docs_name: &str,
+    kind: ReleaseExperienceDocsCheckKindV1,
+) -> ReleaseExperienceDocsCheckV1 {
+    ReleaseExperienceDocsCheckV1 {
+        id: id.to_string(),
+        docs_name: docs_name.to_string(),
+        kind,
+        command: None,
+        argv: Vec::new(),
+        exit_code: None,
+        expected_exit_code: None,
+        stdout_excerpt: String::new(),
+        stderr_excerpt: String::new(),
+        declared_writes: Vec::new(),
+        observed_writes: Vec::new(),
+        documented_claim: "the shipped docs advertise this surface".to_string(),
+        observed_summary: "observed agreement on the selected installed product".to_string(),
+        outcome: ReleaseExperienceDocsCheckOutcomeV1::Matched,
+    }
+}
+
+fn executed_docs_check(
+    id: &str,
+    docs_name: &str,
+    argv: &[&str],
+    stdout: &str,
+) -> ReleaseExperienceDocsCheckV1 {
+    let command_head = argv
+        .first()
+        .unwrap_or_else(|| std::panic::panic_any("executed docs check requires an argv head"))
+        .to_string();
+    ReleaseExperienceDocsCheckV1 {
+        kind: ReleaseExperienceDocsCheckKindV1::SurfaceGeneration,
+        command: Some(command_head),
+        argv: argv.iter().map(|argument| argument.to_string()).collect(),
+        exit_code: Some(0),
+        expected_exit_code: Some(0),
+        stdout_excerpt: stdout.to_string(),
+        ..docs_check(
+            id,
+            docs_name,
+            ReleaseExperienceDocsCheckKindV1::SurfaceGeneration,
+        )
+    }
+}
+
+impl OriginalBundle {
+    /// Internally consistent observations carrying this bundle's installed
+    /// identity. The v1 record still lacks a checked execution oracle.
+    fn docs_execution_record(&self) -> ReleaseExperienceDocsExecutionV1 {
+        let mut checks = vec![
+            executed_docs_check(
+                "E.help.entrypoint",
+                "help",
+                &["--help"],
+                "Usage: cargo-allow help [COMMAND] init audit check",
+            ),
+            executed_docs_check(
+                "E.reference.entrypoint",
+                "command-registry",
+                &["reference", "--format", "json"],
+                r#"{"schema":"cargo-allow.cli-reference.v1","commands":["reference"]}"#,
+            ),
+            executed_docs_check(
+                "E.man.entrypoint",
+                "manpage",
+                &["reference", "--format", "man"],
+                ".TH generated by reference; .B cargo-allow check",
+            ),
+            executed_docs_check(
+                "E.completions.entrypoint",
+                "completion",
+                &["completions", "bash"],
+                "cargo__allow__subcmd__completions() { ... }",
+            ),
+            ReleaseExperienceDocsCheckV1 {
+                kind: ReleaseExperienceDocsCheckKindV1::SnippetExecution,
+                command: Some("check".to_string()),
+                argv: vec![
+                    "check".to_string(),
+                    "--mode".to_string(),
+                    "no-new".to_string(),
+                ],
+                exit_code: Some(0),
+                expected_exit_code: Some(0),
+                stdout_excerpt: "**Result:** passed (enforcing)".to_string(),
+                declared_writes: vec![
+                    "policy/allow.toml".to_string(),
+                    "target/cargo-allow/check.receipt.json".to_string(),
+                ],
+                observed_writes: vec!["policy/allow.toml".to_string()],
+                documented_claim: "the shipped docs advertise this command".to_string(),
+                observed_summary: "executed the documented journey to its green gate".to_string(),
+                outcome: ReleaseExperienceDocsCheckOutcomeV1::Matched,
+                id: "docs.first-hour.journey-green".to_string(),
+                docs_name: "getting-started".to_string(),
+                stderr_excerpt: String::new(),
+            },
+            docs_check(
+                "docs.channel.version-claim",
+                "channel",
+                ReleaseExperienceDocsCheckKindV1::ClaimInspection,
+            ),
+            docs_check(
+                "docs.support.rust-floor",
+                "support-matrix",
+                ReleaseExperienceDocsCheckKindV1::ClaimInspection,
+            ),
+            docs_check(
+                "E.package.entrypoint.readme",
+                "readme",
+                ReleaseExperienceDocsCheckKindV1::ClaimInspection,
+            ),
+        ];
+        for claim_check in checks.iter_mut().skip(5).take(3) {
+            claim_check.observed_summary =
+                "observed installed metadata agrees with the documented claim".to_string();
+        }
+        // The root help surface's argv head is `--help`; the advertised
+        // command the output must name is `help`.
+        docs_check_at(&mut checks, 0, "help surface check present").command =
+            Some("help".to_string());
+        ReleaseExperienceDocsExecutionV1 {
+            schema_id: "cargo-allow.release-experience-docs-execution.v1".to_string(),
+            schema_version: 1,
+            binary_digest: self.input.binary_digest.clone(),
+            installed_version_output: format!("cargo-allow {}", self.subject.version),
+            invocation_path: self.input.invocation_path.clone(),
+            platform: "x86_64-unknown-linux-gnu".to_string(),
+            toolchain: "1.95.0".to_string(),
+            channel_claim: "stable".to_string(),
+            version_claim: format!("cargo-allow {}", self.subject.version),
+            rust_floor_claim: "1.95".to_string(),
+            checks,
+            limitations: Vec::new(),
+            claim_boundary: "installed documentation observations only; no release authorization"
+                .to_string(),
+            observed_at_unix_seconds: self.input.observed_at_unix_seconds,
+            maximum_age_seconds: self.input.maximum_age_seconds,
+        }
+    }
+
+    /// Install the record as an original member, point the input's claim at
+    /// it, and reseal the original pair.
+    fn install_docs_execution(
+        &mut self,
+        record: &ReleaseExperienceDocsExecutionV1,
+        claim_result: State,
+    ) -> ExperienceResult<()> {
+        let bytes = serde_json::to_vec(record)?;
+        let record_digest = self.put("experience:docs-execution", "ExperienceReference", bytes)?;
+        self.input.docs_execution = Some(ReleaseExperienceDocsExecutionClaimV1 {
+            record_digest,
+            result: claim_result,
+        });
+        self.pair()?;
+        Ok(())
+    }
+}
+
+#[test]
+fn consistent_docs_observations_retain_all_required_holds() -> ExperienceResult {
+    let mut original = bundle()?;
+    let record = original.docs_execution_record();
+    let evaluation: CargoAllowReleaseDocsExecutionEvaluationV1 =
+        evaluate_release_experience_docs_execution_v1(&record);
+    if evaluation.result != State::NotProven {
+        return Err(format!(
+            "consistent fixture observations became proof: {:?}",
+            evaluation.gaps
+        )
+        .into());
+    }
+    original.install_docs_execution(&record, State::NotProven)?;
+    let admission = original.admission()?;
+    if admission.result != State::NotProven {
+        return Err(format!(
+            "missing producers must still keep NotProven: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    for owner in ["#2466", "#3149", "#3151"] {
+        if !admission.notes.iter().any(|note| note.contains(owner)) {
+            return Err(format!("independent hold {owner} was silently dropped").into());
+        }
+    }
+    if !admission
+        .notes
+        .iter()
+        .any(|note| note.contains("selected-case producer"))
+    {
+        return Err(format!(
+            "missing documentation proof lost its reason: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_defects_keep_the_hold_with_named_reasons() -> ExperienceResult {
+    for (label, defect, expected, fragment) in [
+        (
+            "missing record member",
+            "missing_record",
+            State::Incomplete,
+            "missing original experience member experience:docs-execution",
+        ),
+        (
+            "changed record bytes",
+            "changed_bytes",
+            State::Mismatch,
+            "role or exact byte digest",
+        ),
+        (
+            "forged complete claim over an honest disagreement",
+            "forged_claim",
+            State::Mismatch,
+            "differs from the computed reader result",
+        ),
+        (
+            "honest incomplete claim stays below Complete",
+            "honest_incomplete",
+            State::Incomplete,
+            "docs execution:",
+        ),
+        (
+            "undeclared write",
+            "undeclared_write",
+            State::Mismatch,
+            "undeclared write",
+        ),
+        (
+            "foreign installed executable",
+            "foreign_binary",
+            State::Mismatch,
+            "different installed executable",
+        ),
+        (
+            "wrong subject version claim",
+            "wrong_version",
+            State::Mismatch,
+            "version or channel claim",
+        ),
+        (
+            "wrong subject channel claim",
+            "wrong_channel",
+            State::Mismatch,
+            "channel claim differs",
+        ),
+        (
+            "non-current docs execution generation",
+            "noncurrent_generation",
+            State::Unsupported,
+            "non-current generation",
+        ),
+        (
+            "invocation path differs from the selected install",
+            "invocation_path",
+            State::Mismatch,
+            "invocation path differs",
+        ),
+        (
+            "rustc output still identifies the compiler version",
+            "rustc_version_prefix",
+            State::Mismatch,
+            "platform or toolchain differs",
+        ),
+        (
+            "unparseable Rust floor",
+            "bad_floor",
+            State::Malformed,
+            "rust floor claim is not a comparable version",
+        ),
+        (
+            "Cargo version does not identify a compiler",
+            "bad_toolchain",
+            State::Malformed,
+            "toolchain does not identify a comparable Rust compiler",
+        ),
+        (
+            "compiler older than claimed floor",
+            "old_toolchain",
+            State::Mismatch,
+            "exceeds the installed toolchain",
+        ),
+        (
+            "foreign installed platform",
+            "foreign_platform",
+            State::Mismatch,
+            "platform or toolchain differs from the selected install",
+        ),
+        (
+            "foreign installed compiler",
+            "foreign_toolchain",
+            State::Mismatch,
+            "platform or toolchain differs from the selected install",
+        ),
+        (
+            "stale record",
+            "stale_record",
+            State::Stale,
+            "docs execution record is future-dated or expired",
+        ),
+        (
+            "unbound docs identity",
+            "unbound_identity",
+            State::Mismatch,
+            "does not bind a selected documentation identity",
+        ),
+        (
+            "unknown record field",
+            "unknown_field",
+            State::Malformed,
+            "docs execution original has unknown field extra_observation",
+        ),
+    ] {
+        let mut original = bundle()?;
+        match defect {
+            "missing_record" => {
+                let record = original.docs_execution_record();
+                original.input.docs_execution = Some(ReleaseExperienceDocsExecutionClaimV1 {
+                    record_digest: digest(&serde_json::to_vec(&record)?),
+                    result: State::Complete,
+                });
+                original.pair()?;
+            }
+            "changed_bytes" => {
+                let mut record = original.docs_execution_record();
+                record.platform = "changed-platform".to_string();
+                original.install_docs_execution(&record, State::NotProven)?;
+                let (_, bytes) = original
+                    .readback
+                    .experience_member("experience:docs-execution")?
+                    .ok_or("record missing")?;
+                let mut value: serde_json::Value = serde_json::from_slice(bytes)?;
+                let Some(object) = value.as_object_mut() else {
+                    std::panic::panic_any("changed record bytes must stay an object");
+                };
+                object.insert(
+                    "toolchain".to_string(),
+                    serde_json::json!("changed-toolchain"),
+                );
+                original.put(
+                    "experience:docs-execution",
+                    "ExperienceReference",
+                    serde_json::to_vec(&value)?,
+                )?;
+            }
+            "forged_claim" => {
+                let mut record = original.docs_execution_record();
+                docs_check_at(&mut record.checks, 0, "help surface check present").outcome =
+                    ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
+                docs_check_at(&mut record.checks, 0, "help surface check present")
+                    .observed_summary =
+                    "the documented group headers are absent from the installed help".to_string();
+                original.install_docs_execution(&record, State::Complete)?;
+            }
+            "honest_incomplete" => {
+                let mut record = original.docs_execution_record();
+                docs_check_at(&mut record.checks, 7, "readme claim check present").outcome =
+                    ReleaseExperienceDocsCheckOutcomeV1::NotExecuted;
+                docs_check_at(&mut record.checks, 7, "readme claim check present")
+                    .observed_summary =
+                    "rustdoc cannot be executed by the docs producer".to_string();
+                original.install_docs_execution(&record, State::Incomplete)?;
+            }
+            "undeclared_write" => {
+                let mut record = original.docs_execution_record();
+                docs_check_at(&mut record.checks, 4, "journey check present")
+                    .observed_writes
+                    .push("untracked/leak.txt".to_string());
+                original.install_docs_execution(&record, State::Complete)?;
+            }
+            "foreign_binary" => {
+                let mut record = original.docs_execution_record();
+                record.binary_digest = digest(b"a different installed executable");
+                original.install_docs_execution(&record, State::Complete)?;
+            }
+            "noncurrent_generation" => {
+                let mut record = original.docs_execution_record();
+                record.schema_version = 0;
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "invocation_path" => {
+                let mut record = original.docs_execution_record();
+                record.invocation_path = "install-root/bin/other".to_string();
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "rustc_version_prefix" => {
+                let mut record = original.docs_execution_record();
+                record.toolchain = "rustc 1.95.0 (59807616e1fa2540 2026-07-01)".to_string();
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "wrong_version" => {
+                let mut record = original.docs_execution_record();
+                record.version_claim = "cargo-allow 9.9.9".to_string();
+                original.install_docs_execution(&record, State::Complete)?;
+            }
+            "wrong_channel" | "bad_floor" | "bad_toolchain" | "old_toolchain"
+            | "foreign_platform" | "foreign_toolchain" => {
+                let mut record = original.docs_execution_record();
+                match defect {
+                    "wrong_channel" => record.channel_claim = "public-prerelease".to_string(),
+                    "bad_floor" => record.rust_floor_claim = "anything".to_string(),
+                    "bad_toolchain" => record.toolchain = "cargo 1.50.0 stable-host".to_string(),
+                    "old_toolchain" => record.toolchain = "1.94.0".to_string(),
+                    "foreign_platform" => record.platform = "another-platform".to_string(),
+                    _ => record.toolchain = "1.96.0".to_string(),
+                }
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "stale_record" => {
+                let mut record = original.docs_execution_record();
+                record.observed_at_unix_seconds = original.input.observed_at_unix_seconds - 10_000;
+                original.install_docs_execution(&record, State::NotProven)?;
+            }
+            "unbound_identity" => {
+                let mut record = original.docs_execution_record();
+                docs_check_at(&mut record.checks, 0, "help surface check present").docs_name =
+                    "blog".to_string();
+                original.install_docs_execution(&record, State::Complete)?;
+            }
+            _ => {
+                let record = original.docs_execution_record();
+                let mut value = serde_json::to_value(&record)?;
+                let Some(object) = value.as_object_mut() else {
+                    std::panic::panic_any("record JSON must stay an object");
+                };
+                object.insert("extra_observation".to_string(), serde_json::json!(true));
+                let record_digest = original.put(
+                    "experience:docs-execution",
+                    "ExperienceReference",
+                    serde_json::to_vec(&value)?,
+                )?;
+                original.input.docs_execution = Some(ReleaseExperienceDocsExecutionClaimV1 {
+                    record_digest,
+                    result: State::Complete,
+                });
+                original.pair()?;
+            }
+        }
+        original.readback.validate(&original.subject)?;
+        let admission = original.admission()?;
+        if !admission.notes.iter().any(|note| note.contains("#3151")) {
+            return Err(format!(
+                "defect {label} discharged the documentation hold: {:?}",
+                admission.notes
+            )
+            .into());
+        }
+        if !admission.notes.iter().any(|note| note.contains(fragment)) {
+            return Err(format!(
+                "defect {label} lost its named reason: {:?}",
+                admission.notes
+            )
+            .into());
+        }
+        if admission.result > expected {
+            return Err(format!(
+                "defect {label} read {:?} but needed at most {expected:?}",
+                admission.result
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_compound_defects_preserve_severity_and_all_reasons() -> ExperienceResult {
+    for (label, duplicate, mismatch, freshness, claim, expected) in [
+        (
+            "malformed with understated claim",
+            true,
+            false,
+            "current",
+            State::NotProven,
+            State::Malformed,
+        ),
+        (
+            "malformed with Complete claim",
+            true,
+            false,
+            "current",
+            State::Complete,
+            State::Malformed,
+        ),
+        (
+            "malformed freshness window",
+            false,
+            false,
+            "zero_window",
+            State::Malformed,
+            State::Malformed,
+        ),
+        (
+            "mismatch and expired",
+            false,
+            true,
+            "expired",
+            State::Mismatch,
+            State::Mismatch,
+        ),
+        (
+            "mismatch and future-dated",
+            false,
+            true,
+            "future",
+            State::Mismatch,
+            State::Mismatch,
+        ),
+        (
+            "forged Complete claim and expired",
+            false,
+            false,
+            "expired",
+            State::Complete,
+            State::Mismatch,
+        ),
+        (
+            "malformed with Complete claim and expired",
+            true,
+            false,
+            "expired",
+            State::Complete,
+            State::Malformed,
+        ),
+    ] {
+        let mut original = bundle()?;
+        let mut record = original.docs_execution_record();
+        if duplicate {
+            let check = record.checks.first().ok_or("docs check absent")?.clone();
+            record.checks.push(check);
+        }
+        if mismatch {
+            let check = record.checks.first_mut().ok_or("docs check absent")?;
+            check.outcome = ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
+            check.observed_summary = "installed help disagrees with the documentation".to_string();
+        }
+        match freshness {
+            "zero_window" => record.maximum_age_seconds = 0,
+            "expired" => record.observed_at_unix_seconds -= 10_000,
+            "future" => record.observed_at_unix_seconds += 10_000,
+            _ => {}
+        }
+        let evaluated = evaluate_release_experience_docs_execution_v1(&record);
+        original.install_docs_execution(&record, claim)?;
+        original.readback.validate(&original.subject)?;
+        let admission = original.admission()?;
+        if admission.result != expected {
+            return Err(format!(
+                "{label}: compound docs defects became {:?}, expected {expected:?}: {:?}",
+                admission.result, admission.notes
+            )
+            .into());
+        }
+        let mut reasons = vec!["#3151"];
+        if duplicate {
+            reasons.push("duplicate documentation check");
+        }
+        if mismatch {
+            reasons.push("installed help disagrees with the documentation");
+        }
+        if freshness == "zero_window" {
+            reasons.push("positive observation time and freshness window");
+        }
+        if freshness != "current" {
+            reasons.push("docs execution record is future-dated or expired");
+        }
+        if evaluated.result != claim {
+            reasons.push("differs from the computed reader result");
+        }
+        for reason in reasons {
+            if !admission.notes.iter().any(|note| note.contains(reason)) {
+                return Err(format!("{label}: lost {reason:?}: {:?}", admission.notes).into());
+            }
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn complete_model_input_cannot_override_a_failed_docs_observation() -> ExperienceResult {
+    let mut original = bundle()?;
+    let pilot = original.put(
+        "experience:clean-pilot",
+        "ExperienceReference",
+        b"arbitrary pilot bytes".to_vec(),
+    )?;
+    let friction = original.put(
+        "experience:clean-pilot-friction",
+        "ExperienceReference",
+        b"arbitrary friction bytes".to_vec(),
+    )?;
+    original.input.clean_pilot = Some(ReleaseExperiencePilotV1 {
+        receipt_digest: pilot,
+        result: ReleaseExperiencePilotResultV1::Complete,
+        friction_digest: friction,
+    });
+    original.input.claimed_result = State::Complete;
+    original.input.not_proven_reason.clear();
+    original.input.narrowed_claims.clear();
+    let mut record = original.docs_execution_record();
+    docs_check_at(&mut record.checks, 0, "help surface check present").outcome =
+        ReleaseExperienceDocsCheckOutcomeV1::Mismatched;
+    docs_check_at(&mut record.checks, 0, "help surface check present").observed_summary =
+        "the installed first screen is an ungrouped flat command list".to_string();
+    original.install_docs_execution(&record, State::Complete)?;
+    if evaluate_release_experience_v1(&original.input).result != State::Complete {
+        return Err("forged model-level Complete control did not reach the boundary".into());
+    }
+    let admission = original.admission()?;
+    for owner in ["#2466", "#3151"] {
+        if !admission.notes.iter().any(|note| note.contains(owner)) {
+            return Err(format!(
+                "model Complete waived the {owner} hold over failed docs evidence"
+            )
+            .into());
+        }
+    }
+    if !admission
+        .notes
+        .iter()
+        .any(|note| note.contains("differs from the computed reader result"))
+    {
+        return Err(format!("forged docs claim was not caught: {:?}", admission.notes).into());
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_claim_without_a_checked_readback_keeps_the_hold() -> ExperienceResult {
+    let mut original = bundle()?;
+    let record = original.docs_execution_record();
+    original.install_docs_execution(&record, State::Complete)?;
+    let local = command::experience::reconcile(
+        &original.subject,
+        &original.packages,
+        &original.evidence()?,
+        None,
+    );
+    if local.result != State::NotProven
+        || !local.notes.iter().any(|note| note.contains("#3151"))
+        || local.currentness != FinalEvidenceCurrentnessV1::ProviderUnavailable
+    {
+        return Err("an unchecked readback admitted docs execution without a clock".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_prose_only_or_consistent_complete_claims_keep_the_hold() -> ExperienceResult {
+    for prose_only in [false, true] {
+        let mut original = bundle()?;
+        let mut record = original.docs_execution_record();
+        if prose_only {
+            record.checks = RELEASE_EXPERIENCE_REQUIRED_DOCS
+                .iter()
+                .map(|name| {
+                    docs_check(
+                        &format!("unexecuted-{name}"),
+                        name,
+                        ReleaseExperienceDocsCheckKindV1::ClaimInspection,
+                    )
+                })
+                .collect();
+        }
+        original.install_docs_execution(&record, State::Complete)?;
+        let admission = original.admission()?;
+        if admission.result != State::Mismatch
+            || !admission.notes.iter().any(|note| note.contains("#3151"))
+            || !admission
+                .notes
+                .iter()
+                .any(|note| note.contains("differs from the computed reader result"))
+        {
+            return Err(format!("unproved Complete claim escaped: {:?}", admission.notes).into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_reference_or_freshness_defects_cannot_discharge_the_hold() -> ExperienceResult {
+    for defect in [
+        "changed_docs",
+        "replaced_docs",
+        "stale_input",
+        "missing_predecessor",
+    ] {
+        let mut original = bundle()?;
+        let record = original.docs_execution_record();
+        let expected = match defect {
+            "changed_docs" | "replaced_docs" => {
+                let digest = original.put(
+                    "experience:docs:help",
+                    "ExperienceReference",
+                    b"different arbitrary documentation bytes".to_vec(),
+                )?;
+                if defect == "replaced_docs" {
+                    original
+                        .input
+                        .docs_identities
+                        .iter_mut()
+                        .find(|identity| identity.name == "help")
+                        .ok_or("help identity absent")?
+                        .digest = digest;
+                    State::NotProven
+                } else {
+                    State::Mismatch
+                }
+            }
+            "stale_input" => {
+                original.input.observed_at_unix_seconds -= 10_000;
+                State::Stale
+            }
+            _ => {
+                original
+                    .readback
+                    .artifacts
+                    .first_mut()
+                    .ok_or("artifact absent")?
+                    .members
+                    .retain(|member| member.logical_id != "experience:package-candidate");
+                original.refresh()?;
+                State::Incomplete
+            }
+        };
+        original.install_docs_execution(&record, State::NotProven)?;
+        let admission = original.admission()?;
+        if admission.result != expected
+            || !admission.notes.iter().any(|note| note.contains("#3151"))
+        {
+            return Err(format!(
+                "{defect} lost its result or docs hold: {:?}",
+                admission.notes
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn docs_execution_source_candidate_is_not_a_published_channel_claim() -> ExperienceResult {
+    let mut original = bundle()?;
+    let mut record = original.docs_execution_record();
+    record.channel_claim = "source-candidate".to_string();
+    original.install_docs_execution(&record, State::NotProven)?;
+    let admission = original.admission()?;
+    if admission.result != State::NotProven
+        || !admission.notes.iter().any(|note| note.contains("#3151"))
+    {
+        return Err(format!(
+            "valid source-candidate channel was rejected: {:?}",
+            admission.notes
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[test]
+fn retained_rc1_installed_docs_execution_admits_its_named_disagreements() -> ExperienceResult {
+    // The retained public-prerelease execution record: one selected isolated
+    // install of the published 0.2.0-rc.1 crate, executed by this lane, with
+    // the exact binary identity below. Retaining it here keeps the executed
+    // evidence reviewable with its exact source; it is not final installed
+    // qualification and grants no release authority.
+    const RECORD: &str =
+        include_str!("../../../../docs/release/evidence/rc1-installed-docs-execution.v1.json");
+    let record: ReleaseExperienceDocsExecutionV1 = serde_json::from_str(RECORD)?;
+    if record.binary_digest
+        != "sha256:71bfd25a06dfa8fb14c7ee820ed9bce7f30ee84feef71a483c09274e3e7df86c"
+        || record.installed_version_output != "cargo-allow 0.2.0-rc.1"
+        || record.version_claim != "cargo-allow 0.2.0-rc.1"
+        || record.rust_floor_claim != "1.95"
+    {
+        return Err("retained rc.1 record lost its exact installed identity".into());
+    }
+    let evaluation = evaluate_release_experience_docs_execution_v1(&record);
+    // The incident-bearing prerelease honestly fails seven E-family checks
+    // and leaves the package rustdoc surface unexecuted, so the record can
+    // never read Complete and the documentation hold stays for this channel.
+    if evaluation.result != State::Mismatch {
+        return Err(format!(
+            "retained rc.1 docs execution read {:?} instead of an honest Mismatch: {:?}",
+            evaluation.result, evaluation.gaps
+        )
+        .into());
+    }
+    for fragment in [
+        "E.help.entrypoint",
+        "E.completions.entrypoint",
+        "E.help.extraction_leakage",
+        "E.help.package_help_mismatch",
+        "E.package.entrypoint",
+        "was not executed",
+    ] {
+        if !evaluation.gaps.iter().any(|gap| gap.contains(fragment)) {
+            return Err(format!(
+                "retained rc.1 record lost the named disagreement {fragment}: {:?}",
+                evaluation.gaps
+            )
+            .into());
+        }
+    }
+    let executed = record
+        .checks
+        .iter()
+        .filter(|check| check.outcome == ReleaseExperienceDocsCheckOutcomeV1::Matched)
+        .count();
+    if executed < 20 {
+        return Err(format!(
+            "retained rc.1 record lost its positive matched executions: {executed}"
+        )
+        .into());
     }
     Ok(())
 }

@@ -405,10 +405,10 @@ fn aggregate_schema_and_authorization_evidence_are_explicit() -> Result<(), Box<
             // The note is descriptive, not a semantic result. Any nonempty
             // string is compatible; never infer status from its prose.
             if field != "phase_status_note"
-                || !malformed
+                || malformed
                     .pointer("/authorization_boundary/phase_status_note")
                     .and_then(Json::as_str)
-                    .is_some_and(|note| !note.is_empty())
+                    .is_none_or(|note| note.is_empty())
             {
                 rejected_with(
                     &subject,
@@ -471,6 +471,9 @@ fn escaped_defect_corpus_record_admission_is_canonical() -> Result<(), Box<dyn E
         (json!("wrong"), "escaped_defect_corpus.fixture_matrix"),
         (json!(""), "escaped_defect_corpus.claim_boundary"),
         (Json::Null, "escaped_defect_corpus.claim_boundary"),
+        (json!(true), "escaped_defect_corpus.claim_boundary"),
+        (json!(0), "escaped_defect_corpus.claim_boundary"),
+        (json!([]), "escaped_defect_corpus.claim_boundary"),
     ] {
         let field = if diagnostic.contains("schema") {
             "schema"
@@ -516,9 +519,32 @@ fn escaped_defect_corpus_record_admission_is_canonical() -> Result<(), Box<dyn E
         let mut removed = receipt.clone();
         remove(&mut removed, "/escaped_defect_corpus/rows/0", mutation)?;
         rejected_with(&subject, &removed, diagnostic)?;
-        let mut malformed = receipt.clone();
-        replace(&mut malformed, &pointer, json!(""))?;
-        rejected_with(&subject, &malformed, diagnostic)?;
+        for replacement in [Json::Null, json!(true), json!(0), json!([]), json!("")] {
+            let mut malformed = receipt.clone();
+            replace(&mut malformed, &pointer, replacement)?;
+            rejected_with(&subject, &malformed, diagnostic)?;
+        }
+    }
+    // These fields are descriptive strings, not executed proof. Preserve the
+    // original nonempty predicate, including whitespace, without inferring
+    // authority from its prose or silently tightening it to nonblank text.
+    let baseline = bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &receipt);
+    for text in ["replacement description", " "] {
+        let mut descriptive = receipt.clone();
+        for pointer in [
+            "/escaped_defect_corpus/claim_boundary",
+            "/escaped_defect_corpus/rows/0/defect",
+            "/escaped_defect_corpus/rows/0/seam",
+            "/escaped_defect_corpus/rows/0/claim_boundary",
+        ] {
+            replace(&mut descriptive, pointer, json!(text))?;
+        }
+        let notes = bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &descriptive);
+        if notes != baseline {
+            return Err(
+                format!("nonempty corpus descriptions changed admission: {notes:?}").into(),
+            );
+        }
     }
     let mut non_canonical = receipt.clone();
     replace(

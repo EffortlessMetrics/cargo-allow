@@ -162,10 +162,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
                     "fail:rehearsal authorization_boundary.token_present must be false".to_string(),
                 );
             }
-            if !boundary
+            if boundary
                 .get("phase_status_note")
                 .and_then(Json::as_str)
-                .is_some_and(|note| !note.is_empty())
+                .is_none_or(|note| note.is_empty())
             {
                 notes.push(
                     "fail:rehearsal authorization_boundary.phase_status_note must be a nonempty string"
@@ -223,10 +223,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
                     "fail:rehearsal escaped_defect_corpus.fixture_matrix must be {CORPUS_FIXTURE:?}"
                 ));
             }
-            if !corpus
+            if corpus
                 .get("claim_boundary")
                 .and_then(Json::as_str)
-                .is_some_and(|text| !text.is_empty())
+                .is_none_or(|text| text.is_empty())
             {
                 notes.push(
                     "fail:rehearsal escaped_defect_corpus.claim_boundary must be a nonempty string"
@@ -261,10 +261,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
                             continue;
                         }
                         for field in ["defect", "seam", "claim_boundary"] {
-                            if !row
+                            if row
                                 .get(field)
                                 .and_then(Json::as_str)
-                                .is_some_and(|text| !text.is_empty())
+                                .is_none_or(|text| text.is_empty())
                             {
                                 notes.push(format!(
                                     "fail:rehearsal escaped_defect_corpus.{incident_id}.{field} must be a nonempty string"

@@ -8,11 +8,16 @@ macro-expansion, or proof-level coverage.
 
 The [command-case evidence family](cargo-allow.command-case-evidence.v1.schema.json)
 contains the #3149 migration catalogue, caller-pinned expected context, retained
-first-family bundle, and native admission projection. See the
+first-family bundle, the #4724 read-only presentation invocations, and native
+admission projection. See the
 [collection and readback contract](../release/core-command-migration-evidence.md).
 It preserves the complete denominator and distinguishes semantic validity from
 Partial qualification; neither collection nor readback establishes installation,
 trusted-worker custody, or publication authority.
+Actual first-family and presentation context, bundle, and admission outputs
+are checked against this schema. Presentation admission binds native human
+summary prefixes but keeps unparsed human detail and terminal semantics
+incomplete; a matching summary sidecar cannot prove those surfaces.
 
 The [final registry preflight](cargo-allow.final-registry-preflight.v1.schema.json)
 (`cargo-allow.final-registry-preflight.v1`) is produced by

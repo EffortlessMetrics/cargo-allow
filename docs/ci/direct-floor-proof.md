@@ -115,7 +115,7 @@ advisory products check-only), then retain the uploaded
 `docs/ci/receipts/` artifacts into the branch through the normal review flow.
 Do not hand-repair receipt digests to substitute for a runner proof.
 
-## Retained Windows execution
+## Retained execution
 
 ### Producer protocol controls
 
@@ -188,11 +188,11 @@ a complete cross-crate feature graph or promote any proof disposition.
 
 ### Current retained execution
 
-The four retained receipts were generated from committed source
-`7453c3f134d7b88a0fdbd9e25eadf29a934255a3` by
-[floor-receipt run 42928361172](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42928361172),
-using observed Rust/Cargo/rustdoc 1.95.0 and explicit target
-`x86_64-unknown-linux-gnu`.
+The four retained receipts record observed Rust/Cargo/rustdoc 1.95.0 and
+explicit target `x86_64-unknown-linux-gnu`. Each product has its own derived
+execution commit; the companion identifies both that commit and the starting
+source. Do not attribute refreshed receipt bytes to the historical Windows
+execution or infer one common execution commit for all four products.
 The collector binds the observed compiler and rustdoc paths to execution and
 disables inherited compiler wrappers before running each proof class.
 
@@ -264,5 +264,6 @@ proof. The collector also exports `CARGO_ALLOW_BUILD_COMMIT` (the executed
 derived HEAD), `CARGO_ALLOW_BUILD_PROFILE`, and `CARGO_ALLOW_RUSTC_IDENTITY`
 while the proof classes compile, so binaries the proof builds record their
 compile-time provenance instead of leaving it unset. The four retained
-receipts predate the section; regenerating them requires the coordinated
-build slot and stays a separate step.
+receipts include this section; their currentness still depends on the
+recorded input identities. Changes to the selected Rust sources, manifests,
+or lock inputs require new native producer execution.

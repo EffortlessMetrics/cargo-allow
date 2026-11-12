@@ -47,3 +47,9 @@ allow_ids = ["allow-11491"]
 reason = "Self-covering revision note receipting this note file, matching the #3793, #4214, #4716, and #2497 precedents; note retention only, no new scanned surface beyond this file."
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:8cc81996078fa878680fce4bbae80756baa10da66566d73f7b05f4e38a2e02e8"
+
+[[records]]
+allow_ids = ["allow-4725-historical-catalogue"]
+reason = "Retain the exact original catalogue snapshot required to replay the historical mutation manifest without changing its recorded collection identity; this one-file data receipt does not authorize new execution or release claims."
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a0fa6160f128a6c2ed482ea75477b4d3ecdee3b4e8433b60d544b92aa650fb63"
