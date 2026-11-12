@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4778,
+  "base_ref": "main",
+  "base_sha": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
+  "head_ref": "docs/3877-ratification-note",
+  "head_sha": "6928b1650bd2058595a41368d4d56c886f19a181",
+  "merge_base": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
+  "reviewed_diff_digest": "sha256:v2:9064d925ac68d0da4f44fddd5bb5edb7278d5788b07d95cd307e2a48c66814f7",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4778 at 6928b1650bd2058595a41368d4d56c886f19a181 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). Verified the two prior BLOCK findings fixed (:140 guard inside the first slice; :150-162 no guard-as-separate-slice or superseded-precedence sentence), the LF restoration (0 CR / 513 LF), and the PR-body/doc checkpoint agreement. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4778#issuecomment-6836247614: non-author model review of the exact head, with the two prior BLOCK findings verified fixed and the line-ending regression closed. No independent-human approval; shared account and model context are a correlated-failure limit."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4778",
+    "Reviewed pair base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, merge-base 3e1d3fab, head 6928b1650bd2058595a41368d4d56c886f19a181. Diff digest sha256:v2:9064d925ac68d0da4f44fddd5bb5edb7278d5788b07d95cd307e2a48c66814f7.",
+    "Prior BLOCK at a0ff6b8c: :140 named the invocation-boundary guard as a separate remaining slice; :150-153 repeated guard-first, flags-false, worker-afterwards. Both fixed at 72ee42e9 and unchanged at 6928b165: :140 puts the guard inside the first slice; :150-162 says the profile, not the guard, confines the direct route and later slices enforce the remaining boundaries.",
+    "Prior BLOCK at 72ee42e9: the campaign map was CRLF (513 CR) against .editorconfig:5 end_of_line = lf, inflating a 59-line change to +523/-494. Fixed at 6928b165: 0 CR / 513 LF; git diff --ignore-cr-at-eol 72ee42e9 6928b165 is empty; diff vs base is 59/30.",
+    "Graphite thread PRRT_kwDOSnyN3s62yK8_ (doc vs PR-description checkpoint dates) replied and resolved at 6928b165: the PR body now states 19 Nov checkpoint, 26 Nov second slice NOT a release date, target Q1 2027, matching docs/campaigns/cargo-allow-0.2.0.md:38.",
+    "Zero blocking findings. The docs-only change records the #3877 ratification and the O3 direction record; it makes no implementation or release claim."
+  ],
+  "required_ci": {
+    "owner": "PR #4778 orchestrator: verify the exact-head review, live review-readiness success, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4778",
+  "reviewed_at_utc": "2026-11-12T21:20:00Z"
+}
