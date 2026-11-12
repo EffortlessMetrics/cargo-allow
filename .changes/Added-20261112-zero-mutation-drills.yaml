@@ -1,0 +1,6 @@
+kind: Added
+body: >-
+  Add reversible quarantine drills for the seven zero-mutation families in the
+  release rehearsal. Each family is attempted through the selected invocation
+  boundary and on a direct route against a disposable canary, and the receipt
+  derives its prevention flags from those executed results instead of literals.

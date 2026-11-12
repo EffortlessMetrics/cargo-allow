@@ -1363,6 +1363,224 @@ CHARACTERIZATION_PHASES = frozenset({
     "authorization_boundary",
 })
 
+ZERO_MUTATION_FLAGS = (
+    "tag_mutation_prevented",
+    "token_read_prevented",
+    "cargo_publish_prevented",
+    "registry_mutation_prevented",
+    "github_release_mutation_prevented",
+    "live_setting_mutation_prevented",
+    "external_repository_mutation_prevented",
+)
+
+
+def _quarantine_root() -> Path:
+    """Create one disposable root for the reversible mutation drills."""
+    return Path(tempfile.mkdtemp(prefix="rehearsal-quarantine-"))
+
+
+def _argv_denied(operation: str, command: list[str], root: Path) -> bool:
+    """Attempt one mutation through the selected invocation boundary."""
+    try:
+        _run_process(
+            command, operation=operation, cwd=root,
+            env=_sanitized_environment(), capture_output=True,
+            text=True, timeout=15, check=False,
+        )
+    except OSError:
+        return True
+    return False
+
+
+class _RecordingEndpoint:
+    """Local TCP listener that records whether a direct socket reached it."""
+
+    def __init__(self) -> None:
+        import socket
+        import threading
+
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.bind(("127.0.0.1", 0))
+        self._socket.listen(1)
+        self._socket.settimeout(5)
+        self.port = self._socket.getsockname()[1]
+        self.received: list[bytes] = []
+        self._thread = threading.Thread(target=self._accept, daemon=True)
+        self._thread.start()
+
+    def _accept(self) -> None:
+        try:
+            connection, _ = self._socket.accept()
+            with connection:
+                self.received.append(connection.recv(64))
+        except OSError:
+            pass
+
+    def close(self) -> None:
+        self._socket.close()
+        self._thread.join(timeout=5)
+
+
+def _direct_socket_denied(port: int) -> bool:
+    import socket
+
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
+            connection.sendall(b"mutation")
+        return False
+    except OSError:
+        return True
+
+
+def _drill_result(
+    *, argv_denied: bool, direct_denied: bool, boundary: str, reason: str,
+) -> dict[str, Any]:
+    prevented = argv_denied and direct_denied
+    return {
+        "attempted": True,
+        "argv_denied": argv_denied,
+        "direct_denied": direct_denied,
+        "canary_unchanged": direct_denied,
+        "prevented": prevented,
+        "boundary": boundary,
+        "reason": (
+            "denied at the selected invocation boundary and on the direct route"
+            if prevented else reason
+        ),
+    }
+
+
+def _drill_tag(root: Path) -> dict[str, Any]:
+    repo = root / "tag-canary"
+    ref = repo / "refs" / "tags" / "canary"
+    ref.parent.mkdir(parents=True, exist_ok=True)
+    ref.write_text("0" * 40, encoding="utf-8")
+    argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
+    direct = not ref.exists()
+    return _drill_result(
+        argv_denied=argv, direct_denied=direct,
+        boundary="tag/update-ref/push and direct Git metadata writes",
+        reason="direct writes to Git metadata are not confined by the rehearsal",
+    )
+
+
+def _drill_token(root: Path) -> dict[str, Any]:
+    token_file = root / "token-canary"
+    token_file.write_text("canary-token", encoding="utf-8")
+    previous = os.environ.get(CARGO_TOKEN_ENV)
+    os.environ[CARGO_TOKEN_ENV] = "canary-token"
+    try:
+        child_env = _sanitized_environment()
+    finally:
+        if previous is None:
+            os.environ.pop(CARGO_TOKEN_ENV, None)
+        else:
+            os.environ[CARGO_TOKEN_ENV] = previous
+    argv = CARGO_TOKEN_ENV not in child_env
+    try:
+        token_file.read_text(encoding="utf-8")
+        direct = False
+    except OSError:
+        direct = True
+    return _drill_result(
+        argv_denied=argv, direct_denied=direct,
+        boundary="selected token environment entry and child environment",
+        reason="alternate credential sources and direct file reads are not confined",
+    )
+
+
+def _drill_network(
+    root: Path, *, operation: str, command: list[str], boundary: str, reason: str,
+) -> dict[str, Any]:
+    endpoint = _RecordingEndpoint()
+    try:
+        argv = _argv_denied(operation, command, root)
+        direct = _direct_socket_denied(endpoint.port)
+        endpoint.close()
+        canary_unchanged = not endpoint.received
+    finally:
+        endpoint.close()
+    result = _drill_result(
+        argv_denied=argv, direct_denied=direct,
+        boundary=boundary, reason=reason,
+    )
+    result["canary_unchanged"] = canary_unchanged
+    result["prevented"] = result["prevented"] and canary_unchanged
+    return result
+
+
+def _drill_external(root: Path) -> dict[str, Any]:
+    outside = root.parent / f"{root.name}-outside"
+    outside.mkdir()
+    try:
+        argv = _argv_denied(
+            "external-repository-mutation", ["git", "push", "origin", "HEAD"], root,
+        )
+        canary = outside / "canary"
+        canary.write_text("mutated", encoding="utf-8")
+        direct = not canary.exists()
+    finally:
+        shutil.rmtree(outside, ignore_errors=True)
+    return _drill_result(
+        argv_denied=argv, direct_denied=direct,
+        boundary="remote push and writes outside owned roots",
+        reason="writes outside the owned root are not confined by the rehearsal",
+    )
+
+
+def run_zero_mutation_drills() -> dict[str, dict[str, Any]]:
+    """Exercise each mutation family in a disposable quarantine.
+
+    Each drill attempts the forbidden effect through the rehearsal's selected
+    invocation boundary and on a direct route, then checks a disposable
+    canary. A family is prevented only when both routes are denied and the
+    canary is unchanged. The drills do not create a sandbox: a direct
+    filesystem or socket route that succeeds keeps its flag false.
+    """
+    root = _quarantine_root()
+    try:
+        return {
+            "tag_mutation_prevented": _drill_tag(root),
+            "token_read_prevented": _drill_token(root),
+            "cargo_publish_prevented": _drill_network(
+                root, operation="cargo-publish",
+                command=["cargo", "publish", "--dry-run"],
+                boundary="Cargo publication invocation and direct registry socket",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "registry_mutation_prevented": _drill_network(
+                root, operation="registry-mutation",
+                command=["cargo", "publish"],
+                boundary="registry writes through Cargo and raw clients",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "github_release_mutation_prevented": _drill_network(
+                root, operation="github-release-mutation",
+                command=["gh", "release", "create", "canary"],
+                boundary="GitHub Release/asset writes through CLI and raw API",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "live_setting_mutation_prevented": _drill_network(
+                root, operation="live-setting-mutation",
+                command=["gh", "api", "--method", "PATCH", "repos/canary"],
+                boundary="settings/rules/environment/repository-control writes",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "external_repository_mutation_prevented": _drill_external(root),
+        }
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _zero_mutation_proof_from_drills(
+    drills: dict[str, dict[str, Any]],
+) -> dict[str, bool]:
+    """Derive the receipt flags from executed drills, never from literals."""
+    return {
+        name: bool(drills.get(name, {}).get("prevented"))
+        for name in ZERO_MUTATION_FLAGS
+    }
+
 
 def _aggregate_phase_status(phases: dict[str, str]) -> str:
     """Fail-closed aggregate: Complete only when every real phase proves and no
@@ -1475,15 +1693,8 @@ def _build_rehearsal_receipt(
         "commit_sha": commit_sha,
         "subject_lockfile_digest": lockfile_digest,
         "subject_topology_digest": topology_digest,
-        "zero_mutation_proof": {
-            "tag_mutation_prevented": False,
-            "token_read_prevented": False,
-            "cargo_publish_prevented": False,
-            "registry_mutation_prevented": False,
-            "github_release_mutation_prevented": False,
-            "live_setting_mutation_prevented": False,
-            "external_repository_mutation_prevented": False,
-        },
+        "zero_mutation_proof": {},
+        "zero_mutation_drills": {},
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
@@ -1505,7 +1716,13 @@ def _build_rehearsal_receipt(
             "entry without reading its value and records the checked "
             "authorization artifact's identity but never consumes "
             "authorization. Other credential sources and whole-workflow mutation "
-            "prevention remain unproven, so the aggregate cannot satisfy a release gate."
+            "prevention remain unproven, so the aggregate cannot satisfy a release gate. "
+            "The zero_mutation_proof flags are derived from executed quarantine "
+            "drills: each family is attempted through the selected invocation "
+            "boundary and on a direct route against a disposable canary. A direct "
+            "filesystem or socket route that succeeds keeps its flag false, so the "
+            "receipt records the remaining confinement gap rather than asserting "
+            "prevention."
         ),
     }
 
@@ -1529,6 +1746,10 @@ def _build_rehearsal_receipt(
 
     for phase_name, runner in phases.items():
         receipt["phases"][phase_name] = runner(receipt)
+
+    drills = run_zero_mutation_drills()
+    receipt["zero_mutation_drills"] = drills
+    receipt["zero_mutation_proof"] = _zero_mutation_proof_from_drills(drills)
 
     require_clean_checkout(commit_sha)
     if _selected_token_present():

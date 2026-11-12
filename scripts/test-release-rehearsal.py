@@ -1850,5 +1850,73 @@ class TestInvocationBoundary(unittest.TestCase):
             self.assertIsNone(REHEARSAL._INVOCATION.get())
 
 
+class TestZeroMutationDrills(unittest.TestCase):
+    def test_each_family_attempts_and_records_evidence(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        self.assertEqual(set(drills), set(REHEARSAL.ZERO_MUTATION_FLAGS))
+        for name, drill in drills.items():
+            with self.subTest(family=name):
+                self.assertTrue(drill["attempted"])
+                self.assertIsInstance(drill["argv_denied"], bool)
+                self.assertIsInstance(drill["direct_denied"], bool)
+                self.assertIsInstance(drill["canary_unchanged"], bool)
+                self.assertIsInstance(drill["prevented"], bool)
+                self.assertTrue(drill["boundary"])
+                self.assertTrue(drill["reason"])
+                self.assertEqual(
+                    drill["prevented"],
+                    drill["argv_denied"] and drill["direct_denied"]
+                    and drill["canary_unchanged"],
+                )
+
+    def test_direct_routes_keep_unconfined_families_false(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        for name in (
+            "tag_mutation_prevented",
+            "token_read_prevented",
+            "cargo_publish_prevented",
+            "registry_mutation_prevented",
+            "github_release_mutation_prevented",
+            "live_setting_mutation_prevented",
+            "external_repository_mutation_prevented",
+        ):
+            with self.subTest(family=name):
+                self.assertTrue(drills[name]["argv_denied"], "argv route was not denied")
+                self.assertFalse(drills[name]["direct_denied"], "direct route was confined")
+                self.assertFalse(drills[name]["prevented"])
+
+    def test_flags_are_derived_from_drills_not_literals(self) -> None:
+        prevented = {
+            name: {"prevented": True} for name in REHEARSAL.ZERO_MUTATION_FLAGS
+        }
+        self.assertTrue(
+            all(REHEARSAL._zero_mutation_proof_from_drills(prevented).values())
+        )
+        blocked = {
+            name: {"prevented": False} for name in REHEARSAL.ZERO_MUTATION_FLAGS
+        }
+        self.assertFalse(
+            any(REHEARSAL._zero_mutation_proof_from_drills(blocked).values())
+        )
+        self.assertFalse(
+            any(REHEARSAL._zero_mutation_proof_from_drills({}).values())
+        )
+
+    def test_receipt_proof_matches_its_drills(self) -> None:
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(
+            receipt["zero_mutation_proof"],
+            REHEARSAL._zero_mutation_proof_from_drills(
+                receipt["zero_mutation_drills"]
+            ),
+        )
+        self.assertEqual(
+            set(receipt["zero_mutation_drills"]),
+            set(REHEARSAL.ZERO_MUTATION_FLAGS),
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
