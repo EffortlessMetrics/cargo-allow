@@ -35,10 +35,10 @@ package-set obligation; nothing else waits on it.
 
 ## Current bounded objective (O3, ratified 2026-11-12)
 
-Release-path closeout, target 2026-11-26, interim checkpoint 2026-11-19. In order:
+Release-path closeout. Checkpoints: 2026-11-19 = #4744 landed, #3792 first slice merged, #3151 producer sequence started; 2026-11-26 = second slice, not a release date. Target end of Q1 2027, reviewed at the 19 November checkpoint. In order:
 
 1. #4744 — land the merge-queue step-1 cutover with the frozen-subject invalidation record and the sentinel concurrency fix.
-2. #3792 — the seven `zero_mutation_proof` flags in `scripts/release-rehearsal.py` become measured outcomes with falsifiers instead of hardcoded `False`.
+2. #3792 — the seven `zero_mutation_proof` flags in `scripts/release-rehearsal.py` become measured outcomes with falsifiers instead of hardcoded `False`. First slice: one Linux worker profile plus the tag-mutation denial family end to end, producing the first true flag; the invocation-boundary guard is part of that slice, not a separate first step.
 3. #3151 — retire the remaining `NotProven` holds in `release_freeze_experience.rs::retain_dependencies`: the two unconditional ones (`#2466` clean-pilot producer/reader, `#3151` selected-case documentation producer and byte oracle) and the `#3149` executed-denominator hold, which binds only for `CommandCaseJoin::Absent`, each by its producer or a recorded disposition.
 4. #2501 — refreeze on the post-#4744 merged tree.
 5. Stop at #2502/#3760 for the user's authorization.
