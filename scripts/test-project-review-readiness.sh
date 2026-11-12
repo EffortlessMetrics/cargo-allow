@@ -93,6 +93,10 @@ case "${rest[0]}" in
       printf '%040d %040d\n' 7 8
       exit "${FIXTURE_PARENT_STATUS}"
     fi
+    if [ "${FIXTURE_PARENT_MODE}" = foreign ]; then
+      printf '%040d %040d\n' 7 8
+      exit "${FIXTURE_PARENT_STATUS}"
+    fi
     printf '%040d %040d' 7 "$base"
     if [ "${FIXTURE_PARENT_MODE}" != one ]; then printf ' %040d' "$head"; fi
     if [ "${FIXTURE_PARENT_MODE}" = three ]; then printf ' %040d' 9; fi
@@ -676,6 +680,28 @@ grep -Fq 'batched merge group; single-PR proof not applicable' "${work}/merge_gr
   echo 'review-readiness: batched merge group did not name its distinct reason' >&2
   exit 1
 }
+# A sole parent that is not the event base must be rejected even when the tree
+# happens to equal the one-PR three-way merge: the parent identity is a second
+# guard, not a substitute for the content proof.
+FIXTURE_PARENT_MODE=foreign FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
+run_queue_rejection merge_group_squash_foreign_parent
+grep -Fq 'squash queue subject parent is not the event base' "${work}/merge_group_squash_foreign_parent/log" || {
+  echo 'review-readiness: foreign squash parent did not name the parent guard' >&2
+  exit 1
+}
+# A base that moved after the queue event must be rejected even when the tree
+# still matches, because the proof would otherwise bind a stale subject to the
+# newer base.
+FIXTURE_PARENT_MODE=one FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
+MERGE_GROUP_BASE_SHA="$(printf '%040d' 3)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 3)"
+run_queue_rejection merge_group_moved_base
+grep -Fq 'base moved since the queue event' "${work}/merge_group_moved_base/log" || {
+  echo 'review-readiness: moved base did not name the base guard' >&2
+  exit 1
+}
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
+MERGE_GROUP_BASE_SHA="$(printf '%040d' 1)"
 FIXTURE_PARENT_MODE=valid FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
 
 printf 'all review-readiness adapter characterization checks passed\n'

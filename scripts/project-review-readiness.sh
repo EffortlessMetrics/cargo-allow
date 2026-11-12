@@ -262,6 +262,16 @@ project_pr() {
     return 1
   fi
   if ! base_sha="$(read_base_sha "$base_ref")"; then return 1; fi
+  if [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+    # The queue commit was built on the event base. A live base read that has
+    # moved past it cannot prove this subject, and tree equality alone can
+    # survive such a move (for example an empty commit on main), so require
+    # the two to agree before any content proof runs.
+    if [ -z "${MERGE_GROUP_BASE_SHA:-}" ] || [ "$base_sha" != "${MERGE_GROUP_BASE_SHA}" ]; then
+      echo 'review-readiness: instrument failure: base moved since the queue event; fails closed' >&2
+      return 1
+    fi
+  fi
   # Acquire immutable objects, not tracking refs or a new checkout. Fork
   # heads must be reachable through the base repository's PR objects;
   # an unavailable object is a failure even if cached history looks usable.
@@ -300,6 +310,14 @@ project_pr() {
       parent_count="$(printf '%s\n' "$parents" | wc -w | tr -d '[:space:]')"
       if [ "$parent_count" -ne 2 ]; then
         echo 'review-readiness: instrument failure: squash queue subject must have exactly one parent' >&2
+        return 1
+      fi
+      # The sole parent must be the event base itself. Without this, a commit
+      # built on some other parent whose tree happens to match the merge of
+      # base and head would pass the content proof below.
+      queue_parent="${parents#* }"
+      if [ "$queue_parent" != "$base_sha" ]; then
+        echo 'review-readiness: instrument failure: squash queue subject parent is not the event base; fails closed' >&2
         return 1
       fi
       if ! subject_tree="$(git rev-parse --verify "${GITHUB_SHA}^{tree}" 2>/dev/null)" ||
