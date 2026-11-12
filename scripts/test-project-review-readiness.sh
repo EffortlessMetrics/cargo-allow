@@ -666,12 +666,14 @@ grep -Fq "merge-tree --write-tree $(printf '%040d' 1) $(printf '%040d' 2)" \
   echo 'review-readiness: squash queue check did not merge the base and the head' >&2
   exit 1
 }
-# A single-parent subject whose tree differs from the three-way merge
-# fails closed.
+# A batched group's G is a squash of several PRs, so its tree is not the
+# one-PR three-way merge. The payload does not name the members, so the
+# adapter fails closed with a distinct batched-group reason rather than a
+# candidate-defect message.
 FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=5
-run_queue_rejection merge_group_squash_tree_mismatch
-grep -Fq 'squash queue subject tree does not match the three-way merge of base and head' "${work}/merge_group_squash_tree_mismatch/log" || {
-  echo 'review-readiness: squash tree mismatch did not name the failing condition' >&2
+run_queue_rejection merge_group_batched
+grep -Fq 'batched merge group; single-PR proof not applicable' "${work}/merge_group_batched/log" || {
+  echo 'review-readiness: batched merge group did not name its distinct reason' >&2
   exit 1
 }
 FIXTURE_PARENT_MODE=valid FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4

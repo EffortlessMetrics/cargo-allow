@@ -313,7 +313,13 @@ project_pr() {
       fi
       merge_tree="${merge_tree%%$'\n'*}"
       if ! valid_commit "$merge_tree" || [ "$subject_tree" != "$merge_tree" ]; then
-        echo 'review-readiness: instrument failure: squash queue subject tree does not match the three-way merge of base and head' >&2
+        # The merge_group payload names only the group, not its members. A
+        # single-parent G whose tree is not the one-PR three-way merge is
+        # treated as a batched group (or another multi-entry composition)
+        # and fails closed with a distinct reason, so a batch is not
+        # misdiagnosed as a single-PR candidate defect.
+        queue_failure_reason='batched merge group; single-PR proof not applicable'
+        echo "review-readiness: ${queue_failure_reason}" >&2
         return 1
       fi
     else
@@ -589,6 +595,7 @@ if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
 elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
   resolved_pr=""
   published_check=0
+  queue_failure_reason=""
   if resolved_pr="$(resolve_merge_group_pr)"; then
     PR_NUMBER="${resolved_pr}"
     project_pr "${PR_NUMBER}" "checks_requested" || overall=1
@@ -597,9 +604,10 @@ elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
   fi
   # A typed failure already published on the queue commit must keep its
   # disposition reason. The generic failure is only for the paths that
-  # returned before any check existed.
+  # returned before any check existed; a batched composition carries its
+  # own distinct reason from project_pr.
   if [ "${overall}" -ne 0 ] && [ "${published_check}" -eq 0 ]; then
-    publish_queue_failure "merge group review-readiness did not prove one exact pull request" || true
+    publish_queue_failure "${queue_failure_reason:-merge group review-readiness did not prove one exact pull request}" || true
   fi
 else
   : "${PR_NUMBER:?PR_NUMBER is required}"
