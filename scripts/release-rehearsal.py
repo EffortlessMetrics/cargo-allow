@@ -1532,6 +1532,13 @@ def _drill_tag(root: Path) -> dict[str, Any]:
         )
     script = root / "tag-worker.py"
     script.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
+    # The sudo fallback runs the worker as root; the quarantine root and the
+    # script must be readable across that boundary.
+    try:
+        root.chmod(0o755)
+        script.chmod(0o644)
+    except OSError:
+        pass
     detail = "no worker stderr"
     for launcher, description in launchers:
         try:
