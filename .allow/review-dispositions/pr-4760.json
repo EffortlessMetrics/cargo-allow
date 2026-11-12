@@ -4,14 +4,14 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4760,
   "base_ref": "main",
-  "base_sha": "5e716e5ee9649a5c611a113cc2c8461ac1b2bddf",
+  "base_sha": "85a8cae105532d1b4c275591664f6d24365d07b2",
   "head_ref": "fix/4705-4705-experience-connect",
-  "head_sha": "126a0e3643cc86fb78379d4368a8591088189196",
-  "merge_base": "5e716e5ee9649a5c611a113cc2c8461ac1b2bddf",
-  "reviewed_diff_digest": "sha256:v2:8a01265a675cdfacdfe8da1e399c50d47d858e79de72bbcc75e2044ae2e4f965",
+  "head_sha": "5410119a96a4073c28a9e407ca6b8cc0fbe3a76a",
+  "merge_base": "85a8cae105532d1b4c275591664f6d24365d07b2",
+  "reviewed_diff_digest": "sha256:v2:aa512410e3acac29636af501245c925f8be68d9489a4d0fb6eb5e1602f04ddac",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review; GitHub review 5849348440 on 7e708971, refreshed on the merge head 126a0e36 for main's #4332 Rust changes and the regenerated direct-floor receipts. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review; GitHub review 5849348440 on 7e708971, refreshed on the merge head 126a0e36 for main's #4332 Rust changes and the regenerated direct-floor receipts, and again on merge head 5410119a for main's #4776 review-readiness change. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
       "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849348440. review cargo-allow non-author oppositional exact-head model review of head 7e70897146d14afb7cc7f91f16e6c25fa1adc51f. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
@@ -32,6 +32,7 @@
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#pullrequestreview-5849348440",
     "Refreshed on head 126a0e3643cc86fb78379d4368a8591088189196 (tree 059e65453a63f7a13d77079e0cc36705948e9d0a): base/merge-base moved to 5e716e5ee9649a5c611a113cc2c8461ac1b2bddf (main's #4332). The merge brought main's six Rust source changes; native producer run 43150780048 regenerated the four direct-floor receipts, each receipt SHA-256 matches its selection.md, and all four selected_source_digest values are fa6c2e730c5824af0b6f895d8e5166d5e865e8967f14ed4e52ee396b2f9e6398, matching the merge head. pregate job 130966253805 succeeded (actionlint, fmt, no-new, floor freshness). The only source delta vs main is the branch's reviewed commits plus disposition bookkeeping.",
+    "Rebound on head 5410119a96a4073c28a9e407ca6b8cc0fbe3a76a (tree 6acecd3fda0b8a6421b3d8c248ee9674dbcbc798): base/merge-base moved to 85a8cae105532d1b4c275591664f6d24365d07b2 (main's #4776, which changed only review-readiness scripts/tests, policy, and disposition records; no source crates or receipts). Head 5410119a is a clean merge of origin/main into the branch (parents 032eeadd25b4ec138ef74a8d5fddf1d961c05114 and 85a8cae1). Live review-readiness run 43203177423 on 5410119a failed only on stale base_sha/head_sha/merge_base/reviewed_diff_digest; its live digest sha256:v2:aa512410e3acac29636af501245c925f8be68d9489a4d0fb6eb5e1602f04ddac matches this record's recomputed digest. The successor delta must contain only .allow/review-dispositions/pr-4760.json.",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519282022",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883885",
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4760#discussion_r4519883892",
@@ -50,8 +51,8 @@
     "Open claim boundaries remain: 107 synthetic rows NotProven (#3149/#4705); #4706 genuine 19-case E producer; #4724 21 obligations including 16 B cases and real Windows beyond the collector controls; #2466/#3151 held. This record is source review only and does not mark Ready or authorize merge."
   ],
   "required_ci": {
-    "owner": "PR #4760 orchestrator: verify the refreshed merge-head evidence, live review-readiness success, all applicable current checks, threads, and branch protection, and make separate Ready and expected-head merge judgments. This record does not mark Ready or merge.",
-    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43152964761"
+    "owner": "PR #4760 orchestrator: verify the rebound merge-head evidence, live review-readiness success on the successor head, all applicable current checks, threads, and branch protection, and make separate Ready and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43203177753"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4760",
