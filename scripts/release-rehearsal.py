@@ -395,13 +395,18 @@ def _file_characterization(path: Path) -> str:
         return PHASE_INSTRUMENT_FAILURE
 
 
+def _filtered_environment(environment: Any) -> dict[str, str]:
+    """Exclude the selected token by name before retrieving any value."""
+    return {name: environment[name] for name in environment if name != CARGO_TOKEN_ENV}
+
+
 def _sanitized_environment() -> dict[str, str]:
     """Exclude the selected token before retrieving any environment values.
 
     This is not isolation from alternate credential sources or proof of the
     rehearsal's seven broader zero-mutation obligations.
     """
-    return {name: os.environ[name] for name in os.environ if name != CARGO_TOKEN_ENV}
+    return _filtered_environment(os.environ)
 
 
 def _run_characterization(command: list[str]) -> str:
@@ -1467,15 +1472,9 @@ def _drill_tag(root: Path) -> dict[str, Any]:
 def _drill_token(root: Path) -> dict[str, Any]:
     token_file = root / "token-canary"
     token_file.write_text("canary-token", encoding="utf-8")
-    previous = os.environ.get(CARGO_TOKEN_ENV)
-    os.environ[CARGO_TOKEN_ENV] = "canary-token"
-    try:
-        child_env = _sanitized_environment()
-    finally:
-        if previous is None:
-            os.environ.pop(CARGO_TOKEN_ENV, None)
-        else:
-            os.environ[CARGO_TOKEN_ENV] = previous
+    child_env = _filtered_environment(
+        {CARGO_TOKEN_ENV: "canary-token", "PATH": "canary"}
+    )
     argv = CARGO_TOKEN_ENV not in child_env
     try:
         token_file.read_text(encoding="utf-8")
