@@ -1252,8 +1252,8 @@ jobs:
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
       - name: Verify exact merge-group policy-change evidence
         env:
-          QUEUE_BASE_SHA: ${{ github.event.merge_group.base_sha }}
-          QUEUE_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+          QUEUE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          QUEUE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: cargo run -p cargo-allow -- diff --base "$QUEUE_BASE_SHA" --head "$QUEUE_HEAD_SHA" --format markdown --require-change-note
       - name: Spec-system cutover receipt (#2568)
         if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
