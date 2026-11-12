@@ -1290,13 +1290,13 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.merge_group.head_sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           persist-credentials: false
           fetch-depth: 0
       - name: Derive affected feature-configuration rows (#3905)
         id: routing
         env:
-          BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: |
           set -euo pipefail
           # Use the event's immutable base, including every queued predecessor.
@@ -1708,7 +1708,9 @@ jobs:
   # Independent sentinel, frozen-subject and Changie checks remain required
   # separately in the coordinated settings generation.
   queue-qualification:
-    if: always()
+    # The actual-group proof exists only for a merge_group event. A PR run has
+    # no group to qualify, so it skips rather than failing on a missing event.
+    if: always() && github.event_name == 'merge_group'
     needs: [queue-subject, pregate, msrv, package-smoke, shallow-diff-smoke, operator-latency, test, feature-configuration-proof, test-core-platforms, compat-delegation, coverage, cargo-deny]
     runs-on: ubuntu-24.04
     timeout-minutes: 5

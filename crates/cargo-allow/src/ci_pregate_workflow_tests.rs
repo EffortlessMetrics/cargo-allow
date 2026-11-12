@@ -163,7 +163,9 @@ fn ci_pregate_workflow_recomposition_requires_the_actual_merge_group() {
     let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
     assert!(workflow.contains("merge_group:"));
     assert!(workflow.contains("types: [checks_requested]"));
-    assert!(!workflow.contains("  pull_request:"));
+    // Step 1 of the cutover keeps the pull_request trigger alongside the
+    // queue trigger so the queue can be proven before PR triggers are removed.
+    assert!(workflow.contains("  pull_request:"));
     assert!(workflow.contains("  push:"));
     // The staleness law lives in the typed evaluation.
     let head_binding = workflow.contains(
