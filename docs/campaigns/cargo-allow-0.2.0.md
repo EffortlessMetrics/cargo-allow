@@ -39,7 +39,7 @@ Release-path closeout, target 2026-11-26, interim checkpoint 2026-11-19. In orde
 
 1. #4744 — land the merge-queue step-1 cutover with the frozen-subject invalidation record and the sentinel concurrency fix.
 2. #3792 — the seven `zero_mutation_proof` flags in `scripts/release-rehearsal.py` become measured outcomes with falsifiers instead of hardcoded `False`.
-3. #3151 — retire the three unconditional `NotProven` holds in `release_freeze_experience.rs::retain_dependencies`, each by its producer or a recorded disposition.
+3. #3151 — retire the remaining `NotProven` holds in `release_freeze_experience.rs::retain_dependencies`: the two unconditional ones (`#2466` clean-pilot producer/reader, `#3151` selected-case documentation producer and byte oracle) and the `#3149` executed-denominator hold, which binds only for `CommandCaseJoin::Absent`, each by its producer or a recorded disposition.
 4. #2501 — refreeze on the post-#4744 merged tree.
 5. Stop at #2502/#3760 for the user's authorization.
 
