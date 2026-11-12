@@ -1427,17 +1427,19 @@ class _RecordingEndpoint:
         self._thread.join(timeout=5)
 
 
-def _direct_child(root: Path, marker: Path, body: str) -> bool:
-    """Run one direct-route attempt; True only when the child really started.
+def _direct_child(root: Path, marker: Path, body: str) -> str:
+    """Run one direct-route attempt and return the child's final marker state.
 
-    The child writes a start marker before attempting the forbidden effect, so
-    an instrumented or refused process cannot be mistaken for a denial. The
-    child is the positive control: when the host does not confine it, the
-    effect really happens and the drill records that it was not prevented.
+    The child records ``started`` before the attempt and its own outcome after
+    it, so a process that never reached the attempt (a refused or instrumented
+    child) cannot be read as a denial. The child is the positive control: when
+    the host does not confine it, the effect really happens and the drill
+    records that it was not prevented.
     """
     script = (
-        "import pathlib;"
-        f"pathlib.Path({str(marker)!r}).write_text('started');"
+        "import pathlib\n"
+        f"m = pathlib.Path({str(marker)!r})\n"
+        "m.write_text('started')\n"
         + body
     )
     try:
@@ -1447,8 +1449,11 @@ def _direct_child(root: Path, marker: Path, body: str) -> bool:
             capture_output=True, text=True, timeout=15, check=False,
         )
     except (OSError, subprocess.SubprocessError):
-        return False
-    return marker.exists()
+        return "refused"
+    try:
+        return marker.read_text(encoding="utf-8")
+    except OSError:
+        return "absent"
 
 
 def _drill_result(
@@ -1486,19 +1491,31 @@ def _drill_tag(root: Path) -> dict[str, Any]:
         if setup.returncode != 0 or not (repo / ".git").is_dir():
             git = None
     if git is not None:
-        body = (
-            "import subprocess,sys;"
-            f"sys.exit(subprocess.run([{git!r},'update-ref','refs/tags/canary',"
-            "'4b825dc642cb6eb9a060e54bf8d69288fbee4904']).returncode)"
+        attempt = (
+            "import subprocess\n"
+            "try:\n"
+            f"    subprocess.run([{git!r},'update-ref','refs/tags/canary',\n"
+            "        '4b825dc642cb6eb9a060e54bf8d69288fbee4904'], check=True)\n"
+            "except (OSError, subprocess.SubprocessError):\n"
+            "    m.write_text('denied')\n"
+            "else:\n"
+            "    m.write_text('written')\n"
         )
     else:
         # No git on PATH: a direct ref write is still a Git metadata mutation.
-        body = (
-            f"import pathlib;pathlib.Path({str(ref)!r}).write_text("
-            "'4b825dc642cb6eb9a060e54bf8d69288fbee4904')"
+        attempt = (
+            "import pathlib\n"
+            "try:\n"
+            f"    pathlib.Path({str(ref)!r}).write_text(\n"
+            "        '4b825dc642cb6eb9a060e54bf8d69288fbee4904')\n"
+            "except OSError:\n"
+            "    m.write_text('denied')\n"
+            "else:\n"
+            "    m.write_text('written')\n"
         )
-    attempted = _direct_child(repo, root / "tag-attempt", body)
-    direct = attempted and not ref.exists()
+    state = _direct_child(repo, root / "tag-attempt", attempt)
+    attempted = state in {"written", "denied"}
+    direct = state == "denied" and not ref.exists()
     return _drill_result(
         argv_denied=argv, direct_denied=direct, attempted=attempted,
         boundary="tag/update-ref/push and direct Git metadata writes",
@@ -1516,13 +1533,18 @@ def _drill_token(root: Path) -> dict[str, Any]:
         "token-read", [sys.executable, "-c", "print(1)"], root,
     )
     filtered = CARGO_TOKEN_ENV not in child_env
-    read_marker = root / "token-read"
-    attempted = _direct_child(
-        root, read_marker,
-        f"import pathlib;pathlib.Path({str(read_marker)!r}).write_text("
-        f"pathlib.Path({str(token_file)!r}).read_text())",
+    state = _direct_child(
+        root, root / "token-read",
+        "import pathlib\n"
+        "try:\n"
+        f"    pathlib.Path({str(token_file)!r}).read_text()\n"
+        "except OSError:\n"
+        "    m.write_text('denied')\n"
+        "else:\n"
+        "    m.write_text('read')\n",
     )
-    direct = attempted and read_marker.read_text(encoding="utf-8") == "started"
+    attempted = state in {"read", "denied"}
+    direct = state == "denied"
     result = _drill_result(
         argv_denied=boundary and filtered, direct_denied=direct,
         attempted=attempted,
@@ -1539,17 +1561,24 @@ def _drill_network(
     endpoint = _RecordingEndpoint()
     try:
         argv = _argv_denied(operation, command, root)
-        attempted = _direct_child(
+        state = _direct_child(
             root, root / f"{operation}-attempt",
-            "import socket;"
-            f"s=socket.create_connection(('127.0.0.1',{endpoint.port}),timeout=2);"
-            "s.sendall(b'mutation');s.close()",
+            "import socket\n"
+            "try:\n"
+            f"    s = socket.create_connection(('127.0.0.1',{endpoint.port}), timeout=2)\n"
+            "    s.sendall(b'mutation')\n"
+            "    s.close()\n"
+            "except OSError:\n"
+            "    m.write_text('denied')\n"
+            "else:\n"
+            "    m.write_text('sent')\n",
         )
     finally:
         endpoint.close()
     canary_unchanged = not endpoint.received
+    attempted = state in {"sent", "denied"}
     result = _drill_result(
-        argv_denied=argv, direct_denied=attempted and canary_unchanged,
+        argv_denied=argv, direct_denied=state == "denied" and canary_unchanged,
         attempted=attempted, boundary=boundary, reason=reason,
     )
     result["canary_unchanged"] = canary_unchanged
@@ -1564,11 +1593,18 @@ def _drill_external(root: Path) -> dict[str, Any]:
             "external-repository-mutation", ["git", "push", "origin", "HEAD"], root,
         )
         canary = outside / "canary"
-        attempted = _direct_child(
+        state = _direct_child(
             root, root / "external-attempt",
-            f"import pathlib;pathlib.Path({str(canary)!r}).write_text('mutated')",
+            "import pathlib\n"
+            "try:\n"
+            f"    pathlib.Path({str(canary)!r}).write_text('mutated')\n"
+            "except OSError:\n"
+            "    m.write_text('denied')\n"
+            "else:\n"
+            "    m.write_text('written')\n",
         )
-        direct = attempted and not canary.exists()
+        attempted = state in {"written", "denied"}
+        direct = state == "denied" and not canary.exists()
     finally:
         shutil.rmtree(outside, ignore_errors=True)
     return _drill_result(
