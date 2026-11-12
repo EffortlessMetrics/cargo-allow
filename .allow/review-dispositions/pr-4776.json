@@ -1,0 +1,56 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4776,
+  "base_ref": "main",
+  "base_sha": "5e716e5ee9649a5c611a113cc2c8461ac1b2bddf",
+  "head_ref": "fix/4602-squash-merge-group-subject",
+  "head_sha": "21f2fa7c21f8aaee6c57949eb95bccb54559c852",
+  "merge_base": "5e716e5ee9649a5c611a113cc2c8461ac1b2bddf",
+  "reviewed_diff_digest": "sha256:v2:350d8dcc92fc7041cd30947f7bf8284b4b68fafcbc22fdf7c8efc68b5e0f71e3",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4776 at 21f2fa7c21f8aaee6c57949eb95bccb54559c852 (base and merge-base 5e716e5ee9649a5c611a113cc2c8461ac1b2bddf), tree 7d95aef926dbc788bfaa0faccff00b3445480d26. Verified guard A (base_sha == MERGE_GROUP_BASE_SHA, :270) and guard B (sole parent == base_sha, :319-323) by mutation, confirmed the batched diagnostic, and checked the pull_request, push and two-parent paths. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4776#issuecomment-6817784177 and review-thread replies r4547973795/r4547974059: non-author model review of the exact head, with the content proof and identity guards verified. No independent-human approval; shared account and model context are a correlated-failure limit."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "batch-rejected-by-design",
+      "severity": "advisory",
+      "owned_seam": "merge-group batched subject handling",
+      "source_path": "scripts/project-review-readiness.sh",
+      "source_line": 319,
+      "repair_route": "A batched merge group fails closed with the distinct reason 'batched merge group; single-PR proof not applicable' (and off-base parents with 'batched or foreign group'). To support batches later, prove against MERGE_GROUP_BASE_SHA/the actual group parent with the event-base binding retained, or set ruleset max_entries_to_build to 1. Not a merge blocker.",
+      "claim_boundary": "A batched merge group fails closed with the distinct reason and only single-entry enqueues are supported until the adapter proves group parents. This record does not claim batched support."
+    },
+    {
+      "id": "fetch-depth-coupling",
+      "severity": "advisory",
+      "owned_seam": "review-readiness checkout depth",
+      "source_path": ".github/workflows/review-readiness.yml",
+      "source_line": null,
+      "repair_route": "Keep fetch-depth: 0 (or explicitly fetch the queue base and head) so git merge-tree can read the parent object; a shallow checkout fails closed. Not a merge blocker.",
+      "claim_boundary": "This record keeps the checkout-depth coupling as advisory; it does not claim a depth guard exists."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4776",
+    "Reviewed pair base 5e716e5ee9649a5c611a113cc2c8461ac1b2bddf, merge-base 5e716e5e, head 21f2fa7c21f8aaee6c57949eb95bccb54559c852, tree 7d95aef926dbc788bfaa0faccff00b3445480d26. Diff digest sha256:v2:350d8dcc92fc7041cd30947f7bf8284b4b68fafcbc22fdf7c8efc68b5e0f71e3.",
+    "Guard A at scripts/project-review-readiness.sh:270 requires the live base read to equal MERGE_GROUP_BASE_SHA for merge_group before any content proof ('base moved since the queue event; fails closed'). Guard B at :319-323 requires the sole squash parent to equal base_sha ('... parent is not the event base (batched or foreign group); fails closed'). Mutation tests: disabling either guard makes merge_group_moved_base or merge_group_squash_foreign_parent exit 0 where the fixture expects 1.",
+    "Real-git construction: a subject with parent != live base and tree equal to merge-tree(base, head) is rejected by guard B; the content proof alone cannot pass. The single-PR squash fixture still publishes success; pull_request and push paths are unchanged; a mismatched two-parent pair is rejected.",
+    "Threads: devin 'Foreign-parent queue commit passes readiness' (PRRT_kwDOSnyN3s62hI_C) addressed by guard B; devin 'Stale queue base can pass readiness' (PRRT_kwDOSnyN3s62hJAS) addressed by guard A; coderabbit 'Use the queue parent in the squash merge-tree check' (PRRT_kwDOSnyN3s62hLp8) partly adopted, batched entry intentionally fails closed and the bot withdrew. All three resolved; none needs a source change.",
+    "Zero blocking findings. Advisory only: batched groups fail closed by design and only single-entry enqueues are supported; and the adapter relies on review-readiness keeping fetch-depth: 0."
+  ],
+  "required_ci": {
+    "owner": "PR #4776 orchestrator: verify the exact-head review, live review-readiness success, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. The queue path is single-entry-only while a batched group is unprovable; this record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43182112095"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4776",
+  "reviewed_at_utc": "2026-11-12T09:20:15Z"
+}
