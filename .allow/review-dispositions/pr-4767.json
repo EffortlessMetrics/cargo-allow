@@ -1,0 +1,51 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4767,
+  "base_ref": "main",
+  "base_sha": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
+  "head_ref": "ci/merge-group-required-contexts",
+  "head_sha": "2b0f790333ee05890421353e6eb6a9b937ba0995",
+  "merge_base": "d4bf17ab2e5e326626658903f5ddf1d7c54799c4",
+  "reviewed_diff_digest": "sha256:v2:6ae2063c7b19ec6544e647a8c4a8f45d08de8f602f55a378599ead9b42a5f10c",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "same_maintainer",
+  "reviewer_identity": "EffortlessSteven exact-pair readback of reviews 5852941976, 5853426444, and 5853554705 on 3beaca86, review 5853722553 on 331a054e, and review 5854005150 on 2b0f7903. Same account and model context as the author. No independent-human approval is claimed. Review 5854005150 covers 2b0f7903 only and does not qualify this later disposition-only commit.",
+  "independent_review": {
+    "proven": {
+      "reference": "UB Review did not itself produce a clean verdict. Run 42945403741 artifact 13822983215 on 3beaca86 had six usable lanes, gate_result=not_proven, and publication_result=failed because findings were withheld. review.md recorded a two-parent blocker that review 5853554705 refuted from source and tests. Later UB run 42947156784 did not post. independent_review.proven means retained and reconciled evidence, not a UB-backed clean verdict. Not independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "ci-proof-plan-schema-follow-up",
+      "severity": "advisory",
+      "owned_seam": "ci-proof-plan artifact schema and conformance",
+      "source_path": "scripts/ci-proof-route.py",
+      "source_line": null,
+      "repair_route": "AcceptedFollowUp: add a dedicated cargo-allow.ci-proof-plan.v1 schema and conformance test. build_plan already emits schema_id and schema_version, download_plan consumes them, and routing controls exercise wide, narrow, and predecessor-proof plans. Not a merge blocker. Thread PRRT_kwDOSnyN3s62AJXW is resolved.",
+      "claim_boundary": "This record keeps the missing schema as an accepted follow-up. It does not claim that follow-up is done."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5852941976",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5853426444",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5853554705",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5853722553",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4767#pullrequestreview-5854005150",
+    "Reviewed pair base d4bf17ab2e5e326626658903f5ddf1d7c54799c4, merge-base d4bf17ab2e5e326626658903f5ddf1d7c54799c4, head 2b0f790333ee05890421353e6eb6a9b937ba0995, tree 21fe954869a0468b99cef0613e11cfa6d12cd8d4. Diff digest sha256:v2:6ae2063c7b19ec6544e647a8c4a8f45d08de8f602f55a378599ead9b42a5f10c matches check 130327990586.",
+    "Zero Blocking findings. Review 5854005150 accepts the revision-note head. Reviews 5852941976, 5853426444, and 5853554705 are the 3beaca86 record. Review 5853722553 is the 331a054e record. All ten review threads are resolved, including PRRT_kwDOSnyN3s61_kPn and PRRT_kwDOSnyN3s62AJXW.",
+    "codecov/patch is failure at 33.33% diff hit versus 85.03% target. It is not a required status context. The ruleset contexts are pregate, test, review-readiness, and frozen-subject-lock.",
+    "UB run 42947156784 failed before posting (payload_written false, ambiguous claim plan at scripts/ci-proof-route.py:323). That is a publication/instrument gap. The 50% runner-minute target is not claimed. No queue rule is present, so merge-group admission is unproven.",
+    "ci.yml run 42960942851 on reviewed head 2b0f7903 completed success with 30 jobs. The 331a054e bootstrap changed this file and policy/allow.toml, so it was shared impact, not ledger-only. The 2b0f7903 commit changed only the revision note and was source-bearing. This commit changes only this disposition file. It does not authorize merge, auto-merge, or a bypass."
+  ],
+  "required_ci": {
+    "owner": "Review-readiness projector: bind reviewed head 2b0f7903. The policy-and-disposition bootstrap was shared impact, not ledger-only, and the revision-note commit was source-bearing. This commit is disposition-only. Required contexts stay pregate, test, review-readiness, and frozen-subject-lock. No merge, auto-merge, or bypass.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42960942851"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4767",
+  "reviewed_at_utc": "2026-11-11T04:50:05Z"
+}

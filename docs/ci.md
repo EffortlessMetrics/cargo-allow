@@ -47,7 +47,198 @@ workflow by `ci_lane_topology_tests.rs` (including the seeded-failure proof:
 no required lane depends on, shares a job with, or references an experimental
 product except through a declared cross-product reference).
 
-Required lanes (gate cargo-allow patch and release):
+Lane applicability on a pull request is `scripts/ci-proof-route.py`
+(#2569/#4332), not a workflow `paths:` filter and not a second registry
+beside feature-configuration row selection or release-impact. A successor
+diff that is only `.allow/review-dispositions/` records narrows the heavy
+lanes that are not ruleset contexts only when the effective diff is
+source-bearing or shared impact and the predecessor's proof is exact,
+terminal, and admissible for the same source paths and base. That
+successor route is the one that reuses predecessor proof. An effective
+diff that is entirely `.allow/review-dispositions/` records, with no
+other paths, narrows those lanes on its own and does not claim that
+missing source proof is reusable. A source-bearing successor does not
+use that route. A successor that reverts a source change remains
+source-bearing, so the plan stays wide even when the effective diff
+contains only those ledger records. Missing, stale,
+wrong-source, failed, pending, cancelled, skipped, ambiguous, or
+base-moved proof stays wide and is not reused. An effective diff that is
+provably docs-only also records those lanes NotApplicable. Paths under
+`docs/schemas/` and any `*.schema.json` are source, so an
+operator-latency schema change keeps that lane. Markdown is the only
+prose under `docs/` that narrows. Markdown a guarded `test` step reads
+is pinned in `scripts/ci-proof-route.py` and stays source, so a change
+to that file is not `docs_only` and the heavy `test` steps still run.
+`scripts/test-ci-proof-route.py` fails when a guarded step reads a
+`docs/*.md` path the pin does not name. That recompute is the 73-path
+markdown pin. `docs/ci.md` stays on that pin because guarded tests embed
+it. The 92-path fold is not restored: a counted equality set that lists
+architecture docs fails again when the next reader appears. A companion
+set, checked in `path_kind` before the docs rule and before `ROOT_DOCS`,
+holds repository-root markdown embedded with `include_str!` (`README.md`
+and `SUPPORT.md`). The config scan still reads
+`policy/product-move-ledger.toml`
+(`projection = "docs/architecture/product-move-map.md"`) and
+`policy/extraction-parity.toml`, and it still fails when that projection
+disappears. It cannot see every reader form (`format!`, `concat!`, a
+non-`join` path, another config key, or a reader outside the guarded
+set). Every `docs/architecture/*.md` path is therefore source, including
+prose no guarded test reads and a path that is not on disk yet. A new
+architecture reader stays wide without a pin edit.
+`docs/architecture/product-move-map.md` forces a wide plan. The tradeoff
+is that a docs-only pull request cannot narrow on an architecture doc,
+even when nothing reads that file. Other markdown under `docs/` still
+narrows when it is not pinned.
+`docs/ci/receipts/direct-floor-proof-cargo-allow-v1.selection.md` is the
+unread prose sample. A guarded test can also pass a `docs/*.md` literal,
+or a same-file `&str` constant, to a function whose body does
+`fs::read_to_string(root.join(param))` or `fs::read` of that join.
+`scripts/test-ci-proof-route.py` derives that helper form. Paths the
+73-path pin and the root companion do not already name stay in
+`HELPER_CONSUMED_MARKDOWN`: `docs/how-to/run-changie-sensor.md`,
+`docs/release/README.md`, `docs/release/0.1.10.md`, and
+`docs/release/0.1.11.md`. `docs/how-to/run-changie-sensor.md` forces a
+wide plan. The same audit found no helper read of `docs/templates/*.md`,
+`docs/identity.md`, `docs/design.md`, `docs/adr/README.md`, or
+`docs/source-of-truth/README.md`. Other `docs/release/*.md` files a
+guarded test reads, including `docs/release/0.2.0.md` and
+`docs/release/github/v0.2.0.md`, stay on the 73-path pin. A new helper
+literal fails that recompute until the pin names it. `.changes/` stays source: `.changie.yaml` sets
+`changesDir: .changes`, and the guarded Changie sensor self-dogfood step
+lints that tree, so a fragment-only diff is not `docs_only`.
+The feature-configuration matrix,
+`docs/ci-lanes.toml`, `docs/support-matrix.toml`, receipt JSON, and any
+other non-markdown path under `docs/` stay source, so those changes
+keep `feature-configuration-proof` and the other heavy lanes. An
+unrecognized docs payload is source, not prose. GitHub skips a heavy lane only
+when the plan succeeds with `narrow=true`. A `test_only` plan does not
+set that flag: it records `product-candidates-interop`,
+`operator-latency`, `integrated-dogfood`, and `compat-delegation`
+NotApplicable, and it still runs `msrv`, `test-core-platforms`, and
+`coverage`. `package-smoke` is NotApplicable only for `docs_only` and
+`test_only`. A skip is not a green
+execution. Unknown, malformed, and shared ledger impact stay wide. A
+test path mixed with any other kind stays wide. Ordinary crate tests under
+`crates/<crate>/tests/` are test-only.
+`crates/cargo-allow/tests/intent_staged_precommit_delegate.rs` stays source,
+because only `compat-delegation` runs that test with a candidate.
+A `fixtures` path segment outside `docs/` is test-only except
+`tests/compat/fixtures/`, which stays source for the same lane, and except
+fixture paths that a test_only-skipped lane reads. `package-smoke` and the
+four test_only product lanes contribute those paths from their steps, plus
+one callee hop. `docs/dogfood/fixtures/` is already source or docs and is
+not part of that set. An unreadable or unparsed job map keeps every fixture
+path source.
+A `scripts/test-*` file is test-only only when the ci.yml job map shows
+that no test_only-skipped lane runs it, or an explicit decision records
+that fact. `package-smoke` and the four test_only product lanes contribute
+their `scripts/test-*` steps, plus one callee hop, to the source set.
+Every `scripts/test-exact-candidate-*` file stays source.
+A new `scripts/test-*` file with neither a job-map hit nor an explicit
+decision stays source, and `scripts/test-ci-proof-route.py` fails until
+that decision is recorded. There is no bare `scripts/test-*` prefix. A
+docs-only last commit on a source-bearing pull request stays wide.
+`push`, `workflow_dispatch`, `merge_group`, and release events stay wide.
+The ruleset contexts are `pregate`, `test`, `review-readiness`, and
+`frozen-subject-lock`. Proof routing never skips `pregate` or `test`.
+`pregate` runs its current assertions, including the no-new guard, on
+every workflow run. The change-note guard (`--require-change-note`)
+belongs to `test` and runs only when `test` executes. `test` also runs
+no-new when it executes. `test` needs `pregate`, `package-smoke`, and
+`proof-route`. A failed `pregate` or a failed `package-smoke` skips
+`test`, and the change-note guard with it.
+That skip is a dependency failure, not a green execution and not a
+narrow plan. A skipped `package-smoke` does not skip `test`. A successful `docs_only`
+plan skips the heavy steps inside `test`. Those steps keep `success()`,
+so an earlier failure in `test` still stops the later ones. A diff that
+includes pinned machine-consumed markdown, a companion indirect reader, a helper-mediated markdown path, any `docs/architecture/*.md` path, or a `.changes/` path is not
+`docs_only`, and the heavy steps run. The inventory guard, fmt,
+audit, no-new, and the change-note guard still run. `docs_only`
+and `test_only` leave the cutover receipt restore and status unrun,
+because those receipts are produced only by `package-smoke`. The
+change-note guard stays in `test` and runs whenever `test` runs. A
+pregate failure remains a failure. `cargo-deny` stays on every plan.
+The release graph (`release-impact`, `release-rehearsal`,
+`release-rehearsal-required`) is NotApplicable only when `proof-route`
+succeeds for a `docs_only` plan with `narrow=true` whose paths are all
+provably unrelated under the release-impact denominator. `docs/release/`, `CHANGELOG.md`,
+and any other release-sensitive or unknown path keep those three jobs
+executing, including on a ledger narrow plan.
+`review-readiness` and `frozen-subject-lock` are separate workflows and
+are not path-filtered. `cargo-deny` and `proof-route` stay on a narrow
+plan. The release graph is not a ruleset context.
+`package-smoke` stays for a ledger narrow plan and for every wide plan.
+It does not run for `docs_only` or `test_only`.
+
+Measurement receipts in `docs/ci/receipts/` are admitted one file at a time.
+Each has an exact-path `non_rust_file` allow in `policy/allow.toml`.
+`allow-11245` names
+`docs/ci/receipts/direct-floor-proof-cargo-allow-v1.json`, and the selector
+glob is that same path. There is no directory glob, so a new receipt needs
+its own allow. That addition is an `added_allow` change of severity Review,
+so the change-note guard also requires a revision note. Receipt JSON stays
+source, so a receipt pull request stays wide. Issue #4332 accepts a receipt
+or a run record for the docs-only measurement. A docs-only pull request's
+own narrow run is admissible evidence for that record.
+
+### Measured lane reduction
+
+One docs-only pull request was measured before `#4771` landed.
+[PR #4770](https://github.com/EffortlessMetrics/cargo-allow/pull/4770)
+head `6b33aa12b72922e782164be863b4499e68783f01`,
+[ci.yml run 42980600013](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/42980600013)
+(`pull_request`, 2026-11-11T07:35:25Z through 2026-11-11T08:14:38Z).
+The hosted plan class was `docs_only` and `narrow` was true.
+The effective path was `docs/ci.md`. That classification is the record
+from before machine-consumed markdown was pinned. Guarded tests embed
+`docs/ci.md`, so a later edit of that file is source. That record does not
+cover later source pins: root `include_str!` markdown, every
+`docs/architecture/*.md` path, and `.changes/`.
+Seventeen lane rows were
+NotApplicable, and GitHub skipped those jobs: `msrv`,
+`product-candidates-interop`, `operator-latency`, `integrated-dogfood`,
+`test-core-platforms`, `compat-delegation`, `test-intent-experimental`,
+`test-proof-experimental`, `test-shared-protocol`, `coverage`,
+`workflow-syntax`, `workflow-security`, `workflow-construction`,
+`dependency-graph-delta`, `collect-performance-fixtures`,
+`shallow-diff-smoke`, and `feature-configuration-proof`.
+`package-smoke` was still `execute` on that plan, with reason
+"test restores this lane's cutover receipts", because the `#4771`
+skip had not landed.
+
+| Job | Started (UTC) | Finished (UTC) | Duration |
+| --- | --- | --- | --- |
+| `package-smoke` | 2026-11-11T07:37:51Z | 2026-11-11T07:55:13Z | 17m22s |
+| `test` | 2026-11-11T07:55:15Z | 2026-11-11T08:14:38Z | 19m23s |
+
+`#4771` landed as `b815604f806b39fba39fbf1215cfffd93e274aa9`.
+`package-smoke` is NotApplicable for `docs_only` and `test_only`.
+`test` runs when `package-smoke` succeeds or is skipped. The cutover
+receipt restore and status steps run only when `package-smoke`
+succeeds. `msrv`, the four `test-core-platforms` matrix rows, and
+`coverage` still run for `test_only`, because that class does not set
+`narrow=true`. Unknown, malformed, and non-`pull_request` plans stay
+wide.
+
+After `#4771`, a successful `docs_only` plan (`narrow=true`) ran
+`pregate`, `test`, `proof-route`, `cargo-deny`, and the release graph
+(`release-impact`, `release-rehearsal`, `release-rehearsal-required`).
+That release graph is now NotApplicable only when every path is
+provably unrelated under the release-impact denominator. `docs/release/`,
+`CHANGELOG.md`, and any other release-sensitive or unknown path keep
+the three jobs executing. `review-readiness` and `frozen-subject-lock`
+stay in their own workflows. Heavy lanes skip only when `proof-route`
+succeeds with `narrow=true`. `package-smoke` is NotApplicable when
+that plan's class is `docs_only` or `test_only`. A failed or missing
+plan stays wide.
+
+This is one observed run, not a distribution. The live docs-only
+demonstration is this pull request's own run record. The orchestrator
+records that record on issue #4332.
+
+Required lanes (gate cargo-allow patch and release on wide pull-request and
+full-boundary runs; `test` and `cargo-deny` also stay on a narrow plan, and
+`package-smoke` stays unless the class is `docs_only` or `test_only`):
 
 - **`msrv`**: cargo-allow release-set `cargo check --all-targets` on the
   declared `rust-version` (`1.95`). cargo-allow-scoped by policy — cargo-intent

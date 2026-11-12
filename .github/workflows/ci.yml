@@ -5,6 +5,12 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
+  # Required pregate and test contexts must also run on a merge queue.
+  # This does not enable a queue or add a bypass. checks_requested is the
+  # only merge_group activity.
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -93,8 +99,8 @@ jobs:
       - name: Emit and evaluate the typed pre-gate result
         if: always()
         env:
-          PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
-          PR_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          PR_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
           FMT_OUTCOME: ${{ steps.fmt.outcome || 'skipped' }}
           NO_NEW_OUTCOME: ${{ steps.no_new.outcome || 'skipped' }}
           FLOOR_FRESHNESS_OUTCOME: ${{ steps.floor_freshness.outcome || 'skipped' }}
@@ -139,6 +145,8 @@ jobs:
   # typed lane report. Advisory at this stage; enforcement selection is
   # the aggregate lane's authority (PR D under #2283/#2284).
   workflow-syntax:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -158,6 +166,8 @@ jobs:
   # completed runs always exit zero; enforcement selection is the
   # aggregate lane's authority (PR D under #2283/#2284).
   workflow-security:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -178,6 +188,8 @@ jobs:
   # JSON is retained even when the aggregate carries findings or an
   # instrument failure.
   workflow-construction:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -202,6 +214,8 @@ jobs:
   # Advisory until the owning policy selects blocking consequences;
   # malformed/empty inputs fail immediately inside the script.
   dependency-graph-delta:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -219,7 +233,7 @@ jobs:
           lane: dependency-graph-delta
       - name: Compile and enrich the base/head delta
         env:
-          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          GITHUB_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
         run: bash scripts/check-dependency-graph-delta.sh
       - name: Retain the delta and evidence artifacts
         if: always()
@@ -232,7 +246,8 @@ jobs:
           if-no-files-found: warn
 
   msrv:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     # `rust-toolchain.toml` pins the floating `stable` channel for local
     # development. rustup ranks that file ABOVE `rustup default`, and `rustup
@@ -306,15 +321,21 @@ jobs:
   # hosted receipt artifact so the readiness claim rests on CI evidence, not
   # a local run. Linux only for the narrow claim; the msrv lane above
   # separately proves Rust 1.95.
-  # Release-impact routing (#3794), job 1 of 3: one always-run, no-secret
-  # classifier that decides the exact base/head/merge-base subject into the
-  # typed ReleaseImpactReceiptV1 (cargo-allow.release-impact.v1). The
-  # denominator is the checked release-sensitive path rules plus the #3786
-  # semantic-owner inventory plus the generation-2 package topology
-  # include/file-list authority; an unmatched path or unresolved semantic
-  # owner selects the rehearsal (fail closed). This job routes proof only —
-  # it never receives token context and never performs an external action.
+  # Release-impact routing (#3794), job 1 of 3: a no-secret classifier that
+  # decides the exact base/head/merge-base subject into the typed
+  # ReleaseImpactReceiptV1 (cargo-allow.release-impact.v1). The job runs
+  # unless proof-route succeeded with release_lanes=not_applicable, which is
+  # only a docs_only plan whose paths are all provably unrelated. Any other
+  # result, including a failed plan, runs this job. The skip is not keyed
+  # off narrow. The denominator is the checked release-sensitive path rules
+  # plus the #3786 semantic-owner inventory plus the generation-2 package
+  # topology include/file-list authority; an unmatched path or unresolved
+  # semantic owner selects the rehearsal (fail closed). This job routes
+  # proof only — it never receives token context and never performs an
+  # external action.
   release-impact:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.release_lanes != 'not_applicable') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -329,7 +350,7 @@ jobs:
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
-          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -389,7 +410,11 @@ jobs:
   # binding itself, receives no secrets, and records no interpretation:
   # #3792 owns the discriminating-status correction.
   release-rehearsal:
-    needs: release-impact
+    needs: [release-impact, proof-route]
+    # Still requires the impact receipt. Also skips when proof-route succeeded
+    # with release_lanes=not_applicable. A failed impact job does not run the
+    # harness against a missing receipt.
+    if: ${{ !cancelled() && needs.release-impact.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.release_lanes != 'not_applicable') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -403,7 +428,7 @@ jobs:
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
-          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -502,11 +527,13 @@ jobs:
   # malformed proof. A Passing result is routing completeness only; it is
   # not release authorization and does not interpret the harness status.
   release-rehearsal-required:
-    needs: [release-impact, release-rehearsal]
-    # Always run: a conditionally skipped job must never be the required
-    # branch-protection signal, and failed siblings must produce an honest
-    # typed failure, not a missing check.
-    if: always()
+    needs: [release-impact, release-rehearsal, proof-route]
+    # Runs for every result except a successful proof-route output of
+    # release_lanes=not_applicable, including when a sibling fails, so a
+    # skipped rehearsal is not mistaken for a passing aggregate. This job is
+    # not a ruleset context. Live required-check selection stays with
+    # #2283/#2284 and is not registered here.
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.release_lanes != 'not_applicable') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -520,7 +547,7 @@ jobs:
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
-          EVENT_BASE: ${{ github.event.pull_request.base.sha }}
+          EVENT_BASE: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -582,7 +609,11 @@ jobs:
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
   package-smoke:
-    needs: pregate
+    needs: [pregate, proof-route]
+    # docs_only and test_only do not build package receipts (#4332). Any other
+    # class, and a failed proof-route, still run this lane. test does not
+    # treat that skip as a missing cutover receipt.
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && needs.proof-route.outputs.class != 'test_only')) }}
     # The linked candidate must not inherit ubuntu-latest's libc upgrades.
     # This image retires 2027-04-17; #3151 owns its successor.
     runs-on: ubuntu-22.04
@@ -742,7 +773,8 @@ jobs:
   # candidate set standalone because the interop smoke drives the
   # installed cargo-allow binary. Posture: experimental-informational.
   product-candidates-interop:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -799,6 +831,8 @@ jobs:
   # Historical source provenance for the CI performance collector
   # (#4173): discriminating fixture harness, no live GitHub calls.
   collect-performance-fixtures:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -809,6 +843,8 @@ jobs:
         run: bash scripts/test-collect-ci-performance.sh
 
   shallow-diff-smoke:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -839,7 +875,8 @@ jobs:
   # receipt/artifacts for review. This is a conservative catastrophic ceiling,
   # not a universal latency target or hardware claim.
   operator-latency:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -1022,10 +1059,19 @@ jobs:
           if-no-files-found: warn
 
   test:
-    needs: [pregate, package-smoke]
+    needs: [pregate, package-smoke, proof-route]
     # The cutover status lane restores the build receipts produced by the
     # package-smoke job; artifacts are only downloadable once that job
-    # completes (#3469/#3552).
+    # completes (#3469/#3552). A skipped package-smoke on docs_only or
+    # test_only must not skip this ruleset context. The restore and the
+    # status step run only when that job produced the receipts.
+    # Heavy steps run unless proof-route succeeds with narrow=true and
+    # class docs_only. Their if keeps success(), so an earlier failure in
+    # this job stops the later heavy steps. Any other proof-route result
+    # keeps them. This job is not skipped.
+    # Inventory, fmt, audit, no-new, the change-note gate, and if: always()
+    # uploads stay unconditional.
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1045,37 +1091,45 @@ jobs:
       # Formatting step for the merged-ancestor-discovery rationale.
       - run: cargo fmt --all --check -- --config-path rustfmt.toml
       - name: cargo-allow release-set clippy (#3358)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo clippy --locked --all-targets \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
             -- -D warnings
 
       - name: Changie sensor projections and falsifiers (#3623)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo test -p cargo-allow --locked changie_source_view -- --nocapture
           cargo test -p cargo-allow --locked changie_command -- --nocapture
       - name: Changie fragment schema independent-validation smoke (#3613)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/test-changie-fragment-schema-smoke.sh
       - name: Changie sensor self-dogfood (#3623)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # cargo-allow analyzes its own .changie.yaml and complete
         # fragment population with the Rust-native sensor: no Go,
         # Aqua, or Changie on the runner, no ledger mutation.
         run: cargo run -p cargo-allow --locked -- changie lint --format json
       - name: Changie sensor packaged external-consumer proof (#3621)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # Packages the workspace candidate set, extracts the exact
         # packaged allow-files bytes, patches crates-io to the packaged
         # siblings, and runs an isolated offline fixture crate against
         # the facade with the source checkout unneeded.
         run: bash scripts/test-changie-sensor-external-consumer.sh
       - name: Changie sensor feature proof (#3588)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # The allow-files changie module is feature-gated; without this
         # step nothing in CI compiles or tests it.
         run: cargo test -p allow-files --locked --features changie
       - name: Candidate harness lifecycle characterization (#3509)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
 
 
         run: python scripts/test-candidate-harness-lifecycle.py
       - name: Extraction readiness receipt (#2559)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/extraction-readiness-receipt.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -1084,14 +1138,17 @@ jobs:
           path: target/extraction-readiness/extraction-readiness.receipt.json
           if-no-files-found: warn
       - name: Characterize extraction parity cutover status (#3469)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/test-extraction-cutover-status.sh
       - name: Restore cutover build receipts (#3469/#3552)
+        if: ${{ needs.package-smoke.result == 'success' && success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: extraction-cutover-build-receipts
           path: target
         continue-on-error: true
       - name: Extraction parity cutover status (#3469)
+        if: ${{ needs.package-smoke.result == 'success' && success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/extraction-cutover-status.sh
         env:
           # #3469 slice B: parity execution, ownership derivation, receipt
@@ -1105,6 +1162,7 @@ jobs:
           path: target/extraction-cutover/
           if-no-files-found: warn
       - name: Verify cargo-allow proof classes are non-empty
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -1124,20 +1182,25 @@ jobs:
             echo "contract_seconds=$((contract_end-contract_start))"
           } | tee target/cargo-allow/test-proof-classes.txt
       - name: Fast cargo-allow package proof
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: cargo test -p cargo-allow --bins --locked
       - name: Contract cargo-allow package proof
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: cargo test -p cargo-allow --tests --locked
       - name: Cargo-allow release-set proof union (#3358)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo test --locked \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
 
       - name: Cargo-allow release-set doc tests (#3358)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo test --doc --locked \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
 
       - name: Cargo-allow release-set docs (#3358)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: |
           cargo doc --no-deps --locked \
             -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit
@@ -1149,6 +1212,7 @@ jobs:
       - name: Verify PR template diff evidence
         run: cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note
       - name: Spec-system cutover receipt (#2568)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/spec-system-cutover-receipt.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -1175,6 +1239,8 @@ jobs:
   # shallow-diff-smoke, a characterization job that produces no inputs
   # this job consumes.
   feature-configuration-proof:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -1222,7 +1288,8 @@ jobs:
   # audit exercise the products together and stay out of the
   # cargo-allow-required test lane. Posture: integrated-informational.
   integrated-dogfood:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1254,7 +1321,8 @@ jobs:
         run: bash scripts/three-product-simplification-audit.sh
 
   test-core-platforms:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -1312,7 +1380,8 @@ jobs:
   # with the exact installed candidate on Linux and a fresh build on
   # Windows.
   compat-delegation:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -1366,7 +1435,8 @@ jobs:
   # themselves without gating the cargo-allow patch/release lanes.
   # Posture: experimental-informational.
   test-intent-experimental:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1384,7 +1454,8 @@ jobs:
         run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
 
   test-proof-experimental:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
       matrix:
@@ -1409,7 +1480,8 @@ jobs:
   # part of the cargo-allow release set and keeps its own proof lane.
   # Posture: shared-protocol-informational.
   test-shared-protocol:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1424,7 +1496,8 @@ jobs:
   # uploads coverage to Codecov. Kept separate from the main test job so
   # coverage instrumentation doesn't slow down PR feedback.
   coverage:
-    needs: pregate
+    needs: [pregate, proof-route]
+    if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -1500,3 +1573,59 @@ jobs:
             -C "${cargo_deny_dir}" --strip-components=1 "${cargo_deny_asset}/cargo-deny"
           "${cargo_deny_dir}/cargo-deny" --version
           "${cargo_deny_dir}/cargo-deny" --log-level warn --manifest-path ./Cargo.toml --workspace check
+
+  proof-route:
+    # Lane applicability (#2569/#4332). One source-controlled plan in
+    # scripts/ci-proof-route.py. A review-ledger successor narrows only
+    # when predecessor proof is exact, terminal, and for the same source
+    # and base. A docs-only effective diff can narrow. docs/schemas stays
+    # wide. Unknown, malformed, shared impact, missing proof, and every
+    # non-pull_request event stay wide, including push, workflow_dispatch,
+    # and merge_group. Heavy lanes skip only when this job succeeds with
+    # narrow=true; a failure still runs them. package-smoke also skips when
+    # this job succeeds with class docs_only or test_only. The test job
+    # still runs. Its heavy steps skip only when this job succeeds with
+    # narrow=true and class docs_only; any other result keeps those steps.
+    # pregate and cargo-deny do not read this output. The release graph reads
+    # release_lanes only: it skips when this job succeeds with
+    # release_lanes=not_applicable, and any other result keeps those jobs.
+    # It does not read narrow. review-readiness and frozen-subject-lock are
+    # separate workflows and are not filtered. Feature-configuration row
+    # selection stays inside its own lane when that lane runs. Lookup is
+    # read-only and stays off during the routing controls.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+    outputs:
+      narrow: ${{ steps.plan.outputs.narrow }}
+      class: ${{ steps.plan.outputs.class }}
+      release_lanes: ${{ steps.plan.outputs.release_lanes }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Routing controls
+        run: python3 scripts/test-ci-proof-route.py
+      - name: Classify the lane plan
+        id: plan
+        env:
+          PROOF_EVENT: ${{ github.event_name }}
+          PROOF_BEFORE: ${{ github.event.before }}
+          PROOF_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PROOF_BASE_REF: ${{ github.base_ref }}
+          PROOF_LOOKUP_PREDECESSOR: "1"
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: python3 scripts/ci-proof-route.py
+      - name: Retain the lane plan
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ci-proof-plan
+          path: proof-plan.json
+          if-no-files-found: error

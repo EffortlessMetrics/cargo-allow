@@ -112,6 +112,10 @@ pub enum ReviewReadinessEventV1 {
     MergeBaseMoved,
     DispositionUpdated,
     WorkflowConfigMoved,
+    /// Merge-queue admission of one already-reviewed pull request.
+    /// The event does not itself move the reviewed pair; the adapter
+    /// rejects a queue commit that is not that pair's two-parent merge.
+    ChecksRequested,
 }
 
 impl ReviewReadinessEventV1 {
@@ -128,6 +132,7 @@ impl ReviewReadinessEventV1 {
             Self::MergeBaseMoved => "merge_base_moved",
             Self::DispositionUpdated => "disposition_updated",
             Self::WorkflowConfigMoved => "workflow_config_moved",
+            Self::ChecksRequested => "checks_requested",
         }
     }
 

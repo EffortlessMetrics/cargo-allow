@@ -19,6 +19,12 @@ controlling_issue = 3358
 # policy/product-package-topology-v2.toml ci_lane field (#3365), enforced
 # by ci_lane_topology_tests.rs. Adding a lane-scoped crate means editing
 # the topology row, not this file.
+#
+# Applicability on a narrow pull request is scripts/ci-proof-route.py
+# (#2569/#4332). Posture in this file is unchanged: source-bearing and
+# full-boundary runs still execute every required lane. That plan is not
+# a second topology and does not path-filter review-readiness or
+# frozen-subject-lock.
 
 [[lane]]
 id = "msrv"

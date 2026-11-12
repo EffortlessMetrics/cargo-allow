@@ -166,11 +166,16 @@ fn ci_pregate_workflow_head_movement_reruns_the_gate() {
     assert!(workflow.contains("synchronize"));
     assert!(workflow.contains("branches: [main]"));
     // The staleness law lives in the typed evaluation.
-    let head_binding =
-        workflow.contains("PR_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}");
+    let head_binding = workflow.contains(
+        "PR_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}",
+    );
     assert!(
         head_binding,
         "the emitted result binds the exact current head"
+    );
+    assert!(
+        workflow.contains("merge_group:"),
+        "pregate and test must also run for a merge group"
     );
 }
 

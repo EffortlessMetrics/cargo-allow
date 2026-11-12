@@ -172,6 +172,14 @@ practical and reports unstructured or unknown-prefix references as weak
 evidence. It must not claim semantic proof from the presence of a reference,
 and it must not execute external evidence tools as part of its own scan.
 
+Every markdown file under `docs/` is a tracked non-Rust file admitted by
+its own exact-path allow in `policy/allow.toml`. A `doc:` reference is
+evidence, not a file classification, and may point at a Rust file. There
+is no directory glob, so a new file there is a new finding until that
+allow exists. Adding the allow is a ledger change and stays
+source-bearing. Editing an already-allowed prose document that no guarded
+test reads does not add a finding and does not by itself change the ledger.
+
 ## Reports
 
 Reports should serve three audiences:
