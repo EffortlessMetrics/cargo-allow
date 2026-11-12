@@ -1958,11 +1958,11 @@ class TestZeroMutationDrills(unittest.TestCase):
         with REHEARSAL._invocation_scope():
             drill = REHEARSAL.run_zero_mutation_drills()["tag_mutation_prevented"]
         self.assertTrue(drill["attempted"])
-        self.assertTrue(drill["argv_denied"])
-        self.assertTrue(drill["direct_route_discriminating"])
+        self.assertTrue(drill["argv_denied"], drill["reason"])
+        self.assertTrue(drill["direct_route_discriminating"], drill["reason"])
         self.assertTrue(drill["direct_denied"], drill["reason"])
-        self.assertTrue(drill["canary_unchanged"])
-        self.assertTrue(drill["prevented"])
+        self.assertTrue(drill["canary_unchanged"], drill["reason"])
+        self.assertTrue(drill["prevented"], drill["reason"])
         self.assertIn("unshare", drill["boundary"])
 
     def test_tag_flag_follows_the_measurement_not_a_literal(self) -> None:
