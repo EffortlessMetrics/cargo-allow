@@ -1152,11 +1152,8 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
             argv = call.args[0]
             self.assertIsInstance(call.kwargs.get("env"), dict)
             self.assertNotIn("CARGO_REGISTRY_TOKEN", call.kwargs["env"])
-            if argv[:2] == ["git", "init"]:
-                # Quarantine setup for the tag drill, not an admission inspection.
-                continue
             if argv[0] != "git":
-                # Drill child process on the direct route.
+                # Drill setup or child process on the direct route.
                 continue
             self.assertEqual(argv[:2], ["git", "--no-replace-objects"])
             if "status" in call.args[0]:

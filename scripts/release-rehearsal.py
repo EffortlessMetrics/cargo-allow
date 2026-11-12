@@ -1473,26 +1473,31 @@ def _drill_result(
 
 def _drill_tag(root: Path) -> dict[str, Any]:
     repo = root / "tag-canary"
-    repo.mkdir()
-    setup = subprocess.run(
-        ["git", "init", "--quiet", str(repo)],
-        cwd=root, env=_sanitized_environment(),
-        capture_output=True, text=True, timeout=15, check=False,
-    )
-    if setup.returncode != 0 or not (repo / ".git").is_dir():
-        return _drill_result(
-            argv_denied=False, direct_denied=False, attempted=False,
-            boundary="tag/update-ref/push and direct Git metadata writes",
-            reason="the tag canary repository could not be created",
-        )
     ref = repo / ".git" / "refs" / "tags" / "canary"
+    ref.parent.mkdir(parents=True)
     argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
-    attempted = _direct_child(
-        repo, root / "tag-attempt",
-        "import subprocess,sys;"
-        "sys.exit(subprocess.run(['git','update-ref','refs/tags/canary',"
-        "'4b825dc642cb6eb9a060e54bf8d69288fbee4904']).returncode)",
-    )
+    git = shutil.which("git")
+    if git is not None:
+        setup = subprocess.run(
+            [git, "init", "--quiet", str(repo)],
+            cwd=root, env=_sanitized_environment(),
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        if setup.returncode != 0 or not (repo / ".git").is_dir():
+            git = None
+    if git is not None:
+        body = (
+            "import subprocess,sys;"
+            f"sys.exit(subprocess.run([{git!r},'update-ref','refs/tags/canary',"
+            "'4b825dc642cb6eb9a060e54bf8d69288fbee4904']).returncode)"
+        )
+    else:
+        # No git on PATH: a direct ref write is still a Git metadata mutation.
+        body = (
+            f"import pathlib;pathlib.Path({str(ref)!r}).write_text("
+            "'4b825dc642cb6eb9a060e54bf8d69288fbee4904')"
+        )
+    attempted = _direct_child(repo, root / "tag-attempt", body)
     direct = attempted and not ref.exists()
     return _drill_result(
         argv_denied=argv, direct_denied=direct, attempted=attempted,
