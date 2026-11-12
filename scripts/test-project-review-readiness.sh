@@ -69,15 +69,34 @@ case "${rest[0]}" in
       printf '%040d\n' "${FIXTURE_CHECKOUT_ID}"
       exit "${FIXTURE_CHECKOUT_STATUS}"
     fi
+    case "$3" in
+      *'^{tree}')
+        printf '%040d\n' "${FIXTURE_SUBJECT_TREE}"
+        exit "${FIXTURE_SUBJECT_TREE_STATUS}"
+        ;;
+    esac
     if [ "${FIXTURE_OBJECT_MODE}" = missing ]; then exit 128; fi
     if [ "${FIXTURE_OBJECT_MODE}" = wrong ]; then printf '%040d\n' 9
     else printf '%s\n' "${3%\^\{commit\}}"; fi
     exit "${FIXTURE_OBJECT_STATUS}"
     ;;
+  merge-tree)
+    printf '%s\n' "$*" >"${FIXTURE_STATE}/merge-tree-args"
+    printf '%040d\n' "${FIXTURE_MERGE_TREE}"
+    exit "${FIXTURE_MERGE_TREE_STATUS}"
+    ;;
   rev-list)
     case "${FIXTURE_PARENT_MODE}" in
       base) base=9 ;; head) head=9 ;;
     esac
+    if [ "${FIXTURE_PARENT_MODE}" = batch ]; then
+      printf '%040d %040d\n' 7 8
+      exit "${FIXTURE_PARENT_STATUS}"
+    fi
+    if [ "${FIXTURE_PARENT_MODE}" = foreign ]; then
+      printf '%040d %040d\n' 7 8
+      exit "${FIXTURE_PARENT_STATUS}"
+    fi
     printf '%040d %040d' 7 "$base"
     if [ "${FIXTURE_PARENT_MODE}" != one ]; then printf ' %040d' "$head"; fi
     if [ "${FIXTURE_PARENT_MODE}" = three ]; then printf ' %040d' 9; fi
@@ -335,6 +354,7 @@ export FIXTURE_LEDGER=missing FIXTURE_ANCESTRY_STATUS=0 FIXTURE_DELTA_STATUS=0 F
 export FIXTURE_BASE_ID=1 FIXTURE_FETCH_STATUS=0 FIXTURE_FETCH_FAIL_PR=none
 export FIXTURE_OBJECT_MODE=valid FIXTURE_OBJECT_STATUS=0 FIXTURE_MERGE_BASE_OUTPUT=single
 export FIXTURE_CHECKOUT_ID=7 FIXTURE_CHECKOUT_STATUS=0 FIXTURE_PARENT_MODE=valid FIXTURE_PARENT_STATUS=0
+export FIXTURE_SUBJECT_TREE=4 FIXTURE_SUBJECT_TREE_STATUS=0 FIXTURE_MERGE_TREE=4 FIXTURE_MERGE_TREE_STATUS=0
 export FIXTURE_PR_FILTER=. FIXTURE_READBACK_STATUS=0 FIXTURE_REF_STATUS=0 FIXTURE_REF_FILTER=. FIXTURE_REF_OUTPUT=json
 export FIXTURE_MOVE=none FIXTURE_MOVE_AT=projector FIXTURE_REF_READBACK_STATUS=0 FIXTURE_TWO_PRS=0
 check_runs='{"check_runs":[]}'
@@ -548,7 +568,7 @@ export MERGE_GROUP_HEAD_SHA MERGE_GROUP_HEAD_REF MERGE_GROUP_BASE_SHA MERGE_GROU
 MERGE_GROUP_HEAD_SHA="$(printf '%040d' 7)"
 MERGE_GROUP_BASE_REF=refs/heads/main
 MERGE_GROUP_BASE_SHA="$(printf '%040d' 1)"
-MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
 run_case merge_group_exact_pr 0 POST 'published success'
 grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_exact_pr/mutation-args" || {
   echo 'review-readiness: merge group check was not published on the queue commit' >&2
@@ -632,11 +652,59 @@ run_queue_rejection merge_group_conflicting_number
 PR_NUMBER=""
 MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/not-a-pr"
 run_queue_rejection merge_group_ambiguous_ref
-MERGE_GROUP_HEAD_REF="gh-readonly-queue/other/pr-4165-$(printf '%040d' 2)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/other/pr-4165-$(printf '%040d' 1)"
 run_queue_rejection merge_group_wrong_base
-MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
 FIXTURE_PARENT_MODE=three
 run_queue_rejection merge_group_not_two_parent
-FIXTURE_PARENT_MODE=valid
+# SQUASH queue subject: one parent whose tree equals the three-way merge
+# of the queue base and the PR head is accepted.
+FIXTURE_PARENT_MODE=one FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
+run_case merge_group_squash_exact 0 POST 'published success'
+grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_squash_exact/mutation-args" || {
+  echo 'review-readiness: squash queue check was not published on the queue commit' >&2
+  exit 1
+}
+grep -Fq "merge-tree --write-tree $(printf '%040d' 1) $(printf '%040d' 2)" \
+  "${work}/merge_group_squash_exact/merge-tree-args" || {
+  echo 'review-readiness: squash queue check did not merge the base and the head' >&2
+  exit 1
+}
+# A batched group's G is a squash of several PRs, so its tree is not the
+# one-PR three-way merge. The payload does not name the members, so the
+# adapter fails closed with a distinct batched-group reason rather than a
+# candidate-defect message.
+FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=5
+run_queue_rejection merge_group_batched
+grep -Fq 'batched merge group; single-PR proof not applicable' "${work}/merge_group_batched/log" || {
+  echo 'review-readiness: batched merge group did not name its distinct reason' >&2
+  exit 1
+}
+# A sole parent that is not the event base must be rejected even when the tree
+# happens to equal the one-PR three-way merge: the parent identity is a second
+# guard, not a substitute for the content proof. A batched squash entry is
+# built on the preceding queue commit, so it shares this shape; the payload
+# names only the group, so the message names both cases and the batch is
+# rejected as unprovable rather than as a single-PR defect.
+FIXTURE_PARENT_MODE=foreign FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
+run_queue_rejection merge_group_squash_foreign_parent
+grep -Fq 'squash queue subject parent is not the event base (batched or foreign group)' "${work}/merge_group_squash_foreign_parent/log" || {
+  echo 'review-readiness: foreign squash parent did not name the parent guard' >&2
+  exit 1
+}
+# A base that moved after the queue event must be rejected even when the tree
+# still matches, because the proof would otherwise bind a stale subject to the
+# newer base.
+FIXTURE_PARENT_MODE=one FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
+MERGE_GROUP_BASE_SHA="$(printf '%040d' 3)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 3)"
+run_queue_rejection merge_group_moved_base
+grep -Fq 'base moved since the queue event' "${work}/merge_group_moved_base/log" || {
+  echo 'review-readiness: moved base did not name the base guard' >&2
+  exit 1
+}
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
+MERGE_GROUP_BASE_SHA="$(printf '%040d' 1)"
+FIXTURE_PARENT_MODE=valid FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
 
 printf 'all review-readiness adapter characterization checks passed\n'

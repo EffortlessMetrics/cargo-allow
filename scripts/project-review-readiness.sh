@@ -262,6 +262,16 @@ project_pr() {
     return 1
   fi
   if ! base_sha="$(read_base_sha "$base_ref")"; then return 1; fi
+  if [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+    # The queue commit was built on the event base. A live base read that has
+    # moved past it cannot prove this subject, and tree equality alone can
+    # survive such a move (for example an empty commit on main), so require
+    # the two to agree before any content proof runs.
+    if [ -z "${MERGE_GROUP_BASE_SHA:-}" ] || [ "$base_sha" != "${MERGE_GROUP_BASE_SHA}" ]; then
+      echo 'review-readiness: instrument failure: base moved since the queue event; fails closed' >&2
+      return 1
+    fi
+  fi
   # Acquire immutable objects, not tracking refs or a new checkout. Fork
   # heads must be reachable through the base repository's PR objects;
   # an unavailable object is a failure even if cached history looks usable.
@@ -272,7 +282,7 @@ project_pr() {
     printf 'review-readiness: instrument failure: object fetch failed (exit %s)\n' "$input_status" >&2
     return 1
   fi
-  local object observed checkout parents
+  local object observed checkout parents subject_tree merge_tree queue_parent
   for object in "$base_sha" "$head_sha"; do
     if ! observed="$(git rev-parse --verify "${object}^{commit}" 2>/dev/null)" || [ "$observed" != "$object" ]; then
       echo 'review-readiness: instrument failure: fetched commit object did not verify' >&2
@@ -285,8 +295,56 @@ project_pr() {
       echo 'review-readiness: instrument failure: event checkout subject mismatch' >&2
       return 1
     fi
-    if ! parents="$(git rev-list --parents -n 1 "$GITHUB_SHA" 2>/dev/null)" ||
-      [ "$parents" != "$GITHUB_SHA $base_sha $head_sha" ]; then
+    if ! parents="$(git rev-list --parents -n 1 "$GITHUB_SHA" 2>/dev/null)"; then
+      echo 'review-readiness: instrument failure: event synthetic parents unreadable' >&2
+      return 1
+    fi
+    if [ "$parents" = "$GITHUB_SHA $base_sha $head_sha" ]; then
+      : # two-parent merge subject
+    elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+      # A SQUASH queue subject has exactly one parent. Prove the content
+      # instead of the parent identity: G's tree must equal the three-way
+      # merge of the queue base and the reviewed head. The ref/base binding
+      # above already pinned the queue base. A stale, foreign or conflicting
+      # queue commit fails closed.
+      parent_count="$(printf '%s\n' "$parents" | wc -w | tr -d '[:space:]')"
+      if [ "$parent_count" -ne 2 ]; then
+        echo 'review-readiness: instrument failure: squash queue subject must have exactly one parent' >&2
+        return 1
+      fi
+      # The sole parent must be the event base itself. Without this, a commit
+      # built on some other parent whose tree happens to match the merge of
+      # base and head would pass the content proof below. A batched squash
+      # entry is built on the preceding queue commit rather than the event
+      # base, so it lands here too: the payload names only the group, not its
+      # members, so a batch is unprovable and fails closed. The message names
+      # both cases so a batch is not read as a single-PR candidate defect.
+      queue_parent="${parents#* }"
+      if [ "$queue_parent" != "$base_sha" ]; then
+        echo 'review-readiness: instrument failure: squash queue subject parent is not the event base (batched or foreign group); fails closed' >&2
+        return 1
+      fi
+      if ! subject_tree="$(git rev-parse --verify "${GITHUB_SHA}^{tree}" 2>/dev/null)" ||
+        ! valid_commit "$subject_tree"; then
+        echo 'review-readiness: instrument failure: queue subject tree unreadable' >&2
+        return 1
+      fi
+      if ! merge_tree="$(git merge-tree --write-tree "$base_sha" "$head_sha" 2>/dev/null)"; then
+        echo 'review-readiness: instrument failure: three-way merge tree unreadable' >&2
+        return 1
+      fi
+      merge_tree="${merge_tree%%$'\n'*}"
+      if ! valid_commit "$merge_tree" || [ "$subject_tree" != "$merge_tree" ]; then
+        # The merge_group payload names only the group, not its members. A
+        # single-parent G whose tree is not the one-PR three-way merge is
+        # treated as a batched group (or another multi-entry composition)
+        # and fails closed with a distinct reason, so a batch is not
+        # misdiagnosed as a single-PR candidate defect.
+        queue_failure_reason='batched merge group; single-PR proof not applicable'
+        echo "review-readiness: ${queue_failure_reason}" >&2
+        return 1
+      fi
+    else
       echo 'review-readiness: instrument failure: event synthetic parents mismatch' >&2
       return 1
     fi
@@ -479,6 +537,10 @@ resolve_merge_group_pr() {
     return 1
   fi
   resolved="${BASH_REMATCH[2]}"
+  if [ "${BASH_REMATCH[3]}" != "${MERGE_GROUP_BASE_SHA:-}" ]; then
+    echo 'review-readiness: merge group ref base does not equal the event base; fails closed' >&2
+    return 1
+  fi
   if [ -n "${PR_NUMBER:-}" ] && [ "${PR_NUMBER}" != "${resolved}" ]; then
     echo 'review-readiness: conflicting pull request numbers; fails closed' >&2
     return 1
@@ -555,6 +617,7 @@ if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
 elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
   resolved_pr=""
   published_check=0
+  queue_failure_reason=""
   if resolved_pr="$(resolve_merge_group_pr)"; then
     PR_NUMBER="${resolved_pr}"
     project_pr "${PR_NUMBER}" "checks_requested" || overall=1
@@ -563,9 +626,10 @@ elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
   fi
   # A typed failure already published on the queue commit must keep its
   # disposition reason. The generic failure is only for the paths that
-  # returned before any check existed.
+  # returned before any check existed; a batched composition carries its
+  # own distinct reason from project_pr.
   if [ "${overall}" -ne 0 ] && [ "${published_check}" -eq 0 ]; then
-    publish_queue_failure "merge group review-readiness did not prove one exact pull request" || true
+    publish_queue_failure "${queue_failure_reason:-merge group review-readiness did not prove one exact pull request}" || true
   fi
 else
   : "${PR_NUMBER:?PR_NUMBER is required}"
