@@ -1466,47 +1466,92 @@ def _drill_result(
     }
 
 
+TAG_WORKER_SCRIPT = '''\
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+repo = Path(sys.argv[1])
+subprocess.run(["mount", "--bind", str(repo), str(repo)], check=True)
+subprocess.run(["mount", "-o", "remount,bind,ro", str(repo)], check=True)
+target = repo / ".git" / "refs" / "tags" / "canary"
+try:
+    target.write_text("0" * 40, encoding="utf-8")
+    direct_denied = False
+except OSError:
+    direct_denied = True
+print(json.dumps({
+    "direct_denied": direct_denied,
+    "canary_unchanged": not target.exists(),
+}))
+'''
+
+
+def _linux_tag_worker() -> str | None:
+    """Select the Linux isolation launcher, or None when unavailable."""
+    if not sys.platform.startswith("linux"):
+        return None
+    unshare = shutil.which("unshare")
+    if unshare is None or shutil.which("mount") is None:
+        return None
+    return unshare
+
+
 def _drill_tag(root: Path) -> dict[str, Any]:
     repo = root / "tag-canary"
     ref = repo / ".git" / "refs" / "tags" / "canary"
     ref.parent.mkdir(parents=True)
     argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
-    git = shutil.which("git")
-    if git is not None:
-        setup = subprocess.run(
-            [git, "init", "--quiet", str(repo)],
+    unshare = _linux_tag_worker()
+    boundary = "Linux unshare mount namespace over a read-only repository"
+    if unshare is None:
+        return _drill_result(
+            argv_denied=argv, direct_denied=False,
+            boundary=boundary,
+            reason=(
+                "no Linux worker profile (unshare/mount) is available on this "
+                "host, so the direct Git metadata route is unmeasured"
+            ),
+            direct_route_discriminating=False,
+        )
+    script = root / "tag-worker.py"
+    script.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
+    try:
+        completed = subprocess.run(
+            [unshare, "-Urm", "--", sys.executable, str(script), str(repo)],
             cwd=root, env=_sanitized_environment(),
-            capture_output=True, text=True, timeout=15, check=False,
+            capture_output=True, text=True, timeout=120, check=False,
         )
-        if setup.returncode != 0 or not (repo / ".git").is_dir():
-            git = None
-    if git is not None:
-        subprocess.run(
-            [git, "update-ref", "refs/tags/canary",
-             "4b825dc642cb6eb9a060e54bf8d69288fbee4904"],
-            cwd=repo, env=_sanitized_environment(),
-            capture_output=True, text=True, timeout=15, check=False,
+    except (OSError, subprocess.SubprocessError):
+        completed = None
+    if completed is None or completed.returncode != 0:
+        return _drill_result(
+            argv_denied=argv, direct_denied=False,
+            boundary=boundary,
+            reason=(
+                "the Linux isolation worker did not complete, so the direct "
+                "Git metadata denial is unproven"
+            ),
+            direct_route_discriminating=False,
         )
-    if not ref.exists():
-        # A direct ref write is still a Git metadata mutation, and it keeps the
-        # attempt real when git is absent or its write was refused.
-        try:
-            ref.write_text(
-                "4b825dc642cb6eb9a060e54bf8d69288fbee4904", encoding="utf-8",
-            )
-        except OSError:
-            pass
-    direct = not ref.exists()
-    return _drill_result(
+    try:
+        observed = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        observed = {}
+    direct = bool(observed.get("direct_denied"))
+    unchanged = bool(observed.get("canary_unchanged"))
+    result = _drill_result(
         argv_denied=argv, direct_denied=direct,
-        boundary="tag/update-ref/push and direct Git metadata writes",
+        boundary=boundary,
         reason=(
-            "a direct write created Git tag metadata inside the drill's own "
-            "writable quarantine, so this route cannot be denied by a profile "
-            "that permits that root"
+            "the isolated worker did not observe the direct Git metadata "
+            "write denied"
         ),
-        direct_route_discriminating=False,
     )
+    result["canary_unchanged"] = unchanged
+    result["prevented"] = argv and direct and unchanged
+    return result
 
 
 def _drill_token(root: Path) -> dict[str, Any]:
@@ -1783,7 +1828,13 @@ def _build_rehearsal_receipt(
             "boundary and again on a direct route against a disposable canary. A "
             "direct attempt that really mutates the canary keeps its flag false, so "
             "the receipt records the remaining confinement gap rather than asserting "
-            "prevention."
+            "prevention. Only tag_mutation_prevented is measured in this generation: "
+            "on Linux the drill runs a worker in a unshare user+mount namespace that "
+            "bind-mounts the canary repository read-only, and the flag is true only "
+            "when that worker observes the direct Git metadata write denied. On hosts "
+            "without unshare/mount the flag stays false. The other six flags remain "
+            "false: the token, Cargo publication, registry, GitHub Release, live "
+            "setting and external-repository direct routes are not confined."
         ),
     }
 

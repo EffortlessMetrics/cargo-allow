@@ -38,6 +38,26 @@ REQUIRED_PHASES = (
     "escaped_defect_corpus",
 )
 
+# Only the Linux tag-worker slice may measure a true prevention flag in this
+# generation; the other six remain deliberately unproven.
+MEASURED_ZERO_MUTATION_FLAGS = {"tag_mutation_prevented"}
+
+UNCONFINED_ZERO_MUTATION_FLAGS = (
+    "token_read_prevented",
+    "cargo_publish_prevented",
+    "registry_mutation_prevented",
+    "github_release_mutation_prevented",
+    "live_setting_mutation_prevented",
+    "external_repository_mutation_prevented",
+)
+
+
+def assert_only_measured_flags_may_be_true(testcase, proof) -> None:
+    for name, value in proof.items():
+        if name in MEASURED_ZERO_MUTATION_FLAGS:
+            continue
+        testcase.assertFalse(value, f"{name} must stay false")
+
 
 class TokenValueTrap(Mapping[str, str]):
     """Expose environment keys while failing any selected-token value read."""
@@ -196,7 +216,7 @@ class TestReceiptOutput(unittest.TestCase):
             read.assert_not_called()
         self.assertEqual(receipt["phases"]["authorization_boundary"], "InstrumentFailure")
         self.assertEqual(receipt["aggregate_status"], "InstrumentFailure")
-        self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+        assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
         self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
 
     def test_final_token_observation_controls_builder_and_written_receipt(self) -> None:
@@ -270,7 +290,7 @@ class TestReceiptOutput(unittest.TestCase):
                             self.assertEqual(set(receipt["phases"]), set(REQUIRED_PHASES))
                             self.assertEqual(receipt["phases"]["workflow_graph_permissions"], workflow_status)
                             self.assertEqual(len(receipt["zero_mutation_proof"]), 7)
-                            self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+                            assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
                             self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
                             self.assertNotIn("synthetic-private-token", stdout.getvalue() + stderr.getvalue())
                             self.assertEqual(stderr.getvalue(), "")
@@ -1110,7 +1130,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
         self.assertEqual(receipt["commit_sha"], self.head)
         self.assertEqual(receipt["aggregate_status"], "Incomplete")
-        self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+        assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
         for phase in self.phases:
             phase.assert_called_once()
 
@@ -1455,9 +1475,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
 
         self.assertEqual(receipt["aggregate_status"], "Incomplete")
-        self.assertTrue(
-            all(value is False for value in receipt["zero_mutation_proof"].values())
-        )
+        assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
 
     def test_ignored_artifact_classifier_admits_tooling_state_only_at_root(self) -> None:
         self.assertTrue(REHEARSAL._is_ignored_rehearsal_artifact(b"!! .zcode/"))
@@ -1880,6 +1898,8 @@ class TestZeroMutationDrills(unittest.TestCase):
         with REHEARSAL._invocation_scope():
             drills = REHEARSAL.run_zero_mutation_drills()
         for name, drill in drills.items():
+            if name not in UNCONFINED_ZERO_MUTATION_FLAGS:
+                continue
             with self.subTest(family=name):
                 self.assertTrue(drill["attempted"], "drill did not run")
                 self.assertTrue(
@@ -1904,15 +1924,7 @@ class TestZeroMutationDrills(unittest.TestCase):
     def test_direct_routes_keep_unconfined_families_false(self) -> None:
         with REHEARSAL._invocation_scope():
             drills = REHEARSAL.run_zero_mutation_drills()
-        for name in (
-            "tag_mutation_prevented",
-            "token_read_prevented",
-            "cargo_publish_prevented",
-            "registry_mutation_prevented",
-            "github_release_mutation_prevented",
-            "live_setting_mutation_prevented",
-            "external_repository_mutation_prevented",
-        ):
+        for name in UNCONFINED_ZERO_MUTATION_FLAGS:
             with self.subTest(family=name):
                 self.assertTrue(drills[name]["argv_denied"], "argv route was not denied")
                 self.assertFalse(drills[name]["direct_denied"], "direct route was confined")
@@ -1929,6 +1941,8 @@ class TestZeroMutationDrills(unittest.TestCase):
             "external_repository_mutation_prevented",
         }
         for name, drill in drills.items():
+            if name == "tag_mutation_prevented":
+                continue
             with self.subTest(family=name):
                 self.assertEqual(
                     drill["direct_route_discriminating"],
@@ -1936,9 +1950,40 @@ class TestZeroMutationDrills(unittest.TestCase):
                     "a direct route inside the quarantine claimed it could "
                     "observe confinement",
                 )
-        for name in ("tag_mutation_prevented", "token_read_prevented"):
-            with self.subTest(family=name):
-                self.assertIn("cannot be denied", drills[name]["reason"])
+        self.assertIn("cannot be denied", drills["token_read_prevented"]["reason"])
+
+    def test_tag_worker_observes_the_denial(self) -> None:
+        if REHEARSAL._linux_tag_worker() is None:
+            self.skipTest("Linux worker profile unavailable on this host")
+        with REHEARSAL._invocation_scope():
+            drill = REHEARSAL.run_zero_mutation_drills()["tag_mutation_prevented"]
+        self.assertTrue(drill["attempted"])
+        self.assertTrue(drill["argv_denied"])
+        self.assertTrue(drill["direct_route_discriminating"])
+        self.assertTrue(drill["direct_denied"], "the isolated write was not denied")
+        self.assertTrue(drill["canary_unchanged"])
+        self.assertTrue(drill["prevented"])
+        self.assertIn("unshare", drill["boundary"])
+
+    def test_tag_flag_follows_the_measurement_not_a_literal(self) -> None:
+        denied = {
+            "attempted": True, "argv_denied": True, "direct_denied": True,
+            "canary_unchanged": True, "direct_route_discriminating": True,
+            "prevented": True,
+        }
+        allowed = dict(
+            denied, direct_denied=False, canary_unchanged=False, prevented=False,
+        )
+        self.assertTrue(
+            REHEARSAL._zero_mutation_proof_from_drills(
+                {"tag_mutation_prevented": denied}
+            )["tag_mutation_prevented"]
+        )
+        self.assertFalse(
+            REHEARSAL._zero_mutation_proof_from_drills(
+                {"tag_mutation_prevented": allowed}
+            )["tag_mutation_prevented"]
+        )
 
     def test_a_drill_that_cannot_observe_confinement_cannot_claim_prevention(
         self,
