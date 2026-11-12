@@ -1488,14 +1488,29 @@ print(json.dumps({
 '''
 
 
-def _linux_tag_worker() -> str | None:
-    """Select the Linux isolation launcher, or None when unavailable."""
+def _linux_tag_launchers() -> list[tuple[list[str], str]]:
+    """Select Linux isolation launchers, strongest first."""
     if not sys.platform.startswith("linux"):
-        return None
+        return []
     unshare = shutil.which("unshare")
     if unshare is None or shutil.which("mount") is None:
-        return None
-    return unshare
+        return []
+    launchers = [
+        ([unshare, "-Urm", "--"], "unprivileged user+mount namespace"),
+    ]
+    sudo = shutil.which("sudo")
+    if sudo is not None:
+        launchers.append(
+            ([sudo, "-n", unshare, "-rm", "--"],
+             "root mount namespace via passwordless sudo"),
+        )
+    return launchers
+
+
+def _linux_tag_worker() -> str | None:
+    """Select the Linux isolation launcher, or None when unavailable."""
+    launchers = _linux_tag_launchers()
+    return launchers[0][0][0] if launchers else None
 
 
 def _drill_tag(root: Path) -> dict[str, Any]:
@@ -1503,9 +1518,9 @@ def _drill_tag(root: Path) -> dict[str, Any]:
     ref = repo / ".git" / "refs" / "tags" / "canary"
     ref.parent.mkdir(parents=True)
     argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
-    unshare = _linux_tag_worker()
+    launchers = _linux_tag_launchers()
     boundary = "Linux unshare mount namespace over a read-only repository"
-    if unshare is None:
+    if not launchers:
         return _drill_result(
             argv_denied=argv, direct_denied=False,
             boundary=boundary,
@@ -1517,44 +1532,47 @@ def _drill_tag(root: Path) -> dict[str, Any]:
         )
     script = root / "tag-worker.py"
     script.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
-    try:
-        completed = subprocess.run(
-            [unshare, "-Urm", "--", sys.executable, str(script), str(repo)],
-            cwd=root, env=_sanitized_environment(),
-            capture_output=True, text=True, timeout=120, check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        completed = None
-    if completed is None or completed.returncode != 0:
-        detail = "no worker stderr"
-        if completed is not None and completed.stderr.strip():
-            detail = completed.stderr.strip().splitlines()[-1][:200]
-        return _drill_result(
-            argv_denied=argv, direct_denied=False,
-            boundary=boundary,
+    detail = "no worker stderr"
+    for launcher, description in launchers:
+        try:
+            completed = subprocess.run(
+                [*launcher, sys.executable, str(script), str(repo)],
+                cwd=root, env=_sanitized_environment(),
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            completed = None
+        if completed is None or completed.returncode != 0:
+            if completed is not None and completed.stderr.strip():
+                detail = completed.stderr.strip().splitlines()[-1][:200]
+            continue
+        try:
+            observed = json.loads(completed.stdout)
+        except json.JSONDecodeError:
+            detail = "the worker returned no usable observation"
+            continue
+        direct = bool(observed.get("direct_denied"))
+        unchanged = bool(observed.get("canary_unchanged"))
+        result = _drill_result(
+            argv_denied=argv, direct_denied=direct,
+            boundary=f"{boundary} ({description})",
             reason=(
-                "the Linux isolation worker did not complete, so the direct "
-                f"Git metadata denial is unproven: {detail}"
+                "the isolated worker did not observe the direct Git metadata "
+                "write denied"
             ),
-            direct_route_discriminating=False,
         )
-    try:
-        observed = json.loads(completed.stdout)
-    except json.JSONDecodeError:
-        observed = {}
-    direct = bool(observed.get("direct_denied"))
-    unchanged = bool(observed.get("canary_unchanged"))
-    result = _drill_result(
-        argv_denied=argv, direct_denied=direct,
+        result["canary_unchanged"] = unchanged
+        result["prevented"] = argv and direct and unchanged
+        return result
+    return _drill_result(
+        argv_denied=argv, direct_denied=False,
         boundary=boundary,
         reason=(
-            "the isolated worker did not observe the direct Git metadata "
-            "write denied"
+            "the Linux isolation worker did not complete, so the direct "
+            f"Git metadata denial is unproven: {detail}"
         ),
+        direct_route_discriminating=False,
     )
-    result["canary_unchanged"] = unchanged
-    result["prevented"] = argv and direct and unchanged
-    return result
 
 
 def _drill_token(root: Path) -> dict[str, Any]:
@@ -1833,9 +1851,11 @@ def _build_rehearsal_receipt(
             "the receipt records the remaining confinement gap rather than asserting "
             "prevention. Only tag_mutation_prevented is measured in this generation: "
             "on Linux the drill runs a worker in a unshare user+mount namespace that "
-            "bind-mounts the canary repository read-only, and the flag is true only "
-            "when that worker observes the direct Git metadata write denied. On hosts "
-            "without unshare/mount the flag stays false. The other six flags remain "
+            "bind-mounts the canary repository read-only, falling back to a root mount "
+            "namespace via passwordless sudo when unprivileged user namespaces are "
+            "blocked, and the flag is true only when that worker observes the direct "
+            "Git metadata write denied. On hosts without unshare/mount the flag stays "
+            "false. The other six flags remain "
             "false: the token, Cargo publication, registry, GitHub Release, live "
             "setting and external-repository direct routes are not confined."
         ),
