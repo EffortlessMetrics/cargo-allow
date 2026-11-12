@@ -77,7 +77,17 @@ exits non-zero so heavy lanes still run. Lookup failure stays wide and
 exits zero: absence is not proof.
 
 The ruleset contexts (pregate, test, review-readiness,
-frozen-subject-lock), cargo-deny, and the release graph always execute.
+frozen-subject-lock) and cargo-deny always execute. The release graph
+executes unless this plan succeeds as ``docs_only`` with ``narrow=true``
+and every effective and successor path is provably unrelated under the
+release-impact denominator. That denominator is the path rules in
+``crates/allow-report/src/artifacts/release_impact_v1.rs`` plus the
+semantic-owner inventory and the generation-2 package topology, read
+from this checkout (not the git working directory). A parse failure, an
+empty path list, a release-sensitive path, or an unknown path keeps
+``release-impact``, ``release-rehearsal``, and
+``release-rehearsal-required`` executing. The skip is not keyed off
+``narrow`` alone, so a ledger narrow plan still runs them.
 package-smoke executes unless the plan succeeds with class ``docs_only``
 or ``test_only``. Heavy non-required lanes are NotApplicable when this
 plan succeeds with ``narrow=true``. The test_only product lanes above are
@@ -93,6 +103,7 @@ import os
 import re
 import subprocess
 import sys
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -139,6 +150,24 @@ PACKAGE_SMOKE_IF = (
     "${{ !cancelled() && needs.pregate.result == 'success' && "
     "(needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && "
     "needs.proof-route.outputs.class != 'test_only')) }}"
+)
+# Skip the release graph only when proof-route succeeded and recorded that
+# this docs_only plan has no release-affecting path. Any other result,
+# including a failed plan, keeps the jobs. Not keyed off outputs.narrow.
+RELEASE_LANE_JOBS = (
+    "release-impact",
+    "release-rehearsal",
+    "release-rehearsal-required",
+)
+RELEASE_LANES_NOT_APPLICABLE_REASON = "docs_only has no release-affecting path"
+RELEASE_LANES_IF = (
+    "${{ !cancelled() && (needs.proof-route.result != 'success' || "
+    "needs.proof-route.outputs.release_lanes != 'not_applicable') }}"
+)
+RELEASE_REHEARSAL_IF = (
+    "${{ !cancelled() && needs.release-impact.result == 'success' && "
+    "(needs.proof-route.result != 'success' || "
+    "needs.proof-route.outputs.release_lanes != 'not_applicable') }}"
 )
 # Jobs whose test_only skip would hide a change to the scripts they run.
 SKIPPED_TEST_ONLY_JOBS = frozenset({"package-smoke", *TEST_ONLY_SKIP})
@@ -375,6 +404,8 @@ def contract() -> dict[str, object]:
         "test_only_skip": list(TEST_ONLY_SKIP),
         "package_smoke_if": PACKAGE_SMOKE_IF,
         "package_smoke_skip_classes": list(PACKAGE_SMOKE_SKIP_CLASSES),
+        "release_lanes_if": RELEASE_LANES_IF,
+        "release_rehearsal_if": RELEASE_REHEARSAL_IF,
         "always_ci_jobs": [job for job, _reason in ALWAYS_CI],
         "record_only": [job for job, _reason in RECORD_ONLY],
         "narrow_with_pregate": list(NARROW_WITH_PREGATE),
@@ -773,7 +804,400 @@ def decide(
     return "unknown", False
 
 
-def lane_rows(class_name: str, narrow: bool) -> list[dict[str, str]]:
+class ReleaseDenominatorError(Exception):
+    """The release-impact denominator could not be derived."""
+
+
+class _ReleaseRule:
+    def __init__(
+        self,
+        name: str,
+        kind: str,
+        *,
+        exact: str = "",
+        prefix: str = "",
+        needle: str = "",
+        directory: str = "",
+    ) -> None:
+        self.name = name
+        self.kind = kind
+        self.exact = exact
+        self.prefix = prefix
+        self.needle = needle
+        self.directory = directory
+
+    def matches(self, path: str) -> bool:
+        if self.kind == "exact":
+            return path == self.exact
+        if self.kind == "prefix":
+            return path.startswith(self.prefix)
+        if self.kind == "prefix_and_contains":
+            return path.startswith(self.prefix) and self.needle in path
+        if self.kind == "directory_file_contains":
+            if not path.startswith(self.directory):
+                return False
+            return self.needle in path.rsplit("/", 1)[-1]
+        raise ReleaseDenominatorError(f"unrecognized strategy {self.kind}")
+
+
+class _ReleaseDenominator:
+    def __init__(
+        self,
+        sensitive: tuple[_ReleaseRule, ...],
+        unrelated: tuple[_ReleaseRule, ...],
+        governance: tuple[_ReleaseRule, ...],
+        semantic_owner_paths: frozenset[str],
+        package_roots: tuple[str, ...],
+        asset_roots: tuple[str, ...],
+    ) -> None:
+        self.sensitive = sensitive
+        self.unrelated = unrelated
+        self.governance = governance
+        self.semantic_owner_paths = semantic_owner_paths
+        self.package_roots = package_roots
+        self.asset_roots = asset_roots
+
+
+_DENOMINATOR: _ReleaseDenominator | None = None
+_DENOMINATOR_ERROR: ReleaseDenominatorError | None = None
+_RULE_CONSTS = (
+    "RELEASE_SENSITIVE_PATH_RULES_V1",
+    "RELEASE_UNRELATED_PATH_RULES_V1",
+    "RELEASE_UNRESOLVED_GOVERNANCE_RULES_V1",
+)
+_RUST_STRING = re.compile(r'"((?:\\.|[^"\\])*)"')
+
+
+def _strip_rust_comments(text: str) -> str:
+    out: list[str] = []
+    index = 0
+    length = len(text)
+    while index < length:
+        if text.startswith("//", index):
+            newline = text.find("\n", index)
+            if newline < 0:
+                break
+            out.append("\n")
+            index = newline + 1
+            continue
+        if text.startswith("/*", index):
+            end = text.find("*/", index + 2)
+            if end < 0:
+                raise ReleaseDenominatorError("unterminated rust block comment")
+            out.append("\n" * text.count("\n", index, end))
+            index = end + 2
+            continue
+        if text[index] == '"':
+            out.append(text[index])
+            index += 1
+            while index < length:
+                out.append(text[index])
+                if text[index] == "\\" and index + 1 < length:
+                    out.append(text[index + 1])
+                    index += 2
+                    continue
+                if text[index] == '"':
+                    index += 1
+                    break
+                index += 1
+            else:
+                raise ReleaseDenominatorError("unterminated rust string")
+            continue
+        out.append(text[index])
+        index += 1
+    return "".join(out)
+
+
+def _balanced_end(text: str, open_at: int, opener: str, closer: str) -> int:
+    if text[open_at] != opener:
+        raise ReleaseDenominatorError(f"expected {opener}")
+    depth = 0
+    index = open_at
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            index += 1
+            while index < len(text):
+                if text[index] == "\\":
+                    index += 2
+                    continue
+                if text[index] == '"':
+                    index += 1
+                    break
+                index += 1
+            else:
+                raise ReleaseDenominatorError("unterminated rust string")
+            continue
+        if char == opener:
+            depth += 1
+        elif char == closer:
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    raise ReleaseDenominatorError(f"unbalanced {opener}")
+
+
+def _unescape_rust(value: str) -> str:
+    out: list[str] = []
+    index = 0
+    while index < len(value):
+        if value[index] != "\\":
+            out.append(value[index])
+            index += 1
+            continue
+        if index + 1 >= len(value):
+            raise ReleaseDenominatorError("truncated rust string escape")
+        escaped = value[index + 1]
+        mapped = {"n": "\n", "r": "\r", "t": "\t", "\\": "\\", '"': '"', "0": "\0"}
+        if escaped not in mapped:
+            raise ReleaseDenominatorError(f"unsupported rust string escape \\{escaped}")
+        out.append(mapped[escaped])
+        index += 2
+    return "".join(out)
+
+
+def _const_array_body(source: str, name: str) -> str:
+    marker = f"pub const {name}: &[ReleaseImpactPathRuleV1] = &["
+    start = source.find(marker)
+    if start < 0 or source.find(marker, start + len(marker)) >= 0:
+        raise ReleaseDenominatorError(f"{name} is missing or repeated")
+    open_at = start + len(marker) - 1
+    end = _balanced_end(source, open_at, "[", "]")
+    return source[open_at + 1 : end]
+
+
+def _parse_rule(block: str) -> _ReleaseRule:
+    name_match = re.search(r"\bname:\s*" + _RUST_STRING.pattern, block)
+    strategy_at = block.find("strategy:")
+    if name_match is None or strategy_at < 0:
+        raise ReleaseDenominatorError("release-impact rule is missing name or strategy")
+    name = _unescape_rust(name_match.group(1))
+    if not name:
+        raise ReleaseDenominatorError("release-impact rule name is empty")
+    variant = re.match(
+        r"\s*ReleaseImpactPathMatchV1::([A-Za-z0-9]+)",
+        block[strategy_at + len("strategy:") :],
+    )
+    if variant is None:
+        raise ReleaseDenominatorError(f"{name} strategy is not a ReleaseImpactPathMatchV1")
+    kind = variant.group(1)
+    rest = block[strategy_at + len("strategy:") + variant.end() :]
+    if kind in {"Exact", "Prefix"}:
+        literal = re.match(r'\s*\(\s*"((?:\\.|[^"\\])*)"\s*\)', rest)
+        if literal is None:
+            raise ReleaseDenominatorError(f"{name} {kind} literal drifted")
+        value = _unescape_rust(literal.group(1))
+        if kind == "Exact":
+            return _ReleaseRule(name, "exact", exact=value)
+        return _ReleaseRule(name, "prefix", prefix=value)
+    if kind not in {"PrefixAndContains", "DirectoryFileContains"}:
+        raise ReleaseDenominatorError(f"{name} uses unrecognized strategy {kind}")
+    brace = re.match(r"\s*\{", rest)
+    if brace is None:
+        raise ReleaseDenominatorError(f"{name} {kind} body drifted")
+    open_at = brace.end() - 1
+    body = rest[open_at + 1 : _balanced_end(rest, open_at, "{", "}")]
+    fields = {
+        key: _unescape_rust(value)
+        for key, value in re.findall(r"(\w+)\s*:\s*" + _RUST_STRING.pattern, body)
+    }
+    expected = {"prefix", "needle"} if kind == "PrefixAndContains" else {"directory", "needle"}
+    if set(fields) != expected:
+        raise ReleaseDenominatorError(f"{name} {kind} fields drifted: {sorted(fields)}")
+    if kind == "PrefixAndContains":
+        return _ReleaseRule(
+            name,
+            "prefix_and_contains",
+            prefix=fields["prefix"],
+            needle=fields["needle"],
+        )
+    return _ReleaseRule(
+        name,
+        "directory_file_contains",
+        directory=fields["directory"],
+        needle=fields["needle"],
+    )
+
+
+def _parse_rules(body: str, const_name: str) -> tuple[_ReleaseRule, ...]:
+    rules: list[_ReleaseRule] = []
+    cursor = 0
+    while True:
+        at = body.find("ReleaseImpactPathRuleV1", cursor)
+        if at < 0:
+            break
+        brace = re.match(r"\s*\{", body[at + len("ReleaseImpactPathRuleV1") :])
+        if brace is None:
+            raise ReleaseDenominatorError(f"{const_name} rule opener drifted")
+        open_at = at + len("ReleaseImpactPathRuleV1") + brace.end() - 1
+        end = _balanced_end(body, open_at, "{", "}")
+        rules.append(_parse_rule(body[open_at + 1 : end]))
+        cursor = end + 1
+    declared = len(re.findall(r"ReleaseImpactPathRuleV1\s*\{", body))
+    if not rules or declared != len(rules):
+        raise ReleaseDenominatorError(f"{const_name} parsed {len(rules)} of {declared} rules")
+    return tuple(rules)
+
+
+def _load_release_denominator(root: Path) -> _ReleaseDenominator:
+    rules_path = root / "crates" / "allow-report" / "src" / "artifacts" / "release_impact_v1.rs"
+    try:
+        source = _strip_rust_comments(rules_path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise ReleaseDenominatorError(f"release-impact rules are unreadable: {error}") from error
+    found = re.findall(
+        r"pub const (RELEASE_[A-Z0-9_]+): &\[ReleaseImpactPathRuleV1\]",
+        source,
+    )
+    if found != list(_RULE_CONSTS):
+        raise ReleaseDenominatorError(f"release-impact path-rule consts drifted: {found}")
+    sensitive = _parse_rules(_const_array_body(source, _RULE_CONSTS[0]), _RULE_CONSTS[0])
+    unrelated = _parse_rules(_const_array_body(source, _RULE_CONSTS[1]), _RULE_CONSTS[1])
+    governance = _parse_rules(_const_array_body(source, _RULE_CONSTS[2]), _RULE_CONSTS[2])
+    identity_path = root / "policy" / "release-identity-consumers.toml"
+    topology_path = root / "policy" / "product-package-topology-v2.toml"
+    try:
+        with identity_path.open("rb") as handle:
+            identity = tomllib.load(handle)
+        with topology_path.open("rb") as handle:
+            topology = tomllib.load(handle)
+    except (OSError, tomllib.TOMLDecodeError) as error:
+        raise ReleaseDenominatorError(f"release-impact policy is unreadable: {error}") from error
+    if identity.get("schema") != "cargo-allow.release-identity-consumers.v1":
+        raise ReleaseDenominatorError("release-identity consumers schema drifted")
+    consumers = identity.get("consumers", [])
+    if not isinstance(consumers, list):
+        raise ReleaseDenominatorError("release-identity consumers are not a list")
+    semantic: set[str] = set()
+    for row in consumers:
+        if not isinstance(row, dict) or not isinstance(row.get("path"), str) or row["path"] == "":
+            raise ReleaseDenominatorError("release-identity consumer path drifted")
+        semantic.add(row["path"])
+    if (
+        topology.get("schema_version") != "2.0"
+        or topology.get("authority_generation") != 2
+        or not isinstance(topology.get("package"), list)
+    ):
+        raise ReleaseDenominatorError("package topology generation drifted")
+    package_roots: set[str] = set()
+    asset_roots: set[str] = set()
+    for row in topology["package"]:
+        if not isinstance(row, dict) or not isinstance(row.get("publish"), bool):
+            raise ReleaseDenominatorError("package topology publish flag drifted")
+        if not row["publish"]:
+            continue
+        name = row.get("cargo_package_name")
+        if not isinstance(name, str) or name == "" or "/" in name or "\\" in name or name in {".", ".."}:
+            raise ReleaseDenominatorError("published package name drifted")
+        package_roots.add(f"crates/{name}/")
+        assets = row.get("asset_roots", [])
+        if not isinstance(assets, list):
+            raise ReleaseDenominatorError("package asset_roots drifted")
+        for asset_root in assets:
+            if not isinstance(asset_root, str) or asset_root == "":
+                raise ReleaseDenominatorError("package asset root drifted")
+            package_roots_prefix = asset_root.rstrip("/")
+            asset_roots.add(f"{package_roots_prefix}/")
+    return _ReleaseDenominator(
+        sensitive,
+        unrelated,
+        governance,
+        frozenset(semantic),
+        tuple(sorted(package_roots)),
+        tuple(sorted(asset_roots)),
+    )
+
+
+def release_denominator() -> _ReleaseDenominator:
+    """Return the checked release-impact denominator from this checkout."""
+    global _DENOMINATOR, _DENOMINATOR_ERROR
+    if _DENOMINATOR is not None:
+        return _DENOMINATOR
+    if _DENOMINATOR_ERROR is not None:
+        raise _DENOMINATOR_ERROR
+    try:
+        _DENOMINATOR = _load_release_denominator(repo_root())
+    except ReleaseDenominatorError as error:
+        _DENOMINATOR_ERROR = error
+        raise
+    return _DENOMINATOR
+
+
+def release_path_decision(path: str) -> str:
+    """Return release_sensitive, unrelated, or unknown for one path.
+
+    Order matches ``decide_path`` in release_impact_v1.rs. Rehearsal is
+    required unless the result is unrelated.
+    """
+    denominator = release_denominator()
+    for rule in denominator.sensitive:
+        if rule.matches(path):
+            return "release_sensitive"
+    if path in denominator.semantic_owner_paths:
+        return "release_sensitive"
+    for root in denominator.package_roots:
+        if path.startswith(root):
+            return "release_sensitive"
+    for root in denominator.asset_roots:
+        if path.startswith(root):
+            return "release_sensitive"
+    for rule in denominator.governance:
+        if rule.matches(path):
+            return "unknown"
+    for rule in denominator.unrelated:
+        if rule.matches(path):
+            return "unrelated"
+    return "unknown"
+
+
+def release_lane_decision(
+    class_name: str,
+    narrow: bool,
+    effective_paths: object,
+    successor_paths: object,
+) -> str:
+    """Return not_applicable only for an unrelated docs_only narrow plan."""
+    if class_name != "docs_only" or not narrow:
+        return "execute"
+    paths: list[str] = []
+    for group in (effective_paths, successor_paths):
+        if not isinstance(group, list):
+            return "execute"
+        for path in group:
+            if not isinstance(path, str) or path == "":
+                return "execute"
+            paths.append(path)
+    if not paths:
+        return "execute"
+    try:
+        decisions = [release_path_decision(path) for path in paths]
+    except ReleaseDenominatorError:
+        return "execute"
+    if all(decision == "unrelated" for decision in decisions):
+        return "not_applicable"
+    return "execute"
+
+
+def release_lanes_output(plan: dict[str, object]) -> str:
+    lanes = plan.get("lanes")
+    if not isinstance(lanes, list):
+        return "execute"
+    decisions: dict[object, object] = {}
+    for row in lanes:
+        if isinstance(row, dict):
+            decisions[row.get("id")] = row.get("decision")
+    values = [decisions.get(job) for job in RELEASE_LANE_JOBS]
+    if values and all(value == "not_applicable" for value in values):
+        return "not_applicable"
+    return "execute"
+
+
+def lane_rows(
+    class_name: str,
+    narrow: bool,
+    release_lanes: str = "execute",
+) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     ordered = [
         ALWAYS_CI[0],
@@ -782,6 +1206,15 @@ def lane_rows(class_name: str, narrow: bool) -> list[dict[str, str]]:
         *ALWAYS_CI[2:],
     ]
     for job, reason in ordered:
+        if job in RELEASE_LANE_JOBS and release_lanes == "not_applicable":
+            rows.append(
+                {
+                    "id": job,
+                    "decision": "not_applicable",
+                    "reason": RELEASE_LANES_NOT_APPLICABLE_REASON,
+                }
+            )
+            continue
         if job == "package-smoke" and class_name in PACKAGE_SMOKE_SKIP_CLASSES:
             rows.append(
                 {
@@ -843,7 +1276,11 @@ def build_plan(
         "successor_before": successor_before,
         "successor_paths": successor_paths,
         "effective_paths": effective_paths,
-        "lanes": lane_rows(class_name, narrow),
+        "lanes": lane_rows(
+            class_name,
+            narrow,
+            release_lane_decision(class_name, narrow, effective_paths, successor_paths),
+        ),
     }
     if narrow and proof_identity is not None:
         plan["proof_identity"] = proof_identity
@@ -1687,6 +2124,7 @@ def emit(plan: dict[str, object]) -> None:
         with open(output, "a", encoding="utf-8", newline="\n") as handle:
             handle.write(f"narrow={narrow}\n")
             handle.write(f"class={plan['class']}\n")
+            handle.write(f"release_lanes={release_lanes_output(plan)}\n")
 
 
 def main(argv: list[str]) -> int:
