@@ -12,6 +12,8 @@ name: Review readiness
 # review-readiness check run itself.
 
 on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft, edited]
   push:
     branches: [main]
   # The queue commit has no pull_request payload. The adapter resolves

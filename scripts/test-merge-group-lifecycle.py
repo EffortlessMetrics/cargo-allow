@@ -41,10 +41,10 @@ def triggers(workflow):
 
 def check_queue_root(workflow):
     events = triggers(workflow)
-    # The queue root must publish on merge_group; push and workflow_dispatch
-    # are retained for main health and explicit deep runs.
+    # The queue root must publish on merge_group; pull_request, push and
+    # workflow_dispatch are retained for the first queue landing and main health.
     assert "merge_group" in events, events
-    assert set(events) <= {"merge_group", "push", "workflow_dispatch"}, events
+    assert set(events) <= {"merge_group", "pull_request", "push", "workflow_dispatch"}, events
     assert events["merge_group"]["types"] == ["checks_requested"]
     assert events["merge_group"]["branches"] == ["main"]
     for job in workflow["jobs"].values():
@@ -257,10 +257,14 @@ class WorkflowWiringTests(unittest.TestCase):
                 check_queue_root(self.workflows[name])
 
     def test_no_development_or_periodic_wrapper_survives(self):
+        # Step 1 keeps pull_request alongside merge_group for the first queue
+        # landing; the queue roots and sentinel are the deliberate exceptions.
+        step_one_roots = set(QUEUE_ROOTS) | {"review-readiness.yml"}
         for name, workflow in self.workflows.items():
             with self.subTest(workflow=name):
                 events = triggers(workflow)
-                self.assertFalse(DEVELOPMENT_EVENTS & set(events))
+                if name not in step_one_roots:
+                    self.assertFalse(DEVELOPMENT_EVENTS & set(events))
                 self.assertNotIn("schedule", events)
                 if "push" in events:
                     if name == "release.yml":
@@ -268,14 +272,14 @@ class WorkflowWiringTests(unittest.TestCase):
                     elif name == "release-authorized.yml":
                         self.assertEqual(events["push"], {"branches": ["main"],
                             "paths": ["release/authorize-v0.2.0.json"]})
-                    elif name in {"ci.yml", "review-readiness.yml"}:
+                    elif name in {"ci.yml", "review-readiness.yml", "sentinel.yml"}:
                         self.assertEqual(events["push"], {"branches": ["main"]})
                     else:
                         self.fail(f"ordinary push workflow survives: {name}")
 
-    def test_regression_control_detects_PR_trigger_and_bare_head_checkout(self):
+    def test_regression_control_detects_missing_merge_group_and_bare_head_checkout(self):
         workflow = copy.deepcopy(self.workflows["ci.yml"])
-        workflow["on"]["pull_request"] = {"types": ["ready_for_review"]}
+        del workflow["on"]["merge_group"]
         with self.assertRaises(AssertionError):
             check_queue_root(workflow)
         workflow = copy.deepcopy(self.workflows["ci.yml"])

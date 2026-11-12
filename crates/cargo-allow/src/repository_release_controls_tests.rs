@@ -29,9 +29,11 @@ fn repository_release_controls_retain_the_typed_context_without_an_actions_wrapp
         workflow.contains("  merge_group:"),
         "the required review-readiness context must still publish for the queue"
     );
+    // Step 1 keeps the pull_request trigger alongside merge_group until one
+    // real queue run and landing are observed.
     assert!(
-        !workflow.contains("  pull_request:"),
-        "ordinary pull_request events must not allocate the review-readiness wrapper"
+        workflow.contains("  pull_request:"),
+        "the review-readiness wrapper stays on pull_request for the first queue landing"
     );
 }
 
@@ -47,11 +49,13 @@ fn repository_release_controls_allocate_ordinary_work_only_for_merge_groups() {
         let workflow = read_workspace_file(&root, path);
         assert!(workflow.contains("  merge_group:"), "{path}");
         assert!(workflow.contains("types: [checks_requested]"), "{path}");
-        assert!(!workflow.contains("  pull_request:"), "{path}");
+        // Step 1 keeps the pull_request trigger alongside merge_group until
+        // one real queue run and landing are observed.
+        assert!(workflow.contains("  pull_request:"), "{path}");
         assert!(!workflow.contains("  pull_request_target:"), "{path}");
-        // ci.yml keeps the main push proof; the other queue roots stay
-        // merge_group-only.
-        if path != ".github/workflows/ci.yml" {
+        // ci.yml and sentinel.yml keep the main push proof; the other queue
+        // roots stay merge_group-only.
+        if path != ".github/workflows/ci.yml" && path != ".github/workflows/sentinel.yml" {
             assert!(!workflow.contains("  push:"), "{path}");
         }
     }

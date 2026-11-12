@@ -4,6 +4,7 @@ name: Frozen subject lock
 # explicit invalidation must not merge. Read-only: evaluation only.
 
 on:
+  pull_request:
   # Same required context on a merge queue. The job checks out the
   # event SHA, which for merge_group is the queue commit. No skip path
   # is added. This trigger does not enable a queue.
