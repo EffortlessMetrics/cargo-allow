@@ -6,47 +6,46 @@
   "base_ref": "main",
   "base_sha": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
   "head_ref": "ci/4602-merge-queue-only-20261104",
-  "head_sha": "59c72f9769e844cd7d71a743964e9c7f9b5ba79e",
+  "head_sha": "d25be48c7734c0504c388464c50b6f1bf0aece60",
   "merge_base": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
-  "reviewed_diff_digest": "sha256:v2:734a4f624a8bd5080ece63894b9b5995a92c2372a16af4e76823b4b8f702c7e2",
+  "reviewed_diff_digest": "sha256:v2:a237378e14829a77512aef4118d983b40f50e61715c0e9a6c64f133dce1d42ef",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4744 at 03412050b3205e522c363417a7e6f79eff6ef596 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. Verified the policy-change pair resolution, the five retained pull_request/merge_group trigger pairs, the regenerated direct-floor receipts, and the merge packet; found one blocking sentinel concurrency regression. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4744 at d25be48c7734c0504c388464c50b6f1bf0aece60 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. Re-reviewed after the sentinel concurrency fix and the core/release frozen-subject invalidation record; verified the policy-change pair resolution, the five retained pull_request/merge_group trigger pairs, the regenerated direct-floor receipts, and the merge packet. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4744#issuecomment-6824416994. review cargo-allow non-author oppositional exact-head model review of head 03412050b3205e522c363417a7e6f79eff6ef596. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4744#issuecomment-6824605587. review cargo-allow non-author oppositional exact-head model review of head d25be48c7734c0504c388464c50b6f1bf0aece60. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
-  "claimed_verdict": "review_blocked",
+  "claimed_verdict": "review_clean",
   "findings": [
     {
       "id": "sentinel-concurrency-collision",
-      "severity": "blocking",
+      "severity": "advisory",
       "owned_seam": "sentinel workflow concurrency",
       "source_path": ".github/workflows/sentinel.yml",
       "source_line": 22,
-      "repair_route": "Restore a per-PR/ref fallback: group: workflow-sentinel-${{ github.event.merge_group.head_sha || github.event.pull_request.number || github.ref }}. The workflow retains pull_request and push:main until step 2, so the group must be unique on those events.",
-      "claim_boundary": "On pull_request and push:main, github.event.merge_group is null, so the group is workflow-sentinel- for every run; cancel-in-progress: true then cancels unrelated sentinel runs. The sentinel check is not in the required-status-check set, but the regression is real and unrepaired."
+      "repair_route": "Repaired at d25be48c: group: workflow-sentinel-${{ github.event.merge_group.head_sha || github.event.pull_request.number || github.ref }}. The workflow retains pull_request and push:main until step 2, so the group is unique on those events.",
+      "claim_boundary": "The blocking form was present at 03412050 (group workflow-sentinel- for every PR/push, cancel-in-progress cancelling unrelated runs). The fix is present at d25be48c; the sentinel check is not in the required-status-check set."
     }
   ],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4744",
-    "Reviewed pair base/merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, head 03412050b3205e522c363417a7e6f79eff6ef596, digest sha256:v2:414da347db661d284cbd5ee1c79cf94ac1a1f1adb631bb7178042f57efd661a9.",
-    "Bootstrap disposition commit 59c72f9769e844cd7d71a743964e9c7f9b5ba79e (tree 5b466616b125a469988c4e59383d32e2868ff598): two exact-path non_rust_file allows, allow-4744-review-disposition (path and glob .allow/review-dispositions/pr-4744.json, target_fingerprint json) and allow-4744-review-revision (path and glob .allow/revisions/4744-review-disposition.toml, target_fingerprint toml); no directory glob and no widening of any other policy entry. The added_allow revision note recomputes to sha256:v1:1fd5ea134618cfc860f7d63a0116e44d895eb0b77dc233bc16333895985db7b7 and sha256:v1:203553038338235622a6606a1f1ff694cb3301c5e1eed38f95b12c6250ad999b. The final commit is disposition-only and is admitted by the ancestor fallback.",
-    "Thread PRRT_kwDOSnyN3s62njuX (.github/workflows/sentinel.yml:22): confirmed the concurrency regression; replied r4550803537; kept open as the blocking finding.",
+    "Reviewed pair base/merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, head d25be48c7734c0504c388464c50b6f1bf0aece60, digest sha256:v2:a237378e14829a77512aef4118d983b40f50e61715c0e9a6c64f133dce1d42ef.",
+    "Thread PRRT_kwDOSnyN3s62njuX (.github/workflows/sentinel.yml:22): the concurrency regression was confirmed at 03412050 and repaired at d25be48c; replied r4550803537 and the repair reply; resolved.",
     "Thread PRRT_kwDOSnyN3s62njxJ (scripts/merge-group-subject.py:99): invalid premise; queue-qualification runs only on merge_group and scripts/ci-proof-route.py:796-797 returns (full_boundary, false) for every non-pull_request event, so the required lanes are not skipped for narrow/docs_only/test_only; replied r4550803551 and resolved.",
-    "Thread PRRT_kwDOSnyN3s62d6MB (.github/workflows/frozen-subject-lock.yml:25): owner obligation; the missing record is an explicit invalidation under .allow/frozen-subject-lock/invalidations/ naming the owning team, the reason, and frozen commit 63248416c2bd73edd63e22f064a1f242afcc0622, plus the refreeze after merge; #4777 tracks it but does not satisfy it; replied r4550803528; kept open for the owner.",
+    "Thread PRRT_kwDOSnyN3s62d6MB (.github/workflows/frozen-subject-lock.yml:25): the missing explicit invalidation record is now present at .allow/frozen-subject-lock/invalidations/20261112-4744-merge-group-trigger.json, recorded_by core/release, frozen commit 63248416c2bd73edd63e22f064a1f242afcc0622; the refreeze remains a post-merge obligation tracked by #4777; replied and resolved.",
     "The five workflows with both pull_request and merge_group triggers are ci.yml, frozen-subject-lock.yml, review-readiness.yml, sentinel.yml, and ub-review.yml; all five retain both.",
     "The policy-change step has no event_name gate: QUEUE_BASE_SHA = pull_request.base.sha || merge_group.base_sha || event.before; QUEUE_HEAD_SHA = pull_request.head.sha || merge_group.head_sha || github.sha; it skips only on an empty or all-zeros base. The step is byte-identical to 1bd05dbe, where the hosted pull_request test job passed it.",
-    "The regenerated direct-floor receipts match the merged tree: pregate's Retained direct-floor freshness step and msrv's MSRV fast cargo-allow package proof both succeeded on 03412050.",
-    "The merge brought no unrelated source: the diff 3e1d3fab..03412050 is the cutover packet (workflows, scripts, docs, policy, receipts, schema, tests).",
-    "At review time the test job was still waiting on package-smoke, so the policy-change step is not yet observed on this exact head; the step is unchanged from the head where it was observed green."
+    "The regenerated direct-floor receipts match the merged tree: pregate's Retained direct-floor freshness step and msrv's MSRV fast cargo-allow package proof both succeeded on 03412050; the d25be48c movement touches only sentinel.yml, the invalidation record, and policy/allow.toml, not crates/ or the receipts.",
+    "The merge brought no unrelated source: the diff 3e1d3fab..d25be48c is the cutover packet (workflows, scripts, docs, policy, receipts, schema, tests) plus the review-ledger and invalidation records.",
+    "Bootstrap disposition commit 59c72f9769e844cd7d71a743964e9c7f9b5ba79e (tree 5b466616b125a469988c4e59383d32e2868ff598): two exact-path non_rust_file allows, allow-4744-review-disposition (path and glob .allow/review-dispositions/pr-4744.json, target_fingerprint json) and allow-4744-review-revision (path and glob .allow/revisions/4744-review-disposition.toml, target_fingerprint toml); no directory glob and no widening of any other policy entry. The added_allow revision note recomputes to sha256:v1:1fd5ea134618cfc860f7d63a0116e44d895eb0b77dc233bc16333895985db7b7 and sha256:v1:203553038338235622a6606a1f1ff694cb3301c5e1eed38f95b12c6250ad999b. The final commit is disposition-only and is admitted by the ancestor fallback."
   ],
   "required_ci": {
-    "owner": "PR #4744 orchestrator: fix the sentinel concurrency group, then re-review; verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection. This record does not mark Ready or merge.",
+    "owner": "PR #4744 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
     "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43221033031"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4744",
-  "reviewed_at_utc": "2026-11-12T13:07:25Z"
+  "reviewed_at_utc": "2026-11-12T13:12:00Z"
 }
