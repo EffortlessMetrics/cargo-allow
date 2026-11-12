@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: workflow-sentinel-${{ github.event.merge_group.head_sha }}
+  group: workflow-sentinel-${{ github.event.merge_group.head_sha || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
