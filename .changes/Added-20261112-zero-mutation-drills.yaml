@@ -2,8 +2,8 @@ kind: Added
 body: >-
   Add reversible quarantine drills for the seven zero-mutation families in the
   release rehearsal. Each family is attempted through the selected invocation
-  boundary and again from a child process on a direct route against a
-  disposable canary, and the receipt derives its prevention flags from those
-  executed results instead of literals. A direct child that really mutates the
-  canary keeps its flag false, so the drill is a discriminating attempt rather
-  than a fixed observation.
+  boundary and again on a direct route against a disposable canary, and the
+  receipt derives its prevention flags from those executed results instead of
+  literals. A direct attempt that really mutates the canary keeps its flag
+  false, so the drill is a discriminating attempt rather than a fixed
+  observation.

@@ -1427,33 +1427,16 @@ class _RecordingEndpoint:
         self._thread.join(timeout=5)
 
 
-def _direct_child(root: Path, marker: Path, body: str) -> str:
-    """Run one direct-route attempt and return the child's final marker state.
+def _direct_socket_denied(port: int) -> bool:
+    """Attempt one direct socket write; True when the connection was refused."""
+    import socket
 
-    The child records ``started`` before the attempt and its own outcome after
-    it, so a process that never reached the attempt (a refused or instrumented
-    child) cannot be read as a denial. The child is the positive control: when
-    the host does not confine it, the effect really happens and the drill
-    records that it was not prevented.
-    """
-    script = (
-        "import pathlib\n"
-        f"m = pathlib.Path({str(marker)!r})\n"
-        "m.write_text('started')\n"
-        + body
-    )
     try:
-        subprocess.run(
-            [sys.executable, "-c", script],
-            cwd=root, env=_sanitized_environment(),
-            capture_output=True, text=True, timeout=15, check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return "refused"
-    try:
-        return marker.read_text(encoding="utf-8")
+        with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
+            connection.sendall(b"mutation")
+        return False
     except OSError:
-        return "absent"
+        return True
 
 
 def _drill_result(
@@ -1490,36 +1473,26 @@ def _drill_tag(root: Path) -> dict[str, Any]:
         )
         if setup.returncode != 0 or not (repo / ".git").is_dir():
             git = None
-    if git is not None:
-        attempt = (
-            "import subprocess\n"
-            "try:\n"
-            f"    subprocess.run([{git!r},'update-ref','refs/tags/canary',\n"
-            "        '4b825dc642cb6eb9a060e54bf8d69288fbee4904'], check=True)\n"
-            "except (OSError, subprocess.SubprocessError):\n"
-            "    m.write_text('denied')\n"
-            "else:\n"
-            "    m.write_text('written')\n"
-        )
-    else:
-        # No git on PATH: a direct ref write is still a Git metadata mutation.
-        attempt = (
-            "import pathlib\n"
-            "try:\n"
-            f"    pathlib.Path({str(ref)!r}).write_text(\n"
-            "        '4b825dc642cb6eb9a060e54bf8d69288fbee4904')\n"
-            "except OSError:\n"
-            "    m.write_text('denied')\n"
-            "else:\n"
-            "    m.write_text('written')\n"
-        )
-    state = _direct_child(repo, root / "tag-attempt", attempt)
-    attempted = state in {"written", "denied"}
-    direct = state == "denied" and not ref.exists()
+    try:
+        if git is not None:
+            subprocess.run(
+                [git, "update-ref", "refs/tags/canary",
+                 "4b825dc642cb6eb9a060e54bf8d69288fbee4904"],
+                cwd=repo, env=_sanitized_environment(),
+                capture_output=True, text=True, timeout=15, check=False,
+            )
+        else:
+            # No git on PATH: a direct ref write is still a Git metadata mutation.
+            ref.write_text(
+                "4b825dc642cb6eb9a060e54bf8d69288fbee4904", encoding="utf-8",
+            )
+    except OSError:
+        pass
+    direct = not ref.exists()
     return _drill_result(
-        argv_denied=argv, direct_denied=direct, attempted=attempted,
+        argv_denied=argv, direct_denied=direct,
         boundary="tag/update-ref/push and direct Git metadata writes",
-        reason="a direct child wrote Git tag metadata in the quarantine",
+        reason="a direct write created Git tag metadata in the quarantine",
     )
 
 
@@ -1533,23 +1506,16 @@ def _drill_token(root: Path) -> dict[str, Any]:
         "token-read", [sys.executable, "-c", "print(1)"], root,
     )
     filtered = CARGO_TOKEN_ENV not in child_env
-    state = _direct_child(
-        root, root / "token-read",
-        "import pathlib\n"
-        "try:\n"
-        f"    pathlib.Path({str(token_file)!r}).read_text()\n"
-        "except OSError:\n"
-        "    m.write_text('denied')\n"
-        "else:\n"
-        "    m.write_text('read')\n",
-    )
-    attempted = state in {"read", "denied"}
-    direct = state == "denied"
+    try:
+        with token_file.open("rb") as handle:
+            handle.read(1)
+        direct = False
+    except OSError:
+        direct = True
     result = _drill_result(
         argv_denied=boundary and filtered, direct_denied=direct,
-        attempted=attempted,
         boundary="selected token environment entry and child environment",
-        reason="a direct child read the token canary outside the selected boundary",
+        reason="a direct read retrieved the token canary outside the selected boundary",
     )
     result["environment_filtered"] = filtered
     return result
@@ -1561,25 +1527,13 @@ def _drill_network(
     endpoint = _RecordingEndpoint()
     try:
         argv = _argv_denied(operation, command, root)
-        state = _direct_child(
-            root, root / f"{operation}-attempt",
-            "import socket\n"
-            "try:\n"
-            f"    s = socket.create_connection(('127.0.0.1',{endpoint.port}), timeout=2)\n"
-            "    s.sendall(b'mutation')\n"
-            "    s.close()\n"
-            "except OSError:\n"
-            "    m.write_text('denied')\n"
-            "else:\n"
-            "    m.write_text('sent')\n",
-        )
+        direct = _direct_socket_denied(endpoint.port)
     finally:
         endpoint.close()
     canary_unchanged = not endpoint.received
-    attempted = state in {"sent", "denied"}
     result = _drill_result(
-        argv_denied=argv, direct_denied=state == "denied" and canary_unchanged,
-        attempted=attempted, boundary=boundary, reason=reason,
+        argv_denied=argv, direct_denied=direct and canary_unchanged,
+        boundary=boundary, reason=reason,
     )
     result["canary_unchanged"] = canary_unchanged
     result["prevented"] = result["prevented"] and canary_unchanged
@@ -1593,24 +1547,17 @@ def _drill_external(root: Path) -> dict[str, Any]:
             "external-repository-mutation", ["git", "push", "origin", "HEAD"], root,
         )
         canary = outside / "canary"
-        state = _direct_child(
-            root, root / "external-attempt",
-            "import pathlib\n"
-            "try:\n"
-            f"    pathlib.Path({str(canary)!r}).write_text('mutated')\n"
-            "except OSError:\n"
-            "    m.write_text('denied')\n"
-            "else:\n"
-            "    m.write_text('written')\n",
-        )
-        attempted = state in {"written", "denied"}
-        direct = state == "denied" and not canary.exists()
+        try:
+            canary.write_text("mutated", encoding="utf-8")
+        except OSError:
+            pass
+        direct = not canary.exists()
     finally:
         shutil.rmtree(outside, ignore_errors=True)
     return _drill_result(
-        argv_denied=argv, direct_denied=direct, attempted=attempted,
+        argv_denied=argv, direct_denied=direct,
         boundary="remote push and writes outside owned roots",
-        reason="a direct child wrote outside the owned root",
+        reason="a direct write created a file outside the owned root",
     )
 
 
@@ -1618,10 +1565,10 @@ def run_zero_mutation_drills() -> dict[str, dict[str, Any]]:
     """Exercise each mutation family in a disposable quarantine.
 
     Each drill attempts the forbidden effect through the rehearsal's selected
-    invocation boundary and again from a child process on a direct route, then
-    observes a disposable canary. A family is prevented only when both routes
-    are denied and the canary is unchanged. The drills do not create a
-    sandbox: a direct child that really mutates the canary keeps its flag
+    invocation boundary and again on a direct route from the rehearsal process,
+    then observes a disposable canary. A family is prevented only when both
+    routes are denied and the canary is unchanged. The drills do not create a
+    sandbox: a direct attempt that really mutates the canary keeps its flag
     false, and that successful attempt is the positive control proving the
     drill is discriminating rather than vacuous.
     """
@@ -1807,10 +1754,10 @@ def _build_rehearsal_receipt(
             "prevention remain unproven, so the aggregate cannot satisfy a release gate. "
             "The zero_mutation_proof flags are derived from executed quarantine "
             "drills: each family is attempted through the selected invocation "
-            "boundary and again from a child process on a direct route against a "
-            "disposable canary. A direct child that really mutates the canary keeps "
-            "its flag false, so the receipt records the remaining confinement gap "
-            "rather than asserting prevention."
+            "boundary and again on a direct route against a disposable canary. A "
+            "direct attempt that really mutates the canary keeps its flag false, so "
+            "the receipt records the remaining confinement gap rather than asserting "
+            "prevention."
         ),
     }
 
