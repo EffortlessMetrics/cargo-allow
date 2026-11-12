@@ -252,7 +252,7 @@ When `review-current-head` identifies a merge-blocking defect:
 - submit the review findings with exact base/head and merge-base identities;
 - if enqueued, withdraw the native queue entry and read back its outcome; a
   separate read/remove is not atomic, so record actual M if landing won;
-- **convert the PR to draft in the same review pass** (`gh pr ready --undo`);
+- **convert the PR to draft immediately in the same review pass** (`gh pr ready --undo`);
   Draft alone is not proof that an in-flight entry was withdrawn;
 - post the smallest actionable repair packet for the author/writer;
 - do not mark the PR ready merely because CI turns green or the author claims the defect is resolved;
@@ -280,8 +280,8 @@ manual review pause. New blocking findings at unchanged H revoke authority and
 require withdrawal/readback; report any landing race honestly. Missing, stale,
 failed, cancelled, malformed or silently skipped evidence is not green.
 
-Review readiness is not queue admission; admission is not a qualification result;
-merge is not objective closeout. The owner reads back M and reconciles evidence,
+Green CI alone is not merge readiness. Review readiness is not queue admission;
+admission is not a qualification result; merge is not objective closeout. The owner reads back M and reconciles evidence,
 acceptance and residual work without routine main replay. Follow
 `docs/ci/merge-queue-cutover.md`; source changes alone do not activate the route.
 
