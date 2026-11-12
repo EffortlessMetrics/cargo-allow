@@ -13,3 +13,9 @@ allow_ids = ["allow-merge-group-checkout-refs-test"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:d1ba00131f415a0571d0513e2b296d90c4685599c6fb1d2607bbc5fdb18077ca"
 reason = "Retain the guard's positive/negative characterization; test-only and does not execute the guard against live workflows."
+
+[[records]]
+allow_ids = ["allow-merge-group-checkout-refs-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d26aab8b81ee92bb6a3d2848d31ec6bc6acf1062b77793f82d72044f7becdffd"
+reason = "Self-covering note for the exact-path revision record; governance metadata only."
