@@ -37,6 +37,8 @@ records the selector and policy-loader owners delivered under #3876. The
 `config_authority_denominator_tests` guard checks their direct authority
 markers and rejects unlisted or stale owners.
 
-#3877 still owns the maintainer's precedence decision; #3878 remains blocked
-on that decision. This document does not select an advanced opt-in mode or a
-migration deadline.
+#3877 is ratified as of 2026-11-12: the implemented precedence is preserved
+unchanged for all of 0.2.x — an explicit `--config`, then the
+`.allow/config.toml` ledger, then ancestor discovery. Advanced opt-in modes and
+any changed precedence are 0.3 work under #3878, not a 0.2.x migration. This
+document still does not select an advanced opt-in mode or a migration deadline.

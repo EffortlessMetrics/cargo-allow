@@ -24,7 +24,12 @@ This dated map records sequencing and blocker classification. [#3768](https://gi
 owns the moving PR queue, exact branch/check state and integration order. Child
 issues own implementation acceptance. Reload those live authorities when source,
 ownership, evidence or a maintainer decision changes; do not reuse this
-checkpoint as a current-pair review. Recommendations below remain unratified.
+checkpoint as a current-pair review. Recommendations below remain unratified
+except #3877, ratified 2026-11-12: the implemented configuration precedence is
+preserved unchanged for 0.2.x, with advanced opt-in and changed precedence
+deferred to 0.3 under #3878. #3761 is bookkeeping only — its six proof suites
+landed 2026-11-03 in #4730 (`ba6f8ab0`, an ancestor of main) and the issue's own
+last comment says it closes; nothing waits on it.
 
 ## Selected product and release boundary
 
