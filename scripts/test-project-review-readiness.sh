@@ -81,6 +81,7 @@ case "${rest[0]}" in
     exit "${FIXTURE_OBJECT_STATUS}"
     ;;
   merge-tree)
+    printf '%s\n' "$*" >"${FIXTURE_STATE}/merge-tree-args"
     printf '%040d\n' "${FIXTURE_MERGE_TREE}"
     exit "${FIXTURE_MERGE_TREE_STATUS}"
     ;;
@@ -88,6 +89,10 @@ case "${rest[0]}" in
     case "${FIXTURE_PARENT_MODE}" in
       base) base=9 ;; head) head=9 ;;
     esac
+    if [ "${FIXTURE_PARENT_MODE}" = batch ]; then
+      printf '%040d %040d\n' 7 8
+      exit "${FIXTURE_PARENT_STATUS}"
+    fi
     printf '%040d %040d' 7 "$base"
     if [ "${FIXTURE_PARENT_MODE}" != one ]; then printf ' %040d' "$head"; fi
     if [ "${FIXTURE_PARENT_MODE}" = three ]; then printf ' %040d' 9; fi
@@ -559,7 +564,7 @@ export MERGE_GROUP_HEAD_SHA MERGE_GROUP_HEAD_REF MERGE_GROUP_BASE_SHA MERGE_GROU
 MERGE_GROUP_HEAD_SHA="$(printf '%040d' 7)"
 MERGE_GROUP_BASE_REF=refs/heads/main
 MERGE_GROUP_BASE_SHA="$(printf '%040d' 1)"
-MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
 run_case merge_group_exact_pr 0 POST 'published success'
 grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_exact_pr/mutation-args" || {
   echo 'review-readiness: merge group check was not published on the queue commit' >&2
@@ -643,24 +648,29 @@ run_queue_rejection merge_group_conflicting_number
 PR_NUMBER=""
 MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/not-a-pr"
 run_queue_rejection merge_group_ambiguous_ref
-MERGE_GROUP_HEAD_REF="gh-readonly-queue/other/pr-4165-$(printf '%040d' 2)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/other/pr-4165-$(printf '%040d' 1)"
 run_queue_rejection merge_group_wrong_base
-MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
+MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
 FIXTURE_PARENT_MODE=three
 run_queue_rejection merge_group_not_two_parent
-# SQUASH queue subject: one parent (the base) whose tree equals the
-# three-way merge of base and head is accepted.
+# SQUASH queue subject: one parent whose tree equals the three-way merge
+# of the queue base and the PR head is accepted.
 FIXTURE_PARENT_MODE=one FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
 run_case merge_group_squash_exact 0 POST 'published success'
 grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_squash_exact/mutation-args" || {
   echo 'review-readiness: squash queue check was not published on the queue commit' >&2
   exit 1
 }
+grep -Fq "merge-tree --write-tree $(printf '%040d' 1) $(printf '%040d' 2)" \
+  "${work}/merge_group_squash_exact/merge-tree-args" || {
+  echo 'review-readiness: squash queue check did not merge the base and the head' >&2
+  exit 1
+}
 # A single-parent subject whose tree differs from the three-way merge
 # fails closed.
 FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=5
 run_queue_rejection merge_group_squash_tree_mismatch
-grep -Fq 'queue subject tree does not match the three-way merge' "${work}/merge_group_squash_tree_mismatch/log" || {
+grep -Fq 'squash queue subject tree does not match the three-way merge of base and head' "${work}/merge_group_squash_tree_mismatch/log" || {
   echo 'review-readiness: squash tree mismatch did not name the failing condition' >&2
   exit 1
 }

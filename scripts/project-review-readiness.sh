@@ -272,7 +272,7 @@ project_pr() {
     printf 'review-readiness: instrument failure: object fetch failed (exit %s)\n' "$input_status" >&2
     return 1
   fi
-  local object observed checkout parents subject_tree merge_tree
+  local object observed checkout parents subject_tree merge_tree queue_parent
   for object in "$base_sha" "$head_sha"; do
     if ! observed="$(git rev-parse --verify "${object}^{commit}" 2>/dev/null)" || [ "$observed" != "$object" ]; then
       echo 'review-readiness: instrument failure: fetched commit object did not verify' >&2
@@ -286,15 +286,22 @@ project_pr() {
       return 1
     fi
     if ! parents="$(git rev-list --parents -n 1 "$GITHUB_SHA" 2>/dev/null)"; then
-      echo 'review-readiness: instrument failure: event synthetic parents mismatch' >&2
+      echo 'review-readiness: instrument failure: event synthetic parents unreadable' >&2
       return 1
     fi
     if [ "$parents" = "$GITHUB_SHA $base_sha $head_sha" ]; then
       : # two-parent merge subject
-    elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ] && [ "$parents" = "$GITHUB_SHA $base_sha" ]; then
-      # A SQUASH queue subject has one parent, the base. Accept it only
-      # when its tree is exactly the three-way merge of base and head,
-      # so a stale or foreign queue commit still fails closed.
+    elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
+      # A SQUASH queue subject has exactly one parent. Prove the content
+      # instead of the parent identity: G's tree must equal the three-way
+      # merge of the queue base and the reviewed head. The ref/base binding
+      # above already pinned the queue base. A stale, foreign or conflicting
+      # queue commit fails closed.
+      parent_count="$(printf '%s\n' "$parents" | wc -w | tr -d '[:space:]')"
+      if [ "$parent_count" -ne 2 ]; then
+        echo 'review-readiness: instrument failure: squash queue subject must have exactly one parent' >&2
+        return 1
+      fi
       if ! subject_tree="$(git rev-parse --verify "${GITHUB_SHA}^{tree}" 2>/dev/null)" ||
         ! valid_commit "$subject_tree"; then
         echo 'review-readiness: instrument failure: queue subject tree unreadable' >&2
@@ -306,7 +313,7 @@ project_pr() {
       fi
       merge_tree="${merge_tree%%$'\n'*}"
       if ! valid_commit "$merge_tree" || [ "$subject_tree" != "$merge_tree" ]; then
-        echo 'review-readiness: instrument failure: queue subject tree does not match the three-way merge' >&2
+        echo 'review-readiness: instrument failure: squash queue subject tree does not match the three-way merge of base and head' >&2
         return 1
       fi
     else
@@ -502,6 +509,10 @@ resolve_merge_group_pr() {
     return 1
   fi
   resolved="${BASH_REMATCH[2]}"
+  if [ "${BASH_REMATCH[3]}" != "${MERGE_GROUP_BASE_SHA:-}" ]; then
+    echo 'review-readiness: merge group ref base does not equal the event base; fails closed' >&2
+    return 1
+  fi
   if [ -n "${PR_NUMBER:-}" ] && [ "${PR_NUMBER}" != "${resolved}" ]; then
     echo 'review-readiness: conflicting pull request numbers; fails closed' >&2
     return 1
