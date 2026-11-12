@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: review-contracts-${{ github.event.merge_group.head_sha }}
+  group: review-contracts-${{ github.event.merge_group.head_sha || github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:

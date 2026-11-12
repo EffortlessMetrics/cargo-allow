@@ -376,6 +376,10 @@ class WorkflowWiringTests(unittest.TestCase):
         self.assertIn("github.event.pull_request.head.sha", step["env"]["QUEUE_HEAD_SHA"])
         self.assertIn("github.event.merge_group.head_sha", step["env"]["QUEUE_HEAD_SHA"])
         self.assertIn("github.sha", step["env"]["QUEUE_HEAD_SHA"])
+        # The step must resolve a pair for every event; an event_name gate
+        # would drop the only post-merge observation of a landed change.
+        self.assertNotIn("if", step)
+        self.assertNotIn("github.event_name ==", step["run"])
 
         bash = shutil.which("bash")
         if os.name == "nt":
@@ -421,6 +425,16 @@ class WorkflowWiringTests(unittest.TestCase):
                         )
                     else:
                         self.assertIn("no comparison base for", completed.stdout)
+
+    def test_review_contracts_concurrency_distinguishes_pull_requests(self):
+        workflow = self.workflows["ub-review.yml"]
+        self.assertIn("pull_request", triggers(workflow))
+        group = workflow["concurrency"]["group"]
+        self.assertIn("github.event.merge_group.head_sha", group)
+        # An empty suffix would put every PR in one group, so GitHub would
+        # cancel older pending runs as new PRs arrive.
+        self.assertIn("github.event.pull_request.number", group)
+        self.assertEqual(workflow["concurrency"]["cancel-in-progress"], "false")
 
 
 if __name__ == "__main__":
