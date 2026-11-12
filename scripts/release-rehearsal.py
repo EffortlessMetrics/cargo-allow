@@ -1477,7 +1477,8 @@ def _drill_token(root: Path) -> dict[str, Any]:
     )
     argv = CARGO_TOKEN_ENV not in child_env
     try:
-        token_file.read_text(encoding="utf-8")
+        with token_file.open("rb") as handle:
+            handle.read(1)
         direct = False
     except OSError:
         direct = True
