@@ -109,6 +109,13 @@ jobs:
           # already visible in the editor/lane surfaces; wiring it in
           # is recorded work for the tiering lane.
           /tmp/actionlint -color -shellcheck=             -ignore 'label "macos-15-intel" is unknown'             -ignore 'label "macos-26" is unknown'             .github/workflows/ci.yml
+      - name: Merge-group checkout refs
+        id: checkout_ref
+        # A merge_group workflow must not check out github.ref or
+        # github.head_ref without a merge_group term: those name the queue
+        # ref, not the merge-group head. Unconditional so it also runs on
+        # pull_request, where the same fallback is one edit away.
+        run: python3 scripts/check-merge-group-checkout-refs.py
       - name: Formatting
         id: fmt
         # #4222: the committed rustfmt.toml is the nearest config and
@@ -132,6 +139,7 @@ jobs:
           NO_NEW_OUTCOME: ${{ steps.no_new.outcome || 'skipped' }}
           FLOOR_FRESHNESS_OUTCOME: ${{ steps.floor_freshness.outcome || 'skipped' }}
           ACTIONLINT_OUTCOME: ${{ steps.actionlint.outcome || 'skipped' }}
+          CHECKOUT_REF_OUTCOME: ${{ steps.checkout_ref.outcome || 'skipped' }}
         run: |
           set -euo pipefail
           outcome_to_state() {
@@ -142,7 +150,7 @@ jobs:
             esac
           }
           checks="[]"
-          for pair in "actionlint:$ACTIONLINT_OUTCOME" "fmt:$FMT_OUTCOME" "no-new:$NO_NEW_OUTCOME" "floor-freshness:$FLOOR_FRESHNESS_OUTCOME"; do
+          for pair in "actionlint:$ACTIONLINT_OUTCOME" "checkout-ref:$CHECKOUT_REF_OUTCOME" "fmt:$FMT_OUTCOME" "no-new:$NO_NEW_OUTCOME" "floor-freshness:$FLOOR_FRESHNESS_OUTCOME"; do
             name="${pair%%:*}"
             outcome="${pair#*:}"
             checks="$(jq -c --arg n "$name" --arg s "$(outcome_to_state "$outcome")"               '. + [{name: $n, state: $s, not_applicable_reason: null}]' <<<"$checks")"
@@ -255,6 +263,10 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           # The complete B..G composition governs queue proof.
+          # Pin the review head: on pull_request events the default
+          # checkout is GitHub's synthetic merge commit, and the
+          # receipt must bind the submitted head instead.
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
         with:
@@ -377,7 +389,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           # Bind to the submitted head, not GitHub's synthetic merge commit.
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
@@ -455,7 +467,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
@@ -574,7 +586,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
       - name: Resolve the exact base/head/merge-base subject
         id: subject
         env:
