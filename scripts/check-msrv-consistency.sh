@@ -65,6 +65,36 @@ if [[ -n "${off_msrv}" ]]; then
 fi
 printf 'ok %s pins dtolnay/rust-toolchain@%s.0 (all pins)\n' "${ci_workflow}" "${msrv}"
 
+# The release-set lint lane may run a newer toolchain than the MSRV, but only
+# through one declared LINT_TOOLCHAIN used in the job env, the toolchain
+# action input and the cache input. A literal in one place and an expression
+# in another is exactly the drift this guard must catch.
+lint_toolchain="$(grep -E '^[[:space:]]*LINT_TOOLCHAIN:[[:space:]]*"[0-9]+\.[0-9]+\.[0-9]+"' "${ci_workflow}" \
+  | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)"
+[[ -n "${lint_toolchain}" ]] || fail "${ci_workflow} declares no LINT_TOOLCHAIN."
+lint_expression='${{ env.LINT_TOOLCHAIN }}'
+test_job="$(awk '
+  /^  test:[[:space:]]*(#.*)?$/ { in_job = 1; next }
+  in_job && /^  [A-Za-z0-9_-]+:[[:space:]]*(#.*)?$/ { exit }
+  in_job { print }
+' "${ci_workflow}")"
+[[ -n "${test_job}" ]] || fail "no \`test:\` job found in ${ci_workflow}."
+if ! printf '%s\n' "${test_job}" | grep -qF "RUSTUP_TOOLCHAIN: \"${lint_toolchain}\""; then
+  fail "${ci_workflow} test job does not set RUSTUP_TOOLCHAIN: \"${lint_toolchain}\" (the declared LINT_TOOLCHAIN)."
+fi
+if [[ "$(printf '%s\n' "${test_job}" | grep -cF "toolchain: ${lint_expression}" || true)" -lt 2 ]]; then
+  fail "${ci_workflow} test job must pass ${lint_expression} to both the toolchain action and the cache."
+fi
+while IFS= read -r value; do
+  value="$(printf '%s' "${value}" | sed -E 's/[[:space:]]+$//')"
+  case "${value}" in
+    "${lint_expression}"|"${msrv}.0"|"${msrv}"|"${lint_toolchain}") ;;
+    *) fail "${ci_workflow} has an unreceipted toolchain input: ${value}." ;;
+  esac
+done < <(grep -E '^[[:space:]]*toolchain:[[:space:]]*' "${ci_workflow}" \
+  | sed -E 's/^[[:space:]]*toolchain:[[:space:]]*//')
+printf 'ok %s uses LINT_TOOLCHAIN %s in the test job\n' "${ci_workflow}" "${lint_toolchain}"
+
 if ! grep -qF "key: msrv-${msrv}" "${ci_workflow}" \
   && ! grep -qE '^[[:space:]]+lane:[[:space:]]+msrv[[:space:]]*$' "${ci_workflow}"; then
   actual="$(grep -oE 'key: msrv-[^ ]*|lane: msrv[^[:space:]]*' "${ci_workflow}" | head -n 1 || true)"
@@ -113,6 +143,23 @@ if [[ -f "${toolchain_file}" ]]; then
   fi
   printf 'ok %s msrv job pins RUSTUP_TOOLCHAIN to the %s series over %s\n' \
     "${ci_workflow}" "${msrv}" "${toolchain_file}"
+
+  # Other required contexts also run cargo, and a versioned action tag there
+  # is equally inert while rust-toolchain.toml outranks rustup default. Scan
+  # each workflow that carries a versioned tag and require the same override.
+  for required_workflow in review-readiness.yml frozen-subject-lock.yml; do
+    required_path=".github/workflows/${required_workflow}"
+    [[ -f "${required_path}" ]] || continue
+    if grep -qE 'dtolnay/rust-toolchain@[0-9]' "${required_path}"; then
+      if ! grep -qE "RUSTUP_TOOLCHAIN:[[:space:]]*\"?${msrv_ere}\.[0-9]+\"?[[:space:]]*$" "${required_path}"; then
+        fail "$(printf '%s carries a versioned toolchain tag but no RUSTUP_TOOLCHAIN on the declared MSRV %s.\n%s' \
+          "${required_path}" "${msrv}" \
+          "       Set RUSTUP_TOOLCHAIN: \"${msrv}.0\" on that job.")"
+      fi
+      printf 'ok %s pins RUSTUP_TOOLCHAIN to the %s series\n' \
+        "${required_path}" "${msrv}"
+    fi
+  done
 fi
 
 if ! grep -qE "MSRV:[[:space:]]*\"?${msrv_ere}\"?[[:space:]]*$" "${release_workflow}"; then

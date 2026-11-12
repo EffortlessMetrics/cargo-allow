@@ -1073,16 +1073,35 @@ jobs:
     # uploads stay unconditional.
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}
     runs-on: ubuntu-latest
+    # Pin the required release-set lane to the workspace MSRV. The action tag
+    # alone is inert because rust-toolchain.toml pins the floating `stable`
+    # channel and rustup ranks that file above `rustup default`; the env var
+    # outranks the file. Advance the pin by bumping this value, the action
+    # tag, and Cargo.toml `rust-version` together, then refreshing the
+    # direct-floor receipts.
+    env:
+      # The release-set lint lane is intentionally newer than the workspace
+      # MSRV. This is the single declared value for RUSTUP_TOOLCHAIN, the
+      # toolchain action input and the cache input; the MSRV guard enforces
+      # that those uses stay equal and that no other lane drifts off MSRV.
+      # Advance it by bumping this value, then rerunning the release-set clippy.
+      LINT_TOOLCHAIN: "1.100.0"
+      # The env context is not available in a job-level env block, so the
+      # value is written literally here; the guard fails if it drifts from
+      # LINT_TOOLCHAIN.
+      RUSTUP_TOOLCHAIN: "1.100.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: ${{ env.LINT_TOOLCHAIN }}
           components: rustfmt, clippy
       - uses: ./.github/actions/rust-cache
         with:
           lane: release-set
+          toolchain: ${{ env.LINT_TOOLCHAIN }}
       - name: Evidence-surface inventory guard (#3810)
         run: |
           python3 scripts/test-verify-evidence-surface-inventory.py
@@ -1226,6 +1245,31 @@ jobs:
           name: cargo-allow-reports
           path: |
             target/cargo-allow/
+
+  # Advisory stable clippy (#4781): the required release-set lint lane is
+  # pinned to LINT_TOOLCHAIN, so a future Rust release cannot redden it.
+  # This non-required lane runs the same release-set clippy on the runner's
+  # current stable, so a new lint still surfaces early without blocking.
+  clippy-stable:
+    needs: proof-route
+    if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: ./.github/actions/rust-cache
+        with:
+          lane: clippy-stable
+      - name: Release-set clippy on stable (advisory)
+        run: |
+          cargo clippy --locked --all-targets \
+            -p cargo-allow -p allow-core -p allow-policy -p allow-policy-legacy -p allow-inventory -p allow-files -p allow-rust -p allow-match -p allow-report -p allow-diff -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-repo-edit \
+            -- -D warnings
 
   # Routed feature-configuration proof (#3905 PR D): the recursive cargo
   # proof suite behind allow-report's feature_configuration_proof test is

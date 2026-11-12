@@ -78,6 +78,12 @@ msrv="$(awk '
 drift_case "toolchain pin drift" ".github/workflows/ci.yml" \
   "dtolnay/rust-toolchain@${msrv}.0" "dtolnay/rust-toolchain@1.100.0"
 
+drift_case "test lint toolchain value drift" ".github/workflows/ci.yml" \
+  'RUSTUP_TOOLCHAIN: "1.100.0"' 'RUSTUP_TOOLCHAIN: "1.99.0"'
+
+drift_case "unreceipted cache toolchain input" ".github/workflows/ci.yml" \
+  "toolchain: ${msrv}.0" "toolchain: 1.96.0"
+
 # Removing every numeric toolchain pin must fail the positive existence
 # law, not just the off-MSRV rejection (#3836 review).
 all_removed="${work}/all-pins-removed"
