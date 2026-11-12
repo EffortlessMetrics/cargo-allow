@@ -6,15 +6,15 @@
   "base_ref": "main",
   "base_sha": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
   "head_ref": "ci/4602-merge-queue-only-20261104",
-  "head_sha": "d25be48c7734c0504c388464c50b6f1bf0aece60",
+  "head_sha": "b9d9c0e8f5027411a940f1a7466f932df7723259",
   "merge_base": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
-  "reviewed_diff_digest": "sha256:v2:a237378e14829a77512aef4118d983b40f50e61715c0e9a6c64f133dce1d42ef",
+  "reviewed_diff_digest": "sha256:v2:a2a3d725585e158aecbb3ed2b37c98ae366e936a0b3c6d3b0454b7d33fcb6ede",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4744 at d25be48c7734c0504c388464c50b6f1bf0aece60 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. Re-reviewed after the sentinel concurrency fix and the core/release frozen-subject invalidation record; verified the policy-change pair resolution, the five retained pull_request/merge_group trigger pairs, the regenerated direct-floor receipts, and the merge packet. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4744 at b9d9c0e8f5027411a940f1a7466f932df7723259 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. Re-reviewed after the sentinel concurrency fix, the core/release frozen-subject invalidation record, and the allow-11504 revision note; verified the policy-change pair resolution, the five retained pull_request/merge_group trigger pairs, the regenerated direct-floor receipts, and the merge packet. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4744#issuecomment-6824605587. review cargo-allow non-author oppositional exact-head model review of head d25be48c7734c0504c388464c50b6f1bf0aece60. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4744#issuecomment-6824605587. review cargo-allow non-author oppositional exact-head model review of head d25be48c7734c0504c388464c50b6f1bf0aece60, re-reviewed at b9d9c0e8f5027411a940f1a7466f932df7723259 for the allow-11504 revision note. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
@@ -31,7 +31,8 @@
   ],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4744",
-    "Reviewed pair base/merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, head d25be48c7734c0504c388464c50b6f1bf0aece60, digest sha256:v2:a237378e14829a77512aef4118d983b40f50e61715c0e9a6c64f133dce1d42ef.",
+    "Reviewed pair base/merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, head b9d9c0e8f5027411a940f1a7466f932df7723259, digest sha256:v2:a2a3d725585e158aecbb3ed2b37c98ae366e936a0b3c6d3b0454b7d33fcb6ede.",
+    "The b9d9c0e8 movement adds the missing allow-11504 revision note in .allow/revisions/4744-review-disposition.toml; its after_fingerprint sha256:v1:090f24b325c4a902dc19de83543e2fefa06563f20139f34baee762d1b18e1040 recomputes exactly from the allow-11504 entry in policy/allow.toml. The policy-change step's --require-change-note now has a covering record; the test job was still waiting on package-smoke at review time.",
     "Thread PRRT_kwDOSnyN3s62njuX (.github/workflows/sentinel.yml:22): the concurrency regression was confirmed at 03412050 and repaired at d25be48c; replied r4550803537 and the repair reply; resolved.",
     "Thread PRRT_kwDOSnyN3s62njxJ (scripts/merge-group-subject.py:99): invalid premise; queue-qualification runs only on merge_group and scripts/ci-proof-route.py:796-797 returns (full_boundary, false) for every non-pull_request event, so the required lanes are not skipped for narrow/docs_only/test_only; replied r4550803551 and resolved.",
     "Thread PRRT_kwDOSnyN3s62d6MB (.github/workflows/frozen-subject-lock.yml:25): the missing explicit invalidation record is now present at .allow/frozen-subject-lock/invalidations/20261112-4744-merge-group-trigger.json, recorded_by core/release, frozen commit 63248416c2bd73edd63e22f064a1f242afcc0622; the refreeze remains a post-merge obligation tracked by #4777; replied and resolved.",
@@ -42,10 +43,10 @@
     "Bootstrap disposition commit 59c72f9769e844cd7d71a743964e9c7f9b5ba79e (tree 5b466616b125a469988c4e59383d32e2868ff598): two exact-path non_rust_file allows, allow-4744-review-disposition (path and glob .allow/review-dispositions/pr-4744.json, target_fingerprint json) and allow-4744-review-revision (path and glob .allow/revisions/4744-review-disposition.toml, target_fingerprint toml); no directory glob and no widening of any other policy entry. The added_allow revision note recomputes to sha256:v1:1fd5ea134618cfc860f7d63a0116e44d895eb0b77dc233bc16333895985db7b7 and sha256:v1:203553038338235622a6606a1f1ff694cb3301c5e1eed38f95b12c6250ad999b. The final commit is disposition-only and is admitted by the ancestor fallback."
   ],
   "required_ci": {
-    "owner": "PR #4744 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "owner": "PR #4744 orchestrator: verify the exact-head review, live review-readiness, applicable checks (including the allow-11504 revision note and the policy-change step), threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
     "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43221033031"
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4744",
-  "reviewed_at_utc": "2026-11-12T13:12:00Z"
+  "reviewed_at_utc": "2026-11-12T13:58:36Z"
 }
