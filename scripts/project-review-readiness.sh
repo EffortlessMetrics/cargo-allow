@@ -314,10 +314,14 @@ project_pr() {
       fi
       # The sole parent must be the event base itself. Without this, a commit
       # built on some other parent whose tree happens to match the merge of
-      # base and head would pass the content proof below.
+      # base and head would pass the content proof below. A batched squash
+      # entry is built on the preceding queue commit rather than the event
+      # base, so it lands here too: the payload names only the group, not its
+      # members, so a batch is unprovable and fails closed. The message names
+      # both cases so a batch is not read as a single-PR candidate defect.
       queue_parent="${parents#* }"
       if [ "$queue_parent" != "$base_sha" ]; then
-        echo 'review-readiness: instrument failure: squash queue subject parent is not the event base; fails closed' >&2
+        echo 'review-readiness: instrument failure: squash queue subject parent is not the event base (batched or foreign group); fails closed' >&2
         return 1
       fi
       if ! subject_tree="$(git rev-parse --verify "${GITHUB_SHA}^{tree}" 2>/dev/null)" ||

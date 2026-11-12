@@ -682,10 +682,13 @@ grep -Fq 'batched merge group; single-PR proof not applicable' "${work}/merge_gr
 }
 # A sole parent that is not the event base must be rejected even when the tree
 # happens to equal the one-PR three-way merge: the parent identity is a second
-# guard, not a substitute for the content proof.
+# guard, not a substitute for the content proof. A batched squash entry is
+# built on the preceding queue commit, so it shares this shape; the payload
+# names only the group, so the message names both cases and the batch is
+# rejected as unprovable rather than as a single-PR defect.
 FIXTURE_PARENT_MODE=foreign FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
 run_queue_rejection merge_group_squash_foreign_parent
-grep -Fq 'squash queue subject parent is not the event base' "${work}/merge_group_squash_foreign_parent/log" || {
+grep -Fq 'squash queue subject parent is not the event base (batched or foreign group)' "${work}/merge_group_squash_foreign_parent/log" || {
   echo 'review-readiness: foreign squash parent did not name the parent guard' >&2
   exit 1
 }
