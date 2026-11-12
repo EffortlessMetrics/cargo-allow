@@ -1,0 +1,6 @@
+kind: Fixed
+body: >-
+  Accept the SQUASH merge-group subject in the review-readiness adapter:
+  a single-parent queue commit whose tree equals the three-way merge of
+  base and head now passes, while a differing tree still fails closed.
+  The two-parent merge and pull_request paths are unchanged.

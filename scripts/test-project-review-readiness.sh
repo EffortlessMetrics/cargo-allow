@@ -69,10 +69,20 @@ case "${rest[0]}" in
       printf '%040d\n' "${FIXTURE_CHECKOUT_ID}"
       exit "${FIXTURE_CHECKOUT_STATUS}"
     fi
+    case "$3" in
+      *'^{tree}')
+        printf '%040d\n' "${FIXTURE_SUBJECT_TREE}"
+        exit "${FIXTURE_SUBJECT_TREE_STATUS}"
+        ;;
+    esac
     if [ "${FIXTURE_OBJECT_MODE}" = missing ]; then exit 128; fi
     if [ "${FIXTURE_OBJECT_MODE}" = wrong ]; then printf '%040d\n' 9
     else printf '%s\n' "${3%\^\{commit\}}"; fi
     exit "${FIXTURE_OBJECT_STATUS}"
+    ;;
+  merge-tree)
+    printf '%040d\n' "${FIXTURE_MERGE_TREE}"
+    exit "${FIXTURE_MERGE_TREE_STATUS}"
     ;;
   rev-list)
     case "${FIXTURE_PARENT_MODE}" in
@@ -335,6 +345,7 @@ export FIXTURE_LEDGER=missing FIXTURE_ANCESTRY_STATUS=0 FIXTURE_DELTA_STATUS=0 F
 export FIXTURE_BASE_ID=1 FIXTURE_FETCH_STATUS=0 FIXTURE_FETCH_FAIL_PR=none
 export FIXTURE_OBJECT_MODE=valid FIXTURE_OBJECT_STATUS=0 FIXTURE_MERGE_BASE_OUTPUT=single
 export FIXTURE_CHECKOUT_ID=7 FIXTURE_CHECKOUT_STATUS=0 FIXTURE_PARENT_MODE=valid FIXTURE_PARENT_STATUS=0
+export FIXTURE_SUBJECT_TREE=4 FIXTURE_SUBJECT_TREE_STATUS=0 FIXTURE_MERGE_TREE=4 FIXTURE_MERGE_TREE_STATUS=0
 export FIXTURE_PR_FILTER=. FIXTURE_READBACK_STATUS=0 FIXTURE_REF_STATUS=0 FIXTURE_REF_FILTER=. FIXTURE_REF_OUTPUT=json
 export FIXTURE_MOVE=none FIXTURE_MOVE_AT=projector FIXTURE_REF_READBACK_STATUS=0 FIXTURE_TWO_PRS=0
 check_runs='{"check_runs":[]}'
@@ -637,6 +648,22 @@ run_queue_rejection merge_group_wrong_base
 MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 2)"
 FIXTURE_PARENT_MODE=three
 run_queue_rejection merge_group_not_two_parent
-FIXTURE_PARENT_MODE=valid
+# SQUASH queue subject: one parent (the base) whose tree equals the
+# three-way merge of base and head is accepted.
+FIXTURE_PARENT_MODE=one FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
+run_case merge_group_squash_exact 0 POST 'published success'
+grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_squash_exact/mutation-args" || {
+  echo 'review-readiness: squash queue check was not published on the queue commit' >&2
+  exit 1
+}
+# A single-parent subject whose tree differs from the three-way merge
+# fails closed.
+FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=5
+run_queue_rejection merge_group_squash_tree_mismatch
+grep -Fq 'queue subject tree does not match the three-way merge' "${work}/merge_group_squash_tree_mismatch/log" || {
+  echo 'review-readiness: squash tree mismatch did not name the failing condition' >&2
+  exit 1
+}
+FIXTURE_PARENT_MODE=valid FIXTURE_SUBJECT_TREE=4 FIXTURE_MERGE_TREE=4
 
 printf 'all review-readiness adapter characterization checks passed\n'

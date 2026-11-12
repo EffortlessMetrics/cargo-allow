@@ -272,7 +272,7 @@ project_pr() {
     printf 'review-readiness: instrument failure: object fetch failed (exit %s)\n' "$input_status" >&2
     return 1
   fi
-  local object observed checkout parents
+  local object observed checkout parents subject_tree merge_tree
   for object in "$base_sha" "$head_sha"; do
     if ! observed="$(git rev-parse --verify "${object}^{commit}" 2>/dev/null)" || [ "$observed" != "$object" ]; then
       echo 'review-readiness: instrument failure: fetched commit object did not verify' >&2
@@ -285,8 +285,31 @@ project_pr() {
       echo 'review-readiness: instrument failure: event checkout subject mismatch' >&2
       return 1
     fi
-    if ! parents="$(git rev-list --parents -n 1 "$GITHUB_SHA" 2>/dev/null)" ||
-      [ "$parents" != "$GITHUB_SHA $base_sha $head_sha" ]; then
+    if ! parents="$(git rev-list --parents -n 1 "$GITHUB_SHA" 2>/dev/null)"; then
+      echo 'review-readiness: instrument failure: event synthetic parents mismatch' >&2
+      return 1
+    fi
+    if [ "$parents" = "$GITHUB_SHA $base_sha $head_sha" ]; then
+      : # two-parent merge subject
+    elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ] && [ "$parents" = "$GITHUB_SHA $base_sha" ]; then
+      # A SQUASH queue subject has one parent, the base. Accept it only
+      # when its tree is exactly the three-way merge of base and head,
+      # so a stale or foreign queue commit still fails closed.
+      if ! subject_tree="$(git rev-parse --verify "${GITHUB_SHA}^{tree}" 2>/dev/null)" ||
+        ! valid_commit "$subject_tree"; then
+        echo 'review-readiness: instrument failure: queue subject tree unreadable' >&2
+        return 1
+      fi
+      if ! merge_tree="$(git merge-tree --write-tree "$base_sha" "$head_sha" 2>/dev/null)"; then
+        echo 'review-readiness: instrument failure: three-way merge tree unreadable' >&2
+        return 1
+      fi
+      merge_tree="${merge_tree%%$'\n'*}"
+      if ! valid_commit "$merge_tree" || [ "$subject_tree" != "$merge_tree" ]; then
+        echo 'review-readiness: instrument failure: queue subject tree does not match the three-way merge' >&2
+        return 1
+      fi
+    else
       echo 'review-readiness: instrument failure: event synthetic parents mismatch' >&2
       return 1
     fi
