@@ -1251,6 +1251,10 @@ jobs:
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
       - name: Verify exact merge-group policy-change evidence
+        # The queue commit is the only subject this gate can compare. On
+        # pull_request, push and workflow_dispatch the merge_group fields are
+        # empty, so the exact-subject diff would reject an empty revision.
+        if: ${{ github.event_name == 'merge_group' }}
         env:
           QUEUE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
           QUEUE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}

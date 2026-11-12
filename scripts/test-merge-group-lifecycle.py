@@ -294,7 +294,7 @@ class WorkflowWiringTests(unittest.TestCase):
         jobs = self.workflows["ci.yml"]["jobs"]
         aggregate = jobs["queue-qualification"]
         self.assertEqual(set(aggregate["needs"]), required)
-        self.assertEqual(aggregate["if"], "always()")
+        self.assertEqual(aggregate["if"], "always() && github.event_name == 'merge_group'")
         for name in required - {"queue-subject"}:
             needs = jobs[name]["needs"]
             self.assertIn("queue-subject", [needs] if isinstance(needs, str) else needs)
