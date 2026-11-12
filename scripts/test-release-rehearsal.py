@@ -1864,6 +1864,7 @@ class TestZeroMutationDrills(unittest.TestCase):
                 self.assertTrue(drill["attempted"])
                 self.assertIsInstance(drill["argv_denied"], bool)
                 self.assertIsInstance(drill["direct_denied"], bool)
+                self.assertIsInstance(drill["direct_route_discriminating"], bool)
                 self.assertIsInstance(drill["canary_unchanged"], bool)
                 self.assertIsInstance(drill["prevented"], bool)
                 self.assertTrue(drill["boundary"])
@@ -1871,7 +1872,8 @@ class TestZeroMutationDrills(unittest.TestCase):
                 self.assertEqual(
                     drill["prevented"],
                     drill["argv_denied"] and drill["direct_denied"]
-                    and drill["canary_unchanged"],
+                    and drill["canary_unchanged"]
+                    and drill["direct_route_discriminating"],
                 )
 
     def test_direct_routes_are_real_attempts_not_tautologies(self) -> None:
@@ -1886,6 +1888,18 @@ class TestZeroMutationDrills(unittest.TestCase):
                 )
                 self.assertFalse(drill["canary_unchanged"])
                 self.assertFalse(drill["prevented"])
+        for name in (
+            "cargo_publish_prevented",
+            "registry_mutation_prevented",
+            "github_release_mutation_prevented",
+            "live_setting_mutation_prevented",
+            "external_repository_mutation_prevented",
+        ):
+            with self.subTest(measured=name):
+                self.assertTrue(
+                    drills[name]["direct_route_discriminating"],
+                    "a measured family was not treated as discriminating",
+                )
 
     def test_direct_routes_keep_unconfined_families_false(self) -> None:
         with REHEARSAL._invocation_scope():
@@ -1903,6 +1917,44 @@ class TestZeroMutationDrills(unittest.TestCase):
                 self.assertTrue(drills[name]["argv_denied"], "argv route was not denied")
                 self.assertFalse(drills[name]["direct_denied"], "direct route was confined")
                 self.assertFalse(drills[name]["prevented"])
+
+    def test_only_outside_quarantine_direct_routes_can_discriminate(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        measured = {
+            "cargo_publish_prevented",
+            "registry_mutation_prevented",
+            "github_release_mutation_prevented",
+            "live_setting_mutation_prevented",
+            "external_repository_mutation_prevented",
+        }
+        for name, drill in drills.items():
+            with self.subTest(family=name):
+                self.assertEqual(
+                    drill["direct_route_discriminating"],
+                    name in measured,
+                    "a direct route inside the quarantine claimed it could "
+                    "observe confinement",
+                )
+        for name in ("tag_mutation_prevented", "token_read_prevented"):
+            with self.subTest(family=name):
+                self.assertIn("cannot be denied", drills[name]["reason"])
+
+    def test_a_drill_that_cannot_observe_confinement_cannot_claim_prevention(
+        self,
+    ) -> None:
+        vacuous = REHEARSAL._drill_result(
+            argv_denied=True, direct_denied=True, boundary="b", reason="r",
+            direct_route_discriminating=False,
+        )
+        self.assertFalse(vacuous["prevented"])
+        self.assertFalse(
+            any(
+                REHEARSAL._zero_mutation_proof_from_drills(
+                    {"tag_mutation_prevented": vacuous}
+                ).values()
+            )
+        )
 
     def test_flags_are_derived_from_drills_not_literals(self) -> None:
         prevented = {

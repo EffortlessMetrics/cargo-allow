@@ -6,4 +6,8 @@ body: >-
   receipt derives its prevention flags from those executed results instead of
   literals. A direct attempt that really mutates the canary keeps its flag
   false, so the drill is a discriminating attempt rather than a fixed
-  observation.
+  observation. The tag and token direct routes run inside the drill's own
+  writable quarantine, so they record `direct_route_discriminating: false` and
+  can never report prevention; the receipt keeps "measured and not confined"
+  apart from "not measurable from this drill" instead of presenting both as
+  proof of confinement.

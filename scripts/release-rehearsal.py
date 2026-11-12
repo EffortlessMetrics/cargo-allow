@@ -1441,14 +1441,21 @@ def _direct_socket_denied(port: int) -> bool:
 
 def _drill_result(
     *, argv_denied: bool, direct_denied: bool, boundary: str, reason: str,
-    attempted: bool = True,
+    attempted: bool = True, direct_route_discriminating: bool = True,
 ) -> dict[str, Any]:
-    prevented = attempted and argv_denied and direct_denied
+    # A drill whose direct route runs inside the quarantine the drill itself
+    # created cannot be denied by a profile that permits that root, so it can
+    # never observe prevention; its false flag is an absence of measurement,
+    # not evidence of confinement.
+    prevented = (
+        attempted and argv_denied and direct_denied and direct_route_discriminating
+    )
     return {
         "attempted": attempted,
         "argv_denied": argv_denied,
         "direct_denied": direct_denied,
         "attempt_succeeded": attempted and not direct_denied,
+        "direct_route_discriminating": direct_route_discriminating,
         "canary_unchanged": direct_denied,
         "prevented": prevented,
         "boundary": boundary,
@@ -1493,7 +1500,12 @@ def _drill_tag(root: Path) -> dict[str, Any]:
     return _drill_result(
         argv_denied=argv, direct_denied=direct,
         boundary="tag/update-ref/push and direct Git metadata writes",
-        reason="a direct write created Git tag metadata in the quarantine",
+        reason=(
+            "a direct write created Git tag metadata inside the drill's own "
+            "writable quarantine, so this route cannot be denied by a profile "
+            "that permits that root"
+        ),
+        direct_route_discriminating=False,
     )
 
 
@@ -1516,7 +1528,12 @@ def _drill_token(root: Path) -> dict[str, Any]:
     result = _drill_result(
         argv_denied=boundary and filtered, direct_denied=direct,
         boundary="selected token environment entry and child environment",
-        reason="a direct read retrieved the token canary outside the selected boundary",
+        reason=(
+            "a direct read retrieved the token file the drill itself created "
+            "in its quarantine, so this route cannot be denied by a profile "
+            "that permits that root"
+        ),
+        direct_route_discriminating=False,
     )
     result["environment_filtered"] = filtered
     return result
@@ -1568,10 +1585,18 @@ def run_zero_mutation_drills() -> dict[str, dict[str, Any]]:
     Each drill attempts the forbidden effect through the rehearsal's selected
     invocation boundary and again on a direct route from the rehearsal process,
     then observes a disposable canary. A family is prevented only when both
-    routes are denied and the canary is unchanged. The drills do not create a
-    sandbox: a direct attempt that really mutates the canary keeps its flag
-    false, and that successful attempt is the positive control proving the
-    drill is discriminating rather than vacuous.
+    routes are denied and the canary is unchanged. The drills create no
+    sandbox, so every flag is false today.
+
+    Only the direct routes that target something outside the quarantine can
+    later turn true under a confinement profile: the local socket endpoints and
+    the write to a temporary directory outside the owned root. The tag and
+    token direct routes run inside the drill's own writable quarantine, so no
+    profile that permits that root can deny them; they record
+    ``direct_route_discriminating`` false and can never report prevention. A
+    false flag therefore means either "measured and not confined" or, for those
+    two families, "not measurable from this drill"; the receipt keeps the two
+    apart instead of presenting both as proof of confinement.
     """
     root = _quarantine_root()
     try:
