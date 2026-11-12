@@ -4,10 +4,11 @@ body: >-
   release rehearsal. Each family is attempted through the selected invocation
   boundary and again on a direct route against a disposable canary, and the
   receipt derives its prevention flags from those executed results instead of
-  literals. This generation measures one family end to end: on Linux the tag
-  drill runs a worker in a unshare user+mount namespace that bind-mounts the
-  canary repository read-only, and `tag_mutation_prevented` is true only when
-  that worker observes the direct Git metadata write denied. On hosts without
-  unshare/mount the flag stays false with a recorded reason. The token, Cargo
-  publication, registry, GitHub Release, live setting and external-repository
-  direct routes remain unconfined, so those six flags stay false.
+  literals. This generation measures one family end to end: on Linux a
+  supervisor applies the read-only bind mount, drops all capabilities, and only
+  then execs the tag worker, so the worker is powerless to remount. The flag is
+  true only when the worker's own remount attempt and the direct Git metadata
+  write are both denied. On hosts without unshare/mount/setpriv the flag stays
+  false with a recorded reason. The token, Cargo publication, registry, GitHub
+  Release, live setting and external-repository direct routes remain
+  unconfined, so those six flags stay false.

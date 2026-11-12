@@ -1441,12 +1441,12 @@ def _direct_socket_denied(port: int) -> bool:
 
 def _drill_result(
     *, argv_denied: bool, direct_denied: bool, boundary: str, reason: str,
-    attempted: bool = True, direct_route_discriminating: bool = True,
+    direct_route_discriminating: bool, attempted: bool = True,
 ) -> dict[str, Any]:
     # A drill whose direct route runs inside the quarantine the drill itself
     # created cannot be denied by a profile that permits that root, so it can
     # never observe prevention; its false flag is an absence of measurement,
-    # not evidence of confinement.
+    # not evidence of confinement. Every caller states this explicitly.
     prevented = (
         attempted and argv_denied and direct_denied and direct_route_discriminating
     )
@@ -1472,9 +1472,15 @@ import subprocess
 import sys
 from pathlib import Path
 
+# The supervisor already applied the read-only mount and dropped capabilities
+# before this exec. The worker first tries to remount read-write: if that
+# succeeds, the drill is not discriminating and must not claim prevention.
 repo = Path(sys.argv[1])
-subprocess.run(["mount", "--bind", str(repo), str(repo)], check=True)
-subprocess.run(["mount", "-o", "remount,bind,ro", str(repo)], check=True)
+remount = subprocess.run(
+    ["mount", "-o", "remount,bind,rw", str(repo)],
+    capture_output=True, text=True,
+)
+remount_denied = remount.returncode != 0
 target = repo / ".git" / "refs" / "tags" / "canary"
 try:
     target.write_text("0" * 40, encoding="utf-8")
@@ -1484,7 +1490,20 @@ except OSError:
 print(json.dumps({
     "direct_denied": direct_denied,
     "canary_unchanged": not target.exists(),
+    "remount_denied": remount_denied,
 }))
+'''
+
+TAG_SUPERVISOR_SCRIPT = '''\
+set -euo pipefail
+repo="$1"
+worker="$2"
+mount --bind "$repo" "$repo"
+mount -o remount,bind,ro "$repo"
+# Drop every capability, including CAP_SYS_ADMIN, before the worker execs.
+# The worker therefore cannot remount the repository read-write.
+exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all \\
+    --no-new-privs python3 "$worker" "$repo"
 '''
 
 
@@ -1493,15 +1512,16 @@ def _linux_tag_launchers() -> list[tuple[list[str], str]]:
     if not sys.platform.startswith("linux"):
         return []
     unshare = shutil.which("unshare")
-    if unshare is None or shutil.which("mount") is None:
+    setpriv = shutil.which("setpriv")
+    if unshare is None or shutil.which("mount") is None or setpriv is None:
         return []
     launchers = [
-        ([unshare, "-Urm", "--"], "unprivileged user+mount namespace"),
+        ([unshare, "-Urm", "--", "bash"], "unprivileged user+mount namespace"),
     ]
     sudo = shutil.which("sudo")
     if sudo is not None:
         launchers.append(
-            ([sudo, "-n", unshare, "-rm", "--"],
+            ([sudo, "-n", unshare, "-rm", "--", "bash"],
              "root mount namespace via passwordless sudo"),
         )
     return launchers
@@ -1519,31 +1539,33 @@ def _drill_tag(root: Path) -> dict[str, Any]:
     ref.parent.mkdir(parents=True)
     argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
     launchers = _linux_tag_launchers()
-    boundary = "Linux unshare mount namespace over a read-only repository"
+    boundary = "supervised read-only mount with dropped capabilities"
     if not launchers:
         return _drill_result(
             argv_denied=argv, direct_denied=False,
             boundary=boundary,
             reason=(
-                "no Linux worker profile (unshare/mount) is available on this "
-                "host, so the direct Git metadata route is unmeasured"
+                "no Linux supervisor profile (unshare/mount/setpriv) is "
+                "available on this host, so the direct Git metadata route is "
+                "unmeasured"
             ),
             direct_route_discriminating=False,
         )
-    script = root / "tag-worker.py"
-    script.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
-    # The sudo fallback runs the worker as root; the quarantine root and the
-    # script must be readable across that boundary.
+    worker = root / "tag-worker.py"
+    worker.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
+    supervisor = root / "tag-supervisor.sh"
+    supervisor.write_text(TAG_SUPERVISOR_SCRIPT, encoding="utf-8")
     try:
         root.chmod(0o755)
-        script.chmod(0o644)
+        worker.chmod(0o644)
+        supervisor.chmod(0o755)
     except OSError:
         pass
-    detail = "no worker stderr"
+    detail = "no supervisor stderr"
     for launcher, description in launchers:
         try:
             completed = subprocess.run(
-                [*launcher, sys.executable, str(script), str(repo)],
+                [*launcher, str(supervisor), str(repo), str(worker)],
                 cwd=root, env=_sanitized_environment(),
                 capture_output=True, text=True, timeout=120, check=False,
             )
@@ -1560,23 +1582,28 @@ def _drill_tag(root: Path) -> dict[str, Any]:
             continue
         direct = bool(observed.get("direct_denied"))
         unchanged = bool(observed.get("canary_unchanged"))
+        remount_denied = bool(observed.get("remount_denied"))
         result = _drill_result(
-            argv_denied=argv, direct_denied=direct,
+            argv_denied=argv, direct_denied=direct and unchanged,
             boundary=f"{boundary} ({description})",
             reason=(
-                "the isolated worker did not observe the direct Git metadata "
-                "write denied"
+                "the supervised worker could remount the repository "
+                "read-write, so the denial is not discriminating"
+                if not remount_denied else
+                "the supervised worker did not observe the direct Git "
+                "metadata write denied"
             ),
+            direct_route_discriminating=remount_denied,
         )
         result["canary_unchanged"] = unchanged
-        result["prevented"] = argv and direct and unchanged
+        result["remount_denied"] = remount_denied
         return result
     return _drill_result(
         argv_denied=argv, direct_denied=False,
         boundary=boundary,
         reason=(
-            "the Linux isolation worker did not complete, so the direct "
-            f"Git metadata denial is unproven: {detail}"
+            "the Linux supervisor did not complete, so the direct Git "
+            f"metadata denial is unproven: {detail}"
         ),
         direct_route_discriminating=False,
     )
@@ -1625,9 +1652,9 @@ def _drill_network(
     result = _drill_result(
         argv_denied=argv, direct_denied=direct and canary_unchanged,
         boundary=boundary, reason=reason,
+        direct_route_discriminating=True,
     )
     result["canary_unchanged"] = canary_unchanged
-    result["prevented"] = result["prevented"] and canary_unchanged
     return result
 
 
@@ -1649,6 +1676,7 @@ def _drill_external(root: Path) -> dict[str, Any]:
         argv_denied=argv, direct_denied=direct,
         boundary="remote push and writes outside owned roots",
         reason="a direct write created a file outside the owned root",
+        direct_route_discriminating=True,
     )
 
 
@@ -1857,11 +1885,11 @@ def _build_rehearsal_receipt(
             "direct attempt that really mutates the canary keeps its flag false, so "
             "the receipt records the remaining confinement gap rather than asserting "
             "prevention. Only tag_mutation_prevented is measured in this generation: "
-            "on Linux the drill runs a worker in a unshare user+mount namespace that "
-            "bind-mounts the canary repository read-only, falling back to a root mount "
-            "namespace via passwordless sudo when unprivileged user namespaces are "
-            "blocked, and the flag is true only when that worker observes the direct "
-            "Git metadata write denied. On hosts without unshare/mount the flag stays "
+            "on Linux a supervisor applies the read-only bind mount, drops all "
+            "capabilities, and only then execs the worker, so the worker cannot "
+            "remount; the flag is true only when the worker's own remount attempt "
+            "and the direct Git metadata write are both denied. On hosts without "
+            "unshare/mount/setpriv the flag stays "
             "false. The other six flags remain "
             "false: the token, Cargo publication, registry, GitHub Release, live "
             "setting and external-repository direct routes are not confined."

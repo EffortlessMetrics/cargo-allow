@@ -1963,7 +1963,8 @@ class TestZeroMutationDrills(unittest.TestCase):
         self.assertTrue(drill["direct_denied"], drill["reason"])
         self.assertTrue(drill["canary_unchanged"], drill["reason"])
         self.assertTrue(drill["prevented"], drill["reason"])
-        self.assertIn("unshare", drill["boundary"])
+        self.assertTrue(drill["remount_denied"], "the worker could remount read-write")
+        self.assertIn("dropped capabilities", drill["boundary"])
 
     def test_tag_flag_follows_the_measurement_not_a_literal(self) -> None:
         denied = {
@@ -2019,7 +2020,7 @@ class TestZeroMutationDrills(unittest.TestCase):
         )
         unrun = REHEARSAL._drill_result(
             argv_denied=True, direct_denied=True, attempted=False,
-            boundary="b", reason="r",
+            boundary="b", reason="r", direct_route_discriminating=True,
         )
         self.assertFalse(unrun["prevented"], "an unrun drill claimed prevention")
 
