@@ -1515,16 +1515,13 @@ def _linux_tag_launchers() -> list[tuple[list[str], str]]:
     setpriv = shutil.which("setpriv")
     if unshare is None or shutil.which("mount") is None or setpriv is None:
         return []
-    launchers = [
+    # Only the unprivileged user+mount namespace is used. A passwordless-sudo
+    # fallback would run the supervisor as real root, which is a stronger
+    # privilege than the drill is meant to model; when userns is blocked the
+    # drill stays unmeasured and the flag stays false with a named reason.
+    return [
         ([unshare, "-Urm", "--", "bash"], "unprivileged user+mount namespace"),
     ]
-    sudo = shutil.which("sudo")
-    if sudo is not None:
-        launchers.append(
-            ([sudo, "-n", unshare, "-rm", "--", "bash"],
-             "root mount namespace via passwordless sudo"),
-        )
-    return launchers
 
 
 def _linux_tag_worker() -> str | None:
