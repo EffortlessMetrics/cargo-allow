@@ -90,11 +90,26 @@ fi
 if ! printf '%s\n' "${test_env}" | grep -qF "RUSTUP_TOOLCHAIN: \"${lint_toolchain}\""; then
   fail "${ci_workflow} test job does not set RUSTUP_TOOLCHAIN: \"${lint_toolchain}\" in its job-level env; a step-local override does not pin the whole job."
 fi
+package_job="$(awk '
+  /^  package-smoke:[[:space:]]*(#.*)?$/ { in_job = 1; next }
+  in_job && /^  [A-Za-z0-9_-]+:[[:space:]]*(#.*)?$/ { exit }
+  in_job { print }
+' "${ci_workflow}")"
+if [[ -n "${package_job}" ]]; then
+  package_env="$(printf '%s\n' "${package_job}" | awk '
+    /^    env:[[:space:]]*$/ { in_env = 1; next }
+    in_env && /^    [A-Za-z0-9_-]+:/ { exit }
+    in_env { print }
+  ')"
+  if ! printf '%s\n' "${package_env}" | grep -qF "RUSTUP_TOOLCHAIN: \"${lint_toolchain}\""; then
+    fail "${ci_workflow} package-smoke does not set RUSTUP_TOOLCHAIN: \"${lint_toolchain}\" in its job-level env."
+  fi
+fi
 if [[ "$(printf '%s\n' "${test_job}" | grep -cF "toolchain: ${lint_expression}" || true)" -lt 2 ]]; then
   fail "${ci_workflow} test job must pass ${lint_expression} to both the toolchain action and the cache."
 fi
 while IFS= read -r value; do
-  value="$(printf '%s' "${value}" | sed -E 's/[[:space:]]+$//')"
+  value="$(printf '%s' "${value}" | sed -E 's/[[:space:]]+$//; s/^"//; s/"$//')"
   case "${value}" in
     "${lint_expression}"|"${msrv}.0"|"${msrv}"|"${lint_toolchain}") ;;
     *) fail "${ci_workflow} has an unreceipted toolchain input: ${value}." ;;

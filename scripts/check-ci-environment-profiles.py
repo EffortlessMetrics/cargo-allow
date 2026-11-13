@@ -51,6 +51,43 @@ def job_block(text: str, job: str) -> str:
     return remainder[: next_job.start() if next_job else len(remainder)]
 
 
+def job_env(block: str) -> dict[str, str]:
+    """Return the job-level ``env:`` string mapping."""
+    env: dict[str, str] = {}
+    match = re.search(r"^    env:\s*$", block, re.MULTILINE)
+    if not match:
+        return env
+    remainder = block[match.end() :]
+    stop = re.search(r"^    [A-Za-z0-9_-]+:", remainder, re.MULTILINE)
+    section = remainder[: stop.start() if stop else len(remainder)]
+    for key, value in re.findall(r'^      (\w+):\s*"([^"]*)"\s*$', section, re.MULTILINE):
+        env[key] = value
+    return env
+
+
+def resolve_toolchain(value: str, env: dict[str, str]) -> str | None:
+    """Resolve a literal or ``${{ env.NAME }}`` toolchain value."""
+    value = value.strip().strip('"')
+    match = re.fullmatch(r"\$\{\{\s*env\.(\w+)\s*\}\}", value)
+    if match:
+        return env.get(match.group(1))
+    return value
+
+
+def declared_toolchains(block: str, env: dict[str, str]) -> list[str | None]:
+    """Return the effective RUSTUP_TOOLCHAIN and toolchain: input values.
+
+    RUSTUP_TOOLCHAIN counts only in the job-level env mapping: a step-local
+    assignment is a per-command override, not the lane's selected toolchain.
+    """
+    values: list[str | None] = []
+    if "RUSTUP_TOOLCHAIN" in env:
+        values.append(env["RUSTUP_TOOLCHAIN"])
+    for match in re.finditer(r"^\s*toolchain:\s*(.+?)\s*$", block, re.MULTILINE):
+        values.append(resolve_toolchain(match.group(1), env))
+    return values
+
+
 def main() -> int:
     profiles = parse_profiles(MANIFEST.read_text(encoding="utf-8"))
     if not profiles:
@@ -74,10 +111,29 @@ def main() -> int:
         block = job_block(source, profile["job"])
         if profile["runner"] not in block:
             raise SystemExit(f"error: {profile['id']} runner {profile['runner']} is not declared")
-        if profile["toolchain"] != "not-selected":
-            selector = f"dtolnay/rust-toolchain@{profile['toolchain']}"
-            if selector not in block and f"toolchain: {profile['toolchain']}" not in block:
-                raise SystemExit(f"error: {profile['id']} toolchain {profile['toolchain']} is not declared")
+        env = job_env(block)
+        declared = declared_toolchains(block, env)
+        if profile["toolchain"] == "not-selected":
+            if any(value is not None for value in declared):
+                raise SystemExit(
+                    f"error: {profile['id']} declares a toolchain {declared} "
+                    "but the manifest says not-selected"
+                )
+            continue
+
+        resolved = sorted({value for value in declared if value is not None})
+        if resolved:
+            mismatched = [value for value in resolved if value != profile["toolchain"]]
+            if mismatched:
+                raise SystemExit(
+                    f"error: {profile['id']} declares toolchain {mismatched} "
+                    f"but the manifest says {profile['toolchain']}"
+                )
+            continue
+
+        selector = f"dtolnay/rust-toolchain@{profile['toolchain']}"
+        if selector not in block and f"toolchain: {profile['toolchain']}" not in block:
+            raise SystemExit(f"error: {profile['id']} toolchain {profile['toolchain']} is not declared")
     print(f"validated {len(profiles)} CI environment profiles")
     return 0
 
