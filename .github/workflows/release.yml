@@ -453,6 +453,18 @@ jobs:
           path: target/cargo-allow/source-candidate-smoke-rows/windows
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+      - name: Flatten the downloaded rows
+        shell: bash
+        # upload-artifact roots each row at target/, so the receipt, harness and
+        # package files land one directory deeper than the gate reads them.
+        # Move them up into the row directory and drop the empty subdirectories,
+        # otherwise the gate counts them as unexpected rows.
+        run: |
+          set -euo pipefail
+          for row in target/cargo-allow/source-candidate-smoke-rows/*/; do
+            find "${row}" -mindepth 2 -type f -exec mv {} "${row}" \;
+            find "${row}" -mindepth 1 -type d -empty -delete
+          done
       - name: Aggregate the platform smoke receipts
         env:
           SMOKE_NEEDS_RESULT: ${{ needs.source-candidate-smoke.result }}
