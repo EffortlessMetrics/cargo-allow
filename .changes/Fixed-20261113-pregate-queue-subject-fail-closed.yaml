@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Make the required pregate fail closed when the queue-subject dependency
+  fails. The pregate now runs on `!cancelled()`, downloads the queue-subject
+  artifact, and fails when it is absent or bound to another head, so a
+  non-required queue-subject failure can no longer skip two required contexts
+  (pregate and test) with zero evidence. Adds a contract test that a required
+  context with `needs:` must carry a job-level `!cancelled()` guard.
