@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4783,
+  "base_ref": "main",
+  "base_sha": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
+  "head_ref": "fix/merge-group-checkout-refs",
+  "head_sha": "496e9f70598b2561ebc412b920c2e9f212595242",
+  "merge_base": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
+  "reviewed_diff_digest": "sha256:v2:7b87079da75c431c64994f32d657d10bce1fcc3f9373f320a11a6941b21791e0",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4783 at 496e9f70598b2561ebc412b920c2e9f212595242 (base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d). The rebase preserves the #4602 fix: the dependency-graph-delta job keeps needs [proof-route, queue-subject] and the both-sides ref github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha; the four checkout refs approved at abcd8618 remain bound to github.event.merge_group.head_sha; the duplicate checkout ref from the conflict is gone. The guard and its test are byte-identical to abcd8618. Locally: guard test 6/6, guard exit 0, check --mode no-new passed, diff --require-change-note passed. CI: pregate, frozen-subject-lock, workflow-syntax, and test SUCCESS. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4783#pullrequestreview-5891731481. review cargo-allow non-author oppositional exact-head model review of head 496e9f70598b2561ebc412b920c2e9f212595242, base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4783",
+    "Reviewed pair base/merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d, head 496e9f70598b2561ebc412b920c2e9f212595242, digest sha256:v2:7b87079da75c431c64994f32d657d10bce1fcc3f9373f320a11a6941b21791e0.",
+    "dependency-graph-delta keeps needs [proof-route, queue-subject] and ref github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha.",
+    "The four checkout refs approved at abcd8618 remain bound to github.event.merge_group.head_sha.",
+    "Guard and test are byte-identical to abcd8618; guard test 6/6, guard exit 0, check --mode no-new passed, diff --require-change-note passed.",
+    "pregate, frozen-subject-lock, workflow-syntax, and test are SUCCESS; review-readiness is neutral because no disposition was bound."
+  ],
+  "required_ci": {
+    "owner": "PR #4783 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4783"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4783",
+  "reviewed_at_utc": "2026-11-13T14:20:00Z"
+}
