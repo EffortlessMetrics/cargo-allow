@@ -302,7 +302,10 @@ fn ci_cache_contract_is_platform_scoped_and_pr_save_closed() {
 
     let cache_steps = workflow
         .lines()
-        .filter(|line| line.trim().starts_with("- uses: ./.github/actions/rust-cache"))
+        .filter(|line| {
+            line.trim()
+                .starts_with("- uses: ./.github/actions/rust-cache")
+        })
         .count();
     assert!(
         cache_steps >= 10,
