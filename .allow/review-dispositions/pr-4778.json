@@ -4,29 +4,41 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4778,
   "base_ref": "main",
-  "base_sha": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
+  "base_sha": "f92a2bc39684fa8860b82341f9b7a76904891bed",
   "head_ref": "docs/3877-ratification-note",
-  "head_sha": "2e63019cfaf860aea7405f90d056155185fc0d0e",
-  "merge_base": "3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc",
-  "reviewed_diff_digest": "sha256:v2:01f6a338fcc33bf5c3c9fa4b224c258baed6eb458d8c4ad98bb0294b4d2f9e42",
+  "head_sha": "937c22c709660a039a703f750de2679dda12c5bd",
+  "merge_base": "f92a2bc39684fa8860b82341f9b7a76904891bed",
+  "reviewed_diff_digest": "sha256:v2:fb48a8d09c2163504337164fc1f20163243fbf8f006e178dc3fd125ae8af5878",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4778 at 6928b1650bd2058595a41368d4d56c886f19a181 (base and merge-base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc). The disposition commit 2e63019cfaf860aea7405f90d056155185fc0d0e is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. Verified the two prior BLOCK findings fixed (:140 guard inside the first slice; :150-162 no guard-as-separate-slice or superseded-precedence sentence), the LF restoration (0 CR / 513 LF), and the PR-body/doc checkpoint agreement. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4778 at 937c22c709660a039a703f750de2679dda12c5bd (base and merge-base f92a2bc39684fa8860b82341f9b7a76904891bed). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. The rebase preserves the reviewed content per the steward's 86910f5e->937c22c7 check. Advisory: item 3 frames #3151 as retiring the remaining NotProven holds; the installed-experience node is NotProven by construction, so the stronger wording is installed-surface evidence and a named residual. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4778#issuecomment-6836247614: non-author model review of the exact head, with the two prior BLOCK findings verified fixed and the line-ending regression closed. No independent-human approval; shared account and model context are a correlated-failure limit."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4778#pullrequestreview-5886186130. review cargo-allow non-author oppositional exact-head model review of head 937c22c709660a039a703f750de2679dda12c5bd, base and merge-base f92a2bc39684fa8860b82341f9b7a76904891bed. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
-  "findings": [],
+  "findings": [
+    {
+      "id": "campaign-item3-installed-experience-wording",
+      "severity": "advisory",
+      "owned_seam": "campaign direction record",
+      "source_path": "docs/campaigns/cargo-allow-0.2.0.md",
+      "source_line": 42,
+      "repair_route": "Reword item 3 to say #3151 produces installed-surface evidence and a named residual, and a Complete freeze needs a v2 docs-execution contract plus the #2466 and #3149 producers. The current 'retire the remaining NotProven holds' framing reads as a hold-retirement plan; 'each by its producer or a recorded disposition' keeps it from being a false claim.",
+      "claim_boundary": "Advisory wording only; the docs-only change records the #3877 ratification and the O3 direction and makes no implementation or release claim."
+    }
+  ],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4778",
-    "Reviewed pair base 3e1d3fabc0c0f2e5510374f2e3adfe4750edd5fc, merge-base 3e1d3fab, head 6928b1650bd2058595a41368d4d56c886f19a181. Diff digest sha256:v2:9064d925ac68d0da4f44fddd5bb5edb7278d5788b07d95cd307e2a48c66814f7.",
+    "Reviewed pair base/merge-base f92a2bc39684fa8860b82341f9b7a76904891bed, head 937c22c709660a039a703f750de2679dda12c5bd, digest sha256:v2:fb48a8d09c2163504337164fc1f20163243fbf8f006e178dc3fd125ae8af5878.",
+    "The rebase is preservation-intact per the steward's 86910f5e->937c22c7 check: no source or doc content was lost.",
+    "Advisory: docs/campaigns/cargo-allow-0.2.0.md:42 frames #3151 as retiring the remaining NotProven holds. The installed-experience node is NotProven by construction (retain_dependencies records #2466 and #3151 unconditionally and #3149 for CommandCaseJoin::Absent; record() takes the min state). The stronger wording is installed-surface evidence and a named residual, with a Complete freeze needing a v2 docs-execution contract plus the #2466 and #3149 producers.",
+    "The sentence 'Queue proof of record, with three release-rehearsal jobs still bound by ref name' is not present at 937c22c7 or at the base; if it belongs in this doc it is missing. No merge-group binding is described as complete.",
     "Prior BLOCK at a0ff6b8c: :140 named the invocation-boundary guard as a separate remaining slice; :150-153 repeated guard-first, flags-false, worker-afterwards. Both fixed at 72ee42e9 and unchanged at 6928b165: :140 puts the guard inside the first slice; :150-162 says the profile, not the guard, confines the direct route and later slices enforce the remaining boundaries.",
-    "Prior BLOCK at 72ee42e9: the campaign map was CRLF (513 CR) against .editorconfig:5 end_of_line = lf, inflating a 59-line change to +523/-494. Fixed at 6928b165: 0 CR / 513 LF; git diff --ignore-cr-at-eol 72ee42e9 6928b165 is empty; diff vs base is 59/30.",
-    "Graphite thread PRRT_kwDOSnyN3s62yK8_ (doc vs PR-description checkpoint dates) replied and resolved at 6928b165: the PR body now states 19 Nov checkpoint, 26 Nov second slice NOT a release date, target Q1 2027, matching docs/campaigns/cargo-allow-0.2.0.md:38.",
-    "Zero blocking findings. The docs-only change records the #3877 ratification and the O3 direction record; it makes no implementation or release claim.",
-    "Bootstrap disposition commit 2e63019cfaf860aea7405f90d056155185fc0d0e: two exact-path non_rust_file allows, allow-4778-review-disposition (path and glob .allow/review-dispositions/pr-4778.json, target_fingerprint json) and allow-4778-review-revision (path and glob .allow/revisions/4778-review-disposition.toml, target_fingerprint toml); no directory glob and no widening of any other policy entry. The added_allow revision note recomputes to sha256:v1:c8cfe71b364936a845a64e8da41e21d3d560e95d0b3a739a86b45a59d2c109d3 and sha256:v1:edaa95bcc2bca9c7ccbe0a663c80613954e8a5c3be371dee89907fd70639d68b. The final commit is disposition-only and is admitted by the ancestor fallback."
+    "Prior BLOCK at 72ee42e9: the campaign map was CRLF (513 CR) against .editorconfig:5 end_of_line = lf. Fixed at 6928b165: 0 CR / 513 LF; git diff --ignore-cr-at-eol 72ee42e9 6928b165 is empty.",
+    "Graphite thread PRRT_kwDOSnyN3s62yK8_ (doc vs PR-description checkpoint dates) replied and resolved at 6928b165.",
+    "Bootstrap disposition commit 2e63019cfaf860aea7405f90d056155185fc0d0e: two exact-path non_rust_file allows, allow-4778-review-disposition and allow-4778-review-revision; no directory glob and no widening of any other policy entry. The final commit is disposition-only and is admitted by the ancestor fallback."
   ],
   "required_ci": {
     "owner": "PR #4778 orchestrator: verify the exact-head review, live review-readiness success, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
@@ -34,5 +46,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4778",
-  "reviewed_at_utc": "2026-11-12T21:20:00Z"
+  "reviewed_at_utc": "2026-11-13T04:38:55Z"
 }
