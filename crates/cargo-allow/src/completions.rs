@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
-use clap::{CommandFactory, Parser};
+use clap::{Command, CommandFactory, Parser};
 use clap_complete::Shell;
 
 use crate::cli::CargoAllowCli;
@@ -49,7 +49,7 @@ pub(crate) fn cmd_completions(args: &CompletionsArgs) -> CargoAllowResult<()> {
 }
 
 fn render_completions(shell: Shell) -> CargoAllowResult<String> {
-    let mut command = CargoAllowCli::command();
+    let mut command = visible_command(&CargoAllowCli::command());
     let mut buffer: Vec<u8> = Vec::new();
     clap_complete::generate(shell, &mut command, "cargo-allow", &mut buffer);
     // `generate` writes shell script text, so this conversion does not fail in
@@ -60,6 +60,65 @@ fn render_completions(shell: Shell) -> CargoAllowResult<String> {
 
 fn completion_render_error(error: std::string::FromUtf8Error) -> CargoAllowError {
     CargoAllowError::with_kind(CargoAllowErrorKind::Artifact, format!("not UTF-8: {error}"))
+}
+
+/// Rebuild the clap command graph with hidden subcommands and hidden arguments
+/// removed.
+///
+/// `clap_complete`'s AOT generators walk `get_subcommands()` and
+/// `get_arguments()` without checking `is_hide_set()`, so handing the live
+/// graph straight to `generate` leaks every `#[command(hide = true)]` command
+/// (for example `release-identity`) into all five shell scripts. clap 4.6 has
+/// no public API to remove a subcommand from a built `Command`, so this
+/// rebuilds the tree from the public getters, keeping only visible nodes.
+fn visible_command(command: &Command) -> Command {
+    let mut filtered = Command::new(command.get_name().to_string())
+        .about(resettable(command.get_about().cloned()))
+        .long_about(resettable(command.get_long_about().cloned()))
+        .version(resettable(
+            command
+                .get_version()
+                .map(|value| clap::builder::Str::from(value.to_string())),
+        ))
+        .author(resettable(
+            command
+                .get_author()
+                .map(|value| clap::builder::Str::from(value.to_string())),
+        ))
+        .visible_aliases(command.get_visible_aliases().map(str::to_owned))
+        .aliases(command.get_aliases().map(str::to_owned))
+        .args(
+            command
+                .get_arguments()
+                .filter(|argument| !argument.is_hide_set())
+                .cloned(),
+        )
+        .groups(command.get_groups().cloned())
+        .subcommands(
+            command
+                .get_subcommands()
+                .filter(|subcommand| !subcommand.is_hide_set())
+                .map(visible_command),
+        )
+        .allow_external_subcommands(command.is_allow_external_subcommands_set())
+        .disable_help_subcommand(command.is_disable_help_subcommand_set())
+        .subcommand_required(command.is_subcommand_required_set())
+        .arg_required_else_help(command.is_arg_required_else_help_set())
+        .propagate_version(command.is_propagate_version_set());
+    if let Some(value_name) = command.get_subcommand_value_name() {
+        filtered = filtered.subcommand_value_name(value_name.to_string());
+    }
+    if let Some(heading) = command.get_subcommand_help_heading() {
+        filtered = filtered.subcommand_help_heading(heading.to_string());
+    }
+    filtered
+}
+
+fn resettable<T>(value: Option<T>) -> clap::builder::Resettable<T> {
+    match value {
+        Some(value) => clap::builder::Resettable::Value(value),
+        None => clap::builder::Resettable::Reset,
+    }
 }
 
 #[cfg(test)]
@@ -115,6 +174,55 @@ mod tests {
                 );
             }
         }
+    }
+
+    /// Every `#[command(hide = true)]` subcommand must stay out of all five
+    /// completion scripts. This is the regression guard for the rc.1
+    /// `E.completions.entrypoint` leak: `clap_complete` does not filter
+    /// `is_hide_set()` itself, so the generator must hand it a filtered tree.
+    #[test]
+    fn hidden_commands_never_reach_a_completion_script() {
+        let command = CargoAllowCli::command();
+        let hidden = hidden_names(&command);
+        assert!(
+            hidden.iter().any(|name| name == "release-identity"),
+            "the fixture should include the named release-identity leak"
+        );
+        for shell in [
+            Shell::Bash,
+            Shell::Zsh,
+            Shell::Fish,
+            Shell::PowerShell,
+            Shell::Elvish,
+        ] {
+            let script = render_completions(shell)
+                .unwrap_or_else(|err| std::panic::panic_any(format!("{shell}: {err}")));
+            for name in &hidden {
+                assert!(
+                    !script.contains(name.as_str()),
+                    "{shell} completion script leaked hidden name `{name}`"
+                );
+            }
+        }
+    }
+
+    fn hidden_names(command: &Command) -> Vec<String> {
+        let mut names = Vec::new();
+        for argument in command.get_arguments() {
+            if argument.is_hide_set() {
+                if let Some(long) = argument.get_long() {
+                    names.push(long.to_string());
+                }
+            }
+        }
+        for subcommand in command.get_subcommands() {
+            if subcommand.is_hide_set() {
+                names.push(subcommand.get_name().to_string());
+            } else {
+                names.extend(hidden_names(subcommand));
+            }
+        }
+        names
     }
 
     /// Completions are consumed by `source`/`eval`, so a stray panic or a
