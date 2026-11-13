@@ -7,3 +7,9 @@ allow_ids = ["allow-3151-installed-surface"]
 change_kinds = ["added_allow"]
 after_fingerprint = "sha256:v1:a0ce10a4b70cf3fec73bef0c37eaea263920db557212c4914163f950d1951332"
 reason = "Retain the 25-check installed-surface receipt for the selected 0.2.0 candidate; it records observed binary and docs surfaces and grants no release authority."
+
+[[records]]
+allow_ids = ["allow-3151-installed-surface-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5d9d3ce40fd34831a37392af74fabf56a4f8bd3f059f8a820c9f800dba9549f9"
+reason = "Self-covering note for the exact-path revision record; governance metadata only."
