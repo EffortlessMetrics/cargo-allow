@@ -10,6 +10,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -25,6 +26,27 @@ if SPEC is None or SPEC.loader is None:
     raise SystemExit("could not load release rehearsal harness")
 REHEARSAL = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(REHEARSAL)
+
+
+def _linux_userns_usable() -> bool:
+    """True when an unprivileged user+mount namespace can actually be created.
+
+    The binaries can be present while the kernel refuses the namespace (for
+    example a runner with unprivileged userns disabled), in which case the tag
+    drill is unmeasured and must not be asserted as prevented.
+    """
+    unshare = shutil.which("unshare")
+    if unshare is None:
+        return False
+    try:
+        completed = subprocess.run(
+            [unshare, "-Urm", "--", "true"],
+            capture_output=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0
+
 
 REQUIRED_PHASES = (
     "release_identity",
@@ -1955,6 +1977,11 @@ class TestZeroMutationDrills(unittest.TestCase):
     def test_tag_worker_observes_the_denial(self) -> None:
         if REHEARSAL._linux_tag_worker() is None:
             self.skipTest("Linux worker profile unavailable on this host")
+        if not _linux_userns_usable():
+            self.skipTest(
+                "unprivileged user+mount namespace is blocked on this host, "
+                "so the tag drill is unmeasured here"
+            )
         with REHEARSAL._invocation_scope():
             drill = REHEARSAL.run_zero_mutation_drills()["tag_mutation_prevented"]
         self.assertTrue(drill["attempted"])
