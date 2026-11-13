@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Make the Windows source-candidate smoke run end to end. Git Bash resolves
+  the `.exe` sibling for `-x`/`-f`, so the release step now tests
+  `${bin}.exe` explicitly. The owned-directory tool gains a symlink- and
+  reparse-point-refusing walker for platforms where
+  `shutil.rmtree.avoids_symlink_attacks` is false, and normalises the
+  trailing CR that native Windows Python adds to `token`, `head`, and
+  `git_head`. The lifecycle test now exercises matching removal on Windows
+  instead of the old refusal design.

@@ -343,7 +343,8 @@ jobs:
         run: |
           set -euo pipefail
           bin="${PWD}/target/package-candidate-smoke/install/bin/cargo-allow"
-          [[ -x "${bin}" ]] || bin="${bin}.exe"
+          # Git Bash resolves the .exe sibling for -x/-f, so test it explicitly.
+          if [[ -f "${bin}.exe" ]]; then bin="${bin}.exe"; fi
           CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - name: Record the platform smoke receipt
         if: always()
