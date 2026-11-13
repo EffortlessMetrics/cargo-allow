@@ -181,13 +181,12 @@ mod tests {
     /// `E.completions.entrypoint` leak: `clap_complete` does not filter
     /// `is_hide_set()` itself, so the generator must hand it a filtered tree.
     #[test]
-    fn hidden_commands_never_reach_a_completion_script() {
+    fn hidden_commands_never_reach_a_completion_script() -> Result<(), String> {
         let command = CargoAllowCli::command();
         let hidden = hidden_names(&command);
-        assert!(
-            hidden.iter().any(|name| name == "release-identity"),
-            "the fixture should include the named release-identity leak"
-        );
+        if !hidden.iter().any(|name| name == "release-identity") {
+            return Err("the fixture should include the named release-identity leak".to_string());
+        }
         for shell in [
             Shell::Bash,
             Shell::Zsh,
@@ -195,15 +194,16 @@ mod tests {
             Shell::PowerShell,
             Shell::Elvish,
         ] {
-            let script = render_completions(shell)
-                .unwrap_or_else(|err| std::panic::panic_any(format!("{shell}: {err}")));
+            let script = render_completions(shell).map_err(|err| format!("{shell}: {err}"))?;
             for name in &hidden {
-                assert!(
-                    !script.contains(name.as_str()),
-                    "{shell} completion script leaked hidden name `{name}`"
-                );
+                if script.contains(name.as_str()) {
+                    return Err(format!(
+                        "{shell} completion script leaked hidden name `{name}`"
+                    ));
+                }
             }
         }
+        Ok(())
     }
 
     fn hidden_names(command: &Command) -> Vec<String> {
