@@ -1,6 +1,6 @@
 ---
 name: cargo-allow-0.2-campaign
-description: Orchestrate and execute reversible implementation issues for the cargo-allow 0.2.0 campaign (#3768). Use to select next unblocked issues, classify session lanes, implement bounded changes, run validation, open/update PRs, obtain current-head review, retain ownership through selected pre-merge CI and protected merge, and reconcile merged state. Do not use as the primary substantive PR review skill or for unauthorized release operations.
+description: Orchestrate and execute reversible implementation issues for the cargo-allow 0.2.0 campaign (#3768). Use to select next unblocked issues, classify session lanes, implement bounded changes, run validation, open/update PRs, obtain current-head review, retain ownership through native queue qualification and protected landing, and reconcile merged state. Do not use as the primary substantive PR review skill or for unauthorized release operations.
 ---
 
 # Cargo-Allow 0.2 Campaign Orchestrator
@@ -107,12 +107,12 @@ claim boundary
    ```bash
    cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
    ```
-5. Inspect the actual CI triggers and publish the selected converged PR using `.github/PULL_REQUEST_TEMPLATE.md` with exact head SHA. Automatic PR proof remains live until its existing migration is qualified; do not invent a late-request command or weaken required checks.
-6. Obtain the substantive `review-current-head` pass, preserving honest review independence. Inspect formal reviews, inline/outdated unresolved threads and ordinary Conversation findings. Repair/refute material findings, reply before resolving, and confirm remote readback.
-7. Refresh affected review/proof after repairs. Reconcile any existing exact-candidate CI run rather than duplicating it; an old label or sibling result cannot qualify a successor. Independent objectives may qualify concurrently; no global max-one queue.
-8. Retain the useful owning lead through a normal CI wait using supported waits/events or bounded checks, without tight polling. Inspect actual terminal results and their tested subject. Missing, cancelled, skipped without justification, partial or wrong-subject evidence is not green. Classify red evidence before repair or justified retry.
-9. Make the separate final current-repository/product/integration judgment. Confirm live reviewed head/base/merge-base, current substantive findings, non-draft mergeability and all required proof. If delegated authority and those conditions hold, the same lead performs the normal protected expected-head squash; no routine new agent/human approval, auto-merge or merge queue.
-10. Read back the actual landing and reconcile the child and #3768. Reuse applicable proof instead of routine full post-merge replay; run affected checks for a real composition change. Retain useful evidence before cleaning task-owned disposable state.
+5. Inspect installed workflow triggers and the coordinated source/settings generation in `docs/ci/merge-queue-cutover.md`. Publish a coherent candidate through the PR template. Draft, Ready, open, synchronize and body/label events must allocate zero Actions, including cheap wrappers; source edits alone do not establish activation.
+6. Obtain the substantive `review-current-head` pass, preserving honest review independence. Inspect formal reviews, inline/outdated unresolved threads and ordinary Conversation findings. Repair/refute material findings, reply before resolving and confirm readback. Keep checks and review in the warm owning session.
+7. Make the current product/scope/integration judgment and bind conditional landing authority to exact H. Verify the installed native enqueue operation and actual head; then enqueue. Reconcile duplicate or uncertain responses before retry. Do not require a future G result at admission, invent a green bridge or use a direct-merge/auto-merge fallback.
+8. Retain the owning lead through native queue wait and actual-G proof using supported events/waits or bounded checks. Inspect G, base/composition, run/attempt and required results. Failed, missing, cancelled, partial, silently skipped or wrong-subject proof cannot authorize landing. Classify red evidence before repair or justified retry; changed composition needs a new G.
+9. Enqueueing already grants conditional protected landing authority. Do not assume a manual pause after green G. New material findings at unchanged H require withdrawal and readback; if native landing wins the race, record M and route the repair. Source or UI readiness alone is not an effective withdrawal receipt.
+10. Read back actual M and reconcile the child and #3768. Reuse applicable evidence instead of routine main replay; run affected in-session checks for a real composition change. Retain accessible proof bytes before cleaning task-owned disposable state; a receiver must retrieve unique evidence before an executor transfer.
 
 A real interruption or exhausted execution window gets a precise continuation with
 candidate, owner, request/run/attempt, evidence, findings and next action. Resume

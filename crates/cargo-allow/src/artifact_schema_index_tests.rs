@@ -28,6 +28,7 @@ const SELF_DESCRIPTION_SCHEMA_NAMES: &[&str] = &[
     "tool-identity",
     "cargo-allow-provider-contract-v1",
     "sensor-capabilities",
+    "merge-group-receipt-v1",
 ];
 
 /// Normalize CRLF to LF so drift tests pass regardless of checkout line endings.

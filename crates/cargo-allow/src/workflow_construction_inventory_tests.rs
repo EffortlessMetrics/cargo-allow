@@ -53,7 +53,7 @@ fn workflow_construction_inventory_covers_the_live_denominator() {
     assert_eq!(
         workflows.len(),
         11,
-        "eleven current workflows: {workflows:?}"
+        "eleven current workflows with the review-readiness queue publisher retained: {workflows:?}"
     );
     for expected in [
         ".github/workflows/ci.yml",

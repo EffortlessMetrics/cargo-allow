@@ -177,6 +177,9 @@ SKIPPED_TEST_ONLY_JOBS = frozenset({"package-smoke", *TEST_ONLY_SKIP})
 PINNED_SOURCE_SCRIPTS = frozenset(
     {
         "scripts/test-exact-candidate-interop-smoke.sh",
+        # queue-subject runs this on every merge_group, so a change to it must
+        # stay source-bearing even though no test_only-skipped lane names it.
+        "scripts/test-merge-group-lifecycle.py",
     }
 )
 DELEGATION_TEST = "crates/cargo-allow/tests/intent_staged_precommit_delegate.rs"
@@ -239,6 +242,10 @@ _SURFACE_CACHE: dict[str, tuple[str, frozenset[str]]] = {}
 # Jobs in ci.yml that execute on a narrow plan. review-readiness and
 # frozen-subject-lock are recorded here and live in their own workflows.
 ALWAYS_CI = [
+    (
+        "queue-subject",
+        "queue identity; validates the actual merge-group checkout and stays on every event",
+    ),
     ("pregate", "ruleset context; current assertions stay on every applicable run"),
     ("test", "ruleset context; no-new and the change-note guard stay unconditional"),
     (
@@ -253,6 +260,10 @@ ALWAYS_CI = [
         "a skipped release proof stays fail-closed, not a synthetic pass",
     ),
     ("proof-route", "this plan"),
+    (
+        "queue-qualification",
+        "requires the complete actual-group proof; merge_group only, never a PR substitute",
+    ),
 ]
 RECORD_ONLY = [
     ("review-readiness", "ruleset context in its own workflow; this plan does not filter it"),

@@ -29364,6 +29364,180 @@ glob = ".allow/revisions/4782-review-disposition.toml"
 line = 1
 column = 1
 [[allow]]
+id = "allow-4602-queue-cutover"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/ci/merge-queue-cutover.md"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Retain the bounded source/settings cutover contract and complete required-check mapping for #4602; documents missing H admission, native queue canaries and rollback without treating candidate source as activation."
+evidence = ["issue:4602"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/ci/merge-queue-cutover.md"
+target_fingerprint = "md"
+glob = "docs/ci/merge-queue-cutover.md"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4602-queue-receipt-schema"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/schemas/merge-group-receipt-v1.schema.json"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Retain the exact merge-group subject/result receipt schema for #4602; records actual G/base/tree/run identity and mandatory results without granting admission, publisher authority or protected-landing claims."
+evidence = ["issue:4602"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/schemas/merge-group-receipt-v1.schema.json"
+target_fingerprint = "json"
+glob = "docs/schemas/merge-group-receipt-v1.schema.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4602-queue-subject"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/merge-group-subject.py"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Retain the read-only exact-G subject and mandatory-result verifier for #4602; rejects wrong event, checkout, base, ref and failed or missing required jobs without credentials or protected effects."
+evidence = ["issue:4602"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/merge-group-subject.py"
+target_fingerprint = "py"
+glob = "scripts/merge-group-subject.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4602-queue-regressions"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-merge-group-lifecycle.py"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Retain real-Git and workflow regression controls for #4602; prove queue subject/currentness refusals, exact required portfolio and zero development-event allocation at source level without claiming hosted/native acceptance."
+evidence = ["issue:4602"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-merge-group-lifecycle.py"
+target_fingerprint = "py"
+glob = "scripts/test-merge-group-lifecycle.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4602-queue-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4602-merge-queue-only-ci.toml"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Retain the self-covering exact-fingerprint revision for the five bounded non-Rust source receipts under #4602; governance metadata only, no proof, admission, merge or release waiver."
+evidence = ["issue:4602"]
+created = "2026-11-04"
+review_after = "2027-02-04"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4602-merge-queue-only-ci.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4602-merge-queue-only-ci.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
+id = "allow-4744-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4744.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for PR #4744 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+evidence = ["pr:4744", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4744.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4744.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4744-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4744-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records the exact-file #4744 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
+evidence = ["pr:4744", "issue:4602"]
+created = "2026-11-12"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4744-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4744-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-11504"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/frozen-subject-lock/invalidations/20261112-4744-merge-group-trigger.json"
+owner = "core/release"
+classification = "frozen_subject_invalidation"
+reason = "Append-only invalidation record for #4744: the frozen-subject-lock workflow gains the merge_group trigger and checks out the event SHA instead of the pull-request head, moving the control surface past the frozen subject and staling the #2501 freeze; refreeze required after merge."
+evidence = ["issue:4602", "pr:4744"]
+created = "2026-11-12"
+review_after = "2027-02-10"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/frozen-subject-lock/invalidations/20261112-4744-merge-group-trigger.json"
+target_fingerprint = "json"
+glob = ".allow/frozen-subject-lock/invalidations/20261112-4744-merge-group-trigger.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+[[allow]]
 id = "allow-4778-review-disposition"
 kind = "non_rust_file"
 family = "configuration"
@@ -29372,8 +29546,8 @@ owner = "core/review"
 classification = "reviewed_exception"
 reason = "Records exact-head review evidence for PR #4778 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
 evidence = ["pr:4778", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-12"
-review_after = "2027-02-10"
+created = "2026-11-13"
+review_after = "2027-02-11"
 
 [allow.selector]
 ast_kind = "tracked_file"
@@ -29394,8 +29568,8 @@ owner = "core/review"
 classification = "reviewed_exception"
 reason = "Records the exact-file #4778 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
 evidence = ["pr:4778", "issue:3768"]
-created = "2026-11-12"
-review_after = "2027-02-10"
+created = "2026-11-13"
+review_after = "2027-02-11"
 
 [allow.selector]
 ast_kind = "tracked_file"
