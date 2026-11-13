@@ -105,9 +105,19 @@ path = sys.argv[1]
 with open(path, encoding="utf-8") as handle:
     text = handle.read()
 old = '      RUSTUP_TOOLCHAIN: "1.100.0"\n'
-if old not in text:
-    sys.exit("fixture setup failed: job-level RUSTUP_TOOLCHAIN missing")
-text = text.replace(old, "", 1)
+# Scope the removal to the `test` job: the same pin also appears in
+# package-smoke, and removing that one would leave the test job's job-level
+# pin in place, so the fixture would pass for the wrong reason.
+start = text.find("\n  test:\n")
+if start == -1:
+    sys.exit("fixture setup failed: test job missing")
+import re
+match = re.search(r"\n  [A-Za-z0-9_-]+:\n", text[start + 1:])
+end = start + 1 + match.start() if match else len(text)
+job = text[start:end]
+if old not in job:
+    sys.exit("fixture setup failed: test job-level RUSTUP_TOOLCHAIN missing")
+text = text[:start] + job.replace(old, "", 1) + text[end:]
 anchor = "      - name: cargo-allow release-set clippy (#3358)\n"
 if anchor not in text:
     sys.exit("fixture setup failed: clippy step missing")
