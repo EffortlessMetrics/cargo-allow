@@ -4,7 +4,8 @@ body: >-
   `LINT_TOOLCHAIN` value (1.100.0) instead of the floating `stable` channel.
   The value drives `RUSTUP_TOOLCHAIN` and both the toolchain action and cache
   inputs, and `scripts/check-msrv-consistency.sh` now enforces that those uses
-  stay equal and that no other lane drifts off MSRV. A non-required
+  stay equal and that the versioned pins and toolchain inputs it scans stay
+  on the declared MSRV. A non-required
   `clippy-stable` lane keeps the release-set clippy on the current stable as
   early warning, so a future Rust release surfaces without reddening a
   required context. Advance the pin by bumping `LINT_TOOLCHAIN` and rerunning

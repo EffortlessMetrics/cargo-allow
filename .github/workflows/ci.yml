@@ -1079,7 +1079,8 @@ jobs:
     # `rustup default`; RUSTUP_TOOLCHAIN outranks the file. LINT_TOOLCHAIN is
     # the single declared value for RUSTUP_TOOLCHAIN, the toolchain action
     # input and the cache input, and the MSRV guard enforces that those uses
-    # stay equal and that no other lane drifts off MSRV.
+    # stay equal and that the versioned pins and toolchain inputs it scans
+    # stay on the declared MSRV.
     # Advance the pin by bumping LINT_TOOLCHAIN and rerunning the release-set
     # clippy. Do not raise the workspace `rust-version` for this lane: the
     # `msrv` job must keep proving the declared 1.95 MSRV.
