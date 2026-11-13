@@ -6,5 +6,7 @@ body: >-
   published nothing, leaving the PR BLOCKED with no check context. Classify an
   absent binding as stale review evidence via `rev-parse --verify --quiet`
   (exit 1 is absence, other exits stay instrument failures) and publish a
-  failure naming the unreachable record and the rebind it needs. Apply the same
-  classification to the bootstrap delta read.
+  failure naming the unreachable record and the rebind it needs. The bootstrap
+  delta read probes the binding the same way, so a present commit with an
+  unreadable tree stays an instrument failure instead of becoming false stale
+  evidence.

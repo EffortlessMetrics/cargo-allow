@@ -526,14 +526,19 @@ project_pr() {
       else
         input_status=$?
         if [ "${input_status}" -eq 128 ]; then
-          # Same classification as discovery: a binding that vanished
-          # between the probe and the delta read is stale evidence, not a
-          # broken instrument, and still has to publish.
-          rm -f "${live_file}"
-          publish "${head_sha}" "failure" \
-            "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${selected} binds ${bound_head}, which this checkout no longer contains; a fresh exact-head review and rebind are required; stale review evidence fails closed" \
-            "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
-          return 1
+          # 128 is ambiguous: the binding may have vanished, or the
+          # commit may be present with an unreadable tree. Probe the
+          # commit before classifying. Absent is stale evidence and
+          # still has to publish; present is a broken instrument.
+          local presence=0
+          commit_presence "${bound_head}" || presence=$?
+          if [ "${presence}" -eq 1 ]; then
+            rm -f "${live_file}"
+            publish "${head_sha}" "failure" \
+              "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${selected} binds ${bound_head}, which this checkout no longer contains; a fresh exact-head review and rebind are required; stale review evidence fails closed" \
+              "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
+            return 1
+          fi
         fi
         printf 'review-readiness: instrument failure: disposition delta read failed (exit %s)\n' "${input_status}" >&2
         rm -f "${live_file}"
