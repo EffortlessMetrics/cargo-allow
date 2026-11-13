@@ -1,0 +1,50 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4778,
+  "base_ref": "main",
+  "base_sha": "04201b753ba38f5197011ff2494969128d2feb58",
+  "head_ref": "docs/3877-ratification-note",
+  "head_sha": "7bc584dc28cf76e6f7d41035087ed52aefccdfdd",
+  "merge_base": "04201b753ba38f5197011ff2494969128d2feb58",
+  "reviewed_diff_digest": "sha256:v2:24e920257554a89ef3337a73a82b0568d392f8179cd3991dad5d56db725934a5",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4778 at 7bc584dc28cf76e6f7d41035087ed52aefccdfdd (base and merge-base 04201b753ba38f5197011ff2494969128d2feb58). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. The rebase preserves the reviewed content per the steward's 86910f5e->937c22c7 check. Item 3 now states #3151 as installed-surface evidence plus a named residual, with the node NotProven by construction and a v2 docs-execution contract plus the #2466 and #3149 producers required for Complete. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4778#pullrequestreview-5886186130. review cargo-allow non-author oppositional exact-head model review of head 7bc584dc28cf76e6f7d41035087ed52aefccdfdd, base and merge-base 04201b753ba38f5197011ff2494969128d2feb58. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "campaign-item3-installed-experience-wording",
+      "severity": "advisory",
+      "owned_seam": "campaign direction record",
+      "source_path": "docs/campaigns/cargo-allow-0.2.0.md",
+      "source_line": 42,
+      "repair_route": "Fixed at 49b01b33: item 3 says #3151 produces installed-surface evidence and a named residual; the node stays NotProven, and a Complete freeze needs a v2 docs-execution contract plus the #2466 and #3149 producers.",
+      "claim_boundary": "Advisory wording only; the docs-only change records the #3877 ratification and the O3 direction and makes no implementation or release claim."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4778",
+    "Reviewed pair base/merge-base 04201b753ba38f5197011ff2494969128d2feb58, head 7bc584dc28cf76e6f7d41035087ed52aefccdfdd, digest sha256:v2:24e920257554a89ef3337a73a82b0568d392f8179cd3991dad5d56db725934a5.",
+    "The rebase is preservation-intact per the steward's 86910f5e->937c22c7 check: no source or doc content was lost.",
+    "Advisory fixed at 49b01b33: docs/campaigns/cargo-allow-0.2.0.md:42 now states the installed-surface residual; the node stays NotProven. The installed-experience node is NotProven by construction (retain_dependencies records #2466 and #3151 unconditionally and #3149 for CommandCaseJoin::Absent; record() takes the min state). The stronger wording is installed-surface evidence and a named residual, with a Complete freeze needing a v2 docs-execution contract plus the #2466 and #3149 producers.",
+    "The sentence 'Queue proof of record, with three release-rehearsal jobs still bound by ref name' is not present at 937c22c7 or at the base; if it belongs in this doc it is missing. No merge-group binding is described as complete.",
+    "Prior BLOCK at a0ff6b8c: :140 named the invocation-boundary guard as a separate remaining slice; :150-153 repeated guard-first, flags-false, worker-afterwards. Both fixed at 72ee42e9 and unchanged at 6928b165: :140 puts the guard inside the first slice; :150-162 says the profile, not the guard, confines the direct route and later slices enforce the remaining boundaries.",
+    "Prior BLOCK at 72ee42e9: the campaign map was CRLF (513 CR) against .editorconfig:5 end_of_line = lf. Fixed at 6928b165: 0 CR / 513 LF; git diff --ignore-cr-at-eol 72ee42e9 6928b165 is empty.",
+    "Graphite thread PRRT_kwDOSnyN3s62yK8_ (doc vs PR-description checkpoint dates) replied and resolved at 6928b165.",
+    "Bootstrap disposition commit 2e63019cfaf860aea7405f90d056155185fc0d0e: two exact-path non_rust_file allows, allow-4778-review-disposition and allow-4778-review-revision; no directory glob and no widening of any other policy entry. The final commit is disposition-only and is admitted by the ancestor fallback."
+  ],
+  "required_ci": {
+    "owner": "PR #4778 orchestrator: verify the exact-head review, live review-readiness success, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": ""
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4778",
+  "reviewed_at_utc": "2026-11-13T07:02:17Z"
+}
