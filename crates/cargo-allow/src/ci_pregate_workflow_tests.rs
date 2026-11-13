@@ -38,19 +38,20 @@ fn job_block(workflow: &str, job: &str) -> String {
     let mut block = String::new();
     let mut in_job = false;
     for line in workflow.lines() {
-        if let Some(name) = line.strip_prefix("  ").and_then(|rest| rest.strip_suffix(':')) {
-            if !name.is_empty()
-                && name
-                    .chars()
-                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
-            {
-                if in_job {
-                    break;
-                }
-                if name == job {
-                    in_job = true;
-                    continue;
-                }
+        if let Some(name) = line
+            .strip_prefix("  ")
+            .and_then(|rest| rest.strip_suffix(':'))
+            && !name.is_empty()
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            if in_job {
+                break;
+            }
+            if name == job {
+                in_job = true;
+                continue;
             }
         }
         if in_job {
