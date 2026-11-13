@@ -17,5 +17,5 @@ reason = "Retain the guard's positive/negative characterization; test-only and d
 [[records]]
 allow_ids = ["allow-merge-group-checkout-refs-revision"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:d26aab8b81ee92bb6a3d2848d31ec6bc6acf1062b77793f82d72044f7becdffd"
+after_fingerprint = "sha256:v1:b237aad7c7fbab4d676117d66f418b030b65ff32d375ab0170f65c9c09627327"
 reason = "Self-covering note for the exact-path revision record; governance metadata only."
