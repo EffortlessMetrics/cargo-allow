@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Publish a review-readiness failure when a retained disposition binds a commit
+  the CI clone no longer holds. A rebase or force-push drops the reviewed head,
+  so `git merge-base --is-ancestor` exits 128 and the adapter previously
+  published nothing, leaving the PR BLOCKED with no check context. Classify an
+  absent binding as stale review evidence via `rev-parse --verify --quiet`
+  (exit 1 is absence, other exits stay instrument failures) and publish a
+  failure naming the unreachable record and the rebind it needs. Apply the same
+  classification to the bootstrap delta read.
