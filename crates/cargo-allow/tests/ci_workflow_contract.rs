@@ -301,15 +301,22 @@ fn ci_cache_contract_is_platform_scoped_and_pr_save_closed() {
     );
 
     let cache_steps = workflow
-        .matches("uses: ./.github/actions/rust-cache")
+        .lines()
+        .filter(|line| line.trim().starts_with("- uses: ./.github/actions/rust-cache"))
         .count();
     assert!(
         cache_steps >= 10,
         "expected the shared cache policy on Linux proof lanes"
     );
+    // Count lane keys as lines, not raw substrings: prose that mentions
+    // "lane:" in a comment is not a cache namespace, and a coincidence of
+    // counts must not stand in for the invariant.
+    let lane_namespaces = workflow
+        .lines()
+        .filter(|line| line.trim_start().starts_with("lane:"))
+        .count();
     assert_eq!(
-        cache_steps,
-        workflow.matches("lane:").count(),
+        cache_steps, lane_namespaces,
         "every cache step must declare a stable lane namespace"
     );
 }
