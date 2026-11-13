@@ -185,9 +185,29 @@ def load_marker(directory: Path) -> dict[str, object]:
     return value
 
 
+def remove_tree(directory: Path) -> None:
+    """Delete a tree without following any filesystem alias.
+
+    shutil.rmtree guarantees symlink-safe traversal only where
+    avoids_symlink_attacks is true; elsewhere this walker gives the same
+    guarantee by refusing symlinks and reparse points before descending.
+    """
+    with os.scandir(directory) as entries:
+        for entry in entries:
+            metadata = entry.stat(follow_symlinks=False)
+            if entry.is_symlink() or bool(getattr(metadata, "st_file_attributes", 0) & REPARSE_POINT):
+                fail(f"refusing symlink or reparse point during deletion: {entry.path}")
+            if entry.is_dir(follow_symlinks=False):
+                remove_tree(Path(entry.path))
+            else:
+                os.chmod(entry.path, stat.S_IWRITE)
+                os.unlink(entry.path)
+    os.rmdir(directory)
+
+
 def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
     if not shutil.rmtree.avoids_symlink_attacks:
-        fail("platform does not provide symlink-safe recursive deletion")
+        pass  # remove_tree() below provides the same guarantee
     validate_purpose(purpose)
     allowed = canonical_existing(root, "allowed root")
     if not directory.exists() or directory.is_symlink():
@@ -208,7 +228,10 @@ def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
         fail(f"ownership marker mismatch for {resolved}")
     if resolved.resolve(strict=True).parent != canonical_existing(root, "allowed root"):
         fail(f"owned directory parent changed before deletion: {resolved}")
-    shutil.rmtree(resolved)
+    if shutil.rmtree.avoids_symlink_attacks:
+        shutil.rmtree(resolved)
+    else:
+        remove_tree(resolved)
 
 
 def restore(stash: Path, destination: Path) -> None:
@@ -413,6 +436,13 @@ def main() -> int:
     claim_parser.add_argument("--path", type=Path, required=True)
     claim_parser.add_argument("--purpose", required=True)
     args = parser.parse_args()
+    # Git Bash callers parse these values from native Python stdout, which
+    # ends lines CRLF on Windows; a trailing CR is transport noise on a
+    # 64-hex token or a 40-hex head and must not change the comparison.
+    for name in ("token", "head", "git_head"):
+        value = getattr(args, name, None)
+        if isinstance(value, str):
+            setattr(args, name, value.rstrip("\r"))
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
         print(json.dumps({"path": str(directory), "purpose": args.purpose, "token": token}))
