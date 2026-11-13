@@ -236,7 +236,7 @@ def check_harness_receipt(
     steps_executed = journey.get("steps_executed")
     if not isinstance(steps_expected, list) or not isinstance(steps_executed, list):
         refuse(f"{platform} harness receipt journey is malformed")
-    if steps_executed != steps_expected or not steps_executed:
+    if [step["id"] for step in steps_executed] != steps_expected or not steps_executed:
         refuse(
             f"{platform} harness journey is partial: "
             f"{len(steps_executed)} of {len(steps_expected)} steps executed"

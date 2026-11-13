@@ -102,7 +102,10 @@ def harness_receipt(platform: str) -> dict:
         "journey": {
             "fixture_generation": "first_hour_brownfield_v1",
             "steps_expected": ["version", "doctor_no_policy", "final_check_no_new"],
-            "steps_executed": ["version", "doctor_no_policy", "final_check_no_new"],
+            "steps_executed": [
+                {"id": step, "exit_code": 0, "artifact_schema_id": "none"}
+                for step in ["version", "doctor_no_policy", "final_check_no_new"]
+            ],
         },
         "negative_controls": [{"id": "ordinary_scan_offline", "passed": True}],
         "limitations": ["does_not_prove_crates_io_install"],
@@ -297,7 +300,7 @@ class AggregateLawTests(unittest.TestCase):
             rows_dir = self.green_rows(root)
             harness = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
             document = json.loads(harness.read_text(encoding="utf-8"))
-            document["journey"]["steps_executed"] = document["journey"]["steps_expected"][:-1]
+            document["journey"]["steps_executed"] = document["journey"]["steps_executed"][:-1]
             harness.write_text(json.dumps(document), encoding="utf-8")
             message = self.refuse_message(
                 lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))

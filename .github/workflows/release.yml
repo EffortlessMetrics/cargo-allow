@@ -387,7 +387,7 @@ jobs:
           if packaged_path.is_file():
               for line in packaged_path.read_text(encoding="utf-8").splitlines():
                   if line.startswith("packaged="):
-                      packaged.append(line[len("packaged="):].split("-", 1)[0])
+                      packaged.append(line[len("packaged="):].rsplit("-", 1)[0])
           row = {
               "repository": os.environ["EXPECTED_REPOSITORY"],
               "ref": os.environ["EXPECTED_REF"],
