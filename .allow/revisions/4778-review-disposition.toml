@@ -5,11 +5,11 @@ schema_version = 1
 [[records]]
 allow_ids = ["allow-4778-review-disposition"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:c8cfe71b364936a845a64e8da41e21d3d560e95d0b3a739a86b45a59d2c109d3"
+after_fingerprint = "sha256:v1:46b3b58b48e647f3be160e668901e7de191067285961a46df9e6b9c960db21ad"
 reason = "Retain the actual current-pair source/CI review without broadening source exceptions."
 
 [[records]]
 allow_ids = ["allow-4778-review-revision"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:edaa95bcc2bca9c7ccbe0a663c80613954e8a5c3be371dee89907fd70639d68b"
+after_fingerprint = "sha256:v1:3a130351237c17dd89883d200c3410c9642d0b16cadbd719610b0369b8f3de06"
 reason = "Exact self-covering note for the source-controlled review disposition receipt."
