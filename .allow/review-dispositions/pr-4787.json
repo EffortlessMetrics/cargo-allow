@@ -1,0 +1,40 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4787,
+  "base_ref": "main",
+  "base_sha": "cf411df7452491625c8d2b2cc4d789bf6282070e",
+  "head_ref": "fix/4780-junction-test-main",
+  "head_sha": "a954b9c809817993203486a6d3a25037ab06b3e0",
+  "merge_base": "cf411df7452491625c8d2b2cc4d789bf6282070e",
+  "reviewed_diff_digest": "sha256:v2:b1b7706d6f20b0e49b052e6eb489e6fb976de65335ebb2a46933c72fb0da912f",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4787 at d4814284e16079564f0ebcffe932211aa88d0c86 (base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e). The ledger commit a954b9c809817993203486a6d3a25037ab06b3e0 adds only the exact-path review-disposition admission and its revision note; this commit is disposition-only and is admitted by the ancestor fallback. Per-path rebase preservation: crates/cargo-allow/src/core_command_migration_readback.rs is byte-identical to 694c68fb, and cf411df7 did not change that path. The eight receipts were regenerated because cf411df7 changed those paths; the final d4814284 files are byte-identical to floor-receipt-regeneration run 43374768062 on 5f8f0ee0, with selected_source_digest c0edf1a6 matching the head's crates/**/*.rs. The mutation reproduction and JunctionFixture inspection passed. The one CodeRabbit thread was the intermediate 5f8f0ee0 receipt carry-over; replied 4560914023 and resolved. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4787#pullrequestreview-5887832923. review cargo-allow non-author oppositional exact-head model review of head d4814284e16079564f0ebcffe932211aa88d0c86, base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4787",
+    "Reviewed pair base/merge-base cf411df7452491625c8d2b2cc4d789bf6282070e, head d4814284e16079564f0ebcffe932211aa88d0c86, digest sha256:v2:b1b7706d6f20b0e49b052e6eb489e6fb976de65335ebb2a46933c72fb0da912f.",
+    "Per-path rebase preservation: crates/cargo-allow/src/core_command_migration_readback.rs is byte-identical to 694c68fb and cf411df7 did not change it.",
+    "The eight receipts were regenerated because cf411df7 changed those paths; the final d4814284 files are byte-identical to run 43374768062 on 5f8f0ee0, each selection Receipt SHA-256 matches the committed JSON, and selected_source_digest c0edf1a6 matches the head's 1384 crates/**/*.rs files.",
+    "Mutation reproduction: deleting the file_attributes & FILE_ATTRIBUTE_REPARSE_POINT term makes indirection_truth_table_covers_the_reparse_point_arm fail with 'a reparse point that is not a symlink must still be indirection'; restoring it passes 3/3.",
+    "JunctionFixture is created before every fallible operation and its Drop removes the junction then the root on early returns and panic unwinding.",
+    "Thread PRRT_kwDOSnyN3s62-LqZ (receipt digest 684720fb vs c0edf1a6) was the intermediate 5f8f0ee0 carry-over; replied 4560914023 and resolved.",
+    "Non-blocking: the PR body still names 694c68fb / f92a2bc3 and run 43361316258; the live pair is d4814284 / cf411df7. The intermediate fe092960 / 5f8f0ee0 receipts are stale and superseded by d4814284.",
+    "The ledger commit a954b9c809817993203486a6d3a25037ab06b3e0 adds exact-path allows for .allow/review-dispositions/pr-4787.json and .allow/revisions/4787-review-disposition.toml, plus the revision note; no code, test, workflow, or receipt change."
+  ],
+  "required_ci": {
+    "owner": "PR #4787 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4787"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4787",
+  "reviewed_at_utc": "2026-11-13T07:55:50Z"
+}

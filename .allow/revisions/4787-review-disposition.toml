@@ -1,0 +1,15 @@
+# Review-disposition exact-path admission for #4780 / PR #4787.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4787-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ac6dd27861aed11130c014da1442b42037f6e5a51bdd88ea4d1ead8e55bfe5a1"
+reason = "Retain the actual current-pair source/CI review without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-4787-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d5dc7f7d3db834dc6078e18272dde979b02b0a4603577001c23f6bcf3bba2f08"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."
