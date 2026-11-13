@@ -228,16 +228,22 @@ pub struct ReviewReadinessProjectionInputV1 {
 /// The retained-review-ledger escape: a disposition committed inside
 /// the PR it covers necessarily moves the head it binds. The law
 /// admits that movement only when the entire head delta is
-/// review-disposition records under the declared ledger directory;
+/// review-disposition records under the declared ledger directories;
 /// anything else is ordinary staleness.
 pub const REVIEW_DISPOSITION_LEDGER_DIR: &str = ".allow/review-dispositions/";
+/// The disposition's own revision note lives here. It pins the
+/// disposition's content fingerprint, so a rebind necessarily updates
+/// it; admitting the note is part of the same ledger movement, not a
+/// policy or source change.
+pub const REVIEW_DISPOSITION_REVISION_DIR: &str = ".allow/revisions/";
 
 #[must_use]
 pub fn is_review_ledger_bootstrap(head_delta_paths: &[String]) -> bool {
     !head_delta_paths.is_empty()
-        && head_delta_paths
-            .iter()
-            .all(|path| path.starts_with(REVIEW_DISPOSITION_LEDGER_DIR))
+        && head_delta_paths.iter().all(|path| {
+            path.starts_with(REVIEW_DISPOSITION_LEDGER_DIR)
+                || path.starts_with(REVIEW_DISPOSITION_REVISION_DIR)
+        })
 }
 
 /// The projected check result, bound to the exact live pair.
@@ -445,4 +451,123 @@ pub fn render_review_readiness_json(
     projection: &ReviewReadinessProjectionV1,
 ) -> Result<String, serde_json::Error> {
     serde_json::to_string_pretty(projection)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::artifacts::campaign_issue_closeout_v1::CampaignEvidenceClassV1;
+    use crate::artifacts::review_disposition_v1::{
+        IndependentReviewPostureV1, ReviewActorClassV1, ReviewRequiredCiV1,
+    };
+
+    const DIGEST: &str = "sha256:v2:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+
+    fn disposition(base_sha: &str, head_sha: &str) -> ReviewDispositionV1 {
+        ReviewDispositionV1 {
+            schema_id: "cargo-allow.review-disposition.v1".to_string(),
+            schema_version: 1,
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            pr_number: 4778,
+            base_ref: "main".to_string(),
+            base_sha: base_sha.to_string(),
+            head_ref: "docs/x".to_string(),
+            head_sha: head_sha.to_string(),
+            merge_base: base_sha.to_string(),
+            reviewed_diff_digest: DIGEST.to_string(),
+            review_protocol: "review-current-head-gen1".to_string(),
+            actor_class: ReviewActorClassV1::IndependentModel,
+            reviewer_identity: "review".to_string(),
+            independent_review: IndependentReviewPostureV1::Proven {
+                reference: "review".to_string(),
+            },
+            claimed_verdict: ReviewCurrentnessV1::ReviewClean,
+            findings: Vec::new(),
+            threads_inspected: Vec::new(),
+            required_ci: ReviewRequiredCiV1 {
+                owner: "orchestrator".to_string(),
+                observation_ref: String::new(),
+            },
+            evidence_class: CampaignEvidenceClassV1::CurrentObservation,
+            scope_claim_boundary: "pull-request:4778".to_string(),
+            reviewed_at_utc: "2026-11-13T00:00:00Z".to_string(),
+        }
+    }
+
+    fn live(base_sha: &str, head_sha: &str) -> ReviewLiveSourceV1 {
+        ReviewLiveSourceV1 {
+            repository: "EffortlessMetrics/cargo-allow".to_string(),
+            pr_number: 4778,
+            base_ref: "main".to_string(),
+            base_sha: base_sha.to_string(),
+            head_ref: "docs/x".to_string(),
+            head_sha: head_sha.to_string(),
+            merge_base: base_sha.to_string(),
+            diff_digest: DIGEST.to_string(),
+            review_protocol: "review-current-head-gen1".to_string(),
+            scope_claim_boundary: "pull-request:4778".to_string(),
+        }
+    }
+
+    fn input(
+        disposition: ReviewDispositionV1,
+        live: ReviewLiveSourceV1,
+        delta: &[&str],
+    ) -> ReviewReadinessProjectionInputV1 {
+        ReviewReadinessProjectionInputV1 {
+            disposition: ReviewReadinessDispositionInputV1::Present(Box::new(disposition)),
+            live,
+            draft_state: ReviewReadinessDraftStateV1::Ready,
+            event: ReviewReadinessEventV1::DispositionUpdated,
+            prior_observation: None,
+            head_delta_paths: delta.iter().map(|path| (*path).to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn bootstrap_admits_a_disposition_and_its_revision_note() {
+        let paths = vec![
+            ".allow/review-dispositions/pr-4778.json".to_string(),
+            ".allow/revisions/4778-review-disposition.toml".to_string(),
+        ];
+        assert!(is_review_ledger_bootstrap(&paths));
+        let projection = evaluate_review_readiness_projection(&input(
+            disposition("aaaa", "bbbb"),
+            live("aaaa", "cccc"),
+            &[
+                ".allow/review-dispositions/pr-4778.json",
+                ".allow/revisions/4778-review-disposition.toml",
+            ],
+        ));
+        assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Success);
+        assert!(projection.head_ledger_bootstrap);
+    }
+
+    #[test]
+    fn bootstrap_rejects_a_policy_edit() {
+        let paths = vec![
+            ".allow/revisions/4778-review-disposition.toml".to_string(),
+            "policy/allow.toml".to_string(),
+        ];
+        assert!(!is_review_ledger_bootstrap(&paths));
+        let projection = evaluate_review_readiness_projection(&input(
+            disposition("aaaa", "bbbb"),
+            live("aaaa", "cccc"),
+            &[
+                ".allow/revisions/4778-review-disposition.toml",
+                "policy/allow.toml",
+            ],
+        ));
+        assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Failure);
+    }
+
+    #[test]
+    fn bootstrap_does_not_admit_base_movement() {
+        let projection = evaluate_review_readiness_projection(&input(
+            disposition("aaaa", "bbbb"),
+            live("cccc", "dddd"),
+            &[".allow/revisions/4778-review-disposition.toml"],
+        ));
+        assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Failure);
+    }
 }

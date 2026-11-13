@@ -1,0 +1,9 @@
+kind: Fixed
+body: >-
+  Admit a review disposition's own revision note to the review-readiness
+  ledger bootstrap. A disposition committed inside the PR it covers moves the
+  head it binds, and its revision note pins the disposition's content
+  fingerprint, so a rebind necessarily updates both. The bootstrap now accepts
+  paths under `.allow/revisions/` as well as `.allow/review-dispositions/`;
+  policy and source edits still stale, and base movement still stales. This
+  unblocks #4778 and any other PR that ships a new disposition file.
