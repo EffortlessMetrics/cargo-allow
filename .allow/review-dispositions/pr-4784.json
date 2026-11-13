@@ -1,0 +1,50 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4784,
+  "base_ref": "main",
+  "base_sha": "cf411df7452491625c8d2b2cc4d789bf6282070e",
+  "head_ref": "fix/4781-pin-test-toolchain",
+  "head_sha": "ff05f6e945d8884a224629776e77c10c31de2944",
+  "merge_base": "cf411df7452491625c8d2b2cc4d789bf6282070e",
+  "reviewed_diff_digest": "sha256:v2:b0377722d0edc8e9d3463d7bc578c96d2b1f5fef8e5e7e97e83d81e7ddaef7df",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4784 at ff05f6e945d8884a224629776e77c10c31de2944 (base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e). The ledger commit adds only this exact-path disposition admission and its revision note; the final rebind is disposition-only and is admitted by the ancestor fallback. The head is the rustfmt-clean receipt head: a4edc156 counts cache steps and lane keys as lines, closing the false-green; 502249e8 applies rustfmt; 07004481/ff05f6e9 regenerate the receipts. Reviewed 34ebe444 and 78da8c2b with --ignore-cr-at-eol: 34ebe444 is 127/30 of real content across 5 files; 78da8c2b is zero content change. The profiles checker baseline passes 13 profiles and both negative controls fail as required. The MSRV characterization suite passes 26/26. The final receipts bind source 502249e8 / selected_source_digest 8bb6334c, matching the head's crates/**/*.rs. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784#pullrequestreview-5887989033. review cargo-allow non-author oppositional exact-head model review of head ff05f6e945d8884a224629776e77c10c31de2944, base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "msrv-characterization-unreceipted-cases-overlap",
+      "severity": "advisory",
+      "owned_seam": "MSRV guard characterization",
+      "source_path": "scripts/test-check-msrv-consistency.sh",
+      "source_line": 93,
+      "repair_route": "Add a third toolchain: 1.101.0 input without removing either ${{ env.LINT_TOOLCHAIN }} expression, so the unreceipted-input loop is isolated from the two-expression count check.",
+      "claim_boundary": "Advisory characterization gap only; the loop is exercised by the unreceipted cache toolchain input case, and the guard itself is correct."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4784",
+    "Reviewed pair base/merge-base cf411df7452491625c8d2b2cc4d789bf6282070e, head ff05f6e945d8884a224629776e77c10c31de2944, digest sha256:v2:b0377722d0edc8e9d3463d7bc578c96d2b1f5fef8e5e7e97e83d81e7ddaef7df.",
+    "a4edc156 counts cache steps and lane keys as lines, closing the false-green; 502249e8 applies rustfmt; 07004481/ff05f6e9 regenerate the receipts.",
+    "34ebe444 with --ignore-cr-at-eol is 127 insertions / 30 deletions across 5 files; 78da8c2b with --ignore-cr-at-eol is empty.",
+    "Profiles checker: baseline 13 profiles exit 0; manifest 1.95.0 vs job 1.100.0 fails; env 1.99.0 vs manifest 1.100.0 fails.",
+    "MSRV characterization: 26/26. The step-local fixture is scoped to the test job; the two unreceipted-input cases overlap the count check (advisory).",
+    "The final receipts bind source 502249e8 / selected_source_digest 8bb6334c, matching the head's 1384 crates/**/*.rs files.",
+    "pregate and frozen-subject-lock are SUCCESS; the four test-core-platforms rows are in progress and test is not yet created; review-readiness is neutral.",
+    "The ledger commit adds exact-path allows for .allow/review-dispositions/pr-4784.json and .allow/revisions/4784-review-disposition.toml, plus the revision note; no code, test, workflow, or receipt change."
+  ],
+  "required_ci": {
+    "owner": "PR #4784 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4784",
+  "reviewed_at_utc": "2026-11-13T08:12:17Z"
+}
