@@ -1130,7 +1130,7 @@ jobs:
       # stay equal and that the versioned pins and toolchain inputs it scans
       # stay on the declared MSRV.
       # Advance the pin by bumping LINT_TOOLCHAIN and rerunning the release-set
-      # clippy. Do not raise the workspace `rust-version` for this lane: the
+      # clippy. Do not raise the workspace `rust-version` for this job: the
       # `msrv` job must keep proving the declared 1.95 MSRV.
       LINT_TOOLCHAIN: "1.100.0"
       # The env context is not available in a job-level env block, so the
