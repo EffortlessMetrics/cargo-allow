@@ -475,6 +475,37 @@ mod tests {
         drop(file);
         fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
+
+    #[cfg(windows)]
+    #[test]
+    fn junction_is_refused_as_indirection() -> Result<(), String> {
+        let root = fixture("junction")?;
+        let target = root.join("target");
+        fs::create_dir(&target).map_err(|error| error.to_string())?;
+        let junction = root.join("junction");
+        // Junctions do not require the symlink privilege, so mklink /J is the
+        // dependency-free way to cover the Windows reparse-point branch on
+        // the one platform where it compiles.
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(&junction)
+            .arg(&target)
+            .status()
+            .map_err(|error| error.to_string())?;
+        if !status.success() {
+            return Err("could not create a junction fixture".to_string());
+        }
+        let metadata = fs::symlink_metadata(&junction).map_err(|error| error.to_string())?;
+        if !is_indirection(&metadata) {
+            return Err("a junction was not treated as indirection".to_string());
+        }
+        if reject_symlink_components(&junction).is_ok() {
+            return Err("a junction path was not refused".to_string());
+        }
+        // remove_dir removes the junction itself, not its target.
+        let _ = fs::remove_dir(&junction);
+        fs::remove_dir_all(&root).map_err(|error| error.to_string())
+    }
 }
 
 impl<'de> DeserializeSeed<'de> for UniqueKeys {
