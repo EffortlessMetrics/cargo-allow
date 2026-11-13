@@ -209,10 +209,11 @@ mod tests {
     fn hidden_names(command: &Command) -> Vec<String> {
         let mut names = Vec::new();
         for argument in command.get_arguments() {
+            let Some(long) = argument.get_long() else {
+                continue;
+            };
             if argument.is_hide_set() {
-                if let Some(long) = argument.get_long() {
-                    names.push(long.to_string());
-                }
+                names.push(long.to_string());
             }
         }
         for subcommand in command.get_subcommands() {
