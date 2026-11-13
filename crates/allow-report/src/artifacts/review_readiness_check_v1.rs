@@ -461,7 +461,8 @@ mod tests {
         IndependentReviewPostureV1, ReviewActorClassV1, ReviewRequiredCiV1,
     };
 
-    const DIGEST: &str = "sha256:v2:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const DIGEST: &str =
+        "sha256:v2:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
     fn disposition(base_sha: &str, head_sha: &str) -> ReviewDispositionV1 {
         ReviewDispositionV1 {
