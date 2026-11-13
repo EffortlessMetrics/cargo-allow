@@ -331,6 +331,61 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
 }
 
 #[test]
+fn checkpoint_sentinel_refuses_anything_but_the_clean_incident_state() {
+    let root = workspace_root();
+    let schema: serde_json::Value = serde_json::from_str(&read_workspace_file(
+        &root,
+        "docs/schemas/topology-publish-receipt.schema.json",
+    ))
+    .unwrap_or_else(|error| {
+        std::panic::panic_any(format!(
+            "topology receipt schema should parse as JSON: {error}"
+        ))
+    });
+    let clean = schema["properties"]["incident_state"]["enum"]
+        .as_array()
+        .and_then(|states| states.first())
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| {
+            std::panic::panic_any(
+                "incident_state should enumerate its states, clean sentinel first".to_string(),
+            )
+        });
+    assert_eq!(
+        clean, "none",
+        "the clean sentinel is the string \"none\", not null and not an absent field"
+    );
+    assert!(
+        schema["required"]
+            .as_array()
+            .is_some_and(|required| required.iter().any(|field| field == "incident_state")),
+        "incident_state is required, so an absent field is already schema-invalid"
+    );
+
+    // The checkpoint may render only when the receipt is a clean settled batch.
+    // `incident_state` is required and enumerates the clean sentinel as a
+    // string, so the two ways to get this wrong are opposite: comparing
+    // against None refuses every clean receipt, and accepting None (or an
+    // absent field) renders a checkpoint over an unsettled publish.
+    let clean_predicate = format!("receipt_document.get(\"incident_state\") != \"{clean}\"");
+    let inverted_predicate = "receipt_document.get(\"incident_state\") is not None";
+    for workflow_path in [RELEASE_WORKFLOW, AUTHORIZED_RELEASE_WORKFLOW] {
+        let workflow = read_workspace_file(&root, workflow_path);
+        assert!(
+            !workflow.contains(inverted_predicate),
+            "{workflow_path} must not treat a present incident_state as an incident: \
+             the clean sentinel is the string \"{clean}\", which is not None"
+        );
+        assert_eq!(
+            workflow.matches(&clean_predicate).count(),
+            1,
+            "{workflow_path} should gate the post-observation checkpoint on exactly one \
+             comparison against the schema's clean sentinel"
+        );
+    }
+}
+
+#[test]
 fn release_workflow_rehearsal_skips_secret_lookup_but_publication_fails_closed() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
