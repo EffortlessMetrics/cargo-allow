@@ -1,16 +1,20 @@
-name: UB Review
+name: Review contracts
+
+# Model review and exact-H disposition belong to the owning session (#4602).
+# The deterministic Changie obligations still execute against actual G.
 
 on:
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize]
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
 
 permissions:
   contents: read
-  pull-requests: write
-  checks: write
 
 concurrency:
-  group: ub-review-${{ github.event.pull_request.number }}
+  group: review-contracts-${{ github.event.merge_group.head_sha || github.event.pull_request.number }}
   cancel-in-progress: false
 
 jobs:
@@ -22,6 +26,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
           fetch-depth: 0
       # The corpus-ordering probes validate versions through the typed
       # release-identity authority (#3752), so this job builds the
@@ -110,64 +116,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - name: Characterize the staged changelog-fragment hook
         run: bash scripts/ensure-changelog-fragment.sh --self-test
-
-  review:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    continue-on-error: true
-    env:
-      UB_REVIEW_AVAILABLE: ${{ secrets.MINIMAX_API_KEY != '' && 'yes' || 'no' }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          # Bind the review lane to the submitted head, not GitHub's
-          # synthetic merge commit: the post transaction re-verifies the
-          # PR head and a merge-ref checkout reads as a head change.
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Report unavailable review lane
-        if: env.UB_REVIEW_AVAILABLE != 'yes'
-        run: |
-          echo "::notice::UB Review skipped: MINIMAX_API_KEY is unavailable in this event context (expected for Dependabot or fork pull requests)."
-          mkdir -p target/ub-review
-          cat > target/ub-review/status.md <<'EOF'
-          # UB Review unavailable
-
-          The model-backed review lane was skipped because `MINIMAX_API_KEY` is
-          unavailable in this pull request event context. This is expected for
-          Dependabot and fork pull requests. Deterministic repository checks
-          remain authoritative for this lane.
-          EOF
-      - name: Run ub-review
-        if: env.UB_REVIEW_AVAILABLE == 'yes'
-        uses: EffortlessMetrics/ub-review@12c7700d4aa84922b9bdf9af63b67d76873cd463
-        with:
-          profile: gh-runner
-          posting: review
-          fail-on-gate: 'false'
-          github-token: ${{ github.token }}
-          minimax-api-key: ${{ secrets.MINIMAX_API_KEY }}
-          base: origin/${{ github.base_ref }}
-          head: HEAD
-          pr-head-sha: ${{ github.event.pull_request.head.sha }}
-          out: target/ub-review
-      # Advisory agreement check (#4255): a `publication_result=posted` claim
-      # must not coexist with a retained post-error record. The instrument's
-      # own fixture self-test runs first so a broken check cannot pass
-      # silently.
-      - name: Check post and gate record agreement
-        if: always() && env.UB_REVIEW_AVAILABLE == 'yes'
-        run: |
-          set -euo pipefail
-          bash scripts/check-ub-review-post-agreement.sh --self-test
-          bash scripts/check-ub-review-post-agreement.sh target/ub-review
-      - name: Upload review artifacts
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: ub-review-artifacts
-          path: target/ub-review
-          if-no-files-found: warn

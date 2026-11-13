@@ -1,3 +1,5 @@
+# Ordinary proof is admitted only by the native queue (#4602).
+# Development checks and H review/authorization stay in the owning session.
 on:
   pull_request:
     # Full proof runs on drafts too; review-readiness.yml handles Ready events.
@@ -5,15 +7,38 @@ on:
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
-  # Required pregate and test contexts must also run on a merge queue.
-  # This does not enable a queue or add a bypass. checks_requested is the
-  # only merge_group activity.
   merge_group:
     types: [checks_requested]
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
+  queue-subject:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Validate the actual merge-group checkout
+        if: github.event_name == 'merge_group'
+        run: python3 scripts/merge-group-subject.py subject --receipt target/queue/subject.json
+      - name: Exercise queue identity and event regressions
+        if: github.event_name == 'merge_group'
+        run: python3 scripts/test-merge-group-lifecycle.py
+      - name: Retain the observed queue subject
+        if: always() && github.event_name == 'merge_group'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: queue-subject-${{ github.run_id }}-${{ github.run_attempt }}
+          path: target/queue/subject.json
+          if-no-files-found: error
+
   # Stage 1 pre-gate (#3836): one fast deterministic tier that rejects
   # cheap source-controlled defects before the expensive proof jobs are
   # provisioned. The selected denominator is the #3835-measured cheap,
@@ -26,6 +51,7 @@ jobs:
   # proof denominator stays #2569's, Clippy stays in Stage 2, and no
   # release secrets are read here.
   pregate:
+    needs: queue-subject
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Same precedence law the msrv job documents: `rust-toolchain.toml`
@@ -44,6 +70,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
         # The RUSTUP_TOOLCHAIN pin above selects this exact toolchain, so
@@ -145,13 +172,14 @@ jobs:
   # typed lane report. Advisory at this stage; enforcement selection is
   # the aggregate lane's authority (PR D under #2283/#2284).
   workflow-syntax:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
@@ -166,13 +194,14 @@ jobs:
   # completed runs always exit zero; enforcement selection is the
   # aggregate lane's authority (PR D under #2283/#2284).
   workflow-security:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
@@ -188,13 +217,14 @@ jobs:
   # JSON is retained even when the aggregate carries findings or an
   # instrument failure.
   workflow-construction:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
@@ -214,19 +244,17 @@ jobs:
   # Advisory until the owning policy selects blocking consequences;
   # malformed/empty inputs fail immediately inside the script.
   dependency-graph-delta:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
           fetch-depth: 0
-          # Pin the review head: on pull_request events the default
-          # checkout is GitHub's synthetic merge commit, and the
-          # receipt must bind the submitted head instead.
-          ref: ${{ github.event.pull_request.head.sha || github.ref }}
+          # The complete B..G composition governs queue proof.
       - uses: dtolnay/rust-toolchain@1.95.0
       - uses: ./.github/actions/rust-cache
         with:
@@ -246,7 +274,7 @@ jobs:
           if-no-files-found: warn
 
   msrv:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     # `rust-toolchain.toml` pins the floating `stable` channel for local
@@ -261,6 +289,9 @@ jobs:
       RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       # Runs before the toolchain so drift fails in seconds. `rust-version` in
       # Cargo.toml is the source of truth; this proves the toolchain pin, the
       # cache key, and the attested release-manifest MSRV all still match it.
@@ -609,10 +640,7 @@ jobs:
   # fast package proof. Stable/full suite stays on the `test` job below so
   # the MSRV lane stays short and release-claim oriented (#1901).
   package-smoke:
-    needs: [pregate, proof-route]
-    # docs_only and test_only do not build package receipts (#4332). Any other
-    # class, and a failed proof-route, still run this lane. test does not
-    # treat that skip as a missing cutover receipt.
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.class != 'docs_only' && needs.proof-route.outputs.class != 'test_only')) }}
     # The linked candidate must not inherit ubuntu-latest's libc upgrades.
     # This image retires 2027-04-17; #3151 owns its successor.
@@ -624,6 +652,9 @@ jobs:
       RUSTUP_TOOLCHAIN: "1.100.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha || github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.12'
@@ -781,11 +812,14 @@ jobs:
   # candidate set standalone because the interop smoke drives the
   # installed cargo-allow binary. Posture: experimental-informational.
   product-candidates-interop:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
@@ -839,25 +873,28 @@ jobs:
   # Historical source provenance for the CI performance collector
   # (#4173): discriminating fixture harness, no live GitHub calls.
   collect-performance-fixtures:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
       - name: Collector provenance fixtures
         run: bash scripts/test-collect-ci-performance.sh
 
   shallow-diff-smoke:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
           fetch-depth: 0
       - name: Validate CI environment profiles (#3926)
         run: python scripts/check-ci-environment-profiles.py
@@ -883,13 +920,15 @@ jobs:
   # receipt/artifacts for review. This is a conservative catastrophic ceiling,
   # not a universal latency target or hardware claim.
   operator-latency:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
           fetch-depth: 2
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
@@ -1067,7 +1106,7 @@ jobs:
           if-no-files-found: warn
 
   test:
-    needs: [pregate, package-smoke, proof-route]
+    needs: [pregate, package-smoke, proof-route, queue-subject]
     # The cutover status lane restores the build receipts produced by the
     # package-smoke job; artifacts are only downloadable once that job
     # completes (#3469/#3552). A skipped package-smoke on docs_only or
@@ -1101,6 +1140,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
           fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -1236,8 +1277,22 @@ jobs:
           RUSTDOCFLAGS: -D warnings
       - run: cargo run -p cargo-allow -- audit --format json --output target/cargo-allow/audit.json
       - run: cargo run -p cargo-allow -- check --mode no-new --format markdown --receipt target/cargo-allow/check.receipt.json --output target/cargo-allow/check.md
-      - name: Verify PR template diff evidence
-        run: cargo run -p cargo-allow -- diff --base origin/main --format markdown --require-change-note
+      - name: Verify exact merge-group policy-change evidence
+        # Resolve a comparison pair for every event: pull_request and
+        # merge_group supply it directly, push uses before..sha, and a
+        # genuinely empty or all-zeros base skips with a recorded reason.
+        env:
+          QUEUE_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          QUEUE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: |
+          set -euo pipefail
+          case "${QUEUE_BASE_SHA:-}" in
+            ''|0000000000000000000000000000000000000000)
+              echo "policy-change evidence: no comparison base for ${GITHUB_EVENT_NAME}; skipping"
+              exit 0
+              ;;
+          esac
+          cargo run -p cargo-allow -- diff --base "$QUEUE_BASE_SHA" --head "$QUEUE_HEAD_SHA" --format markdown --require-change-note
       - name: Spec-system cutover receipt (#2568)
         if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/spec-system-cutover-receipt.sh
@@ -1291,19 +1346,29 @@ jobs:
   # shallow-diff-smoke, a characterization job that produces no inputs
   # this job consumes.
   feature-configuration-proof:
-    needs: proof-route
+    needs: [proof-route, queue-subject]
     if: ${{ !cancelled() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          persist-credentials: false
           fetch-depth: 0
       - name: Derive affected feature-configuration rows (#3905)
         id: routing
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
         run: |
-          BASE_REF="${{ github.base_ref || 'main' }}"
-          BASE_SHA=$(git merge-base "origin/${BASE_REF}" HEAD)
+          set -euo pipefail
+          # Use the event's immutable base, including every queued predecessor.
+          # A push event has no PR or merge-group base; use github.event.before
+          # and fall back to HEAD~1 when it is empty or all zeros.
+          if [ -z "${BASE_SHA:-}" ] || [ -z "${BASE_SHA//0/}" ]; then
+            BASE_SHA="$(git rev-parse HEAD~1)"
+          fi
+          # A failed diff must not become an empty/docs-only proof selection.
           git diff --name-only "$BASE_SHA" HEAD \
             | python3 scripts/feature-config-routing.py > "$RUNNER_TEMP/routing-rows.json"
           cat "$RUNNER_TEMP/routing-rows.json"
@@ -1340,11 +1405,14 @@ jobs:
   # audit exercise the products together and stay out of the
   # cargo-allow-required test lane. Posture: integrated-informational.
   integrated-dogfood:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
@@ -1373,7 +1441,7 @@ jobs:
         run: bash scripts/three-product-simplification-audit.sh
 
   test-core-platforms:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
@@ -1390,6 +1458,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
@@ -1432,7 +1503,7 @@ jobs:
   # with the exact installed candidate on Linux and a fresh build on
   # Windows.
   compat-delegation:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || (needs.proof-route.outputs.narrow != 'true' && needs.proof-route.outputs.class != 'test_only')) }}
     strategy:
       fail-fast: false
@@ -1441,6 +1512,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
@@ -1487,11 +1561,14 @@ jobs:
   # themselves without gating the cargo-allow patch/release lanes.
   # Posture: experimental-informational.
   test-intent-experimental:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -1506,7 +1583,7 @@ jobs:
         run: cargo test --doc --locked -p intent-model -p intent-protocol -p intent-compiler -p intent-edit -p cargo-intent
 
   test-proof-experimental:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     strategy:
       fail-fast: false
@@ -1515,6 +1592,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -1532,11 +1612,14 @@ jobs:
   # part of the cargo-allow release set and keeps its own proof lane.
   # Posture: shared-protocol-informational.
   test-shared-protocol:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: ./.github/actions/rust-cache
         with:
@@ -1548,11 +1631,14 @@ jobs:
   # uploads coverage to Codecov. Kept separate from the main test job so
   # coverage instrumentation doesn't slow down PR feedback.
   coverage:
-    needs: [pregate, proof-route]
+    needs: [pregate, proof-route, queue-subject]
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
         # Pinned to the repo toolchain like every other lane here; a
         # floating stable toolchain ships a new LLVM whose profraw
         # format tarpaulin 0.37.0's parser cannot read, deterministically
@@ -1598,9 +1684,13 @@ jobs:
   # disallowed licenses, banned crates, and untrusted source registries.
   # cargo-allow is a governance tool — it should enforce its own supply chain.
   cargo-deny:
+    needs: queue-subject
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
       - name: Install stable Rust for the dependency audit
         run: rustup toolchain install stable --profile minimal --no-self-update
       - name: Check supply chain (cargo-deny, pinned)
@@ -1680,4 +1770,32 @@ jobs:
         with:
           name: ci-proof-plan
           path: proof-plan.json
+          if-no-files-found: error
+
+  # This result cannot turn a skipped/failed/missing mandatory producer green.
+  # Independent sentinel, frozen-subject and Changie checks remain required
+  # separately in the coordinated settings generation.
+  queue-qualification:
+    # The actual-group proof exists only for a merge_group event. A PR run has
+    # no group to qualify, so it skips rather than failing on a missing event.
+    if: always() && github.event_name == 'merge_group'
+    needs: [queue-subject, pregate, msrv, package-smoke, shallow-diff-smoke, operator-latency, test, feature-configuration-proof, test-core-platforms, compat-delegation, coverage, cargo-deny]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.merge_group.head_sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Require complete actual-group proof
+        env:
+          QUEUE_NEEDS_JSON: ${{ toJSON(needs) }}
+        run: python3 scripts/merge-group-subject.py result --receipt target/queue/result.json
+      - name: Retain the queue result
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: queue-result-${{ github.run_id }}-${{ github.run_attempt }}
+          path: target/queue/result.json
           if-no-files-found: error

@@ -1,0 +1,21 @@
+# Review-disposition exact-path admission for #4602 / PR #4744.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4744-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1fd5ea134618cfc860f7d63a0116e44d895eb0b77dc233bc16333895985db7b7"
+reason = "Retain the actual current-pair source/CI review without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-4744-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:203553038338235622a6606a1f1ff694cb3301c5e1eed38f95b12c6250ad999b"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."
+
+[[records]]
+allow_ids = ["allow-11504"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:090f24b325c4a902dc19de83543e2fefa06563f20139f34baee762d1b18e1040"
+reason = "Retain the append-only frozen-subject invalidation record for #4744; it documents the trigger move and requires refreeze after merge without granting CI, review or release authority."
