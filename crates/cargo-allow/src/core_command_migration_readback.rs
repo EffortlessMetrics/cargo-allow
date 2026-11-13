@@ -343,17 +343,30 @@ fn configure_regular_open(options: &mut OpenOptions) -> Result<(), String> {
     Ok(())
 }
 
+/// Platform-independent indirection predicate.
+///
+/// `file_attributes` is the Windows attribute word, or `0` on platforms that
+/// have no such concept. Keeping the reparse-point mask here rather than
+/// inside the `#[cfg(windows)]` arm is what makes the mask testable on every
+/// platform: a test that only ran on Windows could not falsify the arm on the
+/// required Linux lane.
+fn indirection_from_parts(is_symlink: bool, file_attributes: u32) -> bool {
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+    is_symlink || file_attributes & FILE_ATTRIBUTE_REPARSE_POINT != 0
+}
+
 fn is_indirection(metadata: &fs::Metadata) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
-        const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
-        metadata.file_type().is_symlink()
-            || metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0
+        indirection_from_parts(
+            metadata.file_type().is_symlink(),
+            metadata.file_attributes(),
+        )
     }
     #[cfg(not(windows))]
     {
-        metadata.file_type().is_symlink()
+        indirection_from_parts(metadata.file_type().is_symlink(), 0)
     }
 }
 
@@ -475,6 +488,56 @@ mod tests {
         drop(file);
         fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
+
+    /// Removes the junction and its temporary root on every exit path, so a
+    /// failed command or assertion does not leak either.
+    #[cfg(windows)]
+    struct JunctionFixture {
+        root: PathBuf,
+        junction: PathBuf,
+    }
+
+    #[cfg(windows)]
+    impl Drop for JunctionFixture {
+        fn drop(&mut self) {
+            // remove_dir removes the junction itself, not its target.
+            let _ = fs::remove_dir(&self.junction);
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn junction_is_refused_as_indirection() -> Result<(), String> {
+        let root = fixture("junction")?;
+        let target = root.join("target");
+        let junction = root.join("junction");
+        let _cleanup = JunctionFixture {
+            root: root.clone(),
+            junction: junction.clone(),
+        };
+        fs::create_dir(&target).map_err(|error| error.to_string())?;
+        // Junctions do not require the symlink privilege, so mklink /J is the
+        // dependency-free way to cover the Windows reparse-point branch on
+        // the one platform where it compiles.
+        let status = std::process::Command::new("cmd")
+            .args(["/C", "mklink", "/J"])
+            .arg(&junction)
+            .arg(&target)
+            .status()
+            .map_err(|error| error.to_string())?;
+        if !status.success() {
+            return Err("could not create a junction fixture".to_string());
+        }
+        let metadata = fs::symlink_metadata(&junction).map_err(|error| error.to_string())?;
+        if !is_indirection(&metadata) {
+            return Err("a junction was not treated as indirection".to_string());
+        }
+        if reject_symlink_components(&junction).is_ok() {
+            return Err("a junction path was not refused".to_string());
+        }
+        Ok(())
+    }
 }
 
 impl<'de> DeserializeSeed<'de> for UniqueKeys {
@@ -522,5 +585,35 @@ impl<'de> Visitor<'de> for UniqueKeys {
             object.next_value_seed(UniqueKeys)?;
         }
         Ok(())
+    }
+}
+
+/// Ungated truth table for the indirection predicate.
+///
+/// This module is deliberately not `cfg(windows)`: the `(false, 0x0400)` row
+/// is the one that goes red when the reparse-point arm is removed, and it must
+/// run in the required `test` lane on Linux, not only in
+/// `test-core-platforms` on Windows.
+#[cfg(test)]
+mod indirection_tests {
+    use super::indirection_from_parts;
+
+    const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x0400;
+
+    #[test]
+    fn indirection_truth_table_covers_the_reparse_point_arm() {
+        assert!(!indirection_from_parts(false, 0));
+        assert!(indirection_from_parts(true, 0));
+        assert!(
+            indirection_from_parts(false, FILE_ATTRIBUTE_REPARSE_POINT),
+            "a reparse point that is not a symlink must still be indirection"
+        );
+        assert!(indirection_from_parts(true, FILE_ATTRIBUTE_REPARSE_POINT));
+    }
+
+    #[test]
+    fn indirection_ignores_unrelated_attribute_bits() {
+        assert!(!indirection_from_parts(false, 0x0000_0020));
+        assert!(!indirection_from_parts(false, 0x0000_0001));
     }
 }
