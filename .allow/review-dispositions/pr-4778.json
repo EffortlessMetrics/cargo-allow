@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4778,
   "base_ref": "main",
-  "base_sha": "f92a2bc39684fa8860b82341f9b7a76904891bed",
+  "base_sha": "cf411df7452491625c8d2b2cc4d789bf6282070e",
   "head_ref": "docs/3877-ratification-note",
-  "head_sha": "49b01b33f7f3899416d7d06153351467ede1262e",
-  "merge_base": "f92a2bc39684fa8860b82341f9b7a76904891bed",
-  "reviewed_diff_digest": "sha256:v2:630a416fb44ae0dc40ac9126c6aa048a91550d82446e7c6829b9240ca355d85c",
+  "head_sha": "1dd499896f9bf9b0497bf76f4a8cadeca28bff0b",
+  "merge_base": "cf411df7452491625c8d2b2cc4d789bf6282070e",
+  "reviewed_diff_digest": "sha256:v2:7444421ee9624db1566e5d260a32bdf0cee837131679c447dff9c6f03ddfd0c0",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4778 at 49b01b33f7f3899416d7d06153351467ede1262e (base and merge-base f92a2bc39684fa8860b82341f9b7a76904891bed). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. The rebase preserves the reviewed content per the steward's 86910f5e->937c22c7 check. Item 3 now states #3151 as installed-surface evidence plus a named residual, with the node NotProven by construction and a v2 docs-execution contract plus the #2466 and #3149 producers required for Complete. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4778 at 1dd499896f9bf9b0497bf76f4a8cadeca28bff0b (base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. The rebase preserves the reviewed content per the steward's 86910f5e->937c22c7 check. Item 3 now states #3151 as installed-surface evidence plus a named residual, with the node NotProven by construction and a v2 docs-execution contract plus the #2466 and #3149 producers required for Complete. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4778#pullrequestreview-5886186130. review cargo-allow non-author oppositional exact-head model review of head 49b01b33f7f3899416d7d06153351467ede1262e, base and merge-base f92a2bc39684fa8860b82341f9b7a76904891bed. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4778#pullrequestreview-5886186130. review cargo-allow non-author oppositional exact-head model review of head 1dd499896f9bf9b0497bf76f4a8cadeca28bff0b, base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
@@ -31,7 +31,7 @@
   ],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4778",
-    "Reviewed pair base/merge-base f92a2bc39684fa8860b82341f9b7a76904891bed, head 49b01b33f7f3899416d7d06153351467ede1262e, digest sha256:v2:630a416fb44ae0dc40ac9126c6aa048a91550d82446e7c6829b9240ca355d85c.",
+    "Reviewed pair base/merge-base cf411df7452491625c8d2b2cc4d789bf6282070e, head 1dd499896f9bf9b0497bf76f4a8cadeca28bff0b, digest sha256:v2:7444421ee9624db1566e5d260a32bdf0cee837131679c447dff9c6f03ddfd0c0.",
     "The rebase is preservation-intact per the steward's 86910f5e->937c22c7 check: no source or doc content was lost.",
     "Advisory fixed at 49b01b33: docs/campaigns/cargo-allow-0.2.0.md:42 now states the installed-surface residual; the node stays NotProven. The installed-experience node is NotProven by construction (retain_dependencies records #2466 and #3151 unconditionally and #3149 for CommandCaseJoin::Absent; record() takes the min state). The stronger wording is installed-surface evidence and a named residual, with a Complete freeze needing a v2 docs-execution contract plus the #2466 and #3149 producers.",
     "The sentence 'Queue proof of record, with three release-rehearsal jobs still bound by ref name' is not present at 937c22c7 or at the base; if it belongs in this doc it is missing. No merge-group binding is described as complete.",
@@ -46,5 +46,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4778",
-  "reviewed_at_utc": "2026-11-13T04:42:54Z"
+  "reviewed_at_utc": "2026-11-13T07:02:17Z"
 }
