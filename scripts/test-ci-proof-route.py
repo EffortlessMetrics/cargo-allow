@@ -116,6 +116,7 @@ NARROW_STANDALONE = [
     "collect-performance-fixtures",
     "shallow-diff-smoke",
     "feature-configuration-proof",
+    "clippy-stable",
 ]
 REQUIRED_CONTEXTS = ["pregate", "test", "review-readiness", "frozen-subject-lock"]
 ON_BLOCK = """# Ordinary proof is admitted only by the native queue (#4602).
