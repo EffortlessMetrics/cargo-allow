@@ -489,13 +489,34 @@ mod tests {
         fs::remove_dir_all(root).map_err(|error| error.to_string())
     }
 
+    /// Removes the junction and its temporary root on every exit path, so a
+    /// failed command or assertion does not leak either.
+    #[cfg(windows)]
+    struct JunctionFixture {
+        root: PathBuf,
+        junction: PathBuf,
+    }
+
+    #[cfg(windows)]
+    impl Drop for JunctionFixture {
+        fn drop(&mut self) {
+            // remove_dir removes the junction itself, not its target.
+            let _ = fs::remove_dir(&self.junction);
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
     #[cfg(windows)]
     #[test]
     fn junction_is_refused_as_indirection() -> Result<(), String> {
         let root = fixture("junction")?;
         let target = root.join("target");
-        fs::create_dir(&target).map_err(|error| error.to_string())?;
         let junction = root.join("junction");
+        let _cleanup = JunctionFixture {
+            root: root.clone(),
+            junction: junction.clone(),
+        };
+        fs::create_dir(&target).map_err(|error| error.to_string())?;
         // Junctions do not require the symlink privilege, so mklink /J is the
         // dependency-free way to cover the Windows reparse-point branch on
         // the one platform where it compiles.
@@ -515,9 +536,7 @@ mod tests {
         if reject_symlink_components(&junction).is_ok() {
             return Err("a junction path was not refused".to_string());
         }
-        // remove_dir removes the junction itself, not its target.
-        let _ = fs::remove_dir(&junction);
-        fs::remove_dir_all(&root).map_err(|error| error.to_string())
+        Ok(())
     }
 }
 
