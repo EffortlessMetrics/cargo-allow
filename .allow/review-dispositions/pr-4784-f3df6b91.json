@@ -1,0 +1,48 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4784,
+  "base_ref": "main",
+  "base_sha": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
+  "head_ref": "fix/4781-pin-test-toolchain",
+  "head_sha": "f3df6b91daf8212ae2c5cbab4683835a44c6efa0",
+  "merge_base": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
+  "reviewed_diff_digest": "sha256:v2:7c991464d5f437c7af9b57efbdefdde94d580f65760dab4f6ec3f505e8544c20",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4784 at f3df6b91daf8212ae2c5cbab4683835a44c6efa0 (base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d). The head merges main 4adbca9d and regenerates all four direct-floor receipts on the merged tree: manifest_set_digest 71bcdc19 and selected_source_digest fbb00cc9, both independently recomputed from the head's checked-in manifests and its 1384 crates/**/*.rs files. pregate is SUCCESS including Retained direct-floor freshness; frozen-subject-lock and clippy-stable are SUCCESS. policy/allow.toml keeps both allow-4787-* and allow-4784-* pairs. The lane logic, profiles checker, manifest, and rustfmt fix are unchanged from a5a56912. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784#pullrequestreview-5890905502. review cargo-allow non-author oppositional exact-head model review of head f3df6b91daf8212ae2c5cbab4683835a44c6efa0, base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "msrv-characterization-unreceipted-cases-overlap",
+      "severity": "advisory",
+      "owned_seam": "MSRV guard characterization",
+      "source_path": "scripts/test-check-msrv-consistency.sh",
+      "source_line": 93,
+      "repair_route": "Add a third toolchain: 1.101.0 input without removing either ${{ env.LINT_TOOLCHAIN }} expression, so the unreceipted-input loop is isolated from the two-expression count check.",
+      "claim_boundary": "Advisory characterization gap only; the loop is exercised by the unreceipted cache toolchain input case, and the guard itself is correct."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4784",
+    "Reviewed pair base/merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d, head f3df6b91daf8212ae2c5cbab4683835a44c6efa0, digest sha256:v2:7c991464d5f437c7af9b57efbdefdde94d580f65760dab4f6ec3f505e8544c20.",
+    "All four direct-floor receipts carry manifest_set_digest 71bcdc19 and selected_source_digest fbb00cc9, matching the head's checked-in manifests and 1384 crates/**/*.rs files.",
+    "pregate SUCCESS (job 131881058906) including Retained direct-floor freshness; frozen-subject-lock and clippy-stable SUCCESS.",
+    "policy/allow.toml keeps both allow-4787-review-disposition/revision and allow-4784-review-disposition/revision.",
+    "The lane logic, profiles checker, manifest, and rustfmt fix are unchanged from a5a56912.",
+    "The advisory MSRV characterization overlap remains the only non-blocking finding."
+  ],
+  "required_ci": {
+    "owner": "PR #4784 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4784",
+  "reviewed_at_utc": "2026-11-13T12:40:00Z"
+}
