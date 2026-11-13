@@ -227,8 +227,8 @@ pub struct ReviewReadinessProjectionInputV1 {
 
 /// The retained-review-ledger escape: a disposition committed inside
 /// the PR it covers necessarily moves the head it binds. The law
-/// admits that movement only when the entire head delta is
-/// review-disposition records under the declared ledger directories;
+/// admits that movement only when the entire head delta is exactly one
+/// review-disposition record plus at most its own revision note;
 /// anything else is ordinary staleness.
 pub const REVIEW_DISPOSITION_LEDGER_DIR: &str = ".allow/review-dispositions/";
 /// The disposition's own revision note lives here. It pins the
@@ -238,12 +238,31 @@ pub const REVIEW_DISPOSITION_LEDGER_DIR: &str = ".allow/review-dispositions/";
 pub const REVIEW_DISPOSITION_REVISION_DIR: &str = ".allow/revisions/";
 
 #[must_use]
-pub fn is_review_ledger_bootstrap(head_delta_paths: &[String]) -> bool {
-    !head_delta_paths.is_empty()
-        && head_delta_paths.iter().all(|path| {
-            path.starts_with(REVIEW_DISPOSITION_LEDGER_DIR)
-                || path.starts_with(REVIEW_DISPOSITION_REVISION_DIR)
-        })
+pub fn is_review_ledger_bootstrap(head_delta_paths: &[String], pr_number: u64) -> bool {
+    if head_delta_paths.is_empty() {
+        return false;
+    }
+    let expected_note = format!("{pr_number}-review-disposition.toml");
+    let mut disposition_records = 0usize;
+    let mut revision_notes = 0usize;
+    for path in head_delta_paths {
+        if let Some(rest) = path.strip_prefix(REVIEW_DISPOSITION_LEDGER_DIR) {
+            // Exactly one record, directly under the ledger directory.
+            if rest.is_empty() || rest.contains('/') {
+                return false;
+            }
+            disposition_records += 1;
+        } else if let Some(rest) = path.strip_prefix(REVIEW_DISPOSITION_REVISION_DIR) {
+            // At most one note, and it must be this PR's own note.
+            if rest.is_empty() || rest.contains('/') || rest != expected_note {
+                return false;
+            }
+            revision_notes += 1;
+        } else {
+            return false;
+        }
+    }
+    disposition_records == 1 && revision_notes <= 1
 }
 
 /// The projected check result, bound to the exact live pair.
@@ -325,7 +344,7 @@ pub fn evaluate_review_readiness_projection(
             // record's own commit does not stale the review. Base and
             // merge-base movement still stale normally.
             let bootstrap = disposition.head_sha != input.live.head_sha
-                && is_review_ledger_bootstrap(&input.head_delta_paths);
+                && is_review_ledger_bootstrap(&input.head_delta_paths, disposition.pr_number);
             let effective_live;
             let evaluation_live = if bootstrap {
                 conclusion_reasons.push(
@@ -384,10 +403,14 @@ pub fn evaluate_review_readiness_projection(
         conclusion_reasons,
         required_posture,
         stale_green_invalidated,
-        head_ledger_bootstrap: matches!(
-            &input.disposition,
-            ReviewReadinessDispositionInputV1::Present(disposition) if disposition.head_sha != input.live.head_sha
-        ) && is_review_ledger_bootstrap(&input.head_delta_paths),
+        head_ledger_bootstrap: match &input.disposition {
+            ReviewReadinessDispositionInputV1::Present(disposition)
+                if disposition.head_sha != input.live.head_sha =>
+            {
+                is_review_ledger_bootstrap(&input.head_delta_paths, disposition.pr_number)
+            }
+            _ => false,
+        },
         binding: binding(input, &disposition_identity),
         claim_boundary: CLAIM_BOUNDARY.to_string(),
     }
@@ -531,7 +554,7 @@ mod tests {
             ".allow/review-dispositions/pr-4778.json".to_string(),
             ".allow/revisions/4778-review-disposition.toml".to_string(),
         ];
-        assert!(is_review_ledger_bootstrap(&paths));
+        assert!(is_review_ledger_bootstrap(&paths, 4778));
         let projection = evaluate_review_readiness_projection(&input(
             disposition("aaaa", "bbbb"),
             live("aaaa", "cccc"),
@@ -550,7 +573,7 @@ mod tests {
             ".allow/revisions/4778-review-disposition.toml".to_string(),
             "policy/allow.toml".to_string(),
         ];
-        assert!(!is_review_ledger_bootstrap(&paths));
+        assert!(!is_review_ledger_bootstrap(&paths, 4778));
         let projection = evaluate_review_readiness_projection(&input(
             disposition("aaaa", "bbbb"),
             live("aaaa", "cccc"),
@@ -560,6 +583,33 @@ mod tests {
             ],
         ));
         assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Failure);
+    }
+
+    #[test]
+    fn bootstrap_rejects_an_unrelated_revision_note() {
+        let paths = vec![
+            ".allow/review-dispositions/pr-4778.json".to_string(),
+            ".allow/revisions/9999-review-disposition.toml".to_string(),
+        ];
+        assert!(!is_review_ledger_bootstrap(&paths, 4778));
+        let projection = evaluate_review_readiness_projection(&input(
+            disposition("aaaa", "bbbb"),
+            live("aaaa", "cccc"),
+            &[
+                ".allow/review-dispositions/pr-4778.json",
+                ".allow/revisions/9999-review-disposition.toml",
+            ],
+        ));
+        assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Failure);
+    }
+
+    #[test]
+    fn bootstrap_rejects_a_second_disposition_record() {
+        let paths = vec![
+            ".allow/review-dispositions/pr-4778.json".to_string(),
+            ".allow/review-dispositions/pr-4779.json".to_string(),
+        ];
+        assert!(!is_review_ledger_bootstrap(&paths, 4778));
     }
 
     #[test]
