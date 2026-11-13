@@ -6,12 +6,12 @@
   "base_ref": "main",
   "base_sha": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
   "head_ref": "fix/4781-pin-test-toolchain",
-  "head_sha": "f3df6b91daf8212ae2c5cbab4683835a44c6efa0",
+  "head_sha": "615efe4c26e361803af29187a67202b4ec761ff0",
   "merge_base": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
   "reviewed_diff_digest": "sha256:v2:7c991464d5f437c7af9b57efbdefdde94d580f65760dab4f6ec3f505e8544c20",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4784 at f3df6b91daf8212ae2c5cbab4683835a44c6efa0 (base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d). The head merges main 4adbca9d and regenerates all four direct-floor receipts on the merged tree: manifest_set_digest 71bcdc19 and selected_source_digest fbb00cc9, both independently recomputed from the head's checked-in manifests and its 1384 crates/**/*.rs files. pregate is SUCCESS including Retained direct-floor freshness; frozen-subject-lock and clippy-stable are SUCCESS. policy/allow.toml keeps both allow-4787-* and allow-4784-* pairs. The lane logic, profiles checker, manifest, and rustfmt fix are unchanged from a5a56912. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4784 at f3df6b91daf8212ae2c5cbab4683835a44c6efa0 (base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d). The head merges main 4adbca9d and regenerates all four direct-floor receipts on the merged tree: manifest_set_digest 71bcdc19 and selected_source_digest fbb00cc9, both independently recomputed from the head's checked-in manifests and its 1384 crates/**/*.rs files. The ledger commit 615efe4c26e361803af29187a67202b4ec761ff0 consolidates the two retained records into this single exact path and its revision note; this commit is disposition-only and is admitted by the ancestor fallback. pregate is SUCCESS including Retained direct-floor freshness; frozen-subject-lock and clippy-stable are SUCCESS. policy/allow.toml keeps both allow-4787-* and allow-4784-* pairs. The lane logic, profiles checker, manifest, and rustfmt fix are unchanged from a5a56912. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
       "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784#pullrequestreview-5890905502. review cargo-allow non-author oppositional exact-head model review of head f3df6b91daf8212ae2c5cbab4683835a44c6efa0, base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
