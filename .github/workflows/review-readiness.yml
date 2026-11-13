@@ -35,6 +35,11 @@ jobs:
   # context is the published typed check run only.
   review-readiness-publisher:
     runs-on: ubuntu-latest
+    # rust-toolchain.toml outranks the action tag, so the 1.95.0 tag alone
+    # resolves to the runner's stable. RUSTUP_TOOLCHAIN outranks the file
+    # and is what actually pins this required context.
+    env:
+      RUSTUP_TOOLCHAIN: "1.95.0"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

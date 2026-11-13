@@ -267,3 +267,9 @@ name = "release-rehearsal-required"
 purpose = "ReleaseRehearsal"
 routing_owner = "core/release"
 blocking = false
+
+[[jobs]]
+name = "clippy-stable"
+purpose = "CoreCompileTest"
+routing_owner = "core/ci"
+blocking = false
