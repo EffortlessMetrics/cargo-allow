@@ -324,6 +324,11 @@ jobs:
             toolchain: "1.95.0"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # rust-toolchain.toml pins the floating stable channel and outranks the
+    # action's rustup default, so the versioned toolchain: input alone is inert.
+    # The env var outranks the file and makes the 1.95.0 attestation true.
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -343,7 +348,8 @@ jobs:
         run: |
           set -euo pipefail
           bin="${PWD}/target/package-candidate-smoke/install/bin/cargo-allow"
-          [[ -x "${bin}" ]] || bin="${bin}.exe"
+          # Git Bash resolves the .exe sibling for -x/-f, so test it explicitly.
+          if [[ -f "${bin}.exe" ]]; then bin="${bin}.exe"; fi
           CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - name: Record the platform smoke receipt
         if: always()
