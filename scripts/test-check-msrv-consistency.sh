@@ -84,6 +84,73 @@ drift_case "test lint toolchain value drift" ".github/workflows/ci.yml" \
 drift_case "unreceipted cache toolchain input" ".github/workflows/ci.yml" \
   "toolchain: ${msrv}.0" "toolchain: 1.96.0"
 
+drift_case "missing LINT_TOOLCHAIN declaration" ".github/workflows/ci.yml" \
+  'LINT_TOOLCHAIN: "1.100.0"' 'LINT_TOOLCHAIN_DISABLED: "1.100.0"'
+
+drift_case "test job has fewer than two lint toolchain inputs" ".github/workflows/ci.yml" \
+  'toolchain: ${{ env.LINT_TOOLCHAIN }}' 'toolchain: 1.100.0'
+
+drift_case "unreceipted lint toolchain input" ".github/workflows/ci.yml" \
+  'toolchain: ${{ env.LINT_TOOLCHAIN }}' 'toolchain: 1.101.0'
+
+step_local="${work}/step-local-override"
+mkdir -p "${step_local}/.github/workflows"
+cp Cargo.toml "${step_local}/Cargo.toml"
+cp .github/workflows/ci.yml "${step_local}/.github/workflows/ci.yml"
+cp .github/workflows/release.yml "${step_local}/.github/workflows/release.yml"
+python3 - "${step_local}/.github/workflows/ci.yml" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+old = '      RUSTUP_TOOLCHAIN: "1.100.0"\n'
+if old not in text:
+    sys.exit("fixture setup failed: job-level RUSTUP_TOOLCHAIN missing")
+text = text.replace(old, "", 1)
+anchor = "      - name: cargo-allow release-set clippy (#3358)\n"
+if anchor not in text:
+    sys.exit("fixture setup failed: clippy step missing")
+text = text.replace(
+    anchor,
+    anchor + '        env:\n          RUSTUP_TOOLCHAIN: "1.100.0"\n',
+    1,
+)
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+run_expect_failure "step-local RUSTUP_TOOLCHAIN does not pin the whole job" \
+  env CARGO_TOML="${step_local}/Cargo.toml" \
+  CI_WORKFLOW="${step_local}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${step_local}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
+lint_cache="${work}/lint-cache-drift"
+mkdir -p "${lint_cache}/.github/workflows"
+cp Cargo.toml "${lint_cache}/Cargo.toml"
+cp .github/workflows/ci.yml "${lint_cache}/.github/workflows/ci.yml"
+cp .github/workflows/release.yml "${lint_cache}/.github/workflows/release.yml"
+python3 - "${lint_cache}/.github/workflows/ci.yml" <<'PY'
+import sys
+
+path = sys.argv[1]
+with open(path, encoding="utf-8") as handle:
+    text = handle.read()
+needle = "toolchain: ${{ env.LINT_TOOLCHAIN }}"
+first = text.find(needle)
+second = text.find(needle, first + 1)
+if second < 0:
+    sys.exit("fixture setup failed: fewer than two lint toolchain inputs")
+text = text[:second] + "toolchain: 1.101.0" + text[second + len(needle):]
+with open(path, "w", encoding="utf-8") as handle:
+    handle.write(text)
+PY
+run_expect_failure "unreceipted lint cache input" \
+  env CARGO_TOML="${lint_cache}/Cargo.toml" \
+  CI_WORKFLOW="${lint_cache}/.github/workflows/ci.yml" \
+  RELEASE_WORKFLOW="${lint_cache}/.github/workflows/release.yml" \
+  bash scripts/check-msrv-consistency.sh
+
 # Removing every numeric toolchain pin must fail the positive existence
 # law, not just the off-MSRV rejection (#3836 review).
 all_removed="${work}/all-pins-removed"

@@ -1073,18 +1073,17 @@ jobs:
     # uploads stay unconditional.
     if: ${{ !cancelled() && needs.pregate.result == 'success' && (needs.package-smoke.result == 'success' || needs.package-smoke.result == 'skipped') }}
     runs-on: ubuntu-latest
-    # Pin the required release-set lane to the workspace MSRV. The action tag
-    # alone is inert because rust-toolchain.toml pins the floating `stable`
-    # channel and rustup ranks that file above `rustup default`; the env var
-    # outranks the file. Advance the pin by bumping this value, the action
-    # tag, and Cargo.toml `rust-version` together, then refreshing the
-    # direct-floor receipts.
+    # The release-set lint lane is intentionally newer than the workspace
+    # MSRV (1.95). The action tag alone is inert because rust-toolchain.toml
+    # pins the floating `stable` channel and rustup ranks that file above
+    # `rustup default`; RUSTUP_TOOLCHAIN outranks the file. LINT_TOOLCHAIN is
+    # the single declared value for RUSTUP_TOOLCHAIN, the toolchain action
+    # input and the cache input, and the MSRV guard enforces that those uses
+    # stay equal and that no other lane drifts off MSRV.
+    # Advance the pin by bumping LINT_TOOLCHAIN and rerunning the release-set
+    # clippy. Do not raise the workspace `rust-version` for this lane: the
+    # `msrv` job must keep proving the declared 1.95 MSRV.
     env:
-      # The release-set lint lane is intentionally newer than the workspace
-      # MSRV. This is the single declared value for RUSTUP_TOOLCHAIN, the
-      # toolchain action input and the cache input; the MSRV guard enforces
-      # that those uses stay equal and that no other lane drifts off MSRV.
-      # Advance it by bumping this value, then rerunning the release-set clippy.
       LINT_TOOLCHAIN: "1.100.0"
       # The env context is not available in a job-level env block, so the
       # value is written literally here; the guard fails if it drifts from

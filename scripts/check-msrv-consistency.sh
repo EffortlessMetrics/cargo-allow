@@ -79,8 +79,16 @@ test_job="$(awk '
   in_job { print }
 ' "${ci_workflow}")"
 [[ -n "${test_job}" ]] || fail "no \`test:\` job found in ${ci_workflow}."
-if ! printf '%s\n' "${test_job}" | grep -qF "RUSTUP_TOOLCHAIN: \"${lint_toolchain}\""; then
-  fail "${ci_workflow} test job does not set RUSTUP_TOOLCHAIN: \"${lint_toolchain}\" (the declared LINT_TOOLCHAIN)."
+test_env="$(printf '%s\n' "${test_job}" | awk '
+  /^    env:[[:space:]]*$/ { in_env = 1; next }
+  in_env && /^    [A-Za-z0-9_-]+:/ { exit }
+  in_env { print }
+')"
+if ! printf '%s\n' "${test_env}" | grep -qF "LINT_TOOLCHAIN: \"${lint_toolchain}\""; then
+  fail "${ci_workflow} test job does not declare LINT_TOOLCHAIN: \"${lint_toolchain}\" in its job-level env."
+fi
+if ! printf '%s\n' "${test_env}" | grep -qF "RUSTUP_TOOLCHAIN: \"${lint_toolchain}\""; then
+  fail "${ci_workflow} test job does not set RUSTUP_TOOLCHAIN: \"${lint_toolchain}\" in its job-level env; a step-local override does not pin the whole job."
 fi
 if [[ "$(printf '%s\n' "${test_job}" | grep -cF "toolchain: ${lint_expression}" || true)" -lt 2 ]]; then
   fail "${ci_workflow} test job must pass ${lint_expression} to both the toolchain action and the cache."
