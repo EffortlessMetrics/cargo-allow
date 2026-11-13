@@ -1,0 +1,34 @@
+# Reviewed exact-path retention transitions for #4602.
+# These records explain the five source additions only. They grant no CI,
+# native admission, protected landing, review or release waiver.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4602-queue-cutover"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:fedc96615a8c66fac173410d7a1eb2114d6dcebd3004c6a22c0600cfc80acd1a"
+reason = "Retain the exact queue cutover document as the current #4602 source and activation contract; keep missing H control, coordinated protection migration, cache ownership and native acceptance explicit."
+
+[[records]]
+allow_ids = ["allow-4602-queue-receipt-schema"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b0ae6bd1939ef9252bcda23db32f53787d61065625d357d88dd951b851702616"
+reason = "Retain the exact subject/result schema so G/base/tree/run receipts have a bounded format and cannot be described as admission or landing authority."
+
+[[records]]
+allow_ids = ["allow-4602-queue-regressions"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d40b8317b43b87ae33fc3eb15a96c2d091209a1183db58e4b42ca9bf4c3c07cc"
+reason = "Retain the exact Python controls over real Git compositions and workflow roots; they discriminate wrong subjects, missing proof and development-event regressions without substituting for hosted acceptance."
+
+[[records]]
+allow_ids = ["allow-4602-queue-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:5bf4aa99abe24bf421922bb48e56977b9d4285be4434c29ae0d65e6b29914d98"
+reason = "Retain this self-covering revision note only for the five named added-file receipts; no unrelated ledger renewal, widened selector, proof waiver or release permission."
+
+[[records]]
+allow_ids = ["allow-4602-queue-subject"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ff22bec739218d13b09e74ec1f72306732e960cd755f7a819003c32bd1f64874"
+reason = "Retain the exact read-only merge-group subject and mandatory-result producer; its closed failures and source-bound receipts preserve the CI proof boundary without protected credentials."

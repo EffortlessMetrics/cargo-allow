@@ -84,6 +84,7 @@ TEST_SETUP_USES = (
     "./.github/actions/rust-cache",
 )
 ALWAYS_CI_JOBS = [
+    "queue-subject",
     "pregate",
     "test",
     "package-smoke",
@@ -92,6 +93,7 @@ ALWAYS_CI_JOBS = [
     "release-rehearsal",
     "release-rehearsal-required",
     "proof-route",
+    "queue-qualification",
 ]
 RECORD_ONLY = ["review-readiness", "frozen-subject-lock"]
 NARROW_WITH_PREGATE = [
@@ -116,25 +118,44 @@ NARROW_STANDALONE = [
     "feature-configuration-proof",
 ]
 REQUIRED_CONTEXTS = ["pregate", "test", "review-readiness", "frozen-subject-lock"]
-ON_BLOCK = """on:
+ON_BLOCK = """# Ordinary proof is admitted only by the native queue (#4602).
+# Development checks and H review/authorization stay in the owning session.
+on:
   pull_request:
     # Full proof runs on drafts too; review-readiness.yml handles Ready events.
     # Avoid launching the same source proof twice on a draft-to-ready transition (#3753).
     types: [opened, synchronize, reopened]
   push:
     branches: [main]
-  # Required pregate and test contexts must also run on a merge queue.
-  # This does not enable a queue or add a bypass. checks_requested is the
-  # only merge_group activity.
   merge_group:
     types: [checks_requested]
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 """
 
 
 def fail(message: str) -> None:
     raise SystemExit(message)
+
+
+def needs_jobs(body: str) -> set[str]:
+    """Return the job ids a job header declares in ``needs``."""
+    header = body.split("\n    steps:\n", 1)[0]
+    lines = header.splitlines()
+    for index, line in enumerate(lines):
+        if not line.startswith("    needs:"):
+            continue
+        raw = line.split("needs:", 1)[1].strip()
+        if raw.startswith("["):
+            while not raw.endswith("]") and index + 1 < len(lines):
+                index += 1
+                raw = f"{raw} {lines[index].strip()}"
+            raw = raw.strip("[]")
+        return {part.strip() for part in raw.split(",") if part.strip()}
+    return set()
 
 
 def run_router(args: list[str], env: dict[str, str] | None = None, cwd: Path | None = None) -> dict:
@@ -923,7 +944,7 @@ def check_test_docs_only_steps(body: str) -> None:
     if steps_at < 0:
         fail("test job has no steps")
     header = body[:steps_at]
-    if "needs: [pregate, package-smoke, proof-route]" not in header:
+    if not {"pregate", "package-smoke", "proof-route"} <= needs_jobs(body):
         fail("test dropped pregate, package-smoke, or proof-route from needs")
     if TEST_IF not in header:
         fail("test job if no longer keeps the package-smoke success-or-skipped gate")
@@ -986,7 +1007,7 @@ def check_workflow() -> None:
     for job in NARROW_WITH_PREGATE:
         body = jobs[job]
         expected_if = TEST_ONLY_IF_WITH_PREGATE if job in TEST_ONLY_SKIP else NARROW_IF_WITH_PREGATE
-        if "needs: [pregate, proof-route]" not in body or expected_if not in body:
+        if not {"pregate", "proof-route"} <= needs_jobs(body) or expected_if not in body:
             fail(f"{job} does not keep the pregate gate and its narrow guard")
         if job in TEST_ONLY_SKIP and NARROW_IF_WITH_PREGATE in body:
             fail(f"{job} still uses only the docs-only narrow guard")
@@ -996,7 +1017,7 @@ def check_workflow() -> None:
             fail(f"{job} declares needs after steps")
     for job in NARROW_STANDALONE:
         body = jobs[job]
-        if "needs: proof-route" not in body or NARROW_IF_STANDALONE not in body:
+        if "proof-route" not in needs_jobs(body) or NARROW_IF_STANDALONE not in body:
             fail(f"{job} does not use the standalone narrow guard")
         if "needs: [pregate" in body or "needs: pregate" in body:
             fail(f"{job} gained a pregate dependency")
@@ -1013,18 +1034,20 @@ def check_workflow() -> None:
             fail(f"{job} keys the release graph off narrow")
         if header.find("needs:") > header.find("if:"):
             fail(f"{job} declares needs after its if")
-    if "needs: proof-route\n" not in jobs["release-impact"]:
+    if "proof-route" not in needs_jobs(jobs["release-impact"]):
         fail("release-impact does not wait for proof-route")
     rehearsal = jobs["release-rehearsal"]
     rehearsal_header = rehearsal.split("\n    steps:\n", 1)[0]
-    if "needs: [release-impact, proof-route]" not in rehearsal_header:
+    if not {"release-impact", "proof-route"} <= needs_jobs(rehearsal):
         fail("release-rehearsal dropped release-impact or proof-route")
     if RELEASE_REHEARSAL_IF not in rehearsal_header:
         fail("release-rehearsal no longer requires a successful impact receipt")
     if "outputs.narrow" in rehearsal:
         fail("release-rehearsal keys the release graph off narrow")
     required_header = jobs["release-rehearsal-required"].split("\n    steps:\n", 1)[0]
-    if "needs: [release-impact, release-rehearsal, proof-route]" not in required_header:
+    if not {"release-impact", "release-rehearsal", "proof-route"} <= needs_jobs(
+        jobs["release-rehearsal-required"]
+    ):
         fail("release-rehearsal-required dropped a release graph need")
     if "if: always()" in required_header:
         fail("release-rehearsal-required still uses always() and cannot skip unrelated docs")
@@ -1033,7 +1056,7 @@ def check_workflow() -> None:
         fail("proof-route does not publish release_lanes")
     check_test_docs_only_steps(jobs["test"])
     smoke = jobs["package-smoke"]
-    if "needs: [pregate, proof-route]" not in smoke or PACKAGE_SMOKE_IF not in smoke:
+    if not {"pregate", "proof-route"} <= needs_jobs(smoke) or PACKAGE_SMOKE_IF not in smoke:
         fail("package-smoke is not conditional on docs_only and test_only")
     if "outputs.narrow" in smoke:
         fail("package-smoke must key off class, not the full narrow flag")

@@ -158,13 +158,15 @@ fn ci_pregate_workflow_keeps_clippy_in_stage_two() {
 }
 
 #[test]
-fn ci_pregate_workflow_head_movement_reruns_the_gate() {
-    // Negative control 8: head movement must rerun the pre-gate; the
-    // pull_request synchronize and push triggers cover it.
+fn ci_pregate_workflow_recomposition_requires_the_actual_merge_group() {
     let root = workspace_root();
     let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
-    assert!(workflow.contains("synchronize"));
-    assert!(workflow.contains("branches: [main]"));
+    assert!(workflow.contains("merge_group:"));
+    assert!(workflow.contains("types: [checks_requested]"));
+    // Step 1 of the cutover keeps the pull_request trigger alongside the
+    // queue trigger so the queue can be proven before PR triggers are removed.
+    assert!(workflow.contains("  pull_request:"));
+    assert!(workflow.contains("  push:"));
     // The staleness law lives in the typed evaluation.
     let head_binding = workflow.contains(
         "PR_HEAD: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}",
@@ -173,10 +175,7 @@ fn ci_pregate_workflow_head_movement_reruns_the_gate() {
         head_binding,
         "the emitted result binds the exact current head"
     );
-    assert!(
-        workflow.contains("merge_group:"),
-        "pregate and test must also run for a merge group"
-    );
+    assert!(workflow.contains("needs: queue-subject"));
 }
 
 #[test]

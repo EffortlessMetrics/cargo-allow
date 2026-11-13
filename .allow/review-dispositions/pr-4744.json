@@ -1,0 +1,63 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4744,
+  "base_ref": "main",
+  "base_sha": "f92a2bc39684fa8860b82341f9b7a76904891bed",
+  "head_ref": "ci/4602-merge-queue-only-20261104",
+  "head_sha": "25183f91241c28d1e2a1a80152032265e7fa47bf",
+  "merge_base": "f92a2bc39684fa8860b82341f9b7a76904891bed",
+  "reviewed_diff_digest": "sha256:v2:eaba81cba9fbd580cc7700588ea7edc6440874290a664090e9facadb5650872a",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4744 at 25183f91241c28d1e2a1a80152032265e7fa47bf (base and merge-base f92a2bc39684fa8860b82341f9b7a76904891bed). The disposition commit is review-ledger bookkeeping authored by the same reviewer and carries that review; the final commit is disposition-only. Re-reviewed after the rebase onto main f92a2bc3: confirmed the #4782 needless_bool repair survived, the eight regenerated direct-floor receipts are byte-identical to the floor-receipt-regeneration run 43352548094 artifact on e8d9f7ad with matching selection SHA-256 and selected_source_digest c3dae282, and policy/allow.toml is the regenerated 1370-entry union with #4782's two exact-path allows and #4744's entries and no glob widening. Advisory: the rebase dropped the AGENTS.md H/G/M reconciliation present at 1fecb9cc; the body's 'no branch content was lost' is false for that file. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4744#pullrequestreview-5885836781. review cargo-allow non-author oppositional exact-head model review of head 25183f91241c28d1e2a1a80152032265e7fa47bf, base and merge-base f92a2bc39684fa8860b82341f9b7a76904891bed. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "sentinel-concurrency-collision",
+      "severity": "advisory",
+      "owned_seam": "sentinel workflow concurrency",
+      "source_path": ".github/workflows/sentinel.yml",
+      "source_line": 22,
+      "repair_route": "Repaired at d25be48c: group: workflow-sentinel-${{ github.event.merge_group.head_sha || github.event.pull_request.number || github.ref }}. The workflow retains pull_request and push:main until step 2, so the group is unique on those events.",
+      "claim_boundary": "The blocking form was present at 03412050 (group workflow-sentinel- for every PR/push, cancel-in-progress cancelling unrelated runs). The fix is present at d25be48c; the sentinel check is not in the required-status-check set."
+    },
+    {
+      "id": "agents-md-reconciliation-dropped",
+      "severity": "advisory",
+      "owned_seam": "root agent operating model",
+      "source_path": "AGENTS.md",
+      "source_line": 34,
+      "repair_route": "Reapply the two H/G/M replacements from 1fecb9cc: AGENTS.md:32-38 (judgment bound to the exact reviewed head H, G as integration proof, enqueueing as conditional landing permission) and :44 (native merge queue as the protected landing path, not auto-merge). Alternatively correct the PR body's 'no branch content was lost' claim.",
+      "claim_boundary": "The head's AGENTS.md is identical to main f92a2bc3 and lacks the reconciliation present at 1fecb9cc. Documentation-only; the merge-queue source, receipts and policy ledger are unaffected."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4744",
+    "Reviewed pair base/merge-base f92a2bc39684fa8860b82341f9b7a76904891bed, head 25183f91241c28d1e2a1a80152032265e7fa47bf, digest sha256:v2:eaba81cba9fbd580cc7700588ea7edc6440874290a664090e9facadb5650872a.",
+    "The rebase preserved the #4782 needless_bool repair: git diff f92a2bc3 25183f91 -- crates/cargo-allow/src/core_command_migration_readback.rs is empty.",
+    "The eight direct-floor receipt files are byte-identical to the floor-receipt-regeneration run 43352548094 artifact on e8d9f7ad; each selection companion's Receipt SHA-256 matches the committed JSON; selected_source_digest c3dae282... matches the head's 1384 crates/**/*.rs files.",
+    "policy/allow.toml is the regenerated 1370-entry union: no duplicate ids; allow-4782-review-disposition and allow-4782-review-revision are present; allow-4602-*, allow-4744-* and allow-11504 are present; every new entry has path == glob; no widening.",
+    "Advisory: the rebase dropped the AGENTS.md H/G/M reconciliation present at 1fecb9cc; the head's AGENTS.md is identical to main and the body's 'no branch content was lost' is false for that file.",
+    "The disposition rebind is the only head delta; the publisher's ancestor fallback admits it.",
+    "Thread PRRT_kwDOSnyN3s62njuX (.github/workflows/sentinel.yml:22): the concurrency regression was confirmed at 03412050 and repaired at d25be48c; replied r4550803537 and the repair reply; resolved.",
+    "Thread PRRT_kwDOSnyN3s62njxJ (scripts/merge-group-subject.py:99): invalid premise; queue-qualification runs only on merge_group and scripts/ci-proof-route.py:796-797 returns (full_boundary, false) for every non-pull_request event, so the required lanes are not skipped for narrow/docs_only/test_only; replied r4550803551 and resolved.",
+    "Thread PRRT_kwDOSnyN3s62d6MB (.github/workflows/frozen-subject-lock.yml:25): the missing explicit invalidation record is now present at .allow/frozen-subject-lock/invalidations/20261112-4744-merge-group-trigger.json, recorded_by core/release, frozen commit 63248416c2bd73edd63e22f064a1f242afcc0622; the refreeze remains a post-merge obligation tracked by #4777; replied and resolved.",
+    "The five workflows with both pull_request and merge_group triggers are ci.yml, frozen-subject-lock.yml, review-readiness.yml, sentinel.yml, and ub-review.yml; all five retain both.",
+    "The policy-change step has no event_name gate: QUEUE_BASE_SHA = pull_request.base.sha || merge_group.base_sha || event.before; QUEUE_HEAD_SHA = pull_request.head.sha || merge_group.head_sha || github.sha; it skips only on an empty or all-zeros base. The step is byte-identical to 1bd05dbe, where the hosted pull_request test job passed it.",
+    "Bootstrap disposition commit 59c72f9769e844cd7d71a743964e9c7f9b5ba79e (tree 5b466616b125a469988c4e59383d32e2868ff598): two exact-path non_rust_file allows, allow-4744-review-disposition (path and glob .allow/review-dispositions/pr-4744.json, target_fingerprint json) and allow-4744-review-revision (path and glob .allow/revisions/4744-review-disposition.toml, target_fingerprint toml); no directory glob and no widening of any other policy entry. The added_allow revision note recomputes to sha256:v1:1fd5ea134618cfc860f7d63a0116e44d895eb0b77dc233bc16333895985db7b7 and sha256:v1:203553038338235622a6606a1f1ff694cb3301c5e1eed38f95b12c6250ad999b. The final commit is disposition-only and is admitted by the ancestor fallback."
+  ],
+  "required_ci": {
+    "owner": "PR #4744 orchestrator: verify the exact-head review, live review-readiness, applicable checks (including the allow-11504 revision note and the policy-change step), threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/43352548094"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4744",
+  "reviewed_at_utc": "2026-11-13T04:03:10Z"
+}

@@ -1,7 +1,6 @@
-//! Repository release-controls surface for the #3844 review-readiness
-//! check: the stable context name, the minimal permission posture, the
-//! event coverage, and the no-mutation/no-self-requirement law are all
-//! checked against the source-controlled workflow and adapter.
+//! Retained review projection semantics and the #4602 queue-only transport.
+//! A source change does not activate the H publisher/control join; ordinary
+//! development events no longer allocate an Actions wrapper.
 
 use allow_report::REVIEW_READINESS_CHECK_CONTEXT;
 
@@ -20,92 +19,67 @@ fn read_workspace_file(root: &std::path::Path, rel: &str) -> String {
 }
 
 #[test]
-fn repository_release_controls_publish_one_stable_check_context() {
-    // #2283 names the check; the context string is the contract.
+fn repository_release_controls_retain_the_typed_context_without_an_actions_wrapper() {
     assert_eq!(REVIEW_READINESS_CHECK_CONTEXT, "review-readiness");
-
     let root = workspace_root();
-    let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
     let script = read_workspace_file(&root, "scripts/project-review-readiness.sh");
-    // The Actions job check is an implementation detail under a
-    // different name; the one stable `review-readiness` context is
-    // the published typed check run only, so branch protection can
-    // never observe a job-level success standing in for a neutral
-    // review.
+    assert!(script.contains(concat!("CHECK_NAME=", "\"review-readiness\"")));
+    let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
     assert!(
-        workflow.contains("  review-readiness-publisher:"),
-        "the publisher job is named distinctly from the published context"
+        workflow.contains("  merge_group:"),
+        "the required review-readiness context must still publish for the queue"
     );
+    // Step 1 keeps the pull_request trigger alongside merge_group until one
+    // real queue run and landing are observed.
     assert!(
-        !workflow.contains("  review-readiness:\n"),
-        "the workflow must not create a competing check under the stable context name"
-    );
-    assert!(
-        script.contains(concat!("CHECK_NAME=", "\"review-readiness\"")),
-        "the adapter publishes the one stable check context"
-    );
-    assert!(
-        workflow.contains("name: Review readiness"),
-        "the workflow is named for the readiness lane"
+        workflow.contains("  pull_request:"),
+        "the review-readiness wrapper stays on pull_request for the first queue landing"
     );
 }
 
 #[test]
-fn repository_release_controls_cover_every_readiness_relevant_event() {
+fn repository_release_controls_allocate_ordinary_work_only_for_merge_groups() {
     let root = workspace_root();
-    let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
-    for event in [
-        "opened",
-        "reopened",
-        "synchronize",
-        "ready_for_review",
-        "converted_to_draft",
-        "edited",
+    for path in [
+        ".github/workflows/ci.yml",
+        ".github/workflows/sentinel.yml",
+        ".github/workflows/frozen-subject-lock.yml",
+        ".github/workflows/ub-review.yml",
     ] {
-        assert!(
-            workflow.contains(event),
-            "the readiness workflow must trigger on {event}"
-        );
+        let workflow = read_workspace_file(&root, path);
+        assert!(workflow.contains("  merge_group:"), "{path}");
+        assert!(workflow.contains("types: [checks_requested]"), "{path}");
+        // Step 1 keeps the pull_request trigger alongside merge_group until
+        // one real queue run and landing are observed.
+        assert!(workflow.contains("  pull_request:"), "{path}");
+        assert!(!workflow.contains("  pull_request_target:"), "{path}");
+        // ci.yml and sentinel.yml keep the main push proof; the other queue
+        // roots stay merge_group-only.
+        if path != ".github/workflows/ci.yml" && path != ".github/workflows/sentinel.yml" {
+            assert!(!workflow.contains("  push:"), "{path}");
+        }
     }
-    // Base-branch movement fires no pull_request event; a push to the
-    // base branch must recompute open pull requests against the new
-    // merge base so a stale green cannot survive base movement.
-    assert!(
-        workflow.contains("branches: [main]"),
-        "the readiness workflow must recompute on base-branch movement"
-    );
 }
 
 #[test]
-fn repository_release_controls_use_minimum_permissions() {
+fn repository_release_controls_keep_queue_execution_read_only() {
     let root = workspace_root();
-    let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
-    let permissions_block = workflow
-        .split("permissions:")
-        .nth(1)
-        .and_then(|rest| rest.split("jobs:").next())
-        .expect("a permissions block before jobs");
-    assert!(
-        permissions_block.contains("contents: read"),
-        "contents stays read-only: {permissions_block}"
-    );
-    assert!(
-        permissions_block.contains("pull-requests: read"),
-        "pull-requests stays read-only: {permissions_block}"
-    );
-    // checks: write is the one granted write: publishing the typed
-    // check run is what makes a neutral (missing-disposition) result
-    // visible instead of a green check. Everything else stays
-    // read-only.
-    assert!(
-        permissions_block.contains("checks: write"),
-        "publishing the check conclusion requires checks: write: {permissions_block}"
-    );
-    for forbidden in ["issues:", "contents: write", "pull-requests: write"] {
-        assert!(
-            !permissions_block.contains(forbidden),
-            "the readiness workflow must not request '{forbidden}'"
-        );
+    for path in [
+        ".github/workflows/ci.yml",
+        ".github/workflows/sentinel.yml",
+        ".github/workflows/frozen-subject-lock.yml",
+        ".github/workflows/ub-review.yml",
+    ] {
+        let workflow = read_workspace_file(&root, path);
+        assert!(workflow.contains("  contents: read"), "{path}");
+        for forbidden in [
+            "checks: write",
+            "contents: write",
+            "pull-requests: write",
+            "secrets.",
+        ] {
+            assert!(!workflow.contains(forbidden), "{path}: {forbidden}");
+        }
     }
 }
 
@@ -167,10 +141,10 @@ fn repository_release_controls_never_mutate_or_self_require() -> Result<(), Stri
         "the adapter runs the typed projection"
     );
     validate_readiness_api_calls(&script)?;
-    // The workflow cannot make itself a required check: it publishes
-    // a check run but configures no required context; live required-
-    // context configuration is #2284's alone.
-    let workflow = read_workspace_file(&root, ".github/workflows/review-readiness.yml");
+    // Queue source cannot make itself a required context. Live required
+    // context configuration and the H publisher join remain #2284/#4602's
+    // coordinated activation, not a successful source-test side effect.
+    let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
     assert!(
         !workflow.contains("required_status_check"),
         "a source workflow cannot self-require"
