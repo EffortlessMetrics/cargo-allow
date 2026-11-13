@@ -1409,8 +1409,22 @@ receipt = {
     "environment": {
         "os": os.environ["OS_NAME"],
         "arch": os.environ["ARCH_NAME"],
-        "rustc_version": None,
-        "cargo_version": None,
+        "rustc_version": next(
+            (
+                line.split("release:", 1)[1].strip()
+                for line in os.popen("rustc -vV").read().splitlines()
+                if line.startswith("release:")
+            ),
+            None,
+        ),
+        "cargo_version": next(
+            (
+                line.split()[1]
+                for line in os.popen("cargo -V").read().splitlines()
+                if line.startswith("cargo ")
+            ),
+            None,
+        ),
         "network_posture": "not_required_for_core_journey",
     },
     "installed_binary": {

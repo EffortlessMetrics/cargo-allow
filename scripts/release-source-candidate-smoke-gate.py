@@ -229,6 +229,39 @@ def check_harness_receipt(
         refuse(
             f"{platform} harness receipt has no exact installed binary digest"
         )
+    declared_toolchain = next(
+        entry["toolchain"] for entry in REQUIRED_ROWS if entry["platform"] == platform
+    )
+    environment = harness.get("environment")
+    if not isinstance(environment, dict):
+        refuse(f"{platform} harness receipt has no environment object")
+    observed_rustc = environment.get("rustc_version")
+    rustc_version = (
+        observed_rustc[len("rustc "):].strip()
+        if isinstance(observed_rustc, str) and observed_rustc.startswith("rustc ")
+        else observed_rustc
+    )
+    if not isinstance(rustc_version, str) or not rustc_version.startswith(
+        declared_toolchain
+    ):
+        refuse(
+            f"{platform} harness receipt does not prove Rust {declared_toolchain}: "
+            f"environment.rustc_version is {observed_rustc!r}; the row's toolchain "
+            "label is a declared value, not an attestation"
+        )
+    observed_cargo = environment.get("cargo_version")
+    cargo_version = (
+        observed_cargo[len("cargo "):].strip()
+        if isinstance(observed_cargo, str) and observed_cargo.startswith("cargo ")
+        else observed_cargo
+    )
+    if not isinstance(cargo_version, str) or not cargo_version.startswith(
+        declared_toolchain
+    ):
+        refuse(
+            f"{platform} harness receipt does not prove Cargo {declared_toolchain}: "
+            f"environment.cargo_version is {observed_cargo!r}"
+        )
     journey = harness.get("journey")
     if not isinstance(journey, dict):
         refuse(f"{platform} harness receipt has no journey object")
@@ -240,6 +273,11 @@ def check_harness_receipt(
         refuse(
             f"{platform} harness journey is partial: "
             f"{len(steps_executed)} of {len(steps_expected)} steps executed"
+        )
+    if any(step.get("exit_code") != 0 for step in steps_executed):
+        refuse(
+            f"{platform} harness journey has a non-zero step exit; a journey "
+            "that recorded a failing step cannot satisfy publication"
         )
     if not harness.get("negative_controls"):
         refuse(
