@@ -27,11 +27,12 @@ ownership, evidence or a maintainer decision changes; do not reuse this
 checkpoint as a current-pair review. Recommendations below remain unratified
 except #3877 and the O3 objective, both ratified 2026-11-12: the implemented
 configuration precedence is preserved unchanged for 0.2.x, with advanced opt-in
-and changed precedence deferred to 0.3 under #3878. #3761 is bookkeeping only -
-its six proof suites landed 2026-11-03 in #4730 (`ba6f8ab0`, an ancestor of main),
-the `release-manifest` release role consumes them, and the issue's own last
-comment says it closes. Its remaining real-release generation proof is #2501's
-package-set obligation; nothing else waits on it.
+and changed precedence deferred to 0.3 under #3878. #3761 is a live owner
+decision - its six proof suites landed 2026-11-03 in #4730 (`ba6f8ab0`, an
+ancestor of main) and the `release-manifest` release role consumes them, but
+the issue's last comment is a 04:43Z finding that widens scope, so it does not
+close. Its remaining real-release generation proof is #2501's package-set
+obligation; the frozen-manifest role stays a live owner decision.
 
 ## Current bounded objective (O3, ratified 2026-11-12)
 
@@ -91,7 +92,7 @@ fixture repairs are merged at the checkpoint above:
 | [#4444](https://github.com/EffortlessMetrics/cargo-allow/pull/4444), under #3790/#3792 | Shared-registry preflight runs before selected-token environment expressions are evaluated, using the actual runner ordering. The bounded source repair preserves token-free nonpublishing paths; full authorization, custody and rehearsal isolation remain unproven. |
 | [#4442](https://github.com/EffortlessMetrics/cargo-allow/pull/4442), under #4441/#3792 | The rehearsal rejects selected-token key presence before admission/output work and checks again after its phases and final checkout. Owned child environments exclude those keys before retrieving values. This bounded foundation does not establish whole-process credential or mutation prevention. |
 | [#4443](https://github.com/EffortlessMetrics/cargo-allow/pull/4443), under #4362 | Actual outer hooks CLI tests prove selected child-root inheritance, clean/finding results and missing-policy refusal without the override. Hostile Git-selector controls preserve the foreign index/canary bytes and prevent outside policy writes. Production hook behavior is unchanged. |
-| [#4457](https://github.com/EffortlessMetrics/cargo-allow/pull/4457), one #3761 slice (#3761 is bookkeeping only; its six proof suites landed 2026-11-03 in #4730) | Matching checksums require a confirming publication state before typed package rows become manifest-ready. Missing/ProviderUnavailable and malformed-evidence distinctions survive both package classes, row/batch consumers and the real CLI. The shell manifest generator already refused those incomplete states; the `release-manifest` release role now consumes the typed evidence, and the real-release generation proof remains #2501's package-set obligation. |
+| [#4457](https://github.com/EffortlessMetrics/cargo-allow/pull/4457), one #3761 slice (#3761 is a live owner decision; its six proof suites landed 2026-11-03 in #4730) | Matching checksums require a confirming publication state before typed package rows become manifest-ready. Missing/ProviderUnavailable and malformed-evidence distinctions survive both package classes, row/batch consumers and the real CLI. The shell manifest generator already refused those incomplete states; the `release-manifest` release role now consumes the typed evidence, and the real-release generation proof remains #2501's package-set obligation. |
 
 The two latest merges retain separate process exceptions:
 
@@ -138,7 +139,7 @@ handoff. Finish them before trusting a successor final freeze.
 | Owner | Required production result |
 | --- | --- |
 | [#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426), under #2501/#3842/#3774; PR #4438 | Replace shared-row-count currentness with the existing typed registry evaluator. Bind all 10+3 identities/checksums, independently assembled expected context, a real evaluation clock and a selected freshness window. Missing authority remains NotProven; stale, malformed and provider-failed observations remain non-clean. #3792/#2501 retain the production-input wiring. |
-| [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | Bookkeeping only: the six proof suites landed 2026-11-03 in #4730 (an ancestor of main) and the issue's own last comment says it closes. The bounded #4457 classifier repair is merged and the `release-manifest` release role consumes the typed evidence. What remains is the real-release generation proof for the selected package set, which is #2501's obligation, not a new frozen-manifest decision. |
+| [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | Live owner decision: the six proof suites landed 2026-11-03 in #4730 (an ancestor of main), but the issue's last comment is a 04:43Z finding that widens scope, so it does not close. The bounded #4457 classifier repair is merged and the `release-manifest` release role consumes the typed evidence. What remains is the real-release generation proof for the selected package set, which is #2501's obligation, and the frozen-manifest role stays a live owner decision. |
 | [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The first slice is one Linux worker profile plus the tag-mutation denial family end to end, with the invocation-boundary guard inside that slice, and it produces the first true flag; a usable qualifying-worker enforcement path for the remaining families follows. Neither foundation establishes every prevention control or a Complete producer. |
 
 The delivered #4425 rehearsal admission and #4427 receipt-preservation repairs
@@ -196,7 +197,7 @@ proves this complete sequence:
    downloaded checkpoints and exact registry checksum equality before unlocking
    dependent rows. Retain partial, conflicting and ambiguous outcomes with their
    original-candidate recovery lineage.
-5. **#2497/#3726/#3933 (#3761 is bookkeeping only):** preserve publication/install evidence, produce
+5. **#2497/#3726/#3933 (#3761 is a live owner decision):** preserve publication/install evidence, produce
    the typed public manifest, verify provenance, and independently read back the
    actual draft asset set before public finalization. Draft creation plus
    upload success is not actual-asset closeout.
@@ -460,7 +461,7 @@ starting, and hand the finished head to independent review. After merge,
 verify current main, retain required guards/evidence, reconcile the child and
 controller, and clean only the lane's owned disposable work.
 
-- [ ] Remaining #4426/#3792 and selected core regressions have current closure; preserve the already merged bounded repairs. #3761 is bookkeeping only, with its real-release generation proof under #2501.
+- [ ] Remaining #4426/#3792 and selected core regressions have current closure; preserve the already merged bounded repairs. #3761 is a live owner decision, with its real-release generation proof under #2501.
 - [ ] Production pre-tag, custody, durable state, registry and actual-asset
       composition is proven under its existing owners.
 - [ ] Config/default/support/pilot decisions and shipped projections agree.
