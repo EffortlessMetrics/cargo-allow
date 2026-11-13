@@ -77,9 +77,9 @@
  "execution_provenance": {
   "command": "bash scripts/proof-direct-floors.sh",
   "working_directory": "/home/runner/work/cargo-allow/cargo-allow",
-  "source_commit": "8809e861aa2141fcfa93e5eec0fdb7b72f162674",
-  "source_tree": "da73da892ed37f96680937f53bb08123bda520da",
-  "selected_source_digest": "c0edf1a694982f23708c551b2779c49f76f560eb2aee040aa91cbaa2c6ab6a6b",
+  "source_commit": "5b7f82e23fc083c404a566d9b4f1647acf95a009",
+  "source_tree": "1cf4426ea5f9e4efa29298cc1e06e67747bc5876",
+  "selected_source_digest": "fbb00cc9b08a45c3068a045bde1cbd54c983647eafde823f8237f5744577a957",
   "selected_source_scope": [
    "crates/**/*.rs: every workspace Rust source, CR-stripped, framed path<NUL>content<NUL> in sorted path order"
   ],
@@ -101,7 +101,7 @@
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
   "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
-  "local floor subject: source 5f8f0ee0cfee3007716e0965a5b689d58dcba6f9; executed commit 8809e861aa2141fcfa93e5eec0fdb7b72f162674; tree da73da892ed37f96680937f53bb08123bda520da; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "local floor subject: source e4147ccbb3a3d3f124a23c7722800defdda6a0dd; executed commit 5b7f82e23fc083c404a566d9b4f1647acf95a009; tree 1cf4426ea5f9e4efa29298cc1e06e67747bc5876; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the shared package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }

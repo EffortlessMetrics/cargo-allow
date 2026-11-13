@@ -289,6 +289,7 @@ NARROW_STANDALONE = [
     "collect-performance-fixtures",
     "shallow-diff-smoke",
     "feature-configuration-proof",
+    "clippy-stable",
 ]
 ROOT_DOCS = {
     "AGENTS.md",
