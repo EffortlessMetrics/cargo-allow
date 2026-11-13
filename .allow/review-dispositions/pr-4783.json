@@ -4,24 +4,24 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4783,
   "base_ref": "main",
-  "base_sha": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
+  "base_sha": "04201b753ba38f5197011ff2494969128d2feb58",
   "head_ref": "fix/merge-group-checkout-refs",
-  "head_sha": "3877ffc306f4de440308c6f6b7f8a380a9747ca6",
-  "merge_base": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
-  "reviewed_diff_digest": "sha256:v2:7b87079da75c431c64994f32d657d10bce1fcc3f9373f320a11a6941b21791e0",
+  "head_sha": "b2a01d5a7c2f339fe99af72f7393a4ac3e80ba87",
+  "merge_base": "04201b753ba38f5197011ff2494969128d2feb58",
+  "reviewed_diff_digest": "sha256:v2:9717eb24bc8124ce12a7988667553a9cf0f21f8a45d71b96c4c31870add65186",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4783 at 496e9f70598b2561ebc412b920c2e9f212595242 (base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d). The rebase preserves the #4602 fix: the dependency-graph-delta job keeps needs [proof-route, queue-subject] and the both-sides ref github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha; the four checkout refs approved at abcd8618 remain bound to github.event.merge_group.head_sha; the duplicate checkout ref from the conflict is gone. The guard and its test are byte-identical to abcd8618. Locally: guard test 6/6, guard exit 0, check --mode no-new passed, diff --require-change-note passed. CI: pregate, frozen-subject-lock, workflow-syntax, and test SUCCESS. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4783 at b2a01d5a7c2f339fe99af72f7393a4ac3e80ba87 (base and merge-base 04201b753ba38f5197011ff2494969128d2feb58). The rebase preserves the #4602 fix: the dependency-graph-delta job keeps needs [proof-route, queue-subject] and the both-sides ref github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha; the four checkout refs approved at abcd8618 remain bound to github.event.merge_group.head_sha; the duplicate checkout ref from the conflict is gone. The guard and its test are byte-identical to abcd8618. Locally: guard test 6/6, guard exit 0, check --mode no-new passed, diff --require-change-note passed. CI: pregate, frozen-subject-lock, workflow-syntax, and test SUCCESS. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4783#pullrequestreview-5891731481. review cargo-allow non-author oppositional exact-head model review of head 496e9f70598b2561ebc412b920c2e9f212595242, base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4783#pullrequestreview-5891731481. review cargo-allow non-author oppositional exact-head model review of head b2a01d5a7c2f339fe99af72f7393a4ac3e80ba87, base and merge-base 04201b753ba38f5197011ff2494969128d2feb58. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4783",
-    "Reviewed pair base/merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d, head 496e9f70598b2561ebc412b920c2e9f212595242, digest sha256:v2:7b87079da75c431c64994f32d657d10bce1fcc3f9373f320a11a6941b21791e0.",
+    "Reviewed pair base/merge-base 04201b753ba38f5197011ff2494969128d2feb58, head b2a01d5a7c2f339fe99af72f7393a4ac3e80ba87, digest sha256:v2:9717eb24bc8124ce12a7988667553a9cf0f21f8a45d71b96c4c31870add65186.",
     "dependency-graph-delta keeps needs [proof-route, queue-subject] and ref github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha.",
     "The four checkout refs approved at abcd8618 remain bound to github.event.merge_group.head_sha.",
     "Guard and test are byte-identical to abcd8618; guard test 6/6, guard exit 0, check --mode no-new passed, diff --require-change-note passed.",
