@@ -324,6 +324,11 @@ jobs:
             toolchain: "1.95.0"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # rust-toolchain.toml pins the floating stable channel and outranks the
+    # action's rustup default, so the versioned toolchain: input alone is inert.
+    # The env var outranks the file and makes the 1.95.0 attestation true.
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -343,7 +348,8 @@ jobs:
         run: |
           set -euo pipefail
           bin="${PWD}/target/package-candidate-smoke/install/bin/cargo-allow"
-          [[ -x "${bin}" ]] || bin="${bin}.exe"
+          # Git Bash resolves the .exe sibling for -x/-f, so test it explicitly.
+          if [[ -f "${bin}.exe" ]]; then bin="${bin}.exe"; fi
           CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - name: Record the platform smoke receipt
         if: always()
@@ -381,7 +387,7 @@ jobs:
           if packaged_path.is_file():
               for line in packaged_path.read_text(encoding="utf-8").splitlines():
                   if line.startswith("packaged="):
-                      packaged.append(line[len("packaged="):].split("-", 1)[0])
+                      packaged.append(line[len("packaged="):].rsplit("-", 1)[0])
           row = {
               "repository": os.environ["EXPECTED_REPOSITORY"],
               "ref": os.environ["EXPECTED_REF"],
@@ -447,6 +453,18 @@ jobs:
           path: target/cargo-allow/source-candidate-smoke-rows/windows
           run-id: ${{ github.run_id }}
           github-token: ${{ github.token }}
+      - name: Flatten the downloaded rows
+        shell: bash
+        # upload-artifact roots each row at target/, so the receipt, harness and
+        # package files land one directory deeper than the gate reads them.
+        # Move them up into the row directory and drop the empty subdirectories,
+        # otherwise the gate counts them as unexpected rows.
+        run: |
+          set -euo pipefail
+          for row in target/cargo-allow/source-candidate-smoke-rows/*/; do
+            find "${row}" -mindepth 2 -type f -exec mv {} "${row}" \;
+            find "${row}" -mindepth 1 -type d -empty -delete
+          done
       - name: Aggregate the platform smoke receipts
         env:
           SMOKE_NEEDS_RESULT: ${{ needs.source-candidate-smoke.result }}
