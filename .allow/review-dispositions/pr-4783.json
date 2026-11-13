@@ -6,7 +6,7 @@
   "base_ref": "main",
   "base_sha": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
   "head_ref": "fix/merge-group-checkout-refs",
-  "head_sha": "496e9f70598b2561ebc412b920c2e9f212595242",
+  "head_sha": "3877ffc306f4de440308c6f6b7f8a380a9747ca6",
   "merge_base": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
   "reviewed_diff_digest": "sha256:v2:7b87079da75c431c64994f32d657d10bce1fcc3f9373f320a11a6941b21791e0",
   "review_protocol": "review-current-head-gen1",
