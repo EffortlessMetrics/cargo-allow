@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4784,
   "base_ref": "main",
-  "base_sha": "cf411df7452491625c8d2b2cc4d789bf6282070e",
+  "base_sha": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
   "head_ref": "fix/4781-pin-test-toolchain",
-  "head_sha": "4e2b42ecb651244b9799823b6cdebd567a8c4095",
-  "merge_base": "cf411df7452491625c8d2b2cc4d789bf6282070e",
-  "reviewed_diff_digest": "sha256:v2:b0377722d0edc8e9d3463d7bc578c96d2b1f5fef8e5e7e97e83d81e7ddaef7df",
+  "head_sha": "f3df6b91daf8212ae2c5cbab4683835a44c6efa0",
+  "merge_base": "4adbca9d0aad049021d4ef8478bec8f3dfe2c85d",
+  "reviewed_diff_digest": "sha256:v2:7c991464d5f437c7af9b57efbdefdde94d580f65760dab4f6ec3f505e8544c20",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4784 at ff05f6e945d8884a224629776e77c10c31de2944 (base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e). The ledger commit 4e2b42ecb651244b9799823b6cdebd567a8c4095 adds only the exact-path review-disposition admission and its revision note; this commit is disposition-only and is admitted by the ancestor fallback. The head is the rustfmt-clean receipt head: a4edc156 counts cache steps and lane keys as lines, closing the false-green; 502249e8 applies rustfmt; 07004481/ff05f6e9 regenerate the receipts. Reviewed 34ebe444 and 78da8c2b with --ignore-cr-at-eol: 34ebe444 is 127/30 of real content across 5 files; 78da8c2b is zero content change. The profiles checker baseline passes 13 profiles and both negative controls fail as required. The MSRV characterization suite passes 26/26. The final receipts bind source 502249e8 / selected_source_digest 8bb6334c, matching the head's crates/**/*.rs. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4784 at f3df6b91daf8212ae2c5cbab4683835a44c6efa0 (base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d). The head merges main 4adbca9d and regenerates all four direct-floor receipts on the merged tree: manifest_set_digest 71bcdc19 and selected_source_digest fbb00cc9, both independently recomputed from the head's checked-in manifests and its 1384 crates/**/*.rs files. pregate is SUCCESS including Retained direct-floor freshness; frozen-subject-lock and clippy-stable are SUCCESS. policy/allow.toml keeps both allow-4787-* and allow-4784-* pairs. The lane logic, profiles checker, manifest, and rustfmt fix are unchanged from a5a56912. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784#pullrequestreview-5887989033. review cargo-allow non-author oppositional exact-head model review of head ff05f6e945d8884a224629776e77c10c31de2944, base and merge-base cf411df7452491625c8d2b2cc4d789bf6282070e. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4784#pullrequestreview-5890905502. review cargo-allow non-author oppositional exact-head model review of head f3df6b91daf8212ae2c5cbab4683835a44c6efa0, base and merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
@@ -31,14 +31,12 @@
   ],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4784",
-    "Reviewed pair base/merge-base cf411df7452491625c8d2b2cc4d789bf6282070e, head ff05f6e945d8884a224629776e77c10c31de2944, digest sha256:v2:b0377722d0edc8e9d3463d7bc578c96d2b1f5fef8e5e7e97e83d81e7ddaef7df.",
-    "a4edc156 counts cache steps and lane keys as lines, closing the false-green; 502249e8 applies rustfmt; 07004481/ff05f6e9 regenerate the receipts.",
-    "34ebe444 with --ignore-cr-at-eol is 127 insertions / 30 deletions across 5 files; 78da8c2b with --ignore-cr-at-eol is empty.",
-    "Profiles checker: baseline 13 profiles exit 0; manifest 1.95.0 vs job 1.100.0 fails; env 1.99.0 vs manifest 1.100.0 fails.",
-    "MSRV characterization: 26/26. The step-local fixture is scoped to the test job; the two unreceipted-input cases overlap the count check (advisory).",
-    "The final receipts bind source 502249e8 / selected_source_digest 8bb6334c, matching the head's 1384 crates/**/*.rs files.",
-    "pregate and frozen-subject-lock are SUCCESS; the four test-core-platforms rows are in progress and test is not yet created; review-readiness is neutral.",
-    "The ledger commit 4e2b42ecb651244b9799823b6cdebd567a8c4095 adds exact-path allows for .allow/review-dispositions/pr-4784.json and .allow/revisions/4784-review-disposition.toml, plus the revision note; no code, test, workflow, or receipt change."
+    "Reviewed pair base/merge-base 4adbca9d0aad049021d4ef8478bec8f3dfe2c85d, head f3df6b91daf8212ae2c5cbab4683835a44c6efa0, digest sha256:v2:7c991464d5f437c7af9b57efbdefdde94d580f65760dab4f6ec3f505e8544c20.",
+    "All four direct-floor receipts carry manifest_set_digest 71bcdc19 and selected_source_digest fbb00cc9, matching the head's checked-in manifests and 1384 crates/**/*.rs files.",
+    "pregate SUCCESS (job 131881058906) including Retained direct-floor freshness; frozen-subject-lock and clippy-stable SUCCESS.",
+    "policy/allow.toml keeps both allow-4787-review-disposition/revision and allow-4784-review-disposition/revision.",
+    "The lane logic, profiles checker, manifest, and rustfmt fix are unchanged from a5a56912.",
+    "The advisory MSRV characterization overlap remains the only non-blocking finding."
   ],
   "required_ci": {
     "owner": "PR #4784 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
@@ -46,5 +44,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4784",
-  "reviewed_at_utc": "2026-11-13T08:12:17Z"
+  "reviewed_at_utc": "2026-11-13T12:40:00Z"
 }
