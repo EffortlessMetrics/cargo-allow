@@ -10,6 +10,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -26,6 +27,27 @@ if SPEC is None or SPEC.loader is None:
 REHEARSAL = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(REHEARSAL)
 
+
+def _linux_userns_usable() -> bool:
+    """True when an unprivileged user+mount namespace can actually be created.
+
+    The binaries can be present while the kernel refuses the namespace (for
+    example a runner with unprivileged userns disabled), in which case the tag
+    drill is unmeasured and must not be asserted as prevented.
+    """
+    unshare = shutil.which("unshare")
+    if unshare is None:
+        return False
+    try:
+        completed = subprocess.run(
+            [unshare, "-Urm", "--", "true"],
+            capture_output=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0
+
+
 REQUIRED_PHASES = (
     "release_identity",
     "candidate_package_set",
@@ -37,6 +59,29 @@ REQUIRED_PHASES = (
     "workflow_graph_permissions",
     "escaped_defect_corpus",
 )
+
+# No family may measure a true prevention flag in this generation. The tag
+# drill's supervisor applies the read-only mount and the capability drop
+# inside its own unshare namespace, so a denial there proves the supervisor,
+# not the rehearsal boundary; it records direct_route_discriminating=False
+# and can never claim prevention.
+MEASURED_ZERO_MUTATION_FLAGS = set()
+
+UNCONFINED_ZERO_MUTATION_FLAGS = (
+    "token_read_prevented",
+    "cargo_publish_prevented",
+    "registry_mutation_prevented",
+    "github_release_mutation_prevented",
+    "live_setting_mutation_prevented",
+    "external_repository_mutation_prevented",
+)
+
+
+def assert_only_measured_flags_may_be_true(testcase, proof) -> None:
+    for name, value in proof.items():
+        if name in MEASURED_ZERO_MUTATION_FLAGS:
+            continue
+        testcase.assertFalse(value, f"{name} must stay false")
 
 
 class TokenValueTrap(Mapping[str, str]):
@@ -196,7 +241,7 @@ class TestReceiptOutput(unittest.TestCase):
             read.assert_not_called()
         self.assertEqual(receipt["phases"]["authorization_boundary"], "InstrumentFailure")
         self.assertEqual(receipt["aggregate_status"], "InstrumentFailure")
-        self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+        assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
         self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
 
     def test_final_token_observation_controls_builder_and_written_receipt(self) -> None:
@@ -270,7 +315,7 @@ class TestReceiptOutput(unittest.TestCase):
                             self.assertEqual(set(receipt["phases"]), set(REQUIRED_PHASES))
                             self.assertEqual(receipt["phases"]["workflow_graph_permissions"], workflow_status)
                             self.assertEqual(len(receipt["zero_mutation_proof"]), 7)
-                            self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+                            assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
                             self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
                             self.assertNotIn("synthetic-private-token", stdout.getvalue() + stderr.getvalue())
                             self.assertEqual(stderr.getvalue(), "")
@@ -1110,7 +1155,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
         self.assertEqual(receipt["commit_sha"], self.head)
         self.assertEqual(receipt["aggregate_status"], "Incomplete")
-        self.assertTrue(all(value is False for value in receipt["zero_mutation_proof"].values()))
+        assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
         for phase in self.phases:
             phase.assert_called_once()
 
@@ -1149,9 +1194,13 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         self.assertEqual(receipt["commit_sha"], self.head)
         self.assertTrue(run.call_args_list)
         for call in run.call_args_list:
-            self.assertEqual(call.args[0][:2], ["git", "--no-replace-objects"])
+            argv = call.args[0]
             self.assertIsInstance(call.kwargs.get("env"), dict)
             self.assertNotIn("CARGO_REGISTRY_TOKEN", call.kwargs["env"])
+            if argv[0] != "git":
+                # Drill setup or child process on the direct route.
+                continue
+            self.assertEqual(argv[:2], ["git", "--no-replace-objects"])
             if "status" in call.args[0]:
                 for setting in ("core.checkStat=default", "core.ignoreStat=false", "core.trustctime=true"):
                     self.assertIn(setting, call.args[0])
@@ -1451,9 +1500,7 @@ class TestRehearsalSubjectBinding(unittest.TestCase):
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
 
         self.assertEqual(receipt["aggregate_status"], "Incomplete")
-        self.assertTrue(
-            all(value is False for value in receipt["zero_mutation_proof"].values())
-        )
+        assert_only_measured_flags_may_be_true(self, receipt["zero_mutation_proof"])
 
     def test_ignored_artifact_classifier_admits_tooling_state_only_at_root(self) -> None:
         self.assertTrue(REHEARSAL._is_ignored_rehearsal_artifact(b"!! .zcode/"))
@@ -1848,6 +1895,194 @@ class TestInvocationBoundary(unittest.TestCase):
                 REHEARSAL.resolve_commit("HEAD")
             terminal.assert_not_called()
             self.assertIsNone(REHEARSAL._INVOCATION.get())
+
+
+class TestZeroMutationDrills(unittest.TestCase):
+    def test_each_family_attempts_and_records_evidence(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        self.assertEqual(set(drills), set(REHEARSAL.ZERO_MUTATION_FLAGS))
+        for name, drill in drills.items():
+            with self.subTest(family=name):
+                self.assertTrue(drill["attempted"])
+                self.assertIsInstance(drill["argv_denied"], bool)
+                self.assertIsInstance(drill["direct_denied"], bool)
+                self.assertIsInstance(drill["direct_route_discriminating"], bool)
+                self.assertIsInstance(drill["canary_unchanged"], bool)
+                self.assertIsInstance(drill["prevented"], bool)
+                self.assertTrue(drill["boundary"])
+                self.assertTrue(drill["reason"])
+                self.assertEqual(
+                    drill["prevented"],
+                    drill["argv_denied"] and drill["direct_denied"]
+                    and drill["canary_unchanged"]
+                    and drill["direct_route_discriminating"],
+                )
+
+    def test_direct_routes_are_real_attempts_not_tautologies(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        for name, drill in drills.items():
+            if name not in UNCONFINED_ZERO_MUTATION_FLAGS:
+                continue
+            with self.subTest(family=name):
+                self.assertTrue(drill["attempted"], "drill did not run")
+                self.assertTrue(
+                    drill["attempt_succeeded"],
+                    "the direct route never attempted the forbidden effect",
+                )
+                self.assertFalse(drill["canary_unchanged"])
+                self.assertFalse(drill["prevented"])
+        for name in (
+            "cargo_publish_prevented",
+            "registry_mutation_prevented",
+            "github_release_mutation_prevented",
+            "live_setting_mutation_prevented",
+            "external_repository_mutation_prevented",
+        ):
+            with self.subTest(measured=name):
+                self.assertTrue(
+                    drills[name]["direct_route_discriminating"],
+                    "a measured family was not treated as discriminating",
+                )
+
+    def test_direct_routes_keep_unconfined_families_false(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        for name in UNCONFINED_ZERO_MUTATION_FLAGS:
+            with self.subTest(family=name):
+                self.assertTrue(drills[name]["argv_denied"], "argv route was not denied")
+                self.assertFalse(drills[name]["direct_denied"], "direct route was confined")
+                self.assertFalse(drills[name]["prevented"])
+
+    def test_only_outside_quarantine_direct_routes_can_discriminate(self) -> None:
+        with REHEARSAL._invocation_scope():
+            drills = REHEARSAL.run_zero_mutation_drills()
+        measured = {
+            "cargo_publish_prevented",
+            "registry_mutation_prevented",
+            "github_release_mutation_prevented",
+            "live_setting_mutation_prevented",
+            "external_repository_mutation_prevented",
+        }
+        for name, drill in drills.items():
+            with self.subTest(family=name):
+                self.assertEqual(
+                    drill["direct_route_discriminating"],
+                    name in measured,
+                    "a direct route inside the quarantine claimed it could "
+                    "observe confinement",
+                )
+        self.assertIn("cannot be denied", drills["token_read_prevented"]["reason"])
+
+    def test_tag_worker_observes_the_denial(self) -> None:
+        if REHEARSAL._linux_tag_worker() is None:
+            self.skipTest("Linux worker profile unavailable on this host")
+        if not _linux_userns_usable():
+            self.skipTest(
+                "unprivileged user+mount namespace is blocked on this host, "
+                "so the tag drill is unmeasured here"
+            )
+        with REHEARSAL._invocation_scope():
+            drill = REHEARSAL.run_zero_mutation_drills()["tag_mutation_prevented"]
+        self.assertTrue(drill["attempted"])
+        self.assertTrue(drill["argv_denied"], drill["reason"])
+        self.assertFalse(
+            drill["direct_route_discriminating"],
+            "the tag drill's supervisor is not the rehearsal boundary",
+        )
+        self.assertTrue(drill["direct_denied"], drill["reason"])
+        self.assertTrue(drill["canary_unchanged"], drill["reason"])
+        self.assertFalse(
+            drill["prevented"],
+            "the tag family must never claim prevention",
+        )
+        self.assertTrue(drill["remount_denied"], "the worker could remount read-write")
+        self.assertIn("dropped capabilities", drill["boundary"])
+
+    def test_tag_flag_follows_the_measurement_not_a_literal(self) -> None:
+        denied = {
+            "attempted": True, "argv_denied": True, "direct_denied": True,
+            "canary_unchanged": True, "direct_route_discriminating": True,
+            "prevented": True,
+        }
+        allowed = dict(
+            denied, direct_denied=False, canary_unchanged=False, prevented=False,
+        )
+        self.assertTrue(
+            REHEARSAL._zero_mutation_proof_from_drills(
+                {"tag_mutation_prevented": denied}
+            )["tag_mutation_prevented"]
+        )
+        self.assertFalse(
+            REHEARSAL._zero_mutation_proof_from_drills(
+                {"tag_mutation_prevented": allowed}
+            )["tag_mutation_prevented"]
+        )
+
+    def test_a_drill_that_cannot_observe_confinement_cannot_claim_prevention(
+        self,
+    ) -> None:
+        vacuous = REHEARSAL._drill_result(
+            argv_denied=True, direct_denied=True, boundary="b", reason="r",
+            direct_route_discriminating=False,
+        )
+        self.assertFalse(vacuous["prevented"])
+        self.assertFalse(
+            any(
+                REHEARSAL._zero_mutation_proof_from_drills(
+                    {"tag_mutation_prevented": vacuous}
+                ).values()
+            )
+        )
+
+    def test_an_external_write_error_is_unmeasured_not_prevented(self) -> None:
+        # A raised OSError cannot be told apart from a confinement refusal, so
+        # the drill must record a non-observation rather than prevention.
+        with mock.patch.object(
+            Path, "write_text", side_effect=OSError("read-only file system")
+        ):
+            drill = REHEARSAL._drill_external(Path(tempfile.mkdtemp()))
+        self.assertFalse(drill["attempted"])
+        self.assertFalse(drill["direct_denied"])
+        self.assertFalse(drill["prevented"])
+        self.assertIn("OSError", drill["reason"])
+        self.assertIn("unmeasured", drill["reason"])
+
+    def test_flags_are_derived_from_drills_not_literals(self) -> None:
+        prevented = {
+            name: {"prevented": True} for name in REHEARSAL.ZERO_MUTATION_FLAGS
+        }
+        self.assertTrue(
+            all(REHEARSAL._zero_mutation_proof_from_drills(prevented).values())
+        )
+        blocked = {
+            name: {"prevented": False} for name in REHEARSAL.ZERO_MUTATION_FLAGS
+        }
+        self.assertFalse(
+            any(REHEARSAL._zero_mutation_proof_from_drills(blocked).values())
+        )
+        self.assertFalse(
+            any(REHEARSAL._zero_mutation_proof_from_drills({}).values())
+        )
+        unrun = REHEARSAL._drill_result(
+            argv_denied=True, direct_denied=True, attempted=False,
+            boundary="b", reason="r", direct_route_discriminating=True,
+        )
+        self.assertFalse(unrun["prevented"], "an unrun drill claimed prevention")
+
+    def test_receipt_proof_matches_its_drills(self) -> None:
+        receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
+        self.assertEqual(
+            receipt["zero_mutation_proof"],
+            REHEARSAL._zero_mutation_proof_from_drills(
+                receipt["zero_mutation_drills"]
+            ),
+        )
+        self.assertEqual(
+            set(receipt["zero_mutation_drills"]),
+            set(REHEARSAL.ZERO_MUTATION_FLAGS),
+        )
 
 
 if __name__ == "__main__":
