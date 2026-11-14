@@ -324,6 +324,11 @@ jobs:
             toolchain: "1.95.0"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # rust-toolchain.toml pins the floating stable channel and outranks the
+    # action's rustup default, so the versioned toolchain: input alone is inert.
+    # The env var outranks the file and makes the 1.95.0 attestation true.
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
