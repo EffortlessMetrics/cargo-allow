@@ -367,7 +367,6 @@ jobs:
           import hashlib
           import json
           import os
-          import re
           from pathlib import Path
 
           platform = os.environ["ROW_PLATFORM"]
@@ -384,14 +383,19 @@ jobs:
               for line in packaged_path.read_text(encoding="utf-8").splitlines():
                   if line.startswith("packaged="):
                       # Crate names contain hyphens, so strip the trailing
-                      # -<version>.crate instead of splitting on the first one.
-                      match = re.match(
-                          r"^(?P<name>.+)-(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.]+)?)\.crate$",
-                          line[len("packaged="):],
-                      )
-                      if match is None:
+                      # -<version>.crate instead of splitting on the first one:
+                      # take the right-most hyphen segment that starts with a
+                      # digit, which keeps a pre-release suffix with its version.
+                      stem = line[len("packaged="):]
+                      if not stem.endswith(".crate"):
                           raise SystemExit(f"unparseable packaged crate: {line}")
-                      packaged.append(match.group("name"))
+                      parts = stem[: -len(".crate")].split("-")
+                      for index in range(len(parts) - 1, 0, -1):
+                          if parts[index][:1].isdigit():
+                              packaged.append("-".join(parts[:index]))
+                              break
+                      else:
+                          raise SystemExit(f"unparseable packaged crate: {line}")
           row = {
               "repository": os.environ["EXPECTED_REPOSITORY"],
               "ref": os.environ["EXPECTED_REF"],
