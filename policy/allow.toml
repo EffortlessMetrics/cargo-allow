@@ -30041,3 +30041,46 @@ glob = ".allow/revisions/4794-review-disposition.toml"
 [allow.last_seen]
 line = 1
 column = 1
+[[allow]]
+id = "allow-1388"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4796.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for PR #4796 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+evidence = ["pr:4796", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4796.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4796.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1389"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4796-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact self-covering note for the source-controlled review disposition receipt at f63601d3; governance metadata only."
+evidence = ["pr:4796"]
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4796-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4796-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
