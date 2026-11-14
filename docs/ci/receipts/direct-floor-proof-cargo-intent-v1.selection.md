@@ -7,18 +7,18 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-intent
 - Package roots: cargo-intent
 - Selected closure: cargo-intent, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index, intent-compiler, intent-model, intent-protocol
-- Starting source commit: e4147ccbb3a3d3f124a23c7722800defdda6a0dd
+- Starting source commit: 995a08b91ac555a10a67f6e6aef6aa3b0d4abb11
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:a883eb778b6bc6be81518ce8ed2ddbcf9a10889e9548316c970c89264f261230
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
-- Executed floor commit: b95b39afba88d9f6ba6623250d8b30ae2cdbbd67
-- Executed floor tree: 0bf4b76010da91b21ab43a3752995019ec4684dc
+- Executed floor commit: f1af64b324e1b50bedcdaea2ff17e6526a90ba7f
+- Executed floor tree: 65597cbd2dec26f5bce0d415ea8771e8ae63ec96
 - Receipt: direct-floor-proof-cargo-intent-v1.json
-- Receipt SHA-256: sha256:v1:53ba6dc8a09a89c7044b4e45670bc754a33ec689bbea10d9e83b51c9eb475f10
+- Receipt SHA-256: sha256:v1:af619e1549bbd0c6fd534253fe802004bdba3c300bd7f7243e4d38be461dd3fc
 - Manifest-set digest: 71bcdc199f3925f034b42c4e90d16150f4b45eeffb3325799d75ec0bce1e3ea6
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
-- Executed floor-lock digest: sha256:v1:565837873b3860802d9c7ccd10668d90e296d408aac2e0d4e50f80a2d2075457
+- Executed floor-lock digest: sha256:v1:aaacf0391f7b0105f3c99efe5df991218c433168495c4b0f0479e2d394978d19
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
 | --- | --- | --- | --- | --- | --- |

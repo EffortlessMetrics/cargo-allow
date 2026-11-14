@@ -361,8 +361,8 @@ fn review_readiness_check_reports_nonterminal_check_observations_as_separate() {
 #[test]
 fn review_readiness_check_admits_a_ledger_only_head_delta() {
     // A disposition committed inside its own PR moves the head it
-    // binds. The projection admits that movement only when the entire
-    // delta is review-disposition records.
+    // binds. The projection admits that movement only when the delta is
+    // exactly one disposition record plus at most its own revision note.
     let mut one_commit_ahead = live();
     one_commit_ahead.head_sha = "cccc".to_string();
     let mut ledger_delta = one_commit_ahead.clone();
@@ -372,10 +372,7 @@ fn review_readiness_check_admits_a_ledger_only_head_delta() {
         ReviewReadinessDraftStateV1::Ready,
         ReviewReadinessEventV1::Synchronize,
         ledger_delta,
-        vec![
-            ".allow/review-dispositions/4146-bbbb.json".to_string(),
-            ".allow/review-dispositions/index.json".to_string(),
-        ],
+        vec![".allow/review-dispositions/4146-bbbb.json".to_string()],
     ));
     assert_eq!(projection.conclusion, ReviewReadinessConclusionV1::Success);
     assert!(projection.head_ledger_bootstrap);

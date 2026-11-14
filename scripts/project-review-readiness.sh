@@ -464,7 +464,14 @@ project_pr() {
       # so the projection can prove the head movement is disposition
       # records only and reject anything else.
       local delta delta_output
-      if delta_output="$(git diff --name-only "${bound_head}..${head_sha}" 2>/dev/null)"; then
+      # --no-renames is load-bearing: with rename detection on, a head can
+      # rename a file that already carries a valid record for this PR into
+      # the ledger directory and delete the original invisibly, because
+      # --name-only then prints only the destination. Decomposing the
+      # rename emits both paths, so the source path reaches the projection
+      # and is rejected as outside the one-record rule. Same knobs as the
+      # digest recipe (scripts/ci-proof-route.py:1340).
+      if delta_output="$(git diff --name-only --no-renames "${bound_head}..${head_sha}" 2>/dev/null)"; then
         :
       else
         input_status=$?
