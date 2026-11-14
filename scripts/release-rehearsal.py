@@ -1427,16 +1427,23 @@ class _RecordingEndpoint:
         self._thread.join(timeout=5)
 
 
-def _direct_socket_denied(port: int) -> bool:
-    """Attempt one direct socket write; True when the connection was refused."""
+def _direct_socket_denied(port: int) -> tuple[bool, bool]:
+    """Attempt one direct socket write.
+
+    Returns ``(denied, measured)``. A connection refusal is a measured denial.
+    A timeout or any other error is unmeasured: a failed probe cannot be told
+    apart from a confinement refusal, so it must not be recorded as one.
+    """
     import socket
 
     try:
         with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
             connection.sendall(b"mutation")
-        return False
+        return False, True
+    except ConnectionRefusedError:
+        return True, True
     except OSError:
-        return True
+        return False, False
 
 
 def _drill_result(
@@ -1646,14 +1653,20 @@ def _drill_network(
     endpoint = _RecordingEndpoint()
     try:
         argv = _argv_denied(operation, command, root)
-        direct = _direct_socket_denied(endpoint.port)
+        direct, measured = _direct_socket_denied(endpoint.port)
     finally:
         endpoint.close()
     canary_unchanged = not endpoint.received
     result = _drill_result(
         argv_denied=argv, direct_denied=direct and canary_unchanged,
-        boundary=boundary, reason=reason,
+        boundary=boundary,
+        reason=(
+            reason if measured else
+            "the direct socket probe failed without a refusal, so the route "
+            "is unmeasured"
+        ),
         direct_route_discriminating=True,
+        attempted=measured,
     )
     result["canary_unchanged"] = canary_unchanged
     return result
