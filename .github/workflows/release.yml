@@ -367,6 +367,7 @@ jobs:
           import hashlib
           import json
           import os
+          import re
           from pathlib import Path
 
           platform = os.environ["ROW_PLATFORM"]
@@ -382,7 +383,15 @@ jobs:
           if packaged_path.is_file():
               for line in packaged_path.read_text(encoding="utf-8").splitlines():
                   if line.startswith("packaged="):
-                      packaged.append(line[len("packaged="):].split("-", 1)[0])
+                      # Crate names contain hyphens, so strip the trailing
+                      # -<version>.crate instead of splitting on the first one.
+                      match = re.match(
+                          r"^(?P<name>.+)-(?P<version>\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.]+)?)\.crate$",
+                          line[len("packaged="):],
+                      )
+                      if match is None:
+                          raise SystemExit(f"unparseable packaged crate: {line}")
+                      packaged.append(match.group("name"))
           row = {
               "repository": os.environ["EXPECTED_REPOSITORY"],
               "ref": os.environ["EXPECTED_REF"],
