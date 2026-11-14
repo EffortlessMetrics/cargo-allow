@@ -303,7 +303,10 @@ class AggregateLawTests(GateHarness):
             rows_dir = self.green_rows(root)
             harness = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
             document = json.loads(harness.read_text(encoding="utf-8"))
-            document["journey"]["steps_executed"] = document["journey"]["steps_expected"][:-1]
+            document["journey"]["steps_executed"] = [
+                {"id": step, "exit_code": 0}
+                for step in document["journey"]["steps_expected"][:-1]
+            ]
             harness.write_text(json.dumps(document), encoding="utf-8")
             message = self.refuse_message(
                 lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
@@ -463,17 +466,36 @@ class JourneyShapeTests(GateHarness):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             rows_dir = self.green_rows(root)
-            self.mutate_linux_harness(
-                rows_dir,
-                lambda steps: [
-                    {"id": step, "exit_code": 0} for step in steps[:-1]
-                ]
-                + [{"id": steps[-1], "exit_code": 1}],
-            )
+            failing_id = "doctor_no_policy"
+
+            def nonzero(steps):
+                executed = [{"id": step, "exit_code": 0} for step in steps]
+                index = steps.index(failing_id)
+                executed[index]["exit_code"] = 7
+                return executed
+
+            self.mutate_linux_harness(rows_dir, nonzero)
             message = self.refuse_message(
                 lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
             )
             self.assertIn("did not exit 0", message)
+            self.assertIn(failing_id, message)
+
+    def test_duplicate_executed_id_refuses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+
+            def duplicate(steps):
+                executed = [{"id": step, "exit_code": 0} for step in steps]
+                executed[1] = dict(executed[0])
+                return executed
+
+            self.mutate_linux_harness(rows_dir, duplicate)
+            message = self.refuse_message(
+                lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
+            )
+            self.assertIn("harness journey is partial", message)
 
 
 class WorkflowRowLayoutTests(unittest.TestCase):

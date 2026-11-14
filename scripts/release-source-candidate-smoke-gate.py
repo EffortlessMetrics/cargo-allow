@@ -236,22 +236,20 @@ def check_harness_receipt(
     steps_executed = journey.get("steps_executed")
     if not isinstance(steps_expected, list) or not isinstance(steps_executed, list):
         refuse(f"{platform} harness receipt journey is malformed")
-    # The schema defines steps_executed as objects ({id, exit_code}), so compare
-    # the executed ids to steps_expected in order and require a zero exit for
-    # every step. Missing, extra, reordered and empty lists all still refuse.
-    executed_ids = [
-        step.get("id") if isinstance(step, dict) else step for step in steps_executed
-    ]
-    if not steps_executed or executed_ids != steps_expected:
+    # Schema-shaped steps_executed: compare the executed ids to steps_expected
+    # in order, then require a zero exit for every step. Missing, extra,
+    # reordered, duplicate and empty lists all still refuse, and the exit check
+    # is load-bearing: ids alone would accept a journey where every step failed.
+    if [step["id"] for step in steps_executed] != steps_expected or not steps_executed:
         refuse(
             f"{platform} harness journey is partial: "
             f"{len(steps_executed)} of {len(steps_expected)} steps executed"
         )
-    for step in steps_executed:
-        if not isinstance(step, dict) or step.get("exit_code") != 0:
-            refuse(
-                f"{platform} harness journey step did not exit 0: {step!r}"
-            )
+    if any(step.get("exit_code") != 0 for step in steps_executed):
+        refuse(
+            f"{platform} harness journey step did not exit 0: "
+            f"{[step for step in steps_executed if step.get('exit_code') != 0]!r}"
+        )
     if not harness.get("negative_controls"):
         refuse(
             f"{platform} harness receipt ran no negative controls; an "
