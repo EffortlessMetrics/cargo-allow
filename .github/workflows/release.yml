@@ -882,9 +882,11 @@ jobs:
               echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
               exit 0
             fi
-            echo "attempt ${attempt}: ${ARTIFACT_NAME} is not in the index yet; sleeping ${delay}s"
-            sleep "${delay}"
-            delay=$((delay * 2))
+            if [ "${attempt}" -lt 6 ]; then
+              echo "attempt ${attempt}: ${ARTIFACT_NAME} is not in the index yet; sleeping ${delay}s"
+              sleep "${delay}"
+              delay=$((delay * 2))
+            fi
           done
           echo "::error::artifact ${ARTIFACT_NAME} never appeared in the run artifact index"
           exit 1
@@ -1325,9 +1327,11 @@ jobs:
               echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
               exit 0
             fi
-            echo "attempt ${attempt}: ${ARTIFACT_NAME} is not in the index yet; sleeping ${delay}s"
-            sleep "${delay}"
-            delay=$((delay * 2))
+            if [ "${attempt}" -lt 6 ]; then
+              echo "attempt ${attempt}: ${ARTIFACT_NAME} is not in the index yet; sleeping ${delay}s"
+              sleep "${delay}"
+              delay=$((delay * 2))
+            fi
           done
           echo "::error::artifact ${ARTIFACT_NAME} never appeared in the run artifact index"
           exit 1
