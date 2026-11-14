@@ -4,7 +4,8 @@ body: >-
   the `.exe` sibling for `-x`/`-f`, so the release step now tests
   `${bin}.exe` explicitly. The owned-directory tool gains a symlink- and
   reparse-point-refusing walker for platforms where
-  `shutil.rmtree.avoids_symlink_attacks` is false, and normalises the
-  trailing CR that native Windows Python adds to `token`, `head`, and
-  `git_head`. The lifecycle test now exercises matching removal on Windows
-  instead of the old refusal design.
+  `shutil.rmtree.avoids_symlink_attacks` is false. The shell harnesses strip
+  the trailing CR that native Windows Python adds to `token`, `head`, and
+  `git_head` before comparing them, using the existing `strip_cr` helper.
+  The lifecycle test now exercises matching removal on Windows instead of
+  the old refusal design.

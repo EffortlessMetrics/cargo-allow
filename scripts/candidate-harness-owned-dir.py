@@ -436,13 +436,6 @@ def main() -> int:
     claim_parser.add_argument("--path", type=Path, required=True)
     claim_parser.add_argument("--purpose", required=True)
     args = parser.parse_args()
-    # Git Bash callers parse these values from native Python stdout, which
-    # ends lines CRLF on Windows; a trailing CR is transport noise on a
-    # 64-hex token or a 40-hex head and must not change the comparison.
-    for name in ("token", "head", "git_head"):
-        value = getattr(args, name, None)
-        if isinstance(value, str):
-            setattr(args, name, value.rstrip("\r"))
     if args.command == "allocate":
         directory, token = allocate(args.root, args.purpose, args.durable)
         print(json.dumps({"path": str(directory), "purpose": args.purpose, "token": token}))

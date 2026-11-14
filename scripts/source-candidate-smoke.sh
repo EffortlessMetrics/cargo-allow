@@ -21,6 +21,10 @@
 #   SKIP_NEGATIVES=1         skip harness-level negative controls (debug only)
 set -euo pipefail
 
+# Child JSON helpers can emit CRLF line endings on Windows; a trailing CR
+# would corrupt every token and git-head comparison below.
+strip_cr() { printf '%s' "$1" | tr -d '\r'; }
+
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
 command -v python3 >/dev/null 2>&1 || { printf 'source-candidate-smoke: error: python3 is required\n' >&2; exit 1; }
@@ -56,6 +60,8 @@ PY
     read -r temp_root test_root_token < <(
       printf '%s' "${test_root_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
     )
+    temp_root="$(strip_cr "${temp_root}")"
+    test_root_token="$(strip_cr "${test_root_token}")"
   fi
   snapshot_root=""
   snapshot_cleanup() {
@@ -155,6 +161,8 @@ work_json="$(python3 "${lifecycle}" allocate --root "${source_parent}" --purpose
 read -r work_dir work_token < <(
   printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
+work_dir="$(strip_cr "${work_dir}")"
+work_token="$(strip_cr "${work_token}")"
 install_root="${source_parent}/install"
 receipt="${source_parent}/source-candidate-smoke.receipt.json"
 # Keep the consumer outside this checkout so inventory/policy resolve to the
@@ -174,6 +182,8 @@ fi
 read -r consumer_dir consumer_token < <(
   printf '%s' "${consumer_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
+consumer_dir="$(strip_cr "${consumer_dir}")"
+consumer_token="$(strip_cr "${consumer_token}")"
 schema_id="cargo-allow.source-candidate-smoke-receipt.v1"
 clean_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
 clean_dir=""
@@ -683,6 +693,8 @@ clean_json="$(python3 "${lifecycle}" allocate --root "${clean_parent}" --purpose
 read -r clean_dir clean_token < <(
   printf '%s' "${clean_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
 )
+clean_dir="$(strip_cr "${clean_dir}")"
+clean_token="$(strip_cr "${clean_token}")"
 mkdir "${clean_dir}/src"
 printf 'pub fn ok() -> u8 { 7 }\n' > "${clean_dir}/src/lib.rs"
 "${cargo_bin}" init --root "${clean_dir}" >/dev/null
