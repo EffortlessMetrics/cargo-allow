@@ -402,6 +402,11 @@ class ReceiptTests(unittest.TestCase):
         clean_setup = script.split('log "step clean repository:', 1)[1].split("\n", 1)[1].split(
             '"${cargo_bin}" init', 1)[0]
         self.assertIn("source-candidate-clean-consumer", clean_setup)
+        # The clean-path fragment calls the script's top-level strip_cr helper,
+        # so the synthetic inner script must carry the same definition.
+        strip_helper = next(
+            line for line in script.splitlines() if line.startswith("strip_cr() {")
+        ) + "\n"
         lifecycle = WRAPPER.LIFECYCLE
 
         def assignments(**values):
@@ -445,7 +450,7 @@ class ReceiptTests(unittest.TestCase):
                         "marker.write_text(json.dumps(value))\nPY\n"
                     ) if failure == "clean" else ""
                     inner_file.write_text(
-                        "set -euo pipefail\n" + assignments(
+                        "set -euo pipefail\n" + strip_helper + assignments(
                             lifecycle=ROOT / "scripts/candidate-harness-owned-dir.py",
                             consumer_parent=consumer_parent, consumer_dir=consumer,
                             consumer_token=consumer_token, source_parent=case, work_dir=work,

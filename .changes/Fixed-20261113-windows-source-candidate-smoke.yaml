@@ -8,4 +8,6 @@ body: >-
   the trailing CR that native Windows Python adds to `token`, `head`, and
   `git_head` before comparing them, using the existing `strip_cr` helper.
   The lifecycle test now exercises matching removal on Windows instead of
-  the old refusal design.
+  the old refusal design. The journey characterization harness carries the
+  same `strip_cr` definition into the clean-path fragment it executes, so
+  the extracted cleanup still runs standalone.
