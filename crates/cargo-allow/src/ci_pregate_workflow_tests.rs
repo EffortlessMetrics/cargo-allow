@@ -248,9 +248,10 @@ fn required_contexts_with_needs_carry_a_job_level_guard_and_pregate_requires_que
     let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
     for job in ["pregate", "test"] {
         let block = job_block(&workflow, job);
-        if !block.contains("needs:") {
-            continue;
-        }
+        assert!(
+            block.contains("needs:"),
+            "{job} is a required context: a missing job or a job without needs: must fail here instead of skipping the guard checks"
+        );
         let guard = job_level_if(&block).unwrap_or_default();
         assert!(
             guard.starts_with("${{ !cancelled()"),
