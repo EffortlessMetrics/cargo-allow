@@ -1,0 +1,15 @@
+# Review-disposition exact-path admission for #4799 / PR #4799.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-1384"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:bd4380e02d62f2110b455e7dc0663349774d98d106c7d8507830e833f81ee0e2"
+reason = "Retain the exact-head 3eea0e7c source/CI review (review 5903028478) without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-1385"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:acc45b5e1b6cdcd50b6929434e6be1b32ca420da8a07854d0b306ff490117d64"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."
