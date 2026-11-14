@@ -65,6 +65,26 @@ case "${rest[0]}" in
     exit "${FIXTURE_FETCH_STATUS}"
     ;;
   rev-parse)
+    if [ "$3" = '--quiet' ]; then
+      # Disposition binding probe: 0 present, 1 absent, other = probe fault.
+      # The discovery probe and the delta-read probe can differ; the second
+      # and later probes use FIXTURE_OBJECT_PROBE_STATUS_2 when set.
+      count=0
+      if [ -f "${FIXTURE_STATE}/probe-count" ]; then
+        read -r count <"${FIXTURE_STATE}/probe-count"
+      fi
+      count=$((count + 1))
+      printf '%s\n' "${count}" >"${FIXTURE_STATE}/probe-count"
+      status="${FIXTURE_OBJECT_PROBE_STATUS}"
+      if [ "${count}" -ge 2 ] && [ -n "${FIXTURE_OBJECT_PROBE_STATUS_2:-}" ]; then
+        status="${FIXTURE_OBJECT_PROBE_STATUS_2}"
+      fi
+      case "${status}" in
+        0) exit 0 ;;
+        1) exit 1 ;;
+        *) exit "${status}" ;;
+      esac
+    fi
     if [ "$3" = 'HEAD^{commit}' ]; then
       printf '%040d\n' "${FIXTURE_CHECKOUT_ID}"
       exit "${FIXTURE_CHECKOUT_STATUS}"
@@ -284,6 +304,11 @@ run_case() {
     done
   elif [ "${FIXTURE_LEDGER}" = array ]; then
     printf '[]\n' >"${work}/repo/.allow/review-dispositions/fixture.json"
+  elif [ "${FIXTURE_LEDGER}" = stale_and_exact ]; then
+    printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 2 \
+      >"${work}/repo/.allow/review-dispositions/fixture.json"
+    printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 9 \
+      >"${work}/repo/.allow/review-dispositions/second.json"
   else
     rm -f "${work}/repo/.allow/review-dispositions/fixture.json"
   fi
@@ -365,6 +390,7 @@ export FIXTURE_OUTPUT=json FIXTURE_CARGO_STATUS=0 FIXTURE_CONCLUSION=success FIX
 export FIXTURE_LOOKUP_STATUS=0 FIXTURE_WRITE_STATUS=0 GITHUB_EVENT_NAME=pull_request
 export FIXTURE_PR_STATUS=0 FIXTURE_MERGE_BASE_STATUS=0 FIXTURE_DIFF_STATUS=0 FIXTURE_MKTEMP_FAILURE=0
 export FIXTURE_LEDGER=missing FIXTURE_ANCESTRY_STATUS=0 FIXTURE_DELTA_STATUS=0 FIXTURE_ENUMERATION_STATUS=0
+export FIXTURE_OBJECT_PROBE_STATUS=0 FIXTURE_OBJECT_PROBE_STATUS_2=
 export FIXTURE_BASE_ID=1 FIXTURE_FETCH_STATUS=0 FIXTURE_FETCH_FAIL_PR=none
 export FIXTURE_OBJECT_MODE=valid FIXTURE_OBJECT_STATUS=0 FIXTURE_MERGE_BASE_OUTPUT=single
 export FIXTURE_CHECKOUT_ID=7 FIXTURE_CHECKOUT_STATUS=0 FIXTURE_PARENT_MODE=valid FIXTURE_PARENT_STATUS=0
@@ -420,6 +446,22 @@ run_case ancestor_success 0 POST 'published success'
 export FIXTURE_DELTA_MODE=rename
 run_case ancestor_rename_decomposed 0 POST 'published success'
 FIXTURE_DELTA_MODE=
+# A stale record must not shadow a valid exact-head record: the exact
+# match wins, and the unreachable failure only fires when no current
+# record exists.
+FIXTURE_LEDGER=stale_and_exact FIXTURE_OBJECT_PROBE_STATUS=1 FIXTURE_CONCLUSION=success
+run_case stale_and_exact_selects_exact 0 POST 'published success'
+FIXTURE_OBJECT_PROBE_STATUS=0
+# #4789: a disposition bound to a commit the checkout does not hold must
+# publish a failure, never stay silent, and must not be read as an
+# instrument failure.
+FIXTURE_LEDGER=ancestor FIXTURE_OBJECT_PROBE_STATUS=1 FIXTURE_CONCLUSION=failure
+run_case unreachable_disposition_publishes_failure 1 POST 'published failure'
+grep -Fq 'a fresh exact-head review and rebind are required' \
+  "${work}/unreachable_disposition_publishes_failure/mutation-args" || fail "unreachable binding did not ask for a rebind"
+FIXTURE_OBJECT_PROBE_STATUS=127
+run_case input_failed_disposition_probe 1 none 'disposition object probe failed (exit 127)'
+FIXTURE_OBJECT_PROBE_STATUS=0 FIXTURE_CONCLUSION=success
 FIXTURE_ANCESTRY_STATUS=1 FIXTURE_CONCLUSION=neutral
 run_case nonancestor_is_missing 0 POST 'published neutral'
 FIXTURE_ANCESTRY_STATUS=2 FIXTURE_CONCLUSION=success
@@ -430,6 +472,15 @@ FIXTURE_JQ_FAILURE=selected
 run_case input_failed_selected_binding 1 none 'could not read selected disposition binding'
 FIXTURE_JQ_FAILURE=none FIXTURE_DELTA_STATUS=29
 run_case input_failed_partial_bootstrap_delta 1 none 'disposition delta read failed (exit 29)'
+# A binding that vanishes between the probe and the delta read is the same
+# stale-record classification, not an instrument failure.
+FIXTURE_DELTA_STATUS=128 FIXTURE_OBJECT_PROBE_STATUS_2=1 FIXTURE_CONCLUSION=failure
+run_case unreachable_delta_publishes_failure 1 POST 'published failure'
+# A present commit whose tree is unreadable also makes the delta read exit
+# 128, but that is a broken instrument, not stale evidence: publish nothing.
+FIXTURE_DELTA_STATUS=128 FIXTURE_OBJECT_PROBE_STATUS_2=0 FIXTURE_CONCLUSION=success
+run_case present_commit_unreadable_tree_is_instrument_failure 1 none 'disposition delta read failed (exit 128)'
+FIXTURE_DELTA_STATUS=0 FIXTURE_OBJECT_PROBE_STATUS_2= FIXTURE_CONCLUSION=success
 FIXTURE_DELTA_STATUS=0 FIXTURE_LEDGER=missing
 FIXTURE_LEDGER=array
 run_case input_invalid_candidate_array 1 none 'could not read candidate disposition binding'
