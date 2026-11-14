@@ -585,4 +585,56 @@ with tempfile.TemporaryDirectory(
     if len(removed_worktrees) != 1 or removed_worktrees[0].exists():
         raise SystemExit("post-registration worktree drift did not clean up exactly once")
 
+# A refusal inside the deletion walker must not unlink the ownership marker
+# first: the operator's retry has to load the marker and refuse the same entry
+# again instead of failing on a now-unmarked directory.
+with tempfile.TemporaryDirectory(prefix="cargo-allow-marker-order.") as order_temporary:
+    order_root = Path(order_temporary).resolve()
+    order_allocation = json.loads(
+        run("allocate", "--root", str(order_root), "--purpose", "marker-order").stdout
+    )
+    order_owned = Path(order_allocation["path"])
+    (order_owned / "payload").write_text("owned\n", encoding="utf-8")
+    original_scandir = LIFECYCLE.os.scandir
+    original_chmod = LIFECYCLE.os.chmod
+
+    class MarkerFirstScandir:
+        """Yield the ownership marker before every other entry."""
+
+        def __init__(self, path):
+            self._entries = list(original_scandir(path))
+
+        def __enter__(self):
+            self._entries.sort(key=lambda entry: entry.name != LIFECYCLE.MARKER)
+            return iter(self._entries)
+
+        def __exit__(self, *exc_info):
+            self._entries.clear()
+            return False
+
+    def refusing_chmod(path, mode):
+        if Path(path).name == "payload":
+            raise PermissionError(errno.EACCES, "simulated refusal", str(path))
+        return original_chmod(path, mode)
+
+    LIFECYCLE.os.scandir = MarkerFirstScandir
+    LIFECYCLE.os.chmod = refusing_chmod
+    try:
+        try:
+            LIFECYCLE.remove_tree(order_owned, owned_root=True)
+        except (SystemExit, OSError):
+            pass
+        else:
+            raise SystemExit("marker-order refusal unexpectedly succeeded")
+    finally:
+        LIFECYCLE.os.scandir = original_scandir
+        LIFECYCLE.os.chmod = original_chmod
+    if not (order_owned / LIFECYCLE.MARKER).is_file():
+        raise SystemExit("refusal unlinked the ownership marker before the refused entry")
+    if not (order_owned / "payload").is_file():
+        raise SystemExit("marker-order refusal deleted owned payload")
+    LIFECYCLE.remove(order_root, order_owned, "marker-order", order_allocation["token"])
+    if order_owned.exists():
+        raise SystemExit("marker-order recovery did not remove the owned directory")
+
 print("ok candidate harness owned-directory containment")

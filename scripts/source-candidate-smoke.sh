@@ -21,9 +21,19 @@
 #   SKIP_NEGATIVES=1         skip harness-level negative controls (debug only)
 set -euo pipefail
 
-# Child JSON helpers can emit CRLF line endings on Windows; a trailing CR
-# would corrupt every token and git-head comparison below.
-strip_cr() { printf '%s' "$1" | tr -d '\r'; }
+# Read the path and token of a lifecycle JSON object without whitespace
+# splitting: paths may contain spaces, so the fields are tab separated and
+# written as bytes so Windows never inserts a CR before the newline.
+read_owned_fields() {
+  local json=$1 path token
+  IFS=$'\t' read -r path token < <(
+    printf '%s' "${json}" | python3 -c 'import json,sys
+v = json.load(sys.stdin)
+sys.stdout.buffer.write((v["path"] + "\t" + v["token"] + "\n").encode())'
+  )
+  printf -v "$2" '%s' "${path}"
+  printf -v "$3" '%s' "${token}"
+}
 
 SCRIPT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lifecycle="${SCRIPT_ROOT}/scripts/candidate-harness-owned-dir.py"
@@ -57,11 +67,7 @@ PY
     temp_root="${CANDIDATE_HARNESS_TEST_ROOT}"
   else
     test_root_json="$(python3 "${lifecycle}" allocate --root "${TMPDIR:-/tmp}" --purpose source-candidate-test-root)"
-    read -r temp_root test_root_token < <(
-      printf '%s' "${test_root_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
-    )
-    temp_root="$(strip_cr "${temp_root}")"
-    test_root_token="$(strip_cr "${test_root_token}")"
+    read_owned_fields "${test_root_json}" temp_root test_root_token
   fi
   snapshot_root=""
   snapshot_cleanup() {
@@ -158,11 +164,7 @@ else
   python3 "${lifecycle}" validate-contained --root "${output_root}" --path "${source_parent}" >/dev/null
 fi
 work_json="$(python3 "${lifecycle}" allocate --root "${source_parent}" --purpose source-candidate-smoke)"
-read -r work_dir work_token < <(
-  printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
-)
-work_dir="$(strip_cr "${work_dir}")"
-work_token="$(strip_cr "${work_token}")"
+read_owned_fields "${work_json}" work_dir work_token
 install_root="${source_parent}/install"
 receipt="${source_parent}/source-candidate-smoke.receipt.json"
 # Keep the consumer outside this checkout so inventory/policy resolve to the
@@ -179,11 +181,7 @@ if [[ -n "${CONSUMER_DIR:-}" ]]; then
 else
   consumer_json="$(python3 "${lifecycle}" allocate --root "${consumer_parent}" --purpose source-candidate-consumer)"
 fi
-read -r consumer_dir consumer_token < <(
-  printf '%s' "${consumer_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
-)
-consumer_dir="$(strip_cr "${consumer_dir}")"
-consumer_token="$(strip_cr "${consumer_token}")"
+read_owned_fields "${consumer_json}" consumer_dir consumer_token
 schema_id="cargo-allow.source-candidate-smoke-receipt.v1"
 clean_parent="${CANDIDATE_HARNESS_TEST_ROOT:-${TMPDIR:-/tmp}}"
 clean_dir=""
@@ -690,11 +688,7 @@ step_list_wide_exit=0
 
 log "step clean repository: init → audit → check --mode no-new"
 clean_json="$(python3 "${lifecycle}" allocate --root "${clean_parent}" --purpose source-candidate-clean-consumer)"
-read -r clean_dir clean_token < <(
-  printf '%s' "${clean_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
-)
-clean_dir="$(strip_cr "${clean_dir}")"
-clean_token="$(strip_cr "${clean_token}")"
+read_owned_fields "${clean_json}" clean_dir clean_token
 mkdir "${clean_dir}/src"
 printf 'pub fn ok() -> u8 { 7 }\n' > "${clean_dir}/src/lib.rs"
 "${cargo_bin}" init --root "${clean_dir}" >/dev/null

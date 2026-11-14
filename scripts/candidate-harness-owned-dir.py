@@ -185,29 +185,41 @@ def load_marker(directory: Path) -> dict[str, object]:
     return value
 
 
-def remove_tree(directory: Path) -> None:
-    """Delete a tree without following any filesystem alias.
+def remove_tree(directory: Path, *, owned_root: bool = False) -> None:
+    """Delete a tree, refusing symlinks and reparse points (best effort).
 
     shutil.rmtree guarantees symlink-safe traversal only where
-    avoids_symlink_attacks is true; elsewhere this walker gives the same
-    guarantee by refusing symlinks and reparse points before descending.
+    avoids_symlink_attacks is true. Elsewhere this walker refuses symlinks and
+    reparse points before descending or deleting, which protects against
+    aliases that already exist in the tree.
+
+    This is NOT the stdlib guarantee: the checks and the following
+    scandir/chmod/unlink calls are path-based, so an entry swapped for a
+    symlink or junction between the check and its use is still followed.
+    Callers must only use this on directories no untrusted process can modify
+    concurrently.
+
+    With owned_root, the ownership marker is removed last, so a refusal on any
+    other entry leaves a retryable, still-marked directory behind.
     """
     with os.scandir(directory) as entries:
         for entry in entries:
             metadata = entry.stat(follow_symlinks=False)
             if entry.is_symlink() or bool(getattr(metadata, "st_file_attributes", 0) & REPARSE_POINT):
                 fail(f"refusing symlink or reparse point during deletion: {entry.path}")
+            if owned_root and entry.name == MARKER:
+                continue
             if entry.is_dir(follow_symlinks=False):
                 remove_tree(Path(entry.path))
             else:
                 os.chmod(entry.path, stat.S_IWRITE)
                 os.unlink(entry.path)
+    if owned_root:
+        os.unlink(directory / MARKER)
     os.rmdir(directory)
 
 
 def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
-    if not shutil.rmtree.avoids_symlink_attacks:
-        pass  # remove_tree() below provides the same guarantee
     validate_purpose(purpose)
     allowed = canonical_existing(root, "allowed root")
     if not directory.exists() or directory.is_symlink():
@@ -231,7 +243,7 @@ def remove(root: Path, directory: Path, purpose: str, token: str) -> None:
     if shutil.rmtree.avoids_symlink_attacks:
         shutil.rmtree(resolved)
     else:
-        remove_tree(resolved)
+        remove_tree(resolved, owned_root=True)
 
 
 def restore(stash: Path, destination: Path) -> None:
