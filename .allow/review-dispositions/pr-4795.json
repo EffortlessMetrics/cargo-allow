@@ -1,0 +1,35 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4795,
+  "base_ref": "main",
+  "base_sha": "53af39787e5d0550f43077c494724df80637ea77",
+  "head_ref": "fix/4778-review-ledger-bootstrap",
+  "head_sha": "89ca90827d4a6d18e9c56ace86a53ea0b24360f9",
+  "merge_base": "04201b753ba38f5197011ff2494969128d2feb58",
+  "reviewed_diff_digest": "sha256:v2:ce80aaa10d59fe408486f1b103c2c040aea481f6fa2e8375077990780f124afc",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4795 at 89ca90827d4a6d18e9c56ace86a53ea0b24360f9 (base 53af39787e5d0550f43077c494724df80637ea77, merge-base 04201b753ba38f5197011ff2494969128d2feb58). The bootstrap admits exactly one disposition record plus at most this PR's own revision note; the rename finding is discharged by --no-renames. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4795#pullrequestreview-5900208943. review cargo-allow non-author oppositional exact-head model review of head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9, base 53af39787e5d0550f43077c494724df80637ea77, merge-base 04201b753ba38f5197011ff2494969128d2feb58. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4795",
+    "Reviewed pair base 53af39787e5d0550f43077c494724df80637ea77, merge-base 04201b753ba38f5197011ff2494969128d2feb58, head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9, digest sha256:v2:ce80aaa10d59fe408486f1b103c2c040aea481f6fa2e8375077990780f124afc.",
+    "The rename finding is discharged: scripts/project-review-readiness.sh:474 uses --no-renames, and is_review_ledger_bootstrap rejects any path outside the ledger or a second record.",
+    "bash scripts/test-project-review-readiness.sh passes, including ancestor_success and ancestor_rename_decomposed; removing --no-renames fails the suite."
+  ],
+  "required_ci": {
+    "owner": "PR #4795 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4795"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4795",
+  "reviewed_at_utc": "2026-11-14T00:57:16Z"
+}
