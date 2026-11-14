@@ -22642,7 +22642,6 @@ glob = ".allow/revisions/4279-preserve-ledger-endings.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-1061"
 kind = "panic"
@@ -22734,7 +22733,6 @@ glob = ".allow/revisions/4359-trailing-zero-version-identity-pin.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-review-4424-record"
@@ -22999,6 +22997,7 @@ glob = ".allow/revisions/4432-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-review-4431-record"
 kind = "non_rust_file"
@@ -23486,7 +23485,6 @@ glob = ".allow/review-dispositions/pr-4457.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-review-4457-note"
 kind = "non_rust_file"
@@ -23508,7 +23506,6 @@ glob = ".allow/revisions/4457-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-review-4433-record"
@@ -23553,6 +23550,7 @@ glob = ".allow/revisions/4433-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-1064"
 kind = "non_rust_file"
@@ -23619,7 +23617,6 @@ glob = ".allow/review-dispositions/pr-4463.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-review-4463-note"
 kind = "non_rust_file"
@@ -23663,7 +23660,6 @@ glob = ".allow/review-dispositions/pr-4435.json"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-review-4435-note"
@@ -23709,9 +23705,6 @@ glob = ".allow/review-dispositions/pr-4446.json"
 line = 1
 column = 1
 
-
-
-
 [[allow]]
 id = "allow-review-4446-note"
 kind = "non_rust_file"
@@ -23734,8 +23727,6 @@ glob = ".allow/revisions/4446-retained-review-record.toml"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-review-4436-record"
 kind = "non_rust_file"
@@ -23757,9 +23748,6 @@ glob = ".allow/review-dispositions/pr-4436.json"
 [allow.last_seen]
 line = 1
 column = 1
-
-
-
 
 [[allow]]
 id = "allow-review-4436-note"
@@ -23805,8 +23793,6 @@ glob = ".allow/revisions/4438-retained-review-record.toml"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-1109"
 kind = "non_rust_file"
@@ -23851,7 +23837,6 @@ glob = "docs/release/core-command-migration-cases.v1.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-3149-command-case-contract"
 kind = "non_rust_file"
@@ -23873,7 +23858,6 @@ glob = "docs/release/core-command-migration-evidence.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-3149-command-case-schema"
@@ -23897,7 +23881,6 @@ glob = "docs/schemas/cargo-allow.command-case-evidence.v1.schema.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-3149-command-case-collector"
 kind = "non_rust_file"
@@ -23919,7 +23902,6 @@ glob = "scripts/command-case-evidence.py"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-3149-command-case-controls"
@@ -23943,7 +23925,6 @@ glob = "scripts/test-command-case-evidence.py"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-3149-command-case-note"
 kind = "non_rust_file"
@@ -23965,7 +23946,6 @@ glob = ".allow/revisions/3149-command-case-evidence.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-review-4461-record"
@@ -23989,7 +23969,6 @@ glob = ".allow/review-dispositions/pr-4461.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-review-4461-note"
 kind = "non_rust_file"
@@ -24011,7 +23990,6 @@ glob = ".allow/revisions/4461-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-3149-command-case-catalogue-eol"
@@ -24058,10 +24036,6 @@ glob = "scripts/qualify-release-freeze.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11349"
 kind = "non_rust_file"
@@ -24085,10 +24059,6 @@ glob = "scripts/test-qualify-release-freeze.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11350"
 kind = "non_rust_file"
@@ -24110,10 +24080,6 @@ glob = ".allow/revisions/2501-qualified-freeze-producer.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
-
-
-
 
 [[allow]]
 id = "allow-11351"
@@ -24137,10 +24103,6 @@ glob = ".allow/review-dispositions/pr-4452.json"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11352"
 kind = "non_rust_file"
@@ -24162,9 +24124,6 @@ glob = ".allow/revisions/4452-retained-review-record.toml"
 [allow.last_seen]
 line = 1
 column = 1
-
-
-
 
 [[allow]]
 id = "allow-1117"
@@ -24188,7 +24147,6 @@ glob = "docs/release/final-freeze-qualification-v1.md"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-review-4455-record"
 kind = "non_rust_file"
@@ -24210,7 +24168,6 @@ glob = ".allow/review-dispositions/pr-4455.json"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-review-4455-note"
@@ -24256,8 +24213,6 @@ glob = ".allow/review-dispositions/pr-4460.json"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-review-4460-note"
 kind = "non_rust_file"
@@ -24280,8 +24235,6 @@ glob = ".allow/revisions/4460-retained-review-record.toml"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-review-4456-record"
 kind = "non_rust_file"
@@ -24303,8 +24256,6 @@ glob = ".allow/review-dispositions/pr-4456.json"
 [allow.last_seen]
 line = 1
 column = 1
-
-
 
 [[allow]]
 id = "allow-review-4456-note"
@@ -24351,8 +24302,6 @@ glob = "scripts/test-release-final-tag.py"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11354"
 kind = "non_rust_file"
@@ -24374,8 +24323,6 @@ glob = ".allow/review-dispositions/pr-4448.json"
 [allow.last_seen]
 line = 1
 column = 1
-
-
 
 [[allow]]
 id = "allow-11345"
@@ -24400,8 +24347,6 @@ glob = "scripts/release-final-tag.py"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11347"
 kind = "non_rust_file"
@@ -24425,7 +24370,6 @@ glob = ".allow/revisions/3930-final-tag-driver.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11355"
 kind = "non_rust_file"
@@ -24434,18 +24378,19 @@ path = ".allow/revisions/4459-retained-review-record.toml"
 owner = "core/review"
 classification = "reviewed_exception"
 reason = "Authored revision note for the exact retained PR #4459 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4459","doc:.agents/skills/review-current-head/SKILL.md","doc:docs/how-to/manage-an-exception.md"]
+evidence = ["pr:4459", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
 created = "2026-10-10"
 review_after = "2027-01-08"
+
 [allow.selector]
 ast_kind = "tracked_file"
 symbol = ".allow/revisions/4459-retained-review-record.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4459-retained-review-record.toml"
+
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-11356"
@@ -24455,14 +24400,16 @@ path = ".allow/review-dispositions/pr-4459.json"
 owner = "core/review"
 classification = "reviewed_exception"
 reason = "Retained structured review evidence for PR #4459 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4459","doc:.agents/skills/review-current-head/SKILL.md"]
+evidence = ["pr:4459", "doc:.agents/skills/review-current-head/SKILL.md"]
 created = "2026-10-10"
 review_after = "2027-01-08"
+
 [allow.selector]
 ast_kind = "tracked_file"
 symbol = ".allow/review-dispositions/pr-4459.json"
 target_fingerprint = "json"
 glob = ".allow/review-dispositions/pr-4459.json"
+
 [allow.last_seen]
 line = 1
 column = 1
@@ -25343,6 +25290,7 @@ normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
 [allow.last_seen]
 line = 11
 column = 1
+
 [[allow]]
 id = "allow-1174"
 kind = "lint_exception"
@@ -25365,6 +25313,7 @@ normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
 [allow.last_seen]
 line = 16
 column = 1
+
 [[allow]]
 id = "allow-1175"
 kind = "non_rust_file"
@@ -25889,7 +25838,6 @@ glob = ".allow/revisions/3761-release-manifest-proof-suites.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-1205"
 kind = "non_rust_file"
@@ -25973,7 +25921,6 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4716-review-disposition.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4716-review-disposition.toml"
-
 
 [[allow]]
 id = "allow-11370"
@@ -26062,9 +26009,6 @@ glob = "scripts/test-release-escaped-defect-corpus.py"
 [allow.last_seen]
 line = 1
 column = 1
-
-
-
 
 [[allow]]
 id = "allow-11373"
@@ -26264,7 +26208,6 @@ glob = "scripts/exact-candidate-staged-packaging.py"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11379"
 kind = "non_rust_file"
@@ -26286,7 +26229,6 @@ glob = "scripts/test-exact-candidate-staged-packaging.py"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-11380"
@@ -26318,7 +26260,7 @@ path = "scripts/release_identity_projection.py"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Shared fail-closed bounded reader (#3787) that extracts exact fields from one canonical `cargo-allow release-identity` JSON projection and binds caller-supplied expected values; it validates the envelope (schema generation, validated result), checks field JSON types, prints KEY=VALUE lines, and owns no release grammar, channel inference, tag reconstruction, or path selection."
-evidence = ['issue:3787', 'test:scripts/test-release-identity-projection-reader.py']
+evidence = ["issue:3787", "test:scripts/test-release-identity-projection-reader.py"]
 created = "2026-11-04"
 review_after = "2027-02-04"
 
@@ -26332,10 +26274,6 @@ glob = "scripts/release_identity_projection.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11382"
 kind = "non_rust_file"
@@ -26344,7 +26282,7 @@ path = "scripts/test-release-identity-projection-reader.py"
 owner = "core/release"
 classification = "release_automation_script"
 reason = "Fixture-only fail-closed controls (#3787) for the bounded projection reader: fixtures mirror the exact typed authority output shapes for stable 0.2.0 and RC.1/RC.2/RC.10 and pin envelope validation, exact extraction, expected-value binding, and fail-closed corruption negatives; the fixtures decide no channel semantics."
-evidence = ['issue:3787', 'test:scripts/test-release-identity-projection-reader.py']
+evidence = ["issue:3787", "test:scripts/test-release-identity-projection-reader.py"]
 created = "2026-11-04"
 review_after = "2027-02-04"
 
@@ -26358,10 +26296,6 @@ glob = "scripts/test-release-identity-projection-reader.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11384"
 kind = "non_rust_file"
@@ -26370,7 +26304,7 @@ path = ".allow/revisions/3787-3787-typed-release-consumers.toml"
 owner = "core/release"
 classification = "reviewed_exception"
 reason = "Self-covering revision note for the #3787 typed-release-consumers lane's added allow-11375, allow-11376, allow-11377, and allow-11378 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ['issue:3787']
+evidence = ["issue:3787"]
 created = "2026-11-04"
 review_after = "2027-02-04"
 
@@ -26383,6 +26317,7 @@ glob = ".allow/revisions/3787-3787-typed-release-consumers.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11385"
 kind = "non_rust_file"
@@ -28623,7 +28558,6 @@ glob = "docs/release/evidence/next-release-qualification.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11493"
 kind = "non_rust_file"
@@ -28646,7 +28580,6 @@ glob = "docs/release/evidence/next-release-qualification.md"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11494"
 kind = "non_rust_file"
@@ -28655,7 +28588,7 @@ path = ".allow/revisions/2263-2263-qualification-materialization.toml"
 owner = "release/qualification"
 classification = "reviewed_exception"
 reason = "Self-covering revision note for the #2263 lane's added allow-11386, allow-11387, and allow-11494 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ['issue:2263']
+evidence = ["issue:2263"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28677,7 +28610,7 @@ path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/policy.toml"
 owner = "core/test-platform"
 classification = "determinism_fixture"
 reason = "Fixture policy of the #2276 cross-platform semantic determinism scenario: the checked-in policy text pins matched/review-due/expired/new postures for the fixture scan; it decides no product policy semantics."
-evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+evidence = ["issue:2276", "test:cross_platform_semantics_pipeline_projection_matches_golden"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28717,7 +28650,7 @@ path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/alpha.rs
 owner = "core/test-platform"
 classification = "determinism_fixture"
 reason = "Forward-spelled LF unwrap fixture finding of the #2276 semantic determinism scenario; its normalized snippet hash must equal the CRLF twin's (allow-11497) on every platform."
-evidence = ['issue:2276', 'test:cross_platform_semantics_newline_handling_is_identity_invariant']
+evidence = ["issue:2276", "test:cross_platform_semantics_newline_handling_is_identity_invariant"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28739,7 +28672,7 @@ path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/alpha_cr
 owner = "core/test-platform"
 classification = "determinism_fixture"
 reason = "CRLF twin of the #2276 LF unwrap fixture finding; identical code text and normalized snippet hash prove newline handling is identity-invariant across platforms."
-evidence = ['issue:2276', 'test:cross_platform_semantics_newline_handling_is_identity_invariant']
+evidence = ["issue:2276", "test:cross_platform_semantics_newline_handling_is_identity_invariant"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28761,7 +28694,7 @@ path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/nested/g
 owner = "core/test-platform"
 classification = "determinism_fixture"
 reason = "Nested-path expect fixture finding of the #2276 semantic determinism scenario, pinning repository-relative normalization and the param:0 slot fingerprint for the deeper fixture directory."
-evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+evidence = ["issue:2276", "test:cross_platform_semantics_pipeline_projection_matches_golden"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28783,7 +28716,7 @@ path = "crates/cargo-allow/tests/fixtures/cross_platform_semantics/tree/nested/g
 owner = "core/test-platform"
 classification = "determinism_fixture"
 reason = "Deliberately unmatched unreachable fixture finding of the #2276 semantic determinism scenario: it carries the new posture in the canonical projection while the fixture policy stays silent."
-evidence = ['issue:2276', 'test:cross_platform_semantics_pipeline_projection_matches_golden']
+evidence = ["issue:2276", "test:cross_platform_semantics_pipeline_projection_matches_golden"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28806,7 +28739,7 @@ path = ".allow/revisions/2276-2276-determinism-fixture.toml"
 owner = "core/test-platform"
 classification = "reviewed_exception"
 reason = "Self-covering revision note for the #2276 semantic-determinism lane's added allow-11495 through allow-11499 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ['issue:2276']
+evidence = ["issue:2276"]
 created = "2026-11-05"
 review_after = "2027-02-05"
 
@@ -28815,7 +28748,6 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/2276-2276-determinism-fixture.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/2276-2276-determinism-fixture.toml"
-
 
 [[allow]]
 id = "allow-11487"
@@ -28839,8 +28771,6 @@ glob = "scripts/verify-command-mutation-evidence.py"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11488"
 kind = "non_rust_file"
@@ -28862,8 +28792,6 @@ glob = "scripts/test-command-mutation-evidence.py"
 [allow.last_seen]
 line = 1
 column = 1
-
-
 
 [[allow]]
 id = "allow-11489"
@@ -28887,8 +28815,6 @@ glob = "docs/release/evidence/command-mutation-1/manifest.v1.json"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11490"
 kind = "non_rust_file"
@@ -28910,8 +28836,6 @@ glob = "docs/release/evidence/command-mutation-1/README.md"
 [allow.last_seen]
 line = 1
 column = 1
-
-
 
 [[allow]]
 id = "allow-11491"
@@ -28970,6 +28894,7 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4760-review-disposition.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4760-review-disposition.toml"
+
 [[allow]]
 id = "allow-11503"
 kind = "non_rust_file"
@@ -28991,6 +28916,7 @@ glob = "docs/release/evidence/rc1-installed-docs-execution.v1.json"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-11502"
 kind = "non_rust_file"
@@ -29034,6 +28960,7 @@ glob = "docs/release/evidence/core-command-presentation-4724.v1.json"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-4724-presentation-revision"
 kind = "non_rust_file"
@@ -29363,6 +29290,7 @@ glob = ".allow/revisions/4782-review-disposition.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-4602-queue-cutover"
 kind = "non_rust_file"
@@ -29472,6 +29400,7 @@ glob = ".allow/revisions/4602-merge-queue-only-ci.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-4744-review-disposition"
 kind = "non_rust_file"
@@ -29734,7 +29663,6 @@ glob = ".allow/revisions/4784-review-disposition.toml"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-4778-review-disposition"
 kind = "non_rust_file"
@@ -29822,6 +29750,7 @@ glob = ".allow/revisions/4795-review-disposition.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-3151-installed-surface"
 kind = "non_rust_file"
@@ -29905,6 +29834,48 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4799-review-disposition.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4799-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1388"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4811.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for PR #4811 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4811.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4811.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1389"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4811-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact self-covering note for the source-controlled review disposition receipt at af2c5eea; governance metadata only."
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4811-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4811-review-disposition.toml"
 
 [allow.last_seen]
 line = 1

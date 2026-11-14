@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4811,
+  "base_ref": "main",
+  "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "head_ref": "fix/cut-train-3792-3151-3922",
+  "head_sha": "af2c5eead09665761427fe91ef9f50fe560f62da",
+  "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "reviewed_diff_digest": "sha256:v2:df636e4bf230c6f5536aea4c425746a3b010cf142b6bafdaf5a55de835a450a9",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4811 at af2c5eead09665761427fe91ef9f50fe560f62da (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5904495701 submitted 2026-11-14T13:18:06Z. It confirmed the three source changes are independently attributable hunk by hunk, that the floor proof tree is the landing tree (receipts bind source_commit 70784be4 and selected digest a307863d, recomputed over 1,384 crates/**/*.rs at the reviewed head), and that #4779's three findings are closed. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4811#pullrequestreview-5904495701 - review cargo-allow non-author oppositional exact-head model review of head af2c5eead09665761427fe91ef9f50fe560f62da, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, verdict APPROVE. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4811",
+    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head af2c5eead09665761427fe91ef9f50fe560f62da, reviewed diff digest sha256:v2:df636e4bf230c6f5536aea4c425746a3b010cf142b6bafdaf5a55de835a450a9 recomputed with the pinned v2 recipe, verdict APPROVE in review 5904495701.",
+    "Zero unresolved review threads: the Gemini low finding (true-executable portability) is fixed at af2c5eea, the CodeRabbit Major finding (_direct_socket_denied returned True on any OSError) is fixed at ec299c5d, and the CodeRabbit Minor finding (tag no-launcher diagnostic) is recorded as a 0.2.1 follow-up because prevented is already false and the remaining imprecision is diagnostic only.",
+    "The three source changes are independently attributable: #4779 owns scripts/release-rehearsal.py, its test, the protocol test, the release_freeze files and the changelog; #4791 owns completions.rs, Cargo.toml, the installed-surface evidence and its revision note; #4799 owns release_prep_tests.rs, release.yml, release-authorized.yml, its disposition and revision note. Policy entries are attributable by id.",
+    "The eight direct-floor receipts were regenerated once at ff4c5932 and bind source_commit 70784be4 with selected digest a307863d; nothing under crates/ or docs/ci/receipts has moved since, so the proof tree is the landing tree.",
+    "policy/allow.toml is LF with 1,387 entries; allow-1384 and allow-1385 are the #4799 disposition and revision note."
+  ],
+  "required_ci": {
+    "owner": "PR #4811 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4811"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4811",
+  "reviewed_at_utc": "2026-11-14T13:18:06Z"
+}
