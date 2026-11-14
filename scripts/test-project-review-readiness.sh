@@ -304,6 +304,11 @@ run_case() {
     done
   elif [ "${FIXTURE_LEDGER}" = array ]; then
     printf '[]\n' >"${work}/repo/.allow/review-dispositions/fixture.json"
+  elif [ "${FIXTURE_LEDGER}" = stale_and_exact ]; then
+    printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 2 \
+      >"${work}/repo/.allow/review-dispositions/fixture.json"
+    printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 9 \
+      >"${work}/repo/.allow/review-dispositions/second.json"
   else
     rm -f "${work}/repo/.allow/review-dispositions/fixture.json"
   fi
@@ -441,10 +446,16 @@ run_case ancestor_success 0 POST 'published success'
 export FIXTURE_DELTA_MODE=rename
 run_case ancestor_rename_decomposed 0 POST 'published success'
 FIXTURE_DELTA_MODE=
+# A stale record must not shadow a valid exact-head record: the exact
+# match wins, and the unreachable failure only fires when no current
+# record exists.
+FIXTURE_LEDGER=stale_and_exact FIXTURE_OBJECT_PROBE_STATUS=1 FIXTURE_CONCLUSION=success
+run_case stale_and_exact_selects_exact 0 POST 'published success'
+FIXTURE_OBJECT_PROBE_STATUS=0
 # #4789: a disposition bound to a commit the checkout does not hold must
 # publish a failure, never stay silent, and must not be read as an
 # instrument failure.
-FIXTURE_OBJECT_PROBE_STATUS=1 FIXTURE_CONCLUSION=failure
+FIXTURE_LEDGER=ancestor FIXTURE_OBJECT_PROBE_STATUS=1 FIXTURE_CONCLUSION=failure
 run_case unreachable_disposition_publishes_failure 1 POST 'published failure'
 grep -Fq 'a fresh exact-head review and rebind are required' \
   "${work}/unreachable_disposition_publishes_failure/mutation-args" || fail "unreachable binding did not ask for a rebind"

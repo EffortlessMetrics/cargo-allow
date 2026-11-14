@@ -485,20 +485,21 @@ project_pr() {
       "ambiguous retained dispositions for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: exact=${exact_matches[*]:-} ancestor=${ancestor_matches[*]:-}; disposition discovery fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
     return 1
+  elif [ "${#exact_matches[@]}" -eq 1 ]; then
+    selected="${exact_matches[0]}"
+  elif [ "${#ancestor_matches[@]}" -eq 1 ]; then
+    selected="${ancestor_matches[0]}"
   elif [ "${#unreachable[@]}" -gt 0 ]; then
     # A retained record that binds a commit this checkout does not hold is
     # stale review evidence. Publish the failure so the required context is
     # visible and names the rebind it needs, instead of leaving the PR
-    # BLOCKED with no explanation.
+    # BLOCKED with no explanation. A valid exact/ancestor record wins over
+    # a stale one, so this only fires when no current record exists.
     rm -f "${live_file}"
     publish "${head_sha}" "failure" \
       "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${unreachable[*]} binds a commit this checkout does not contain; a rebase or force-push dropped it, so a fresh exact-head review and rebind are required; stale review evidence fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
     return 1
-  elif [ "${#exact_matches[@]}" -eq 1 ]; then
-    selected="${exact_matches[0]}"
-  elif [ "${#ancestor_matches[@]}" -eq 1 ]; then
-    selected="${ancestor_matches[0]}"
   fi
 
   if [ -n "${selected}" ]; then
