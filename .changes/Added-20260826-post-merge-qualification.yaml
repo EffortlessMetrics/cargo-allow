@@ -1,3 +1,0 @@
-kind: Added
-body: >-
-  Establish CargoAllowPostMergeQualificationV1 contract and tree equivalence verifier for post-merge candidates.

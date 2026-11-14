@@ -547,3 +547,14 @@ marker_classes = ["workspace-reader"]
 exact_counts = [{ class = "workspace-reader", count = 2 }]
 sites = ["class InputBoundary(unittest.TestCase):", "def test_dirty_root_cannot_borrow_head_identity(self):"]
 claim_boundary = "Both [workspace] markers construct temporary Cargo.toml fixture content for exact Git-commit input admission; the test driver neither reads the actual workspace release version nor parses, infers or authorizes a release channel. Cargo execution is intercepted before semantic or release receipts."
+
+[[consumers]]
+id = "test-changie-0-2-0-union"
+path = "scripts/test-changie-0-2-0-union.py"
+role = "superset assertion that the cut 0.2.0 changelog body keeps its authored bullets"
+disposition = "historical-fixture-only"
+owner = "#3725"
+marker_classes = ["version-regex"]
+exact_counts = [{ class = "version-regex", count = 1 }]
+sites = ["SECTION = re.compile(r\"^## \\[0\\.2\\.0\\]"]
+claim_boundary = "The single version-shaped regex matches the fixed, already-cut `## [0.2.0]` heading so the check can bound that one historical section of CHANGELOG.md. It reads no workspace or manifest version, parses no tag, infers no release channel or prerelease posture, and authorizes no release; the version it looks for is a compile-time literal in the fixture, not an input."

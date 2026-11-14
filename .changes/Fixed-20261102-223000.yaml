@@ -1,3 +1,0 @@
-kind: Fixed
-body: Correct the release posture docs to name 0.2.0-rc.1 as the latest published release with incident lineage, index the rc.1 record and the four release-operation records, and index the four orphan how-to guides.
-time: 2026-11-02T22:30:00Z

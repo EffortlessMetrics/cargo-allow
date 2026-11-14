@@ -1,3 +1,0 @@
-kind: Fixed
-body: Stabilize non-lifecycle source matching and RepoEdit fixtures across UTC review-date rollover without changing enforcement.
-time: 2026-11-02T07:40:00Z

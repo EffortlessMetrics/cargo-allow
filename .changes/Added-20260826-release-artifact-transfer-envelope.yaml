@@ -1,3 +1,0 @@
-kind: Added
-body: >-
-  Establish typed CargoAllowReleaseArtifactTransferV1 envelope and evaluation for cross-job release artifacts.

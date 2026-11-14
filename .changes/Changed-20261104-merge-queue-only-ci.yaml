@@ -1,3 +1,0 @@
-kind: Changed
-body: Stage the native merge-group trigger and exact-G proof path while retaining the existing pull_request and push:main triggers until step 2. Development checks and review stay in the owning session; coordinated admission and protection activation remains required.
-time: 2026-11-04T08:52:39Z

@@ -1,3 +1,0 @@
-kind: Fixed
-body: Rewrite the portable-path predicate as sequential early returns with a named unix-backslash helper, satisfying Clippy 1.95 nonminimal_bool under -D warnings without changing accepted or rejected path sets.
-time: 2026-11-02T17:05:00Z
