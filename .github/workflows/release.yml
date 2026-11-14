@@ -876,9 +876,13 @@ jobs:
           set -euo pipefail
           delay=2
           for attempt in 1 2 3 4 5 6; do
-            if gh api --paginate \
-                 "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
-                 --jq '.artifacts[].name' | grep -Fxq "${ARTIFACT_NAME}"; then
+            # Capture the names first: piping gh into `grep -q` makes grep
+            # close the pipe on the first match, gh dies on SIGPIPE (141),
+            # and pipefail turns a found artifact into a failed attempt.
+            names="$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+              --jq '.artifacts[].name')"
+            if [[ $'\n'"${names}"$'\n' == *$'\n'"${ARTIFACT_NAME}"$'\n'* ]]; then
               echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
               exit 0
             fi
@@ -1321,9 +1325,13 @@ jobs:
           set -euo pipefail
           delay=2
           for attempt in 1 2 3 4 5 6; do
-            if gh api --paginate \
-                 "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
-                 --jq '.artifacts[].name' | grep -Fxq "${ARTIFACT_NAME}"; then
+            # Capture the names first: piping gh into `grep -q` makes grep
+            # close the pipe on the first match, gh dies on SIGPIPE (141),
+            # and pipefail turns a found artifact into a failed attempt.
+            names="$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+              --jq '.artifacts[].name')"
+            if [[ $'\n'"${names}"$'\n' == *$'\n'"${ARTIFACT_NAME}"$'\n'* ]]; then
               echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
               exit 0
             fi
