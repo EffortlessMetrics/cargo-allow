@@ -2029,6 +2029,19 @@ class TestZeroMutationDrills(unittest.TestCase):
             )
         )
 
+    def test_an_external_write_error_is_unmeasured_not_prevented(self) -> None:
+        # A raised OSError cannot be told apart from a confinement refusal, so
+        # the drill must record a non-observation rather than prevention.
+        with mock.patch.object(
+            Path, "write_text", side_effect=OSError("read-only file system")
+        ):
+            drill = REHEARSAL._drill_external(Path(tempfile.mkdtemp()))
+        self.assertFalse(drill["attempted"])
+        self.assertFalse(drill["direct_denied"])
+        self.assertFalse(drill["prevented"])
+        self.assertIn("OSError", drill["reason"])
+        self.assertIn("unmeasured", drill["reason"])
+
     def test_flags_are_derived_from_drills_not_literals(self) -> None:
         prevented = {
             name: {"prevented": True} for name in REHEARSAL.ZERO_MUTATION_FLAGS

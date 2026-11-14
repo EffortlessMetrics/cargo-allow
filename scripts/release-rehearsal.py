@@ -1664,8 +1664,20 @@ def _drill_external(root: Path) -> dict[str, Any]:
         canary = outside / "canary"
         try:
             canary.write_text("mutated", encoding="utf-8")
-        except OSError:
-            pass
+        except OSError as exc:
+            # An exception is not a denial. A confinement refusal and an
+            # unrelated filesystem error look identical from here, so the
+            # route is recorded as unmeasured instead of claiming prevention.
+            return _drill_result(
+                argv_denied=argv, direct_denied=False,
+                boundary="remote push and writes outside owned roots",
+                reason=(
+                    f"the direct write raised {type(exc).__name__}, so the "
+                    "route is unmeasured"
+                ),
+                direct_route_discriminating=True,
+                attempted=False,
+            )
         direct = not canary.exists()
     finally:
         shutil.rmtree(outside, ignore_errors=True)
