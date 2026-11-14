@@ -4,10 +4,13 @@ body: >-
   the `.exe` sibling for `-x`/`-f`, so the release step now tests
   `${bin}.exe` explicitly. The owned-directory tool gains a symlink- and
   reparse-point-refusing walker for platforms where
-  `shutil.rmtree.avoids_symlink_attacks` is false. The shell harnesses strip
-  the trailing CR that native Windows Python adds to `token`, `head`, and
-  `git_head` before comparing them, using the existing `strip_cr` helper.
-  The lifecycle test now exercises matching removal on Windows instead of
-  the old refusal design. The journey characterization harness carries the
-  same `strip_cr` definition into the clean-path fragment it executes, so
-  the extracted cleanup still runs standalone.
+  `shutil.rmtree.avoids_symlink_attacks` is false, and it deletes the
+  ownership marker last so a partial removal cannot orphan the tree. The
+  shell harnesses read owned paths, tokens and directories through the new
+  `read_owned_fields` helper, which pulls one tab-delimited line from
+  Python's binary stdout, so the CRLF that native Windows Python writes
+  cannot leak into a token and fail the ownership-marker comparison. The
+  lifecycle test exercises matching removal on Windows instead of the old
+  refusal design. The journey characterization harness carries the
+  `read_owned_fields` definition into the clean-path fragment it executes,
+  so the extracted cleanup still runs standalone.
