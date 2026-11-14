@@ -7,21 +7,21 @@
   "base_sha": "53af39787e5d0550f43077c494724df80637ea77",
   "head_ref": "fix/4778-review-ledger-bootstrap",
   "head_sha": "48f4eafdbd19b3780bd43afa24bafa3c9286c461",
-  "merge_base": "04201b753ba38f5197011ff2494969128d2feb58",
-  "reviewed_diff_digest": "sha256:v2:d062417fb292cfd1712cec5f2f2cda3c57fca751928b3006d9355706fa177995",
+  "merge_base": "53af39787e5d0550f43077c494724df80637ea77",
+  "reviewed_diff_digest": "sha256:v2:b50bb65fa6c0a5b8d7cb7e9ec40983554c5dc82029ac39e26ff1f5abbd0759cf",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4795 at 89ca90827d4a6d18e9c56ace86a53ea0b24360f9 (base 53af39787e5d0550f43077c494724df80637ea77, merge-base 04201b753ba38f5197011ff2494969128d2feb58). The reviewed code is 89ca9082; the later commits are policy/allow.toml bookkeeping and a main merge. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4795 at 89ca90827d4a6d18e9c56ace86a53ea0b24360f9 (base and merge-base 53af39787e5d0550f43077c494724df80637ea77 after the main merge). The reviewed code is 89ca9082; the later commits are policy/allow.toml bookkeeping and a main merge. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4795#pullrequestreview-5900208943. review cargo-allow non-author oppositional exact-head model review of head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9, base 53af39787e5d0550f43077c494724df80637ea77, merge-base 04201b753ba38f5197011ff2494969128d2feb58. The later c7821b14 policy bookkeeping and 48f4eafd main merge are not code changes. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4795#pullrequestreview-5900208943. review cargo-allow non-author oppositional exact-head model review of head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9, base and merge-base 53af39787e5d0550f43077c494724df80637ea77. The later c7821b14 policy bookkeeping and 48f4eafd main merge are not code changes. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4795",
-    "Reviewed pair base 53af39787e5d0550f43077c494724df80637ea77, merge-base 04201b753ba38f5197011ff2494969128d2feb58, head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9, digest sha256:v2:ce80aaa10d59fe408486f1b103c2c040aea481f6fa2e8375077990780f124afc. The c7821b14 policy commit and the 48f4eafd main merge are bookkeeping.",
+    "Reviewed pair base and merge-base 53af39787e5d0550f43077c494724df80637ea77, head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9. The c7821b14 policy commit and the 48f4eafd main merge are bookkeeping.",
     "The rename finding is discharged: scripts/project-review-readiness.sh:474 uses --no-renames, and is_review_ledger_bootstrap rejects any path outside the ledger or a second record.",
     "bash scripts/test-project-review-readiness.sh passes, including ancestor_success and ancestor_rename_decomposed; removing --no-renames fails the suite."
   ],
