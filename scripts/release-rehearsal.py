@@ -1590,7 +1590,11 @@ def _drill_tag(root: Path) -> dict[str, Any]:
                 "the supervised worker did not observe the direct Git "
                 "metadata write denied"
             ),
-            direct_route_discriminating=remount_denied,
+            # The supervisor applies the read-only mount and the capability
+            # drop inside the drill's own unshare -Urm namespace, so a denial
+            # here proves the drill supervisor, not the rehearsal's runtime
+            # boundary. The tag family therefore never claims prevention.
+            direct_route_discriminating=False,
         )
         result["canary_unchanged"] = unchanged
         result["remount_denied"] = remount_denied

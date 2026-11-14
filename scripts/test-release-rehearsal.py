@@ -60,9 +60,11 @@ REQUIRED_PHASES = (
     "escaped_defect_corpus",
 )
 
-# Only the Linux tag-worker slice may measure a true prevention flag in this
-# generation; the other six remain deliberately unproven.
-MEASURED_ZERO_MUTATION_FLAGS = {"tag_mutation_prevented"}
+# No zero-mutation flag may measure a true prevention in this generation. The
+# tag family's supervisor applies its confinement inside the drill's own
+# namespace, so it proves the drill supervisor rather than the rehearsal
+# boundary and can never report prevention.
+MEASURED_ZERO_MUTATION_FLAGS: set[str] = set()
 
 UNCONFINED_ZERO_MUTATION_FLAGS = (
     "token_read_prevented",
@@ -1974,7 +1976,7 @@ class TestZeroMutationDrills(unittest.TestCase):
                 )
         self.assertIn("cannot be denied", drills["token_read_prevented"]["reason"])
 
-    def test_tag_worker_observes_the_denial(self) -> None:
+    def test_tag_worker_observes_the_denial_but_never_claims_prevention(self) -> None:
         if REHEARSAL._linux_tag_worker() is None:
             self.skipTest("Linux worker profile unavailable on this host")
         if not _linux_userns_usable():
@@ -1986,10 +1988,14 @@ class TestZeroMutationDrills(unittest.TestCase):
             drill = REHEARSAL.run_zero_mutation_drills()["tag_mutation_prevented"]
         self.assertTrue(drill["attempted"])
         self.assertTrue(drill["argv_denied"], drill["reason"])
-        self.assertTrue(drill["direct_route_discriminating"], drill["reason"])
+        # The supervisor applies its confinement inside the drill's own
+        # namespace, so the denial proves the drill supervisor rather than the
+        # rehearsal boundary. The worker still observes the denial, but the
+        # family never claims prevention.
+        self.assertFalse(drill["direct_route_discriminating"], drill["reason"])
         self.assertTrue(drill["direct_denied"], drill["reason"])
         self.assertTrue(drill["canary_unchanged"], drill["reason"])
-        self.assertTrue(drill["prevented"], drill["reason"])
+        self.assertFalse(drill["prevented"], drill["reason"])
         self.assertTrue(drill["remount_denied"], "the worker could remount read-write")
         self.assertIn("dropped capabilities", drill["boundary"])
 
