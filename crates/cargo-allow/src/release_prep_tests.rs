@@ -342,8 +342,11 @@ fn checkpoint_sentinel_refuses_anything_but_the_clean_incident_state() {
             "topology receipt schema should parse as JSON: {error}"
         ))
     });
-    let clean = schema["properties"]["incident_state"]["enum"]
-        .as_array()
+    let clean = schema
+        .get("properties")
+        .and_then(|properties| properties.get("incident_state"))
+        .and_then(|incident| incident.get("enum"))
+        .and_then(serde_json::Value::as_array)
         .and_then(|states| states.first())
         .and_then(serde_json::Value::as_str)
         .unwrap_or_else(|| {
