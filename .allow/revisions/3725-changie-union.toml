@@ -1,0 +1,27 @@
+# Exact-path admission for the #3725 Changie 0.2.0 union tooling.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-3725-union-tool"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:39b36cb445c0667b82b1a7e6172c848f1592e1aacb04ac521bf110ad819b6abd"
+reason = "Union tool for the pre-cut 0.2.0 body; reads and writes .changes markdown only."
+
+[[records]]
+allow_ids = ["allow-3725-union-test"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:1e0dc8203b885c755c033f873e061b40f272f065e67818caeff1e59022665a80"
+reason = "Superset assertion that the pre-cut 0.2.0 bullets survive the batch."
+
+[[records]]
+allow_ids = ["allow-3725-union-fixture"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:168d33499daf3af10bfcaf7f5a21a120b2567fe4a84836f185c4b1a8afe7accf"
+reason = "Pinned pre-cut bullet fixture with its source blob digest."
+
+[[records]]
+allow_ids = ["allow-3725-union-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:2fea5a34129a9cfcaf863cf9b00a7b02d505aa2d2898fbb39423327d12dba374"
+reason = "Exact self-covering note for the #3725 union tooling allows."

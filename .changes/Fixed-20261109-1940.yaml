@@ -1,9 +1,0 @@
-kind: Fixed
-body: >-
-  Preserve the original mutation-evidence manifest and its exact historical
-  catalogue instead of rebinding retained execution identity to an expanded
-  denominator. Historical replay rejects the live-catalogue substitution, and
-  failed mutation-evidence controls now return a failing process status.
-  Mutation admission also rejects relative executable paths on either recording
-  platform instead of treating a bound Windows-path method as a truth value.
-time: 2026-11-10T00:44:58Z

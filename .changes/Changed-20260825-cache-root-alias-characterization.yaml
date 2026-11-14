@@ -1,5 +1,0 @@
-kind: Changed
-body: >-
-  Tests now distinguish benign filesystem aliases before a selected repository
-  root from symlink movement inside that root, including a macOS hosted-runner
-  characterization for the persistent Rust scan cache.

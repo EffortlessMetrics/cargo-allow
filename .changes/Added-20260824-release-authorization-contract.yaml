@@ -1,4 +1,0 @@
-kind: Added
-body: >-
-  Add typed CargoAllowReleaseAuthorizationV1 schema, one-use state transitions,
-  and replay protection before tag creation and token access.
