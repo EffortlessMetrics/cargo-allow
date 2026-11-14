@@ -4,25 +4,26 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4796,
   "base_ref": "main",
-  "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "base_sha": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
   "head_ref": "fix/pregate-queue-subject-fail-closed",
-  "head_sha": "f63601d38286905307b60f3d156c186f4875c9df",
-  "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
-  "reviewed_diff_digest": "sha256:v2:8fa69205e7936ee5c4f16474cdcee9d935bd402dbe93f23809f18ac0e4c7f269",
+  "head_sha": "0635cad820aeb38d27b32115c0bc6cab681de1d9",
+  "merge_base": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
+  "reviewed_diff_digest": "sha256:v2:3b15faef3879a9bd6f1966778e27cf749321c4dfd94c6bc1f68ca03f0ce98570",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at f63601d38286905307b60f3d156c186f4875c9df (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5903956497 submitted 2026-11-14T10:57:17Z. It recomputed the bound digest, confirmed the source delta 9251bb94..f63601d3 is exactly policy/allow.toml, .allow/revisions/4796-review-disposition.toml and the disposition, and recomputed the allow-1384 and allow-1385 fingerprints from the canonical v1 serialization. It covered the fail-closed pregate, the exact guard contract and the missing-job assertion. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at 0635cad820aeb38d27b32115c0bc6cab681de1d9 (base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4), verdict APPROVE, review 5906838383 submitted 2026-11-14T20:01:51Z. That review is at the bound head and covers the merge of 824bf25cd with 757dbabc: main's 1393 ledger entries are present unchanged and in order, exactly allow-1388 and allow-1389 are appended, the source blobs and the four regenerated direct-floor receipts are unchanged from the head approved at 824bf25cd, and pregate is green with NO_NEW_OUTCOME and FLOOR_FRESHNESS_OUTCOME both success. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5903956497 - review cargo-allow non-author oppositional exact-head model review of head f63601d38286905307b60f3d156c186f4875c9df, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, verdict APPROVE. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5906838383 - review cargo-allow non-author oppositional exact-head model review of head 0635cad820aeb38d27b32115c0bc6cab681de1d9, base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4, reviewed_diff_digest=sha256:v2:3b15faef3879a9bd6f1966778e27cf749321c4dfd94c6bc1f68ca03f0ce98570, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4796",
-    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head f63601d38286905307b60f3d156c186f4875c9df, reviewed diff digest sha256:v2:8fa69205e7936ee5c4f16474cdcee9d935bd402dbe93f23809f18ac0e4c7f269, verdict APPROVE in review 5903956497.",
-    "The CodeRabbit thread at .allow/review-dispositions/pr-4796.json:17 was the citation defect: the record cited review 5902812331, which GitHub has at 9251bb944d360d7b4bbf39f16dd7bad888f41ac5, while binding f63601d3. This record-only commit cites the review of the bound head; review replies and resolves the thread.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4796 - reviewed at 0635cad820aeb38d27b32115c0bc6cab681de1d9, verdict APPROVE in review 5906838383.",
+    "Reviewed pair base 757dbabc17a94d313c208274bf3c25f0360ee3a4, head 0635cad820aeb38d27b32115c0bc6cab681de1d9, reviewed diff digest sha256:v2:3b15faef3879a9bd6f1966778e27cf749321c4dfd94c6bc1f68ca03f0ce98570 recomputed with the pinned v2 recipe, verdict APPROVE in review 5906838383.",
+    "Ledger: 824bf25cd was approved at review 5906583173; 0635cad82 merges main 757dbabc into it. The merge moved zero paths under crates/, so the selected-source projection is still b5e34f06 and the four regenerated direct-floor receipts remain correct; pregate at this head reports NO_NEW_OUTCOME success and FLOOR_FRESHNESS_OUTCOME success with min-version-drift verdict=current blocking=false for all four products. This record is bound at 0635cad82 with the digest of 757dbabc..0635cad82 and cites review 5906838383 at that same head.",
+    "Zero unresolved review threads: all seven are resolved.",
     "The pregate reads needs.queue-subject.result and fails unless success; the guard contract test asserts the job exists and declares needs: instead of skipping an empty block.",
     "Non-blocking threads retained, not repaired: ci.yml:98 is partial-rerun artifact naming (full runs are correct and the required contexts are green on a full run); ci_pregate_workflow_tests.rs:282 asks for negative controls beyond the structural guard (test strength, not a source defect).",
     "scripts/test-merge-group-lifecycle.py passes 20/20 on the rebased head and on its merge tree."
@@ -33,5 +34,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4796",
-  "reviewed_at_utc": "2026-11-14T10:57:17Z"
+  "reviewed_at_utc": "2026-11-14T20:01:51Z"
 }
