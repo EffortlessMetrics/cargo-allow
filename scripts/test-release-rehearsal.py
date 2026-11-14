@@ -60,9 +60,12 @@ REQUIRED_PHASES = (
     "escaped_defect_corpus",
 )
 
-# Only the Linux tag-worker slice may measure a true prevention flag in this
-# generation; the other six remain deliberately unproven.
-MEASURED_ZERO_MUTATION_FLAGS = {"tag_mutation_prevented"}
+# No family may measure a true prevention flag in this generation. The tag
+# drill's supervisor applies the read-only mount and the capability drop
+# inside its own unshare namespace, so a denial there proves the supervisor,
+# not the rehearsal boundary; it records direct_route_discriminating=False
+# and can never claim prevention.
+MEASURED_ZERO_MUTATION_FLAGS = set()
 
 UNCONFINED_ZERO_MUTATION_FLAGS = (
     "token_read_prevented",
@@ -1963,8 +1966,6 @@ class TestZeroMutationDrills(unittest.TestCase):
             "external_repository_mutation_prevented",
         }
         for name, drill in drills.items():
-            if name == "tag_mutation_prevented":
-                continue
             with self.subTest(family=name):
                 self.assertEqual(
                     drill["direct_route_discriminating"],
@@ -1986,10 +1987,16 @@ class TestZeroMutationDrills(unittest.TestCase):
             drill = REHEARSAL.run_zero_mutation_drills()["tag_mutation_prevented"]
         self.assertTrue(drill["attempted"])
         self.assertTrue(drill["argv_denied"], drill["reason"])
-        self.assertTrue(drill["direct_route_discriminating"], drill["reason"])
+        self.assertFalse(
+            drill["direct_route_discriminating"],
+            "the tag drill's supervisor is not the rehearsal boundary",
+        )
         self.assertTrue(drill["direct_denied"], drill["reason"])
         self.assertTrue(drill["canary_unchanged"], drill["reason"])
-        self.assertTrue(drill["prevented"], drill["reason"])
+        self.assertFalse(
+            drill["prevented"],
+            "the tag family must never claim prevention",
+        )
         self.assertTrue(drill["remount_denied"], "the worker could remount read-write")
         self.assertIn("dropped capabilities", drill["boundary"])
 

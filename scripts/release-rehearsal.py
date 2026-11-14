@@ -1584,13 +1584,12 @@ def _drill_tag(root: Path) -> dict[str, Any]:
             argv_denied=argv, direct_denied=direct and unchanged,
             boundary=f"{boundary} ({description})",
             reason=(
-                "the supervised worker could remount the repository "
-                "read-write, so the denial is not discriminating"
-                if not remount_denied else
-                "the supervised worker did not observe the direct Git "
-                "metadata write denied"
+                "the drill supervisor applies the read-only mount and the "
+                "capability drop inside its own unshare namespace, so a "
+                "denial here proves the supervisor, not the rehearsal "
+                "boundary; the tag family never claims prevention"
             ),
-            direct_route_discriminating=remount_denied,
+            direct_route_discriminating=False,
         )
         result["canary_unchanged"] = unchanged
         result["remount_denied"] = remount_denied
@@ -1893,13 +1892,12 @@ def _build_rehearsal_receipt(
             "boundary and again on a direct route against a disposable canary. A "
             "direct attempt that really mutates the canary keeps its flag false, so "
             "the receipt records the remaining confinement gap rather than asserting "
-            "prevention. Only tag_mutation_prevented is measured in this generation: "
-            "on Linux a supervisor applies the read-only bind mount, drops all "
-            "capabilities, and only then execs the worker, so the worker cannot "
-            "remount; the flag is true only when the worker's own remount attempt "
-            "and the direct Git metadata write are both denied. On hosts without "
-            "unshare/mount/setpriv the flag stays "
-            "false. The other six flags remain "
+            "prevention. No family is measured in this generation: the tag "
+            "drill's supervisor applies the read-only bind mount and the "
+            "capability drop inside the drill's own unshare namespace, so a "
+            "denial there proves the supervisor rather than the rehearsal "
+            "boundary, and the tag family records direct_route_discriminating "
+            "false and never claims prevention. All seven flags remain "
             "false: the token, Cargo publication, registry, GitHub Release, live "
             "setting and external-repository direct routes are not confined."
         ),
