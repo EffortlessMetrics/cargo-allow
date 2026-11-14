@@ -1122,7 +1122,7 @@ jobs:
               raise SystemExit("publish receipt is not the typed topology receipt")
           if (
               receipt_document.get("complete") is not True
-              or receipt_document.get("incident_state") is not None
+              or receipt_document.get("incident_state") != "none"
           ):
               raise SystemExit(
                   "publish receipt is not a clean settled batch; refusing to "
