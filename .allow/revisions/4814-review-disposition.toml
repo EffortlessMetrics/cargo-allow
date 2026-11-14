@@ -1,0 +1,15 @@
+# Review-disposition exact-path admission for the #3151 + D7 cut train (PR #4814).
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4814-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:30d5d42e7a49e899bb25ef788ee526fc83b89e08504eb1e1f241ee01fbac27d3"
+reason = "Retain the exact-head cut-train review without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-4814-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:4d485e72f377504bd460ac5b6f427c3ad4aa5f2320199d668c7c5095c6c91474"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."
