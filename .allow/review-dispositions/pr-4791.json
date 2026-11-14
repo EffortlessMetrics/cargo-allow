@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4791,
+  "base_ref": "main",
+  "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "head_ref": "fix/3151-completions-hidden-and-installed-surface",
+  "head_sha": "e21197c667ca7d447c50b11aafc035a808bca216",
+  "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "reviewed_diff_digest": "sha256:v2:4db0940cb80e12bfd0ea7f62daa1a4a4f861b8505e50190bb10f8af88695701b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4791 at e21197c667ca7d447c50b11aafc035a808bca216 (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5904480968 submitted 2026-11-14T13:13:05Z. That review covered phase 1 explicitly: the two exact-path allows and the added_allow revision note are the whole delta 96edf5bb..e21197c6, source is unchanged, and it confirmed the revised disposition should be rebound to e21197c6 with a recomputed digest. This record is a ledger-only commit above the reviewed head. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4791#pullrequestreview-5904480968 - review cargo-allow non-author oppositional exact-head model review of head e21197c667ca7d447c50b11aafc035a808bca216, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, reviewed_diff_digest=sha256:v2:4db0940cb80e12bfd0ea7f62daa1a4a4f861b8505e50190bb10f8af88695701b, verdict APPROVE with no blocking findings. It covers the phase-1 policy append and revision note explicitly; this record and the earlier CRLF repair are ledger-only above the source it judged. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4791 - reviewed at e21197c667ca7d447c50b11aafc035a808bca216, verdict APPROVE in review 5904480968.",
+    "Zero unresolved review threads at this head (GitHub reviewThreads read, 2026-11-14T13:20Z). Devin Review's 2026-11-14T09:35Z potential issue and resettable-helper observation were dispositioned non-blocking in replies at 2026-11-14T09:39Z and remain discharged.",
+    "Not proven here and not claimed: the installed-surface receipt's hidden-set evidence, the completions test, and release impact were read from source and the retained receipt, not reproduced locally; this record is review evidence only, does not merge, and does not replace the required CI observation at the pushed head."
+  ],
+  "required_ci": {
+    "owner": "PR #4791 orchestrator: verify the exact-head review, live review-readiness, applicable required checks, threads, and merge queue composition after this ledger-only commit, and make the separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4791"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4791",
+  "reviewed_at_utc": "2026-11-14T13:13:05Z"
+}

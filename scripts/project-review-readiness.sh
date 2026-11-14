@@ -54,6 +54,27 @@ valid_commit() {
   [[ "$1" =~ ^([a-f0-9]{40}|[a-f0-9]{64})$ ]]
 }
 
+# Classify a disposition binding against the objects this checkout holds.
+# A rebase or force-push drops the reviewed head from the fetch set, so a
+# retained record can name a commit that is no longer present. That is a
+# stale record, not an instrument failure: it must publish a failure that
+# asks for a fresh exact-head review plus rebind.
+#   0 = commit present
+#   1 = commit absent (stale record)
+#   * = the probe itself failed (instrument failure)
+commit_presence() {
+  local status=0
+  # `rev-parse --verify --quiet` uses exit 1 for "no such object" and keeps
+  # other failures distinct, unlike `cat-file -e`, whose 128 also covers
+  # broken-repository errors.
+  git rev-parse --verify --quiet "$1^{commit}" >/dev/null 2>&1 || status=$?
+  case "${status}" in
+    0) return 0 ;;
+    1) return 1 ;;
+    *) return "${status}" ;;
+  esac
+}
+
 read_pr_snapshot() {
   local raw status
   if raw="$(gh pr view "$1" --repo "${GITHUB_REPOSITORY}" \
@@ -398,7 +419,7 @@ project_pr() {
   # unique ancestor-bound record (the retained-review-ledger
   # bootstrap). Ambiguity fails closed; no match is the explicit
   # missing-disposition case.
-  local exact_matches=() ancestor_matches=() malformed=() candidate bound_head
+  local exact_matches=() ancestor_matches=() unreachable=() malformed=() candidate bound_head
   if [ -d "${LEDGER_DIR}" ]; then
     for candidate in "${LEDGER_DIR}"/*.json; do
       [ -f "$candidate" ] || continue
@@ -419,7 +440,26 @@ project_pr() {
       [ -n "${bound_head}" ] || continue
       if [ "${bound_head}" = "${head_sha}" ]; then
         exact_matches+=("$candidate")
-      elif git merge-base --is-ancestor "${bound_head}" "${head_sha}" 2>/dev/null; then
+        continue
+      fi
+      # Probe the binding before asking git about ancestry: an absent
+      # object makes `merge-base --is-ancestor` exit 128, which the old
+      # code read as an instrument failure and published nothing at all.
+      local presence=0
+      commit_presence "${bound_head}" || presence=$?
+      case "${presence}" in
+        0) ;;
+        1)
+          unreachable+=("${candidate}@${bound_head}")
+          continue
+          ;;
+        *)
+          printf 'review-readiness: instrument failure: disposition object probe failed (exit %s)\n' "${presence}" >&2
+          rm -f "${live_file}"
+          return 1
+          ;;
+      esac
+      if git merge-base --is-ancestor "${bound_head}" "${head_sha}" 2>/dev/null; then
         ancestor_matches+=("$candidate")
       else
         input_status=$?
@@ -449,6 +489,17 @@ project_pr() {
     selected="${exact_matches[0]}"
   elif [ "${#ancestor_matches[@]}" -eq 1 ]; then
     selected="${ancestor_matches[0]}"
+  elif [ "${#unreachable[@]}" -gt 0 ]; then
+    # A retained record that binds a commit this checkout does not hold is
+    # stale review evidence. Publish the failure so the required context is
+    # visible and names the rebind it needs, instead of leaving the PR
+    # BLOCKED with no explanation. A valid exact/ancestor record wins over
+    # a stale one, so this only fires when no current record exists.
+    rm -f "${live_file}"
+    publish "${head_sha}" "failure" \
+      "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${unreachable[*]} binds a commit this checkout does not contain; a rebase or force-push dropped it, so a fresh exact-head review and rebind are required; stale review evidence fails closed" \
+      "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
+    return 1
   fi
 
   if [ -n "${selected}" ]; then
@@ -464,10 +515,32 @@ project_pr() {
       # so the projection can prove the head movement is disposition
       # records only and reject anything else.
       local delta delta_output
-      if delta_output="$(git diff --name-only "${bound_head}..${head_sha}" 2>/dev/null)"; then
+      # --no-renames is load-bearing: with rename detection on, a head can
+      # rename a file that already carries a valid record for this PR into
+      # the ledger directory and delete the original invisibly, because
+      # --name-only then prints only the destination. Decomposing the
+      # rename emits both paths, so the source path reaches the projection
+      # and is rejected as outside the one-record rule. Same knobs as the
+      # digest recipe (scripts/ci-proof-route.py:1340).
+      if delta_output="$(git diff --name-only --no-renames "${bound_head}..${head_sha}" 2>/dev/null)"; then
         :
       else
         input_status=$?
+        if [ "${input_status}" -eq 128 ]; then
+          # 128 is ambiguous: the binding may have vanished, or the
+          # commit may be present with an unreadable tree. Probe the
+          # commit before classifying. Absent is stale evidence and
+          # still has to publish; present is a broken instrument.
+          local presence=0
+          commit_presence "${bound_head}" || presence=$?
+          if [ "${presence}" -eq 1 ]; then
+            rm -f "${live_file}"
+            publish "${head_sha}" "failure" \
+              "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${selected} binds ${bound_head}, which this checkout no longer contains; a fresh exact-head review and rebind are required; stale review evidence fails closed" \
+              "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
+            return 1
+          fi
+        fi
         printf 'review-readiness: instrument failure: disposition delta read failed (exit %s)\n' "${input_status}" >&2
         rm -f "${live_file}"
         return 1

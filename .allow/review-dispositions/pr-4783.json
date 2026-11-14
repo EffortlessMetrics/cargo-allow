@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4783,
+  "base_ref": "main",
+  "base_sha": "53af39787e5d0550f43077c494724df80637ea77",
+  "head_ref": "fix/merge-group-checkout-refs",
+  "head_sha": "4875cbaf0561142468e400d3b528b6903eb40992",
+  "merge_base": "04201b753ba38f5197011ff2494969128d2feb58",
+  "reviewed_diff_digest": "sha256:v2:5d4ef046d4812341f46f0d8e7989aab487dc4ef73e5eb55df7413ac308118f64",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4783 at a3e9a119 (base and merge-base 04201b75). The 4875cbaf commit adds persist-credentials: false to the clippy-stable checkout, which is the review's blocking finding. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4783#pullrequestreview-5899889056. review cargo-allow non-author oppositional exact-head model review of head a3e9a119, base and merge-base 04201b75. The 4875cbaf commit is the one-line persist-credentials fix. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4783",
+    "Reviewed pair base and merge-base 04201b75, head a3e9a119. The 4875cbaf commit adds persist-credentials: false to the clippy-stable checkout.",
+    "dependency-graph-delta keeps needs [proof-route, queue-subject] and ref github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha.",
+    "The four checkout refs approved at abcd8618 remain bound to github.event.merge_group.head_sha.",
+    "Guard and test are byte-identical to abcd8618; guard test 6/6, guard exit 0, check --mode no-new passed, diff --require-change-note passed.",
+    "pregate, frozen-subject-lock, workflow-syntax, and test are SUCCESS; review-readiness is neutral because no disposition was bound."
+  ],
+  "required_ci": {
+    "owner": "PR #4783 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not mark Ready or merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4783"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4783",
+  "reviewed_at_utc": "2026-11-13T14:20:00Z"
+}

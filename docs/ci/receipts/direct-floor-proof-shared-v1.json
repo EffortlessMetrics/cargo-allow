@@ -11,7 +11,7 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host:x86_64-unknown-linux-gnu",
- "manifest_set_digest": "71bcdc199f3925f034b42c4e90d16150f4b45eeffb3325799d75ec0bce1e3ea6",
+ "manifest_set_digest": "18db841f212518f4d9575251c764300c2962c7bbba0d96f72a68745a0698f8db",
  "lock_digest": "0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c",
  "rows": [
   {
@@ -73,13 +73,13 @@
   "cargo update -p <dep>@<locked-version> --precise <floor> (bare name only while bootstrapping an absent lock row)",
   "cargo check --locked --target x86_64-unknown-linux-gnu -p effortless-repo-edit -p effortless-repo-protocol -p effortless-repo-snapshot -p effortless-rust-source-index"
  ],
- "floor_lock_digest": "sha256:v1:e2881e846c3f7e17f29883262fb91cccbbb96e74a8b9a81f668223ae51e4a6c5",
+ "floor_lock_digest": "sha256:v1:5db711dc77fdd6b517b2d5f22014e931d8d0a8f6a5c979586e811d6aa12beb26",
  "execution_provenance": {
   "command": "bash scripts/proof-direct-floors.sh",
   "working_directory": "/home/runner/work/cargo-allow/cargo-allow",
-  "source_commit": "5b7f82e23fc083c404a566d9b4f1647acf95a009",
-  "source_tree": "1cf4426ea5f9e4efa29298cc1e06e67747bc5876",
-  "selected_source_digest": "fbb00cc9b08a45c3068a045bde1cbd54c983647eafde823f8237f5744577a957",
+  "source_commit": "deada991f5cae232dec93d0183daa9e4d57f3550",
+  "source_tree": "6cc535fd3d3c11eb75a12ad9b8bdfc7b9b21ce30",
+  "selected_source_digest": "f69b0387dd7efcdde57221c1751aa254479cf38fbe2f36cfbbd75a61c93ee8f2",
   "selected_source_scope": [
    "crates/**/*.rs: every workspace Rust source, CR-stripped, framed path<NUL>content<NUL> in sorted path order"
   ],
@@ -100,8 +100,8 @@
   "dev-dependencies are exercised by the test class but are not certified floors",
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
-  "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
-  "local floor subject: source e4147ccbb3a3d3f124a23c7722800defdda6a0dd; executed commit 5b7f82e23fc083c404a566d9b4f1647acf95a009; tree 1cf4426ea5f9e4efa29298cc1e06e67747bc5876; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:fb753f33a2a92034a78d45bcf7f3ca4eafd9d82d18378fdea9e73d99207c2ac7; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
+  "local floor subject: source aec03c8fbfe868dda3d9931768995e6d8da7d6e0; executed commit deada991f5cae232dec93d0183daa9e4d57f3550; tree 6cc535fd3d3c11eb75a12ad9b8bdfc7b9b21ce30; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the shared package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }

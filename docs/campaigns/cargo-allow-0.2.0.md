@@ -24,7 +24,29 @@ This dated map records sequencing and blocker classification. [#3768](https://gi
 owns the moving PR queue, exact branch/check state and integration order. Child
 issues own implementation acceptance. Reload those live authorities when source,
 ownership, evidence or a maintainer decision changes; do not reuse this
-checkpoint as a current-pair review. Recommendations below remain unratified.
+checkpoint as a current-pair review. Recommendations below remain unratified
+except #3877 and the O3 objective, both ratified 2026-11-12: the implemented
+configuration precedence is preserved unchanged for 0.2.x, with advanced opt-in
+and changed precedence deferred to 0.3 under #3878. #3761 is a live owner
+decision - its six proof suites landed 2026-11-03 in #4730 (`ba6f8ab0`, an
+ancestor of main) and the `release-manifest` release role consumes them, but
+the issue's last comment is a 04:43Z finding that widens scope, so it does not
+close. Its remaining real-release generation proof is #2501's package-set
+obligation; the frozen-manifest role stays a live owner decision.
+
+## Current bounded objective (O3, ratified 2026-11-12)
+
+Release-path closeout. Checkpoints: 2026-11-19 = #4744 landed, #3792 first slice merged, #3151 producer sequence started; 2026-11-26 = second slice, not a release date. Target end of Q1 2027, reviewed at the 19 November checkpoint. In order:
+
+1. #4744 — land the merge-queue step-1 cutover with the frozen-subject invalidation record and the sentinel concurrency fix. It merged through the queue as entry 1; the AGENTS.md reconciliation to the pre-enqueue judgment did not land with it and is being restored separately.
+2. #3792 — the seven `zero_mutation_proof` flags in `scripts/release-rehearsal.py` become measured outcomes with falsifiers instead of hardcoded `False`. First slice: one Linux worker profile plus the tag-mutation denial family end to end, producing the first true flag; the invocation-boundary guard is part of that slice, not a separate first step.
+3. #3151 - produce installed-surface evidence and a named residual. The `release_freeze_experience.rs::retain_dependencies` node stays `NotProven`: it records `#2466` (clean-pilot producer/reader) and `#3151` (selected-case documentation producer and byte oracle) unconditionally, and `#3149` for `CommandCaseJoin::Absent`. A Complete freeze needs a v2 docs-execution contract plus the `#2466` and `#3149` producers; that is a campaign, not a slice, and the contract amendment is a user decision.
+4. #2501 — refreeze on the post-#4744 merged tree.
+5. Stop at #2502/#3760 for the user's authorization.
+
+Queue proof of record, with three release-rehearsal jobs still bound by ref name. The merge queue is enabled with a `merge_queue` rule (SQUASH, ALLGREEN, max 3) under ruleset 16868781, and #4744 landed through it as entry 1.
+
+Standing non-goal: no new release-control subsystem, gate or `NotProven` hold before 0.2.0 ships; every new safety surface must retire at least one existing hold. The review-readiness publisher suite-binding repair is deferred to after 0.2.0, behind #2501.
 
 ## Selected product and release boundary
 
@@ -70,7 +92,7 @@ fixture repairs are merged at the checkpoint above:
 | [#4444](https://github.com/EffortlessMetrics/cargo-allow/pull/4444), under #3790/#3792 | Shared-registry preflight runs before selected-token environment expressions are evaluated, using the actual runner ordering. The bounded source repair preserves token-free nonpublishing paths; full authorization, custody and rehearsal isolation remain unproven. |
 | [#4442](https://github.com/EffortlessMetrics/cargo-allow/pull/4442), under #4441/#3792 | The rehearsal rejects selected-token key presence before admission/output work and checks again after its phases and final checkout. Owned child environments exclude those keys before retrieving values. This bounded foundation does not establish whole-process credential or mutation prevention. |
 | [#4443](https://github.com/EffortlessMetrics/cargo-allow/pull/4443), under #4362 | Actual outer hooks CLI tests prove selected child-root inheritance, clean/finding results and missing-policy refusal without the override. Hostile Git-selector controls preserve the foreign index/canary bytes and prevent outside policy writes. Production hook behavior is unchanged. |
-| [#4457](https://github.com/EffortlessMetrics/cargo-allow/pull/4457), one #3761 slice | Matching checksums require a confirming publication state before typed package rows become manifest-ready. Missing/ProviderUnavailable and malformed-evidence distinctions survive both package classes, row/batch consumers and the real CLI. The shell manifest generator already refused those incomplete states; frozen-manifest role and workflow work remain open. |
+| [#4457](https://github.com/EffortlessMetrics/cargo-allow/pull/4457), one #3761 slice (#3761 is a live owner decision; its six proof suites landed 2026-11-03 in #4730) | Matching checksums require a confirming publication state before typed package rows become manifest-ready. Missing/ProviderUnavailable and malformed-evidence distinctions survive both package classes, row/batch consumers and the real CLI. The shell manifest generator already refused those incomplete states; the `release-manifest` release role now consumes the typed evidence, and the real-release generation proof remains #2501's package-set obligation. |
 
 The two latest merges retain separate process exceptions:
 
@@ -98,7 +120,7 @@ Earlier delivered foundations remain available:
 | Registry observation #3850 | Credential-free adapter merged through #4287. Refresh actual observations for the selected candidate; do not build another observer. |
 | Authorization #3789 / #3790 | Production model/compiler and post-tag gate exist through #4291/#4292; #4299 binds the annotated tag object. Complete production composition remains below. |
 | Dependencies and security-update routing | #4204/#4170 and #4273/#4274 are resolved source lanes. #4284 closed unmerged after evidence transfer. |
-| Configuration #3875 / #3876 | Shared resolution and supported-consumer cutover are complete. #3877 still owns the selection decision. |
+| Configuration #3875 / #3876 | Shared resolution and supported-consumer cutover are complete. #3877 was ratified 2026-11-12: the implemented precedence is preserved unchanged for 0.2.x, with advanced opt-in deferred to 0.3 under #3878. |
 | Default burden #3883 | The measured corpus is delivered. #3884/#3885 own the profile decision and implementation. |
 | Installed candidate #3151 | #4390 delivered a nonpublishing glibc 2.35-compatible candidate and bounded installed-host journey. It did not complete external adoption or final ReleaseExperience. |
 | Supporting tools #4403 | All six reported items are delivered through #4410–#4414 and #4416; the issue is closed. |
@@ -117,8 +139,8 @@ handoff. Finish them before trusting a successor final freeze.
 | Owner | Required production result |
 | --- | --- |
 | [#4426](https://github.com/EffortlessMetrics/cargo-allow/issues/4426), under #2501/#3842/#3774; PR #4438 | Replace shared-row-count currentness with the existing typed registry evaluator. Bind all 10+3 identities/checksums, independently assembled expected context, a real evaluation clock and a selected freshness window. Missing authority remains NotProven; stale, malformed and provider-failed observations remain non-clean. #3792/#2501 retain the production-input wiring. |
-| [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | The bounded #4457 classifier repair is merged. The frozen-manifest role still needs an explicit decision and implementation through the actual manifest/workflow consumers, preserving full frozen-envelope bytes and later public completion evidence. The classifier alone does not settle that role, causal dependency or release qualification. |
-| [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The private invocation-boundary slice and one usable qualifying-worker enforcement path remain; neither foundation establishes every prevention control or a Complete producer. |
+| [#3761](https://github.com/EffortlessMetrics/cargo-allow/issues/3761) | Live owner decision: the six proof suites landed 2026-11-03 in #4730 (an ancestor of main), but the issue's last comment is a 04:43Z finding that widens scope, so it does not close. The bounded #4457 classifier repair is merged and the `release-manifest` release role consumes the typed evidence. What remains is the real-release generation proof for the selected package set, which is #2501's obligation, and the frozen-manifest role stays a live owner decision. |
+| [#3792](https://github.com/EffortlessMetrics/cargo-allow/issues/3792), then #2501 | Prove the real rehearsal's canonical reversible phases and complete-except-unconsumed-authorization posture. #4444's preflight and #4442's selected-key foundation are merged. The first slice is one Linux worker profile plus the tag-mutation denial family end to end, with the invocation-boundary guard inside that slice, and it produces the first true flag; a usable qualifying-worker enforcement path for the remaining families follows. Neither foundation establishes every prevention control or a Complete producer. |
 
 The delivered #4425 rehearsal admission and #4427 receipt-preservation repairs
 above are foundations for these remaining owners, not duplicate pending tasks.
@@ -129,16 +151,18 @@ authorization/aggregate posture. Keep those claims unproven until their real
 controls are demonstrated. A stricter consumer cannot manufacture missing proof.
 
 The [bounded #3792 engineering sequence](https://github.com/EffortlessMetrics/cargo-allow/issues/3792#issuecomment-6101981804)
-first guards each existing operation's selected executable, complete argv, root
-and output before the real process adapter, including the nested publisher.
-That slice leaves every prevention flag false. One selected worker must then
-enforce the filesystem, credential, descendant and network boundaries with
-allowed positives and actual forbidden-effect controls. Prefetch inputs outside
-the worker, obtain independently bound registry context, run all eight existing
-phases and seven denial families, and retain the original producer evidence
-through #4452's qualification/custody/replay path. Host/launcher, producer
-workflow/job, retention and observation-window selection remain explicit inputs;
-a fixture or plan alone cannot qualify them.
+puts the invocation-boundary guard - each existing operation's selected
+executable, complete argv, root and output, including the nested publisher -
+inside the first slice rather than ahead of it. The first slice is one Linux
+worker profile plus the tag-mutation denial family end to end, and it produces
+the first true flag because the profile, not the guard, is what confines the
+direct route. Later slices enforce the filesystem, credential, descendant and
+network boundaries with allowed positives and actual forbidden-effect controls.
+Prefetch inputs outside the worker, obtain independently bound registry
+context, run all eight existing phases and seven denial families, and retain the
+original producer evidence through #4452's qualification/custody/replay path.
+Host/launcher, producer workflow/job, retention and observation-window selection
+remain explicit inputs; a fixture or plan alone cannot qualify them.
 
 #4249 remains the separate per-field rehearsal subject-binding test gap. Tests
 for the new admission defects must invoke the real consumer and distinguish the
@@ -173,7 +197,7 @@ proves this complete sequence:
    downloaded checkpoints and exact registry checksum equality before unlocking
    dependent rows. Retain partial, conflicting and ambiguous outcomes with their
    original-candidate recovery lineage.
-5. **#3761/#2497/#3726/#3933:** preserve publication/install evidence, produce
+5. **#2497/#3726/#3933 (#3761 is a live owner decision):** preserve publication/install evidence, produce
    the typed public manifest, verify provenance, and independently read back the
    actual draft asset set before public finalization. Draft creation plus
    upload success is not actual-asset closeout.
@@ -191,12 +215,14 @@ remaining-work posture with actual selected qualification and custody evidence.
 For registry admission, copying the observer's context, using commit time as the
 current clock or borrowing a fixture freshness window supplies no independent
 authority. These adapters can be developed and negatively tested reversibly;
-unratified config/default/support choices do not block that engineering.
+the still-unratified default/support choices do not block that engineering.
 
-#3761 still owns the explicit frozen-manifest role and the later public
-completion result. Preserve attested frozen asset bytes through publication;
-do not rewrite them to break an authorization/manifest dependency. The bounded
-classifier repair in #4457 does not select that role or complete the workflow.
+The `release-manifest` release role and the later public completion result are
+implemented and wired through the actual manifest/workflow consumers. Preserve
+attested frozen asset bytes through publication; do not rewrite them to break an
+authorization/manifest dependency. The bounded classifier repair in #4457 and
+that role do not by themselves produce the real-release generation proof, which
+remains #2501's package-set obligation.
 
 ## Stage 3 — settle the supported core and first-hour contract
 
@@ -274,7 +300,9 @@ reopening the entire scanner design.
 | [#3777](https://github.com/EffortlessMetrics/cargo-allow/issues/3777) support policy | Resolve maintenance, security response, backports, platform commitment and MSRV changes. SECURITY.md already publishes targets that SUPPORT.md calls undecided; record an explicit retain-or-replace ruling before reconciling the projections. | #3795 / #3796 |
 | #3150 clean-pilot/claim scope | Preserve the current typed clean-adoption NotProven and brownfield NotIncludedBeforeFirstFinal selection. A new external pilot requires repository selection and consent; the exact installed release experience remains required. | #3771 / #2466 / #3151 |
 
-The first two rows are the latest unratified release-scope recommendations;
+The #3877 row is ratified as of 2026-11-12 (implemented precedence preserved for
+0.2.x); the remaining rows are the latest unratified release-scope
+recommendations. #3884, #3777 and #3150 remain open;
 the earlier SimpleCore-first and smaller-default proposals are not accepted
 0.2 requirements. The current resolver selects explicit `--config`, then a
 valid federation registry's canonical source ledger, then ancestor discovery
@@ -395,7 +423,7 @@ Existing controllers own the next stages; no additional umbrella is needed.
 | Stage | Existing owners | Next earned outcome |
 | --- | --- | --- |
 | Operated 0.2.x | #2460 / #2467 / #2483 / #3151 | Sustain clean and brownfield no-new CI, safe reviewed repair, owned rollback and retained operator-friction evidence using exact released bytes. |
-| Proposed 0.3 product choices | #3877 → #3878 / #3884 → #3885 | If ratified, implement explicit advanced configuration opt-in/migration and the selected smaller default with compatibility, burden and installed-journey proof. Preserve current behavior through 0.2.x unless the maintainer selects and qualifies a different rule. |
+| Proposed 0.3 product choices | #3877 → #3878 / #3884 → #3885 | Implement the ratified #3877 explicit advanced configuration opt-in/migration, subject to grammar/compatibility selection. Implement the smaller default only if #3884 is ratified, with compatibility, burden and installed-journey proof. Preserve current behavior through 0.2.x unless the maintainer selects and qualifies a different rule. |
 | Reference measurements | #2468 / #2514 / #4374 / PR #4456 / #4339 | Measure cold, repeated-process warm, one-file edit, policy-only, why/diff, full JSON payload and memory on retained exact subjects. The V4 harness and its delivered agent-loop/payload controls remain; #4456 adds the eighteenth full-check JSON row with retained full-content validation. |
 | Remaining scale costs | #1809 / #2515 / #2571 / #4237 | Complete only measured matcher/cache/revision/currentness gaps. Root-bound persistent source facts, Git batching and some parallel source paths already exist; reconcile their residual acceptance before extending them. |
 | Machine and diagnostic coherence | #2188 / #2511 / #3887 / #3888 / #2567 | One evaluator supplies typed currentness/completeness/results and safe actions through an independently installed read-only provider. |
@@ -433,7 +461,7 @@ starting, and hand the finished head to independent review. After merge,
 verify current main, retain required guards/evidence, reconcile the child and
 controller, and clean only the lane's owned disposable work.
 
-- [ ] Remaining #4426/#3792/#3761 and selected core regressions have current closure; preserve the already merged bounded repairs.
+- [ ] Remaining #4426/#3792 and selected core regressions have current closure; preserve the already merged bounded repairs. #3761 is a live owner decision, with its real-release generation proof under #2501.
 - [ ] Production pre-tag, custody, durable state, registry and actual-asset
       composition is proven under its existing owners.
 - [ ] Config/default/support/pilot decisions and shipped projections agree.

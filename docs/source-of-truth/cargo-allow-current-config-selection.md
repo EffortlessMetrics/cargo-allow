@@ -1,8 +1,10 @@
 # Current cargo-allow configuration selection
 
 This matrix records implemented read-selection behavior, including the shared
-configuration authority delivered under #3875/#3876. It does not choose the
-future precedence or migration rule owned by #3877/#3878.
+configuration authority delivered under #3875/#3876. #3877 was ratified on
+2026-11-12: the implemented precedence is preserved unchanged for all of
+0.2.x, and advanced opt-in modes or any migration rule are 0.3 work under
+#3878.
 
 Successful selection gives explicit `--config` precedence over a valid fixed
 `.allow/config.toml` canonical `source-exception` ledger, then uses ancestor
@@ -30,13 +32,15 @@ not invoke Cargo. Federation error handling remains as recorded below.
   containment and write authorization.
 - Portable output omits private checkout identities.
 
-## Current consumers and remaining decision
+## Current consumers and ratified precedence
 
 [The configuration-authority inventory](../../policy/config-authority-consumers.toml)
 records the selector and policy-loader owners delivered under #3876. The
 `config_authority_denominator_tests` guard checks their direct authority
 markers and rejects unlisted or stale owners.
 
-#3877 still owns the maintainer's precedence decision; #3878 remains blocked
-on that decision. This document does not select an advanced opt-in mode or a
-migration deadline.
+#3877 is ratified as of 2026-11-12: the implemented precedence is preserved
+unchanged for all of 0.2.x — an explicit `--config`, then the
+`.allow/config.toml` ledger, then ancestor discovery. Advanced opt-in modes and
+any changed precedence are 0.3 work under #3878, not a 0.2.x migration. This
+document still does not select an advanced opt-in mode or a migration deadline.

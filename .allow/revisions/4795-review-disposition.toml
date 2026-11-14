@@ -1,0 +1,15 @@
+# Review-disposition exact-path admission for #4795 / PR #4795.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4795-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:6c4f9f02cfdcbbc5f68a206c65a79d5305ee2e81f5f0550025c4d6af56d78fad"
+reason = "Retain the exact-head 48f4eafd source/CI review (review 5900657146, which covered the c7821b14 policy append) without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-4795-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:7ca730596896428ad133a2290c5ebe1173ea14a8c099d71b110c9463f100580e"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."

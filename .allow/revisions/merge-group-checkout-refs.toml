@@ -1,0 +1,21 @@
+# Exact-path admission for the merge-group checkout-ref guard (#4602).
+# Metadata only; does not waive CI, review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-merge-group-checkout-refs"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:c34f9a574ee0ebdbde9bff0939872e2ec9a1dbc6afb367eb970f48ec07e81795"
+reason = "Retain the pregate guard that rejects merge-group checkout refs falling back to github.ref; it reads workflow text only and grants no execution or release authority."
+
+[[records]]
+allow_ids = ["allow-merge-group-checkout-refs-test"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:ab21d9d5f2a6ffb255df3ea4f2479321ec077106312c534ed548c590cbe832e5"
+reason = "Retain the guard's positive/negative characterization; test-only and does not execute the guard against live workflows."
+
+[[records]]
+allow_ids = ["allow-merge-group-checkout-refs-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:b237aad7c7fbab4d676117d66f418b030b65ff32d375ab0170f65c9c09627327"
+reason = "Self-covering note for the exact-path revision record; governance metadata only."
