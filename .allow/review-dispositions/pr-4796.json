@@ -1,0 +1,35 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4796,
+  "base_ref": "main",
+  "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "head_ref": "fix/pregate-queue-subject-fail-closed",
+  "head_sha": "9251bb944d360d7b4bbf39f16dd7bad888f41ac5",
+  "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "reviewed_diff_digest": "sha256:v2:76c4d9a44254cc485086e2ae65e35e3a283d7175cd5740415798efb68d59b521",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at 9251bb944d360d7b4bbf39f16dd7bad888f41ac5 (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5902812331. It covered the fail-closed pregate, the exact guard contract and the missing-job assertion. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5902812331 - review cargo-allow non-author oppositional exact-head model review of head 9251bb944d360d7b4bbf39f16dd7bad888f41ac5, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, verdict APPROVE. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4796",
+    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head 9251bb944d360d7b4bbf39f16dd7bad888f41ac5, verdict APPROVE in review 5902812331.",
+    "The pregate reads needs.queue-subject.result and fails unless success; the guard contract test asserts the job exists and declares needs: instead of skipping an empty block.",
+    "scripts/test-merge-group-lifecycle.py passes 20/20 on the rebased head and on its merge tree."
+  ],
+  "required_ci": {
+    "owner": "PR #4796 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4796",
+  "reviewed_at_utc": "2026-11-14T07:45:03Z"
+}
