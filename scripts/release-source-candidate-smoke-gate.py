@@ -128,6 +128,21 @@ def sha256_file(path: Path) -> str:
     return "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def version_token(observed: object, prefix: str) -> str | None:
+    """Return the exact version token of a `rustc --version` style string.
+
+    The token is compared for equality, so a suffix such as `-nightly` is a
+    different toolchain rather than a prefix match on the declared version.
+    """
+    if not isinstance(observed, str):
+        return None
+    text = observed.strip()
+    if text.startswith(prefix):
+        text = text[len(prefix):].strip()
+    token = text.split()[0] if text else ""
+    return token or None
+
+
 def load_json(path: Path) -> dict[str, Any]:
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
@@ -236,28 +251,16 @@ def check_harness_receipt(
     if not isinstance(environment, dict):
         refuse(f"{platform} harness receipt has no environment object")
     observed_rustc = environment.get("rustc_version")
-    rustc_version = (
-        observed_rustc[len("rustc "):].strip()
-        if isinstance(observed_rustc, str) and observed_rustc.startswith("rustc ")
-        else observed_rustc
-    )
-    if not isinstance(rustc_version, str) or not rustc_version.startswith(
-        declared_toolchain
-    ):
+    rustc_version = version_token(observed_rustc, "rustc ")
+    if rustc_version != declared_toolchain:
         refuse(
             f"{platform} harness receipt does not prove Rust {declared_toolchain}: "
             f"environment.rustc_version is {observed_rustc!r}; the row's toolchain "
             "label is a declared value, not an attestation"
         )
     observed_cargo = environment.get("cargo_version")
-    cargo_version = (
-        observed_cargo[len("cargo "):].strip()
-        if isinstance(observed_cargo, str) and observed_cargo.startswith("cargo ")
-        else observed_cargo
-    )
-    if not isinstance(cargo_version, str) or not cargo_version.startswith(
-        declared_toolchain
-    ):
+    cargo_version = version_token(observed_cargo, "cargo ")
+    if cargo_version != declared_toolchain:
         refuse(
             f"{platform} harness receipt does not prove Cargo {declared_toolchain}: "
             f"environment.cargo_version is {observed_cargo!r}"

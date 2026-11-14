@@ -342,6 +342,42 @@ class AggregateLawTests(unittest.TestCase):
             )
             self.assertIn("does not match the retained harness receipt bytes", message)
 
+    def test_toolchain_suffix_is_not_a_prefix_match(self):
+        for field, value in (
+            ("rustc_version", "rustc 1.95.0-nightly"),
+            ("cargo_version", "cargo 1.95.0-nightly"),
+        ):
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                rows_dir = self.green_rows(root)
+                harness = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
+                document = json.loads(harness.read_text(encoding="utf-8"))
+                document["environment"][field] = value
+                harness.write_text(json.dumps(document), encoding="utf-8")
+                message = self.refuse_message(
+                    lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
+                )
+                self.assertIn("does not prove", message)
+
+    def test_toolchain_hash_suffix_still_passes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+            harness = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
+            document = json.loads(harness.read_text(encoding="utf-8"))
+            document["environment"]["rustc_version"] = "rustc 1.95.0 (abcdef 2025-01-01)"
+            document["environment"]["cargo_version"] = "cargo 1.95.0 (abcdef 2025-01-01)"
+            harness.write_text(json.dumps(document), encoding="utf-8")
+            row_path = rows_dir / "linux" / "release-source-candidate-smoke-linux.receipt.json"
+            row = json.loads(row_path.read_text(encoding="utf-8"))
+            row["harness_receipt_sha256"] = (
+                "sha256:" + hashlib.sha256(harness.read_bytes()).hexdigest()
+            )
+            row_path.write_text(json.dumps(row), encoding="utf-8")
+            self.assertEqual(
+                self.run_gate(expected_args(rows_dir=str(rows_dir))), 0
+            )
+
     def test_unexpected_platform_row_cannot_widen_the_matrix(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
