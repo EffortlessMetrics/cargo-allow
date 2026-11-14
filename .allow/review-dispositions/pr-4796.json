@@ -11,18 +11,20 @@
   "reviewed_diff_digest": "sha256:v2:8fa69205e7936ee5c4f16474cdcee9d935bd402dbe93f23809f18ac0e4c7f269",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at 9251bb944d360d7b4bbf39f16dd7bad888f41ac5 and the f63601d3 ledger commit (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5902812331. It covered the fail-closed pregate, the exact guard contract and the missing-job assertion. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at f63601d38286905307b60f3d156c186f4875c9df (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5903956497 submitted 2026-11-14T10:57:17Z. It recomputed the bound digest, confirmed the source delta 9251bb94..f63601d3 is exactly policy/allow.toml, .allow/revisions/4796-review-disposition.toml and the disposition, and recomputed the allow-1384 and allow-1385 fingerprints from the canonical v1 serialization. It covered the fail-closed pregate, the exact guard contract and the missing-job assertion. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5902812331 - review cargo-allow non-author oppositional exact-head model review of head 9251bb944d360d7b4bbf39f16dd7bad888f41ac5, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, verdict APPROVE. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5903956497 - review cargo-allow non-author oppositional exact-head model review of head f63601d38286905307b60f3d156c186f4875c9df, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, verdict APPROVE. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4796",
-    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head 9251bb944d360d7b4bbf39f16dd7bad888f41ac5, verdict APPROVE in review 5902812331.",
+    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head f63601d38286905307b60f3d156c186f4875c9df, reviewed diff digest sha256:v2:8fa69205e7936ee5c4f16474cdcee9d935bd402dbe93f23809f18ac0e4c7f269, verdict APPROVE in review 5903956497.",
+    "The CodeRabbit thread at .allow/review-dispositions/pr-4796.json:17 was the citation defect: the record cited review 5902812331, which GitHub has at 9251bb944d360d7b4bbf39f16dd7bad888f41ac5, while binding f63601d3. This record-only commit cites the review of the bound head; review replies and resolves the thread.",
     "The pregate reads needs.queue-subject.result and fails unless success; the guard contract test asserts the job exists and declares needs: instead of skipping an empty block.",
+    "Non-blocking threads retained, not repaired: ci.yml:98 is partial-rerun artifact naming (full runs are correct and the required contexts are green on a full run); ci_pregate_workflow_tests.rs:282 asks for negative controls beyond the structural guard (test strength, not a source defect).",
     "scripts/test-merge-group-lifecycle.py passes 20/20 on the rebased head and on its merge tree."
   ],
   "required_ci": {
@@ -31,6 +33,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4796",
-  "reviewed_at_utc": "2026-11-14T07:45:03Z"
+  "reviewed_at_utc": "2026-11-14T10:57:17Z"
 }
-
