@@ -62,6 +62,15 @@ fn job_block(workflow: &str, job: &str) -> String {
     block
 }
 
+/// Return the job-level `if:` value, if the job has one. Step-level `if:`
+/// keys are indented deeper, so only a four-space `if:` counts.
+fn job_level_if(block: &str) -> Option<String> {
+    block
+        .lines()
+        .find_map(|line| line.strip_prefix("    if:"))
+        .map(|value| value.trim().to_string())
+}
+
 /// The measured-heavy set from the #3835 baseline: these must gate on
 /// the pre-gate.
 const HEAVY_JOBS: [&str; 12] = [
@@ -225,12 +234,16 @@ fn ci_pregate_workflow_does_not_own_proof_routing() {
 }
 
 #[test]
-fn required_contexts_are_not_skippable_by_a_non_required_dependency() {
+fn required_contexts_with_needs_carry_a_job_level_guard_and_pregate_requires_queue_subject() {
     // A required context with `needs:` and no job-level `if:` inherits the
     // default success(), so a failed non-required dependency skips it and
-    // GitHub counts the skipped required check as passing. Every required
-    // ci.yml context with a dependency must run on !cancelled() and, for the
-    // queue subject, consume the artifact or fail.
+    // GitHub counts the skipped required check as passing. The guard must be
+    // exactly !cancelled(): a prefix or conjunction match would let
+    // `!cancelled() && needs.queue-subject.result == 'success'` reintroduce
+    // the skip, and `continue-on-error: true` would swallow the failure.
+    // Scope note: this binds required contexts that declare `needs:` here; it
+    // does not claim that no required context can be skipped for any reason,
+    // such as a failed package-smoke.
     let root = workspace_root();
     let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
     for job in ["pregate", "test"] {
@@ -238,12 +251,34 @@ fn required_contexts_are_not_skippable_by_a_non_required_dependency() {
         if !block.contains("needs:") {
             continue;
         }
+        let guard = job_level_if(&block).unwrap_or_default();
         assert!(
-            block.contains("\n    if: ${{ !cancelled()"),
-            "{job} is a required context with needs: but no job-level !cancelled() guard; a failed non-required dependency would skip it"
+            guard.starts_with("${{ !cancelled()"),
+            "{job} is a required context with needs: and must carry a job-level !cancelled() guard; a missing guard lets a failed dependency skip it"
+        );
+        assert!(
+            !guard.contains("needs.queue-subject.result"),
+            "{job} must not gate on needs.queue-subject.result: queue-subject is not a required context, so that conjunct reintroduces the skip this guard exists to prevent"
+        );
+        assert!(
+            !block
+                .lines()
+                .any(|line| line.starts_with("    continue-on-error:")),
+            "{job} must not swallow a failed dependency with a job-level continue-on-error"
         );
     }
+    // The pregate's only dependency is the non-required queue-subject, so its
+    // guard must be exactly !cancelled() with no result conjunct at all.
+    assert_eq!(
+        job_level_if(&pregate_block(&workflow)).as_deref(),
+        Some("${{ !cancelled() }}"),
+        "the pregate must run on exactly !cancelled(); any conjunct on a non-required dependency can skip this required context"
+    );
     let pregate = pregate_block(&workflow);
+    assert!(
+        pregate.contains("needs.queue-subject.result"),
+        "the pregate must read needs.queue-subject.result; an always() upload can leave the artifact behind after the job fails"
+    );
     assert!(
         pregate.contains("download-artifact"),
         "the pregate must download the queue-subject artifact"
