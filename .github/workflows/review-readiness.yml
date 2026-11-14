@@ -2,9 +2,9 @@ name: Review readiness
 
 # #3844: project the typed exact-head review state (#3843) onto one
 # stable `review-readiness` check context, published as ONE
-# authoritative GitHub check run at the PR head so success, neutral
-# (missing disposition — never clean), and failure are all visible
-# conclusions. Pushes to main recompute all open pull requests against
+# authoritative GitHub check run at the PR head. The required context
+# publishes failure for missing or neutral (unproven) dispositions; only
+# affirmative readiness may publish success. Pushes to main recompute all open pull requests against
 # the new merge base so base movement is checked during acquisition and
 # before publication. These
 # observations are not an atomic lock against later movement or concurrent
