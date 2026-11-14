@@ -1,0 +1,15 @@
+# Review-disposition exact-path admission for the #4793 toolchain pin (PR #4816).
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4816-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:324d8cb656b762594c45eb2ce90bcebcde6ac4ff724fbf2a86167b5bc481bbe2"
+reason = "Retain the exact-head toolchain-pin review without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-4816-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:a566f138ebc0af4c621350601ae4574048add8d4b8ccca44d056e2149a22c97e"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."

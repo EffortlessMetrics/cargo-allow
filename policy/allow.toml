@@ -30041,3 +30041,47 @@ glob = ".allow/revisions/4794-review-disposition.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-4816-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4816.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for the #4793 toolchain pin with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+evidence = ["pr:4816", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4816.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4816.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4816-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4816-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact self-covering note for the source-controlled review disposition receipt of the #4793 toolchain pin; governance metadata only."
+evidence = ["pr:4816"]
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4816-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4816-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
