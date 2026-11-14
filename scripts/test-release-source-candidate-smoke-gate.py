@@ -390,5 +390,70 @@ class AggregateLawTests(unittest.TestCase):
             self.assertIn("publication refuses", message)
 
 
+class WorkflowRowLayoutTests(unittest.TestCase):
+    """Pin the uploaded row layout to what the aggregate gate reads.
+
+    ``check_row_receipt`` reads ``rows/<platform>/release-source-candidate-
+    smoke-<platform>.receipt.json`` and ``rows/<platform>/source-candidate-
+    smoke.receipt.json``. Uploading those files by their scattered paths lets
+    the artifact action strip the common ``target/`` prefix and nest them, so
+    the job must stage one flat directory and upload that directory."""
+
+    ARTIFACT_NAME = "source-candidate-smoke-receipt-${{ matrix.platform }}"
+
+    def setUp(self) -> None:
+        import yaml
+
+        workflow = yaml.safe_load(
+            (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        )
+        self.steps = workflow["jobs"]["source-candidate-smoke"]["steps"]
+        self.upload = next(
+            step
+            for step in self.steps
+            if "upload-artifact@" in str(step.get("uses", ""))
+            and step.get("with", {}).get("name") == self.ARTIFACT_NAME
+        )
+
+    def test_the_row_artifact_uploads_one_flat_staged_directory(self):
+        upload_path = self.upload["with"]["path"]
+        self.assertIsInstance(upload_path, str)
+        self.assertNotIn("\n", upload_path)
+        self.assertEqual(upload_path, upload_path.strip())
+        for marker in "*?[":
+            self.assertNotIn(marker, upload_path)
+        staged = upload_path.rstrip("/")
+        self.assertTrue(staged, "the upload path cannot be the filesystem root")
+
+        index = self.steps.index(self.upload)
+        stage = next(
+            (
+                step
+                for step in self.steps[:index]
+                if step.get("name") == "Stage the platform smoke row for the aggregate gate"
+            ),
+            None,
+        )
+        self.assertIsNotNone(stage, "the row upload needs a staging step before it")
+        script = stage["run"]
+        self.assertIn(f'stage="{staged}"', script)
+        self.assertEqual(stage.get("if"), "always()")
+        self.assertEqual(stage.get("shell"), "bash")
+        for required in (
+            "release-source-candidate-smoke-${{ matrix.platform }}.receipt.json",
+            "source-candidate-smoke.receipt.json",
+        ):
+            self.assertIn(required, script)
+
+    def test_no_second_upload_reuses_the_row_artifact_name(self):
+        uploads = [
+            step
+            for step in self.steps
+            if "upload-artifact@" in str(step.get("uses", ""))
+            and step.get("with", {}).get("name") == self.ARTIFACT_NAME
+        ]
+        self.assertEqual(len(uploads), 1)
+
+
 if __name__ == "__main__":
     unittest.main()
