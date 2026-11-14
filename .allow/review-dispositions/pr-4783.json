@@ -4,7 +4,7 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4783,
   "base_ref": "main",
-  "base_sha": "04201b753ba38f5197011ff2494969128d2feb58",
+  "base_sha": "53af39787e5d0550f43077c494724df80637ea77",
   "head_ref": "fix/merge-group-checkout-refs",
   "head_sha": "4875cbaf0561142468e400d3b528b6903eb40992",
   "merge_base": "04201b753ba38f5197011ff2494969128d2feb58",
