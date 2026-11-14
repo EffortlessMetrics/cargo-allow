@@ -29627,6 +29627,114 @@ line = 1
 column = 1
 
 [[allow]]
+id = "allow-merge-group-checkout-refs-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/merge-group-checkout-refs.toml"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Self-covering exact-fingerprint revision for the checkout-ref guard admission; governance metadata only, no proof, admission, merge or release waiver."
+evidence = ["issue:4602"]
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/merge-group-checkout-refs.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/merge-group-checkout-refs.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-merge-group-checkout-refs"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/check-merge-group-checkout-refs.py"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Pregate guard: rejects merge-group checkout refs that fall back to github.ref or github.head_ref without a merge_group term. Reads workflow text only; no execution, network or release authority."
+evidence = ["issue:4602"]
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/check-merge-group-checkout-refs.py"
+target_fingerprint = "py"
+glob = "scripts/check-merge-group-checkout-refs.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-merge-group-checkout-refs-test"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-check-merge-group-checkout-refs.py"
+owner = "core/ci"
+classification = "reviewed_exception"
+reason = "Characterization for the merge-group checkout-ref guard: positive and negative ref forms, and the no-merge_group exclusion. Test-only; no execution of the guard against live workflows."
+evidence = ["issue:4602"]
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-check-merge-group-checkout-refs.py"
+target_fingerprint = "py"
+glob = "scripts/test-check-merge-group-checkout-refs.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1376"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4783.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for PR #4783 at 496e9f70 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4783.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4783.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-1377"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4783-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Exact self-covering note for the source-controlled review disposition receipt at 496e9f70; governance metadata only."
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4783-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4783-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
 id = "allow-4784-review-disposition"
 kind = "non_rust_file"
 family = "configuration"
@@ -29665,6 +29773,95 @@ ast_kind = "tracked_file"
 symbol = ".allow/revisions/4784-review-disposition.toml"
 target_fingerprint = "toml"
 glob = ".allow/revisions/4784-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+
+[[allow]]
+id = "allow-4778-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4778.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for PR #4778 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+evidence = ["pr:4778", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4778.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4778.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4778-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4778-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records the exact-file #4778 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
+evidence = ["pr:4778", "issue:3768"]
+created = "2026-11-13"
+review_after = "2027-02-11"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4778-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4778-review-disposition.toml"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4795-review-disposition"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/review-dispositions/pr-4795.json"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records exact-head review evidence for PR #4795 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
+evidence = ["pr:4795", "doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/review-dispositions/pr-4795.json"
+target_fingerprint = "json"
+glob = ".allow/review-dispositions/pr-4795.json"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-4795-review-revision"
+kind = "non_rust_file"
+family = "configuration"
+path = ".allow/revisions/4795-review-disposition.toml"
+owner = "core/review"
+classification = "reviewed_exception"
+reason = "Records the exact-file #4795 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
+evidence = ["pr:4795", "issue:4794"]
+created = "2026-11-14"
+review_after = "2027-02-12"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".allow/revisions/4795-review-disposition.toml"
+target_fingerprint = "toml"
+glob = ".allow/revisions/4795-review-disposition.toml"
 
 [allow.last_seen]
 line = 1
