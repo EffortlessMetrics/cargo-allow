@@ -1,0 +1,36 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4802,
+  "base_ref": "main",
+  "base_sha": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
+  "head_ref": "fix/2473-windows-source-candidate-smoke",
+  "head_sha": "c5f1c626819969b064315aa9c0896006a741d7c3",
+  "merge_base": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
+  "reviewed_diff_digest": "sha256:v2:70a453256d35d866e2ba86570abf383374ac397b682d3d321be133cc3f5af09d",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4802 at c5f1c626819969b064315aa9c0896006a741d7c3 (base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4), verdict APPROVE, review 5906891729 submitted 2026-11-14T20:15:58Z. That review is at the bound head and covers the post-train merge resolution: main's 1393 ledger entries verbatim and in order, then this branch's two exact-path entries. It named one non-blocking coverage gap: no test asserts the env pin stays. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4802#pullrequestreview-5906891729 - review cargo-allow non-author oppositional exact-head model review of head c5f1c626819969b064315aa9c0896006a741d7c3, base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4, reviewed_diff_digest=sha256:v2:70a453256d35d866e2ba86570abf383374ac397b682d3d321be133cc3f5af09d, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4802 - reviewed at c5f1c626819969b064315aa9c0896006a741d7c3, verdict APPROVE in review 5906891729.",
+    "Reviewed pair base 757dbabc17a94d313c208274bf3c25f0360ee3a4, head c5f1c626819969b064315aa9c0896006a741d7c3, reviewed diff digest sha256:v2:70a453256d35d866e2ba86570abf383374ac397b682d3d321be133cc3f5af09d recomputed with the pinned v2 recipe, verdict APPROVE in review 5906891729.",
+    "Zero unresolved review threads at this head (GitHub reviewThreads read, 2026-11-14T20:40Z). The four threads the earlier review recorded, including the CodeRabbit remove_tree thread, remain resolved.",
+    "The env pin is the steward's condition for #4802 superseding #4798: rust-toolchain.toml pins the floating stable channel and outranks the action's rustup default, so the versioned toolchain: input alone is inert and the receipt's 1.95.0 attestation was unenforced. RUSTUP_TOOLCHAIN from the matrix outranks the file.",
+    "Not proven here and not claimed: no local execution of the producer or the gate suite; the env pin and matrix are read from the workflow, and the aggregate evidence is the author's recorded dispatches plus the green pregate on this head. No test asserts the env pin stays - recorded as a non-blocking coverage gap, not fixed here. This record is review evidence only, does not merge, and does not replace the required CI observation at the pushed head."
+  ],
+  "required_ci": {
+    "owner": "PR #4802 orchestrator: verify the exact-head review, live review-readiness, applicable required checks, threads, and merge queue composition after this ledger-only commit, and make the separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4802"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4802",
+  "reviewed_at_utc": "2026-11-14T20:15:58Z"
+}

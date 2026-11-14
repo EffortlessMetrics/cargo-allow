@@ -324,6 +324,11 @@ jobs:
             toolchain: "1.95.0"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
+    # rust-toolchain.toml pins the floating stable channel and outranks the
+    # action's rustup default, so the versioned toolchain: input alone is inert.
+    # The env var outranks the file and makes the 1.95.0 attestation true.
+    env:
+      RUSTUP_TOOLCHAIN: ${{ matrix.toolchain }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -343,7 +348,8 @@ jobs:
         run: |
           set -euo pipefail
           bin="${PWD}/target/package-candidate-smoke/install/bin/cargo-allow"
-          [[ -x "${bin}" ]] || bin="${bin}.exe"
+          # Git Bash resolves the .exe sibling for -x/-f, so test it explicitly.
+          if [[ -f "${bin}.exe" ]]; then bin="${bin}.exe"; fi
           CARGO_ALLOW_BIN="${bin}" bash scripts/source-candidate-smoke.sh
       - name: Record the platform smoke receipt
         if: always()
@@ -381,7 +387,20 @@ jobs:
           if packaged_path.is_file():
               for line in packaged_path.read_text(encoding="utf-8").splitlines():
                   if line.startswith("packaged="):
-                      packaged.append(line[len("packaged="):].split("-", 1)[0])
+                      # Crate names contain hyphens, so strip the trailing
+                      # -<version>.crate instead of splitting on the first one:
+                      # take the right-most hyphen segment that starts with a
+                      # digit, which keeps a pre-release suffix with its version.
+                      stem = line[len("packaged="):]
+                      if not stem.endswith(".crate"):
+                          raise SystemExit(f"unparseable packaged crate: {line}")
+                      parts = stem[: -len(".crate")].split("-")
+                      for index in range(len(parts) - 1, 0, -1):
+                          if parts[index][:1].isdigit():
+                              packaged.append("-".join(parts[:index]))
+                              break
+                      else:
+                          raise SystemExit(f"unparseable packaged crate: {line}")
           row = {
               "repository": os.environ["EXPECTED_REPOSITORY"],
               "ref": os.environ["EXPECTED_REF"],
@@ -406,14 +425,35 @@ jobs:
           out.write_bytes((json.dumps(row, indent=2) + "\n").encode("utf-8"))
           print(f"platform smoke receipt: {out} result={row['result']}")
           PY
+      # The aggregate gate reads rows/<platform>/release-source-candidate-smoke-
+      # <platform>.receipt.json and rows/<platform>/source-candidate-smoke.receipt.json.
+      # Uploading the three files by their scattered paths would make the action
+      # strip their common target/ prefix and nest them under cargo-allow/,
+      # source-candidate-smoke/, and package-candidate-smoke/, which the gate
+      # cannot find. Stage them flat in one directory so the artifact root is
+      # exactly the row the gate expects.
+      - name: Stage the platform smoke row for the aggregate gate
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="target/source-candidate-smoke-row"
+          rm -rf "${stage}"
+          mkdir -p "${stage}"
+          cp "target/cargo-allow/release-source-candidate-smoke-${{ matrix.platform }}.receipt.json" "${stage}/"
+          for retained in \
+            target/source-candidate-smoke/source-candidate-smoke.receipt.json \
+            target/package-candidate-smoke/package-candidate-smoke.receipt.txt; do
+            if [[ -f "${retained}" ]]; then
+              cp "${retained}" "${stage}/"
+            fi
+          done
+          ls -la "${stage}"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: source-candidate-smoke-receipt-${{ matrix.platform }}
-          path: |
-            target/cargo-allow/release-source-candidate-smoke-${{ matrix.platform }}.receipt.json
-            target/source-candidate-smoke/source-candidate-smoke.receipt.json
-            target/package-candidate-smoke/package-candidate-smoke.receipt.txt
+          path: target/source-candidate-smoke-row
           if-no-files-found: error
 
   # #2267 aggregate gate: publication may start only when every required

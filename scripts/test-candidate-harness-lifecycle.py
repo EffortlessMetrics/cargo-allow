@@ -225,14 +225,14 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
             race_path.unlink()
         original_rmtree(foreign)
     else:
-        # Windows and other unsupported platforms must refuse matching
-        # removal; the payload remains untouched.
-        reject(
+        # The walker provides symlink-safe deletion where the stdlib does
+        # not, so matching removal succeeds on Windows too.
+        run(
             "remove", "--root", str(root), "--path", str(owned),
             "--purpose", "positive", "--token", allocation["token"],
         )
-        if not (owned / "payload").is_file():
-            raise SystemExit("unsupported platform did not preserve payload")
+        if owned.exists():
+            raise SystemExit("matching marker did not remove exact owned directory")
 
     # CI pre-creates the canonical package-set parent.  Allocation owns only
     # a fresh child and cleanup must leave that parent (and its inputs) intact.
@@ -252,8 +252,10 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         if child_path.exists():
             raise SystemExit("matching marker did not remove package-set child")
     else:
-        reject("remove", "--root", str(package_parent), "--path", str(child_path),
-               "--purpose", "exact-candidate-package-set", "--token", child["token"])
+        run("remove", "--root", str(package_parent), "--path", str(child_path),
+            "--purpose", "exact-candidate-package-set", "--token", child["token"])
+        if child_path.exists():
+            raise SystemExit("matching marker did not remove package-set child")
     if not package_parent.is_dir() or not parent_sentinel.is_file():
         raise SystemExit("parent cleanup removed pre-created package-set input")
 
@@ -271,8 +273,10 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
         if source_child_path.exists():
             raise SystemExit("matching marker did not remove source-candidate child")
     else:
-        reject("remove", "--root", str(source_parent), "--path", str(source_child_path),
-               "--purpose", "source-candidate-smoke", "--token", source_child["token"])
+        run("remove", "--root", str(source_parent), "--path", str(source_child_path),
+            "--purpose", "source-candidate-smoke", "--token", source_child["token"])
+        if source_child_path.exists():
+            raise SystemExit("matching marker did not remove source-candidate child")
     if not source_parent.is_dir() or source_sentinel.read_text(encoding="utf-8") != "precreated\n":
         raise SystemExit("source-candidate parent cleanup removed pre-created output")
 
@@ -294,11 +298,10 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
     )
     if Path(claimed["path"]) != caller_consumer:
         raise SystemExit("caller consumer claim changed the requested path")
-    if __import__("shutil").rmtree.avoids_symlink_attacks:
-        run("remove", "--root", str(caller_consumer.parent), "--path", str(caller_consumer),
-            "--purpose", "source-candidate-consumer", "--token", claimed["token"])
-        if caller_consumer.exists():
-            raise SystemExit("claimed caller consumer was not removed")
+    run("remove", "--root", str(caller_consumer.parent), "--path", str(caller_consumer),
+        "--purpose", "source-candidate-consumer", "--token", claimed["token"])
+    if caller_consumer.exists():
+        raise SystemExit("claimed caller consumer was not removed")
     reject("validate-caller", "--repository", str(ROOT), "--path", str(ROOT))
     reject("validate-caller", "--repository", str(ROOT),
            "--path", str(ROOT / "crates" / "cargo-allow"))
@@ -431,9 +434,8 @@ with tempfile.TemporaryDirectory(prefix="cargo-allow-owned-dir-test.") as tempor
            "--token", snapshot["token"], "--git-head", "forged", "--repository", str(ROOT))
     reject("verify", "--root", str(root), "--path", str(root), "--purpose", "snapshot-auth",
            "--token", snapshot["token"], "--git-head", snapshot["git_head"], "--repository", str(ROOT))
-    if __import__("shutil").rmtree.avoids_symlink_attacks:
-        run("remove", "--root", str(root), "--path", snap_path,
-            "--purpose", "snapshot-auth", "--token", snapshot["token"])
+    run("remove", "--root", str(root), "--path", snap_path,
+        "--purpose", "snapshot-auth", "--token", snapshot["token"])
 
     poison_root = root / "poisoned-git-environment"
     poison_root.mkdir()
@@ -582,5 +584,57 @@ with tempfile.TemporaryDirectory(
         LIFECYCLE.run_git = original_run_git
     if len(removed_worktrees) != 1 or removed_worktrees[0].exists():
         raise SystemExit("post-registration worktree drift did not clean up exactly once")
+
+# A refusal inside the deletion walker must not unlink the ownership marker
+# first: the operator's retry has to load the marker and refuse the same entry
+# again instead of failing on a now-unmarked directory.
+with tempfile.TemporaryDirectory(prefix="cargo-allow-marker-order.") as order_temporary:
+    order_root = Path(order_temporary).resolve()
+    order_allocation = json.loads(
+        run("allocate", "--root", str(order_root), "--purpose", "marker-order").stdout
+    )
+    order_owned = Path(order_allocation["path"])
+    (order_owned / "payload").write_text("owned\n", encoding="utf-8")
+    original_scandir = LIFECYCLE.os.scandir
+    original_chmod = LIFECYCLE.os.chmod
+
+    class MarkerFirstScandir:
+        """Yield the ownership marker before every other entry."""
+
+        def __init__(self, path):
+            self._entries = list(original_scandir(path))
+
+        def __enter__(self):
+            self._entries.sort(key=lambda entry: entry.name != LIFECYCLE.MARKER)
+            return iter(self._entries)
+
+        def __exit__(self, *exc_info):
+            self._entries.clear()
+            return False
+
+    def refusing_chmod(path, mode):
+        if Path(path).name == "payload":
+            raise PermissionError(errno.EACCES, "simulated refusal", str(path))
+        return original_chmod(path, mode)
+
+    LIFECYCLE.os.scandir = MarkerFirstScandir
+    LIFECYCLE.os.chmod = refusing_chmod
+    try:
+        try:
+            LIFECYCLE.remove_tree(order_owned, owned_root=True)
+        except (SystemExit, OSError):
+            pass
+        else:
+            raise SystemExit("marker-order refusal unexpectedly succeeded")
+    finally:
+        LIFECYCLE.os.scandir = original_scandir
+        LIFECYCLE.os.chmod = original_chmod
+    if not (order_owned / LIFECYCLE.MARKER).is_file():
+        raise SystemExit("refusal unlinked the ownership marker before the refused entry")
+    if not (order_owned / "payload").is_file():
+        raise SystemExit("marker-order refusal deleted owned payload")
+    LIFECYCLE.remove(order_root, order_owned, "marker-order", order_allocation["token"])
+    if order_owned.exists():
+        raise SystemExit("marker-order recovery did not remove the owned directory")
 
 print("ok candidate harness owned-directory containment")
