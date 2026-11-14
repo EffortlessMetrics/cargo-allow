@@ -40,7 +40,7 @@ def _linux_userns_usable() -> bool:
         return False
     try:
         completed = subprocess.run(
-            [unshare, "-Urm", "--", sys.executable, "-c", "pass"],
+            [unshare, "-Urm", "--", "true"],
             capture_output=True, timeout=30, check=False,
         )
     except (OSError, subprocess.SubprocessError):
