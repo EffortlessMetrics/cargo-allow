@@ -456,7 +456,6 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
     let proof = &receipt.zero_mutation_proof;
     require(
         [
-            proof.tag_mutation_prevented,
             proof.token_read_prevented,
             proof.cargo_publish_prevented,
             proof.registry_mutation_prevented,
@@ -466,7 +465,11 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         ]
         .into_iter()
         .all(|value| !value),
-        "unproven zero-mutation facts must remain false",
+        "the six unmeasured zero-mutation facts must remain false",
+    )?;
+    require(
+        !proof.tag_mutation_prevented || cfg!(target_os = "linux"),
+        "tag prevention may be measured only by the Linux worker profile",
     )?;
 
     // The two characterization-only phases can never manufacture

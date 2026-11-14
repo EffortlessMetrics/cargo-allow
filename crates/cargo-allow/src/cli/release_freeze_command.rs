@@ -3651,7 +3651,7 @@ mod compose_fixture_tests {
             &root,
             &args,
             &subject,
-            "zero_mutation_proof.tag_mutation_prevented",
+            "zero_mutation_proof.token_read_prevented",
         )?;
 
         for (pointer, replacement, diagnostic) in [

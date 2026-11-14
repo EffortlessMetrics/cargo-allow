@@ -395,13 +395,18 @@ def _file_characterization(path: Path) -> str:
         return PHASE_INSTRUMENT_FAILURE
 
 
+def _filtered_environment(environment: Any) -> dict[str, str]:
+    """Exclude the selected token by name before retrieving any value."""
+    return {name: environment[name] for name in environment if name != CARGO_TOKEN_ENV}
+
+
 def _sanitized_environment() -> dict[str, str]:
     """Exclude the selected token before retrieving any environment values.
 
     This is not isolation from alternate credential sources or proof of the
     rehearsal's seven broader zero-mutation obligations.
     """
-    return {name: os.environ[name] for name in os.environ if name != CARGO_TOKEN_ENV}
+    return _filtered_environment(os.environ)
 
 
 def _run_characterization(command: list[str]) -> str:
@@ -1363,6 +1368,378 @@ CHARACTERIZATION_PHASES = frozenset({
     "authorization_boundary",
 })
 
+ZERO_MUTATION_FLAGS = (
+    "tag_mutation_prevented",
+    "token_read_prevented",
+    "cargo_publish_prevented",
+    "registry_mutation_prevented",
+    "github_release_mutation_prevented",
+    "live_setting_mutation_prevented",
+    "external_repository_mutation_prevented",
+)
+
+
+def _quarantine_root() -> Path:
+    """Create one disposable root for the reversible mutation drills."""
+    return Path(tempfile.mkdtemp(prefix="rehearsal-quarantine-"))
+
+
+def _argv_denied(operation: str, command: list[str], root: Path) -> bool:
+    """Attempt one mutation through the selected invocation boundary."""
+    try:
+        _run_process(
+            command, operation=operation, cwd=root,
+            env=_sanitized_environment(), capture_output=True,
+            text=True, timeout=15, check=False,
+        )
+    except OSError:
+        return True
+    return False
+
+
+class _RecordingEndpoint:
+    """Local TCP listener that records whether a direct socket reached it."""
+
+    def __init__(self) -> None:
+        import socket
+        import threading
+
+        self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._socket.bind(("127.0.0.1", 0))
+        self._socket.listen(1)
+        self._socket.settimeout(5)
+        self.port = self._socket.getsockname()[1]
+        self.received: list[bytes] = []
+        self._thread = threading.Thread(target=self._accept, daemon=True)
+        self._thread.start()
+
+    def _accept(self) -> None:
+        try:
+            connection, _ = self._socket.accept()
+            with connection:
+                connection.settimeout(5)
+                self.received.append(connection.recv(64))
+        except OSError:
+            pass
+
+    def close(self) -> None:
+        self._socket.close()
+        self._thread.join(timeout=5)
+
+
+def _direct_socket_denied(port: int) -> bool:
+    """Attempt one direct socket write; True when the connection was refused."""
+    import socket
+
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=2) as connection:
+            connection.sendall(b"mutation")
+        return False
+    except OSError:
+        return True
+
+
+def _drill_result(
+    *, argv_denied: bool, direct_denied: bool, boundary: str, reason: str,
+    direct_route_discriminating: bool, attempted: bool = True,
+) -> dict[str, Any]:
+    # A drill whose direct route runs inside the quarantine the drill itself
+    # created cannot be denied by a profile that permits that root, so it can
+    # never observe prevention; its false flag is an absence of measurement,
+    # not evidence of confinement. Every caller states this explicitly.
+    prevented = (
+        attempted and argv_denied and direct_denied and direct_route_discriminating
+    )
+    return {
+        "attempted": attempted,
+        "argv_denied": argv_denied,
+        "direct_denied": direct_denied,
+        "attempt_succeeded": attempted and not direct_denied,
+        "direct_route_discriminating": direct_route_discriminating,
+        "canary_unchanged": direct_denied,
+        "prevented": prevented,
+        "boundary": boundary,
+        "reason": (
+            "denied at the selected invocation boundary and on the direct route"
+            if prevented else reason
+        ),
+    }
+
+
+TAG_WORKER_SCRIPT = '''\
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+# The supervisor already applied the read-only mount and dropped capabilities
+# before this exec. The worker first tries to remount read-write: if that
+# succeeds, the drill is not discriminating and must not claim prevention.
+repo = Path(sys.argv[1])
+remount = subprocess.run(
+    ["mount", "-o", "remount,bind,rw", str(repo)],
+    capture_output=True, text=True,
+)
+remount_denied = remount.returncode != 0
+target = repo / ".git" / "refs" / "tags" / "canary"
+try:
+    target.write_text("0" * 40, encoding="utf-8")
+    direct_denied = False
+except OSError:
+    direct_denied = True
+print(json.dumps({
+    "direct_denied": direct_denied,
+    "canary_unchanged": not target.exists(),
+    "remount_denied": remount_denied,
+}))
+'''
+
+TAG_SUPERVISOR_SCRIPT = '''\
+set -euo pipefail
+repo="$1"
+worker="$2"
+mount --bind "$repo" "$repo"
+mount -o remount,bind,ro "$repo"
+# Drop every capability, including CAP_SYS_ADMIN, before the worker execs.
+# The worker therefore cannot remount the repository read-write.
+exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all \\
+    --no-new-privs python3 "$worker" "$repo"
+'''
+
+
+def _linux_tag_launchers() -> list[tuple[list[str], str]]:
+    """Select Linux isolation launchers, strongest first."""
+    if not sys.platform.startswith("linux"):
+        return []
+    unshare = shutil.which("unshare")
+    setpriv = shutil.which("setpriv")
+    if unshare is None or shutil.which("mount") is None or setpriv is None:
+        return []
+    # Only the unprivileged user+mount namespace is used. A passwordless-sudo
+    # fallback would run the supervisor as real root, which is a stronger
+    # privilege than the drill is meant to model; when userns is blocked the
+    # drill stays unmeasured and the flag stays false with a named reason.
+    return [
+        ([unshare, "-Urm", "--", "bash"], "unprivileged user+mount namespace"),
+    ]
+
+
+def _linux_tag_worker() -> str | None:
+    """Select the Linux isolation launcher, or None when unavailable."""
+    launchers = _linux_tag_launchers()
+    return launchers[0][0][0] if launchers else None
+
+
+def _drill_tag(root: Path) -> dict[str, Any]:
+    repo = root / "tag-canary"
+    ref = repo / ".git" / "refs" / "tags" / "canary"
+    ref.parent.mkdir(parents=True)
+    argv = _argv_denied("tag-mutation", ["git", "tag", "canary"], root)
+    launchers = _linux_tag_launchers()
+    boundary = "supervised read-only mount with dropped capabilities"
+    if not launchers:
+        return _drill_result(
+            argv_denied=argv, direct_denied=False,
+            boundary=boundary,
+            reason=(
+                "no Linux supervisor profile (unshare/mount/setpriv) is "
+                "available on this host, so the direct Git metadata route is "
+                "unmeasured"
+            ),
+            direct_route_discriminating=False,
+        )
+    worker = root / "tag-worker.py"
+    worker.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
+    supervisor = root / "tag-supervisor.sh"
+    supervisor.write_text(TAG_SUPERVISOR_SCRIPT, encoding="utf-8")
+    try:
+        root.chmod(0o755)
+        worker.chmod(0o644)
+        supervisor.chmod(0o755)
+    except OSError:
+        pass
+    detail = "no supervisor stderr"
+    for launcher, description in launchers:
+        try:
+            completed = subprocess.run(
+                [*launcher, str(supervisor), str(repo), str(worker)],
+                cwd=root, env=_sanitized_environment(),
+                capture_output=True, text=True, timeout=120, check=False,
+            )
+        except (OSError, subprocess.SubprocessError):
+            completed = None
+        if completed is None or completed.returncode != 0:
+            if completed is not None and completed.stderr.strip():
+                detail = completed.stderr.strip().splitlines()[-1][:200]
+            continue
+        try:
+            observed = json.loads(completed.stdout)
+        except json.JSONDecodeError:
+            detail = "the worker returned no usable observation"
+            continue
+        direct = bool(observed.get("direct_denied"))
+        unchanged = bool(observed.get("canary_unchanged"))
+        remount_denied = bool(observed.get("remount_denied"))
+        result = _drill_result(
+            argv_denied=argv, direct_denied=direct and unchanged,
+            boundary=f"{boundary} ({description})",
+            reason=(
+                "the supervised worker could remount the repository "
+                "read-write, so the denial is not discriminating"
+                if not remount_denied else
+                "the supervised worker did not observe the direct Git "
+                "metadata write denied"
+            ),
+            direct_route_discriminating=remount_denied,
+        )
+        result["canary_unchanged"] = unchanged
+        result["remount_denied"] = remount_denied
+        return result
+    return _drill_result(
+        argv_denied=argv, direct_denied=False,
+        boundary=boundary,
+        reason=(
+            "the Linux supervisor did not complete, so the direct Git "
+            f"metadata denial is unproven: {detail}"
+        ),
+        direct_route_discriminating=False,
+    )
+
+
+def _drill_token(root: Path) -> dict[str, Any]:
+    token_file = root / "token-canary"
+    token_file.write_text("canary-token", encoding="utf-8")
+    child_env = _filtered_environment(
+        {CARGO_TOKEN_ENV: "canary-token", "PATH": "canary"}
+    )
+    boundary = _argv_denied(
+        "token-read", [sys.executable, "-c", "print(1)"], root,
+    )
+    filtered = CARGO_TOKEN_ENV not in child_env
+    try:
+        with token_file.open("rb") as handle:
+            handle.read(1)
+        direct = False
+    except OSError:
+        direct = True
+    result = _drill_result(
+        argv_denied=boundary and filtered, direct_denied=direct,
+        boundary="selected token environment entry and child environment",
+        reason=(
+            "a direct read retrieved the token file the drill itself created "
+            "in its quarantine, so this route cannot be denied by a profile "
+            "that permits that root"
+        ),
+        direct_route_discriminating=False,
+    )
+    result["environment_filtered"] = filtered
+    return result
+
+
+def _drill_network(
+    root: Path, *, operation: str, command: list[str], boundary: str, reason: str,
+) -> dict[str, Any]:
+    endpoint = _RecordingEndpoint()
+    try:
+        argv = _argv_denied(operation, command, root)
+        direct = _direct_socket_denied(endpoint.port)
+    finally:
+        endpoint.close()
+    canary_unchanged = not endpoint.received
+    result = _drill_result(
+        argv_denied=argv, direct_denied=direct and canary_unchanged,
+        boundary=boundary, reason=reason,
+        direct_route_discriminating=True,
+    )
+    result["canary_unchanged"] = canary_unchanged
+    return result
+
+
+def _drill_external(root: Path) -> dict[str, Any]:
+    outside = Path(tempfile.mkdtemp(prefix="rehearsal-outside-"))
+    try:
+        argv = _argv_denied(
+            "external-repository-mutation", ["git", "push", "origin", "HEAD"], root,
+        )
+        canary = outside / "canary"
+        try:
+            canary.write_text("mutated", encoding="utf-8")
+        except OSError:
+            pass
+        direct = not canary.exists()
+    finally:
+        shutil.rmtree(outside, ignore_errors=True)
+    return _drill_result(
+        argv_denied=argv, direct_denied=direct,
+        boundary="remote push and writes outside owned roots",
+        reason="a direct write created a file outside the owned root",
+        direct_route_discriminating=True,
+    )
+
+
+def run_zero_mutation_drills() -> dict[str, dict[str, Any]]:
+    """Exercise each mutation family in a disposable quarantine.
+
+    Each drill attempts the forbidden effect through the rehearsal's selected
+    invocation boundary and again on a direct route from the rehearsal process,
+    then observes a disposable canary. A family is prevented only when both
+    routes are denied and the canary is unchanged. The drills create no
+    sandbox, so every flag is false today.
+
+    Only the direct routes that target something outside the quarantine can
+    later turn true under a confinement profile: the local socket endpoints and
+    the write to a temporary directory outside the owned root. The tag and
+    token direct routes run inside the drill's own writable quarantine, so no
+    profile that permits that root can deny them; they record
+    ``direct_route_discriminating`` false and can never report prevention. A
+    false flag therefore means either "measured and not confined" or, for those
+    two families, "not measurable from this drill"; the receipt keeps the two
+    apart instead of presenting both as proof of confinement.
+    """
+    root = _quarantine_root()
+    try:
+        return {
+            "tag_mutation_prevented": _drill_tag(root),
+            "token_read_prevented": _drill_token(root),
+            "cargo_publish_prevented": _drill_network(
+                root, operation="cargo-publish",
+                command=["cargo", "publish", "--dry-run"],
+                boundary="Cargo publication invocation and direct registry socket",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "registry_mutation_prevented": _drill_network(
+                root, operation="registry-mutation",
+                command=["cargo", "publish"],
+                boundary="registry writes through Cargo and raw clients",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "github_release_mutation_prevented": _drill_network(
+                root, operation="github-release-mutation",
+                command=["gh", "release", "create", "canary"],
+                boundary="GitHub Release/asset writes through CLI and raw API",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "live_setting_mutation_prevented": _drill_network(
+                root, operation="live-setting-mutation",
+                command=["gh", "api", "--method", "PATCH", "repos/canary"],
+                boundary="settings/rules/environment/repository-control writes",
+                reason="a direct socket to a local recording endpoint succeeded",
+            ),
+            "external_repository_mutation_prevented": _drill_external(root),
+        }
+    finally:
+        shutil.rmtree(root, ignore_errors=True)
+
+
+def _zero_mutation_proof_from_drills(
+    drills: dict[str, dict[str, Any]],
+) -> dict[str, bool]:
+    """Derive the receipt flags from executed drills, never from literals."""
+    return {
+        name: bool(drills.get(name, {}).get("prevented"))
+        for name in ZERO_MUTATION_FLAGS
+    }
+
 
 def _aggregate_phase_status(phases: dict[str, str]) -> str:
     """Fail-closed aggregate: Complete only when every real phase proves and no
@@ -1475,15 +1852,8 @@ def _build_rehearsal_receipt(
         "commit_sha": commit_sha,
         "subject_lockfile_digest": lockfile_digest,
         "subject_topology_digest": topology_digest,
-        "zero_mutation_proof": {
-            "tag_mutation_prevented": False,
-            "token_read_prevented": False,
-            "cargo_publish_prevented": False,
-            "registry_mutation_prevented": False,
-            "github_release_mutation_prevented": False,
-            "live_setting_mutation_prevented": False,
-            "external_repository_mutation_prevented": False,
-        },
+        "zero_mutation_proof": {},
+        "zero_mutation_drills": {},
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
@@ -1505,7 +1875,21 @@ def _build_rehearsal_receipt(
             "entry without reading its value and records the checked "
             "authorization artifact's identity but never consumes "
             "authorization. Other credential sources and whole-workflow mutation "
-            "prevention remain unproven, so the aggregate cannot satisfy a release gate."
+            "prevention remain unproven, so the aggregate cannot satisfy a release gate. "
+            "The zero_mutation_proof flags are derived from executed quarantine "
+            "drills: each family is attempted through the selected invocation "
+            "boundary and again on a direct route against a disposable canary. A "
+            "direct attempt that really mutates the canary keeps its flag false, so "
+            "the receipt records the remaining confinement gap rather than asserting "
+            "prevention. Only tag_mutation_prevented is measured in this generation: "
+            "on Linux a supervisor applies the read-only bind mount, drops all "
+            "capabilities, and only then execs the worker, so the worker cannot "
+            "remount; the flag is true only when the worker's own remount attempt "
+            "and the direct Git metadata write are both denied. On hosts without "
+            "unshare/mount/setpriv the flag stays "
+            "false. The other six flags remain "
+            "false: the token, Cargo publication, registry, GitHub Release, live "
+            "setting and external-repository direct routes are not confined."
         ),
     }
 
@@ -1529,6 +1913,10 @@ def _build_rehearsal_receipt(
 
     for phase_name, runner in phases.items():
         receipt["phases"][phase_name] = runner(receipt)
+
+    drills = run_zero_mutation_drills()
+    receipt["zero_mutation_drills"] = drills
+    receipt["zero_mutation_proof"] = _zero_mutation_proof_from_drills(drills)
 
     require_clean_checkout(commit_sha)
     if _selected_token_present():
