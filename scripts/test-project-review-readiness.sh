@@ -117,7 +117,14 @@ case "${rest[0]}" in
     if [ "$2" = --name-only ]; then
       # Even a failed command can emit a plausible partial bootstrap
       # list. The adapter must check its status before consuming it.
-      printf '.allow/review-dispositions/fixture.json\n'
+      if [ "${FIXTURE_DELTA_MODE:-}" = rename ]; then
+        # A rename decomposed by --no-renames: the destination record plus
+        # the source path it was renamed from. The source path is outside
+        # the one-record rule, so the projection must see it and reject.
+        printf '.allow/review-dispositions/fixture.json\nsrc.rs\n'
+      else
+        printf '.allow/review-dispositions/fixture.json\n'
+      fi
       exit "${FIXTURE_DELTA_STATUS}"
     fi
     exit "${FIXTURE_DIFF_STATUS}"
@@ -342,6 +349,13 @@ run_case() {
   if [ "${case_name}" = ancestor_success ]; then
     grep -Fxq -- '--head-delta-path' "${FIXTURE_STATE}/projector-args" || fail "missing bootstrap delta argument"
     grep -Fxq '.allow/review-dispositions/fixture.json' "${FIXTURE_STATE}/projector-args" || fail "missing complete bootstrap path"
+    # Rename detection must be off, or a head can rename a file carrying a
+    # valid record into the ledger and delete the original invisibly.
+    grep -Fqx -- '--no-renames' "${FIXTURE_STATE}"/git-args-* || fail "bootstrap delta read must disable rename detection"
+  fi
+  if [ "${case_name}" = ancestor_rename_decomposed ]; then
+    grep -Fxq '.allow/review-dispositions/fixture.json' "${FIXTURE_STATE}/projector-args" || fail "missing renamed record path"
+    grep -Fxq 'src.rs' "${FIXTURE_STATE}/projector-args" || fail "decomposed rename source path was dropped"
   fi
   [ -z "$(find "${work}/tmp" -type f -print -quit)" ] || fail "temporary projection leaked"
   printf 'ok %s\n' "${case_name}"
@@ -403,6 +417,9 @@ run_case input_failed_projection_temp 1 none 'could not allocate projection outp
 FIXTURE_MKTEMP_FAILURE=0
 FIXTURE_LEDGER=ancestor
 run_case ancestor_success 0 POST 'published success'
+export FIXTURE_DELTA_MODE=rename
+run_case ancestor_rename_decomposed 0 POST 'published success'
+FIXTURE_DELTA_MODE=
 FIXTURE_ANCESTRY_STATUS=1 FIXTURE_CONCLUSION=neutral
 run_case nonancestor_is_missing 0 POST 'published neutral'
 FIXTURE_ANCESTRY_STATUS=2 FIXTURE_CONCLUSION=success

@@ -7,5 +7,7 @@ body: >-
   exactly one disposition record plus at most that PR's own
   `<pr>-review-disposition.toml` note; any other revision note, a second
   disposition record, policy, or source edit still stales, and base movement
-  still stales. This unblocks #4778 and any other PR that ships a new
-  disposition file.
+  still stales. The delta read disables rename detection, so a head cannot
+  rename a file that already carries a valid record into the ledger directory
+  and delete the original invisibly. This unblocks #4778 and any other PR that
+  ships a new disposition file.
