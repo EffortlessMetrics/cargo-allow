@@ -1,0 +1,15 @@
+# Review-disposition exact-path admission for #4802 / PR #4802.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-4802-review-disposition"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:32538882f63976cf8d363b5bec764d1c978db34b8cc9ecdd7335d5fe4e87af3e"
+reason = "Retain the exact-head 09dd7a77 source-candidate smoke review (review 5904389256) without broadening source exceptions."
+
+[[records]]
+allow_ids = ["allow-4802-review-revision"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d9761e797c7837fde6a9a559fe88f3ae7947ef0697b06f5094426a4dce169a37"
+reason = "Exact self-covering note for the source-controlled review disposition receipt."

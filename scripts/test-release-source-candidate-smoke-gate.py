@@ -102,7 +102,11 @@ def harness_receipt(platform: str) -> dict:
         "journey": {
             "fixture_generation": "first_hour_brownfield_v1",
             "steps_expected": ["version", "doctor_no_policy", "final_check_no_new"],
-            "steps_executed": ["version", "doctor_no_policy", "final_check_no_new"],
+            "steps_executed": [
+                {"id": "version", "exit_code": 0},
+                {"id": "doctor_no_policy", "exit_code": 0},
+                {"id": "final_check_no_new", "exit_code": 0},
+            ],
         },
         "negative_controls": [{"id": "ordinary_scan_offline", "passed": True}],
         "limitations": ["does_not_prove_crates_io_install"],
@@ -145,7 +149,7 @@ def write_row(rows_dir: Path, platform: str, crates: list[str]) -> Path:
     return row_dir
 
 
-class AggregateLawTests(unittest.TestCase):
+class GateHarness(unittest.TestCase):
     def green_rows(self, root: Path) -> Path:
         rows_dir = root / "rows"
         rows_dir.mkdir()
@@ -180,6 +184,8 @@ class AggregateLawTests(unittest.TestCase):
         message = getattr(captured.exception, "message", "") or stderr.getvalue()
         return message
 
+
+class AggregateLawTests(GateHarness):
     def test_green_aggregate_passes_and_binds_every_identity_field(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -297,7 +303,10 @@ class AggregateLawTests(unittest.TestCase):
             rows_dir = self.green_rows(root)
             harness = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
             document = json.loads(harness.read_text(encoding="utf-8"))
-            document["journey"]["steps_executed"] = document["journey"]["steps_expected"][:-1]
+            document["journey"]["steps_executed"] = [
+                {"id": step, "exit_code": 0}
+                for step in document["journey"]["steps_expected"][:-1]
+            ]
             harness.write_text(json.dumps(document), encoding="utf-8")
             message = self.refuse_message(
                 lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
@@ -388,6 +397,170 @@ class AggregateLawTests(unittest.TestCase):
                 )
             )
             self.assertIn("publication refuses", message)
+
+
+class JourneyShapeTests(GateHarness):
+    """The schema defines steps_executed as objects, so the gate must compare
+    executed ids to steps_expected in order and require a zero exit code."""
+
+    def mutate_linux_harness(self, rows_dir: Path, transform) -> Path:
+        harness_path = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
+        harness = json.loads(harness_path.read_text(encoding="utf-8"))
+        steps = harness["journey"]["steps_expected"]
+        harness["journey"]["steps_executed"] = transform(steps)
+        harness_path.write_text(json.dumps(harness, indent=2) + "\n", encoding="utf-8")
+        return harness_path
+
+    def refresh_row_digest(self, rows_dir: Path, harness_path: Path) -> None:
+        row_path = rows_dir / "linux" / "release-source-candidate-smoke-linux.receipt.json"
+        row = json.loads(row_path.read_text(encoding="utf-8"))
+        row["harness_receipt_sha256"] = (
+            "sha256:" + hashlib.sha256(harness_path.read_bytes()).hexdigest()
+        )
+        row_path.write_text(json.dumps(row, indent=2) + "\n", encoding="utf-8")
+
+    def test_executed_ids_in_order_with_zero_exit_pass(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+            harness_path = self.mutate_linux_harness(
+                rows_dir, lambda steps: [{"id": step, "exit_code": 0} for step in steps]
+            )
+            self.refresh_row_digest(rows_dir, harness_path)
+            self.assertEqual(
+                self.run_gate(expected_args(rows_dir=str(rows_dir), output=str(root / "out.json"))),
+                0,
+            )
+
+    def test_reordered_executed_ids_refuse(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+            self.mutate_linux_harness(
+                rows_dir,
+                lambda steps: [
+                    {"id": step, "exit_code": 0} for step in list(reversed(steps))
+                ],
+            )
+            message = self.refuse_message(
+                lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
+            )
+            self.assertIn("harness journey is partial", message)
+
+    def test_missing_executed_step_refuses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+            self.mutate_linux_harness(
+                rows_dir,
+                lambda steps: [
+                    {"id": step, "exit_code": 0} for step in steps[:-1]
+                ],
+            )
+            message = self.refuse_message(
+                lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
+            )
+            self.assertIn("harness journey is partial", message)
+
+    def test_nonzero_exit_code_refuses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+            failing_id = "doctor_no_policy"
+
+            def nonzero(steps):
+                executed = [{"id": step, "exit_code": 0} for step in steps]
+                index = steps.index(failing_id)
+                executed[index]["exit_code"] = 7
+                return executed
+
+            self.mutate_linux_harness(rows_dir, nonzero)
+            message = self.refuse_message(
+                lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
+            )
+            self.assertIn("did not exit 0", message)
+            self.assertIn(failing_id, message)
+
+    def test_duplicate_executed_id_refuses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows_dir = self.green_rows(root)
+
+            def duplicate(steps):
+                executed = [{"id": step, "exit_code": 0} for step in steps]
+                executed[1] = dict(executed[0])
+                return executed
+
+            self.mutate_linux_harness(rows_dir, duplicate)
+            message = self.refuse_message(
+                lambda: self.run_gate(expected_args(rows_dir=str(rows_dir)))
+            )
+            self.assertIn("harness journey is partial", message)
+
+
+class WorkflowRowLayoutTests(unittest.TestCase):
+    """Pin the uploaded row layout to what the aggregate gate reads.
+
+    ``check_row_receipt`` reads ``rows/<platform>/release-source-candidate-
+    smoke-<platform>.receipt.json`` and ``rows/<platform>/source-candidate-
+    smoke.receipt.json``. Uploading those files by their scattered paths lets
+    the artifact action strip the common ``target/`` prefix and nest them, so
+    the job must stage one flat directory and upload that directory."""
+
+    ARTIFACT_NAME = "source-candidate-smoke-receipt-${{ matrix.platform }}"
+
+    def setUp(self) -> None:
+        import yaml
+
+        workflow = yaml.safe_load(
+            (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        )
+        self.steps = workflow["jobs"]["source-candidate-smoke"]["steps"]
+        self.upload = next(
+            step
+            for step in self.steps
+            if "upload-artifact@" in str(step.get("uses", ""))
+            and step.get("with", {}).get("name") == self.ARTIFACT_NAME
+        )
+
+    def test_the_row_artifact_uploads_one_flat_staged_directory(self):
+        upload_path = self.upload["with"]["path"]
+        self.assertIsInstance(upload_path, str)
+        self.assertNotIn("\n", upload_path)
+        self.assertEqual(upload_path, upload_path.strip())
+        for marker in "*?[":
+            self.assertNotIn(marker, upload_path)
+        staged = upload_path.rstrip("/")
+        self.assertTrue(staged, "the upload path cannot be the filesystem root")
+
+        index = self.steps.index(self.upload)
+        stage = next(
+            (
+                step
+                for step in self.steps[:index]
+                if step.get("name") == "Stage the platform smoke row for the aggregate gate"
+            ),
+            None,
+        )
+        self.assertIsNotNone(stage, "the row upload needs a staging step before it")
+        script = stage["run"]
+        self.assertIn(f'stage="{staged}"', script)
+        self.assertEqual(stage.get("if"), "always()")
+        self.assertEqual(stage.get("shell"), "bash")
+        for required in (
+            "release-source-candidate-smoke-${{ matrix.platform }}.receipt.json",
+            "source-candidate-smoke.receipt.json",
+        ):
+            self.assertIn(required, script)
+
+    def test_no_second_upload_reuses_the_row_artifact_name(self):
+        uploads = [
+            step
+            for step in self.steps
+            if "upload-artifact@" in str(step.get("uses", ""))
+            and step.get("with", {}).get("name") == self.ARTIFACT_NAME
+        ]
+        self.assertEqual(len(uploads), 1)
 
 
 if __name__ == "__main__":

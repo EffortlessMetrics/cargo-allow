@@ -20739,7 +20739,6 @@ glob = "docs/release/core-command-migration-cases.v1.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-3149-command-case-contract"
 kind = "non_rust_file"
@@ -20761,7 +20760,6 @@ glob = "docs/release/core-command-migration-evidence.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-3149-command-case-schema"
@@ -20785,7 +20783,6 @@ glob = "docs/schemas/cargo-allow.command-case-evidence.v1.schema.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-3149-command-case-collector"
 kind = "non_rust_file"
@@ -20808,7 +20805,6 @@ glob = "scripts/command-case-evidence.py"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-3149-command-case-controls"
 kind = "non_rust_file"
@@ -20830,7 +20826,6 @@ glob = "scripts/test-command-case-evidence.py"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-3149-command-case-catalogue-eol"
@@ -20877,10 +20872,6 @@ glob = "scripts/qualify-release-freeze.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11349"
 kind = "non_rust_file"
@@ -20904,10 +20895,6 @@ glob = "scripts/test-qualify-release-freeze.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-1117"
 kind = "non_rust_file"
@@ -20929,7 +20916,6 @@ glob = "docs/release/final-freeze-qualification-v1.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-11353"
@@ -20954,8 +20940,6 @@ glob = "scripts/test-release-final-tag.py"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11345"
 kind = "non_rust_file"
@@ -20978,8 +20962,6 @@ glob = "scripts/release-final-tag.py"
 [allow.last_seen]
 line = 1
 column = 1
-
-
 
 [[allow]]
 id = "allow-1132"
@@ -21572,6 +21554,7 @@ normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
 [allow.last_seen]
 line = 11
 column = 1
+
 [[allow]]
 id = "allow-1174"
 kind = "lint_exception"
@@ -21594,6 +21577,7 @@ normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
 [allow.last_seen]
 line = 16
 column = 1
+
 [[allow]]
 id = "allow-1182"
 kind = "panic"
@@ -21898,9 +21882,6 @@ glob = "scripts/test-release-escaped-defect-corpus.py"
 line = 1
 column = 1
 
-
-
-
 [[allow]]
 id = "allow-1214"
 kind = "non_rust_file"
@@ -22033,7 +22014,6 @@ glob = "scripts/exact-candidate-staged-packaging.py"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11379"
 kind = "non_rust_file"
@@ -22055,7 +22035,6 @@ glob = "scripts/test-exact-candidate-staged-packaging.py"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-11381"
@@ -22079,10 +22058,6 @@ glob = "scripts/release_identity_projection.py"
 line = 1
 column = 1
 
-
-
-
-
 [[allow]]
 id = "allow-11382"
 kind = "non_rust_file"
@@ -22104,10 +22079,6 @@ glob = "scripts/test-release-identity-projection-reader.py"
 [allow.last_seen]
 line = 1
 column = 1
-
-
-
-
 
 [[allow]]
 id = "allow-11386"
@@ -24309,7 +24280,6 @@ glob = "docs/release/evidence/next-release-qualification.json"
 line = 1
 column = 1
 
-
 [[allow]]
 id = "allow-11493"
 kind = "non_rust_file"
@@ -24331,7 +24301,6 @@ glob = "docs/release/evidence/next-release-qualification.md"
 [allow.last_seen]
 line = 1
 column = 1
-
 
 [[allow]]
 id = "allow-11495"
@@ -24484,8 +24453,6 @@ glob = "scripts/verify-command-mutation-evidence.py"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11488"
 kind = "non_rust_file"
@@ -24507,8 +24474,6 @@ glob = "scripts/test-command-mutation-evidence.py"
 [allow.last_seen]
 line = 1
 column = 1
-
-
 
 [[allow]]
 id = "allow-11489"
@@ -24532,8 +24497,6 @@ glob = "docs/release/evidence/command-mutation-1/manifest.v1.json"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11490"
 kind = "non_rust_file"
@@ -24556,8 +24519,6 @@ glob = "docs/release/evidence/command-mutation-1/README.md"
 line = 1
 column = 1
 
-
-
 [[allow]]
 id = "allow-11503"
 kind = "non_rust_file"
@@ -24579,6 +24540,7 @@ glob = "docs/release/evidence/rc1-installed-docs-execution.v1.json"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-4724-presentation-observation"
 kind = "non_rust_file"
@@ -24600,6 +24562,7 @@ glob = "docs/release/evidence/core-command-presentation-4724.v1.json"
 [allow.last_seen]
 line = 1
 column = 1
+
 [[allow]]
 id = "allow-4725-historical-catalogue"
 kind = "non_rust_file"
