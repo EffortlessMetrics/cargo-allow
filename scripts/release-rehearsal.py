@@ -1554,6 +1554,7 @@ def _drill_tag(root: Path) -> dict[str, Any]:
                 "unmeasured"
             ),
             direct_route_discriminating=False,
+            attempted=False,
         )
     worker = root / "tag-worker.py"
     worker.write_text(TAG_WORKER_SCRIPT, encoding="utf-8")
@@ -1614,6 +1615,7 @@ def _drill_tag(root: Path) -> dict[str, Any]:
             f"metadata denial is unproven: {detail}"
         ),
         direct_route_discriminating=False,
+        attempted=False,
     )
 
 
