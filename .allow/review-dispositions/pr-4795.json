@@ -4,24 +4,24 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4795,
   "base_ref": "main",
-  "base_sha": "53af39787e5d0550f43077c494724df80637ea77",
+  "base_sha": "a137701af9846c689dc3f97fcf5f0fd047d3be35",
   "head_ref": "fix/4778-review-ledger-bootstrap",
-  "head_sha": "48f4eafdbd19b3780bd43afa24bafa3c9286c461",
+  "head_sha": "8ecd5c43f1c604234f6c50903fcd4c2273491688",
   "merge_base": "53af39787e5d0550f43077c494724df80637ea77",
-  "reviewed_diff_digest": "sha256:v2:b50bb65fa6c0a5b8d7cb7e9ec40983554c5dc82029ac39e26ff1f5abbd0759cf",
+  "reviewed_diff_digest": "sha256:v2:1b9e2db9b33c693456fe450622b792e3619e2c47e90a940f9d13677deefffd99",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4795 at 89ca90827d4a6d18e9c56ace86a53ea0b24360f9 (base and merge-base 53af39787e5d0550f43077c494724df80637ea77 after the main merge). The reviewed code is 89ca9082; the later commits are policy/allow.toml bookkeeping and a main merge. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4795 at 8ecd5c43f1c604234f6c50903fcd4c2273491688 (base a137701af9846c689dc3f97fcf5f0fd047d3be35, merge-base 53af39787e5d0550f43077c494724df80637ea77). The c7821b14 policy/allow.toml append is a gate-behavior change and is covered by review 5900657146 at 0d795a03, not treated as bookkeeping. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4795#pullrequestreview-5900208943. review cargo-allow non-author oppositional exact-head model review of head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9, base and merge-base 53af39787e5d0550f43077c494724df80637ea77. The later c7821b14 policy bookkeeping and 48f4eafd main merge are not code changes. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4795#pullrequestreview-5900657146 (review at 0d795a03, which covered the c7821b14 policy/allow.toml append) and the 8ecd5c43 verdict at https://github.com/EffortlessMetrics/cargo-allow/pull/4795#issuecomment-6870913 (03:07:05Z). review cargo-allow non-author oppositional exact-head model review of head 8ecd5c43f1c604234f6c50903fcd4c2273491688, base a137701af9846c689dc3f97fcf5f0fd047d3be35, merge-base 53af39787e5d0550f43077c494724df80637ea77. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4795",
-    "Reviewed pair base and merge-base 53af39787e5d0550f43077c494724df80637ea77, head 89ca90827d4a6d18e9c56ace86a53ea0b24360f9. The c7821b14 policy commit and the 48f4eafd main merge are bookkeeping.",
+    "Reviewed pair base a137701af9846c689dc3f97fcf5f0fd047d3be35, merge-base 53af39787e5d0550f43077c494724df80637ea77, head 8ecd5c43f1c604234f6c50903fcd4c2273491688. The c7821b14 policy/allow.toml append is a gate-behavior change covered by review 5900657146; the 48f4eafd main merge is not a code change.",
     "The rename finding is discharged: scripts/project-review-readiness.sh:474 uses --no-renames, and is_review_ledger_bootstrap rejects any path outside the ledger or a second record.",
     "bash scripts/test-project-review-readiness.sh passes, including ancestor_success and ancestor_rename_decomposed; removing --no-renames fails the suite."
   ],
@@ -31,5 +31,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4795",
-  "reviewed_at_utc": "2026-11-14T00:57:16Z"
+  "reviewed_at_utc": "2026-11-14T03:07:05Z"
 }
