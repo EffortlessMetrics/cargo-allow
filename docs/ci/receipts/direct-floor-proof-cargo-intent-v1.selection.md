@@ -7,16 +7,16 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-intent
 - Package roots: cargo-intent
 - Selected closure: cargo-intent, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index, intent-compiler, intent-model, intent-protocol
-- Starting source commit: a68598d58520e5571f8ce701af3ff2b1e5e6a828
+- Starting source commit: aec03c8fbfe868dda3d9931768995e6d8da7d6e0
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
-- Projected manifest digest: sha256:v1:a883eb778b6bc6be81518ce8ed2ddbcf9a10889e9548316c970c89264f261230
+- Projected manifest digest: sha256:v1:a49e484f401abb31a0fb66c602225c488a5969cfd5e7d16df5eb37329aa6e6db
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
-- Executed floor commit: 3a623d3f993121772f2e66c7b7d3106ac9c03023
-- Executed floor tree: 20357dfdfdb9c953d3b2f428832f1269f5ec4370
+- Executed floor commit: 4feb1cdacd27d590bbcb6ed7214575c65d69b418
+- Executed floor tree: d58619f4d2f645b0e15ce4561e21d1be4a8fd3be
 - Receipt: direct-floor-proof-cargo-intent-v1.json
-- Receipt SHA-256: sha256:v1:b57b08ec9d13d7d243744b53c9eb0bf8b4059667cc49f69cc015cb4df7926a72
-- Manifest-set digest: 71bcdc199f3925f034b42c4e90d16150f4b45eeffb3325799d75ec0bce1e3ea6
+- Receipt SHA-256: sha256:v1:85f3823661cf7b6622fcb62936522e5038e78e5830bcb757f26cba06317d3afd
+- Manifest-set digest: 18db841f212518f4d9575251c764300c2962c7bbba0d96f72a68745a0698f8db
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
 - Executed floor-lock digest: sha256:v1:aaacf0391f7b0105f3c99efe5df991218c433168495c4b0f0479e2d394978d19
 

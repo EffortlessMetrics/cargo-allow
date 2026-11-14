@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4814,
+  "base_ref": "main",
+  "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "head_ref": "fix/cut-train-3151-d7",
+  "head_sha": "0a86b50c30738f64a6cbf3ef5e11ad94c8cb5a09",
+  "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "reviewed_diff_digest": "sha256:v2:566431d5d77e05b9793b73ba06d1f45d3f50ef2bcf17cdb0ae0db888319a2c9b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4814 at 0a86b50c30738f64a6cbf3ef5e11ad94c8cb5a09 (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5905532862 submitted 2026-11-14T15:47:32Z. That review is at the bound head and covers the policy admission for this record. The combined-diff verdict is review 5905489256 at e6010315, which approved the #4791 LF-ledger merge at 35a79602, the #4799 D7 merge at 2486451a, and the eight regenerated direct-floor receipts. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4814#pullrequestreview-5905532862 - review cargo-allow non-author oppositional exact-head model review of head 0a86b50c30738f64a6cbf3ef5e11ad94c8cb5a09, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, reviewed_diff_digest=sha256:v2:566431d5d77e05b9793b73ba06d1f45d3f50ef2bcf17cdb0ae0db888319a2c9b, verdict APPROVE with no blocking findings. The combined-diff verdict is review 5905489256 at e6010315. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4814 - reviewed at 0a86b50c30738f64a6cbf3ef5e11ad94c8cb5a09, verdict APPROVE in review 5905532862; combined diff approved at e6010315 in review 5905489256.",
+    "Zero unresolved review threads at this head (GitHub reviewThreads read, 2026-11-14T15:50Z). The three bot threads the earlier review recorded were replied to with evidence and resolved by that review.",
+    "The train is 5d661202 plus #4791 at 35a79602 and #4799 at 2486451a, both --no-ff. #4791's merge parent 35a79602 contains 96edf5bb, the LF-ledger head, so the train never carries a088e1d6. #4779 is not in this train.",
+    "The eight direct-floor receipts were regenerated once at the tip by floor-receipt-regeneration run 43609447491 on aec03c8f and committed at e6010315; all four carry selected_source_digest f69b0387 and min-version-drift reports them current.",
+    "allow-1384 and allow-1385 are shared with open PRs #4796 and #4794; whichever of those lands after this train must renumber and recompute its revision-note fingerprints.",
+    "Not proven here and not claimed: no build or test execution in this record; the installed-surface evidence records a local host path and grants no release authority. This record is review evidence only, does not merge, and does not replace the required CI observation at the pushed head."
+  ],
+  "required_ci": {
+    "owner": "PR #4814 orchestrator: verify the exact-head review, live review-readiness, applicable required checks, threads, and merge queue composition after this ledger-only commit, and make the separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4814"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4814",
+  "reviewed_at_utc": "2026-11-14T15:47:32Z"
+}

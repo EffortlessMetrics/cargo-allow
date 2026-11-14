@@ -3,14 +3,14 @@
 schema_version = 1
 
 [[records]]
-allow_ids = ["allow-1384"]
+allow_ids = ["allow-1386"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:ac24e016735d36e51235e7e0b92fd619c9afcdef7ac9641d9e21cf267f0c7abc"
+after_fingerprint = "sha256:v1:a5028a48ddceea9c74ddd57257a9ce04ac274af7b6bc62d7f500fd808fae701a"
 reason = "Retain the exact-head de975157 source/CI review (review 5903912285) without broadening source exceptions."
 
 
 [[records]]
-allow_ids = ["allow-1385"]
+allow_ids = ["allow-1387"]
 change_kinds = ["added_allow"]
-after_fingerprint = "sha256:v1:8587ded1e9d0454239db6e2050d04a6428f4ff957ed0376bda7909d98efb8f05"
+after_fingerprint = "sha256:v1:3c6edd12a1e903dd4a3d5e317cdbddcdc98bef94531a882abb74a3d5d61e39b1"
 reason = "Exact self-covering note for the source-controlled review disposition receipt."

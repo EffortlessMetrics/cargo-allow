@@ -1,0 +1,8 @@
+kind: Fixed
+body: >-
+  Accept the clean incident sentinel when the release checkpoint decides whether
+  a publish receipt is settled. Both `release.yml` and `release-authorized.yml`
+  refused whenever `incident_state` was not `None`, but the clean value is the
+  string `none` - so a clean settled receipt was refused and an absent field was
+  accepted. The predicate is now a comparison against that sentinel, and a
+  characterization test binds it to the receipt schema's `none` member.
