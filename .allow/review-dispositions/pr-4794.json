@@ -6,9 +6,9 @@
   "base_ref": "main",
   "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
   "head_ref": "fix/4789-unreachable-disposition-publish",
-  "head_sha": "de975157380b1a71f980c77bec18a67b07dbf7a0",
+  "head_sha": "158be8e59681932dab5dd2e13c0980f76e3a1ac3",
   "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
-  "reviewed_diff_digest": "sha256:v2:a92117bbe9f3205d46dad1e2a03ce429b6f47dab61a9a88880307fc5d26ffd1d",
+  "reviewed_diff_digest": "sha256:v2:8cb2473d4f45d5ab9be0827c9aee2110324ad36df2b4b94c1fe4e2ac17dcb416",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
   "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4794 at de975157380b1a71f980c77bec18a67b07dbf7a0 (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5903912285 submitted 2026-11-14T10:45:39Z. It covered the unreachable-disposition branch ordering, the narrowed delta-read 128 re-probe, and the five new characterization fixtures, with a negative control against main. Two non-blocking findings were named and left unfixed: commit_presence cannot separate an absent commit from a present hash-mismatched one (both publish failure, so no false green), and the unreachable failure now also fires on the push recompute path (intended fail-closed). Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
@@ -21,7 +21,7 @@
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4794",
-    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head de975157380b1a71f980c77bec18a67b07dbf7a0, reviewed diff digest sha256:v2:a92117bbe9f3205d46dad1e2a03ce429b6f47dab61a9a88880307fc5d26ffd1d recomputed with the pinned v2 recipe, verdict APPROVE in review 5903912285.",
+    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head de975157380b1a71f980c77bec18a67b07dbf7a0, reviewed diff digest sha256:v2:8cb2473d4f45d5ab9be0827c9aee2110324ad36df2b4b94c1fe4e2ac17dcb416 recomputed with the pinned v2 recipe, verdict APPROVE in review 5903912285.",
     "Zero unresolved review threads: all three threads on this PR are resolved, including the CodeRabbit delta-classification thread resolved as deferred with the finding retained.",
     "The elif chain selects exact_matches, then ancestor_matches, and only then publishes the unreachable failure; ambiguity still fails closed first; the delta-read 128 with the commit present stays an instrument failure.",
     "scripts/test-project-review-readiness.sh passes every case on this head, including stale_and_exact, unreachable_disposition_publishes_failure, input_failed_disposition_probe, unreachable_delta_publishes_failure, and present_commit_unreadable_tree_is_instrument_failure; the same harness fails on main, so the cases bind the change.",
@@ -35,3 +35,4 @@
   "scope_claim_boundary": "pull-request:4794",
   "reviewed_at_utc": "2026-11-14T10:45:39Z"
 }
+
