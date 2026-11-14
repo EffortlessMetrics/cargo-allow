@@ -11,7 +11,7 @@
  "msrv": "1.95",
  "toolchain": "1.95.0",
  "target": "host:x86_64-unknown-linux-gnu",
- "manifest_set_digest": "71bcdc199f3925f034b42c4e90d16150f4b45eeffb3325799d75ec0bce1e3ea6",
+ "manifest_set_digest": "18db841f212518f4d9575251c764300c2962c7bbba0d96f72a68745a0698f8db",
  "lock_digest": "0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c",
  "rows": [
   {
@@ -77,9 +77,9 @@
  "execution_provenance": {
   "command": "bash scripts/proof-direct-floors.sh",
   "working_directory": "/home/runner/work/cargo-allow/cargo-allow",
-  "source_commit": "2aa9fe0f7d056a0ef9ec3fe1315df37333663bd9",
-  "source_tree": "d4265cfed1a3d8e7eb6d30f86dbc3572f40c2f7b",
-  "selected_source_digest": "ca33fc12ca5ab8510ab562fadb70e0a1ee1253ae851ce2a870d9a1ca8e11d533",
+  "source_commit": "b536a55577a54e0ddea26647b3ea27c4350f7342",
+  "source_tree": "22ac75641c841fb916115b3621b77bf7f15b0a21",
+  "selected_source_digest": "8eac228fda8d0be9a7a785ef68902a0cb99b6bd835869beaa0642d878d92779f",
   "selected_source_scope": [
    "crates/**/*.rs: every workspace Rust source, CR-stripped, framed path<NUL>content<NUL> in sorted path order"
   ],
@@ -100,8 +100,8 @@
   "dev-dependencies are exercised by the test class but are not certified floors",
   "the certified set is the closure's default-feature compile set: optional dependencies enabled by a default feature are certified; optional dependencies no default feature enables stay outside it",
   "observed rustc 1.95.0; cargo 1.95.0; rustdoc 1.95.0; host x86_64-unknown-linux-gnu; every selected class explicitly targets that host using the observed tool paths; collector-owned RUSTC/RUSTDOC override inherited and configured tool selection, and compiler wrappers are disabled",
-  "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:368ff0bc70f39aa6e593189830e2f05449cd0be3c21b4b341d1f1b2a629a5588; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
-  "local floor subject: source 995a08b91ac555a10a67f6e6aef6aa3b0d4abb11; executed commit 2aa9fe0f7d056a0ef9ec3fe1315df37333663bd9; tree d4265cfed1a3d8e7eb6d30f86dbc3572f40c2f7b; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
+  "product workspace projection: cargo-allow.direct-floor-product-workspace.v1; manifest sha256:v1:fb753f33a2a92034a78d45bcf7f3ca4eafd9d82d18378fdea9e73d99207c2ac7; certified members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index; execution members crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index",
+  "local floor subject: source 85b8a3d946da5c08de4f86ba695164ee5bb2cb22; executed commit b536a55577a54e0ddea26647b3ea27c4350f7342; tree 22ac75641c841fb916115b3621b77bf7f15b0a21; only the deterministic root workspace projection and floor lock differ; this local derived candidate is not an upstream commit"
  ],
  "claim_boundary": "Advisory, report-only proof of the shared package closure's declared direct dependency floors at the claimed MSRV under the bounded classes: check. Test and package enforcement requires the owning package-family authority; these rows never gate the cargo-allow release set. Transitive minimal combinations are not certified."
 }
