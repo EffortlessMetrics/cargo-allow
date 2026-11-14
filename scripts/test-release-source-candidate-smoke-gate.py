@@ -563,5 +563,82 @@ class WorkflowRowLayoutTests(unittest.TestCase):
         self.assertEqual(len(uploads), 1)
 
 
+class ObservedToolchainTests(GateHarness):
+    def rewrite_environment(self, rows_dir, environment):
+        harness_path = rows_dir / "linux" / "source-candidate-smoke.receipt.json"
+        harness = json.loads(harness_path.read_text())
+        harness["environment"] = environment
+        harness_path.write_text(json.dumps(harness))
+        row_path = rows_dir / "linux" / "release-source-candidate-smoke-linux.receipt.json"
+        row = json.loads(row_path.read_text())
+        row["harness_receipt_sha256"] = "sha256:" + hashlib.sha256(harness_path.read_bytes()).hexdigest()
+        row_path.write_text(json.dumps(row))
+
+    def test_observed_versions_fail_closed(self):
+        for tool in ("rustc", "cargo"):
+            for value in (None, "", " ", 195, [], {}, "1.95.0", "wrong 1.95.0",
+                          f"{tool} 1.100.0", f"{tool} 1.95.0-beta.1", f"{tool} 1.95.00"):
+                with self.subTest(tool=tool, value=value), tempfile.TemporaryDirectory() as directory:
+                    rows = self.green_rows(Path(directory))
+                    env = harness_receipt("linux")["environment"]
+                    env[f"{tool}_version"] = value
+                    self.rewrite_environment(rows, env)
+                    message = self.refuse_message(lambda: self.run_gate(expected_args(rows_dir=str(rows))))
+                    self.assertIn(f"observed {tool} version", message)
+
+    def test_absent_fields_and_environment_refuse(self):
+        for missing in ("rustc_version", "cargo_version", "environment"):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as directory:
+                rows = self.green_rows(Path(directory))
+                env = harness_receipt("linux")["environment"]
+                if missing == "environment":
+                    env = None
+                else:
+                    del env[missing]
+                self.rewrite_environment(rows, env)
+                message = self.refuse_message(lambda: self.run_gate(expected_args(rows_dir=str(rows))))
+                self.assertIn("harness", message)
+
+    def test_realistic_matching_version_output_passes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            rows = self.green_rows(root)
+            env = harness_receipt("linux")["environment"]
+            for tool in ("rustc", "cargo"):
+                env[f"{tool}_version"] = f"{tool} 1.95.0 (abcdef012 2026-04-01)"
+            self.rewrite_environment(rows, env)
+            self.assertEqual(self.run_gate(expected_args(rows_dir=str(rows), output=str(root / "out.json"))), 0)
+
+    def test_producer_observes_commands_and_strips_cr(self):
+        import ast
+        import os
+        import subprocess
+        script = (ROOT / "scripts/source-candidate-smoke.sh").read_text()
+        capture = script.split('rustc_version="$(rustc --version', 1)
+        self.assertEqual(len(capture), 2)
+        capture = 'rustc_version="$(rustc --version' + capture[1].split('log "writing receipt', 1)[0]
+        # Execute the actual capture and environment expressions, not a copy of
+        # their implementation. Stub only the external compiler processes.
+        emitter = script.split("python3 <<'PY'\n")[-1].split("\nPY", 1)[0]
+        tree = ast.parse(emitter)
+        receipt = next(n.value for n in tree.body if isinstance(n, ast.Assign)
+                       and any(isinstance(t, ast.Name) and t.id == "receipt" for t in n.targets))
+        environment = next(v for k, v in zip(receipt.keys, receipt.values) if k.value == "environment")
+        expression = ast.unparse(environment)
+        for failing in (False, True, "noisy"):
+            with self.subTest(failing=failing):
+                stub = 'return 1' if failing is True else 'printf "%s\\r\\n" "$FUNCNAME 1.95.0 (observed)"'
+                if failing == "noisy":
+                    stub += '; return 1'
+                shell = 'set -euo pipefail\nrustc() { ' + stub + '; }\ncargo() { ' + stub + '; }\n' + capture
+                shell += '\nexport RUSTC_VERSION="$rustc_version" CARGO_VERSION="$cargo_version"\n'
+                shell += "python3 - <<'PY'\nimport os,json\nprint(json.dumps(" + expression + "))\nPY\n"
+                env = dict(os.environ, OS_NAME="linux", ARCH_NAME="x86_64")
+                result = subprocess.run(["bash", "-c", shell], env=env, capture_output=True, text=True, check=True)
+                observed = json.loads(result.stdout)
+                for tool in ("rustc", "cargo"):
+                    self.assertEqual(observed[f"{tool}_version"], None if failing else f"{tool} 1.95.0 (observed)")
+
+
 if __name__ == "__main__":
     unittest.main()
