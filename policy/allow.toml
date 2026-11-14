@@ -115,28 +115,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-3849-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3849-final-registry-preflight-v1.toml"
-owner = "core/release"
-classification = "final_registry_preflight_contract"
-reason = "Owned revision note for the three exact-path non-Rust contract files in issue 3849."
-evidence = ["issue:3849", "test:final_registry_preflight"]
-created = "2026-09-13"
-review_after = "2027-03-13"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3849-final-registry-preflight-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3849-final-registry-preflight-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11292"
 kind = "non_rust_file"
 family = "python_tool"
@@ -197,28 +175,6 @@ ast_kind = "tracked_file"
 symbol = "docs/release/final-registry-observation-v1.md"
 target_fingerprint = "md"
 glob = "docs/release/final-registry-observation-v1.md"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11295"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3850-final-registry-observation-v1.toml"
-owner = "core/release"
-classification = "final_registry_observation"
-reason = "Owned revision note for the exact-path non-Rust observation adapter files in issue 3850."
-evidence = ["issue:3850", "test:final_registry_preflight_provider"]
-created = "2026-09-16"
-review_after = "2027-03-16"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3850-final-registry-observation-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3850-final-registry-observation-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -357,28 +313,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11316"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3921-publication-journal.toml"
-owner = "core/release"
-classification = "publication_journal"
-reason = "Revision note covering the publication journal ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:3921", "test:publication_journal"]
-created = "2026-09-18"
-review_after = "2027-03-18"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3921-publication-journal.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3921-publication-journal.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11317"
 kind = "non_rust_file"
 family = "documentation"
@@ -421,24 +355,6 @@ glob = "docs/release/publication-checkpoint-v1.md"
 [allow.last_seen]
 line = 1
 column = 1
-
-[[allow]]
-id = "allow-11319"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3922-publication-checkpoint.toml"
-owner = "core/release"
-classification = "publication_checkpoint"
-reason = "Revision note covering the publication checkpoint ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:3922", "test:publication_checkpoint"]
-created = "2026-09-19"
-review_after = "2027-03-19"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3922-publication-checkpoint.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3922-publication-checkpoint.toml"
 
 [[allow]]
 id = "allow-11328"
@@ -485,50 +401,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11330"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3924-unknown-upload-recovery.toml"
-owner = "core/release"
-classification = "publication_recovery"
-reason = "Revision note covering the unknown-upload recovery ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:3924", "test:unknown_upload_recovery"]
-created = "2026-09-19"
-review_after = "2027-03-19"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3924-unknown-upload-recovery.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3924-unknown-upload-recovery.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11313"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3925-release-operation-lease.toml"
-owner = "core/release"
-classification = "release_operation_lease"
-reason = "Revision note covering the operation lease ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:3925", "test:release_operation_lease"]
-created = "2026-09-18"
-review_after = "2027-03-18"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3925-release-operation-lease.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3925-release-operation-lease.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11304"
 kind = "non_rust_file"
 family = "documentation"
@@ -545,28 +417,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/cargo-allow.release-authorization-custody.v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11311"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3927-release-authorization-custody.toml"
-owner = "core/release"
-classification = "release_authorization_contract"
-reason = "Revision note covering the authorization custody ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:3927", "test:release_authorization_custody"]
-created = "2026-09-18"
-review_after = "2027-03-18"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3927-release-authorization-custody.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3927-release-authorization-custody.toml"
 
 [allow.last_seen]
 line = 1
@@ -683,72 +533,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11310"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3930-final-tag-transaction.toml"
-owner = "core/release"
-classification = "final_tag_transaction"
-reason = "Revision note covering the exactly-once tag transaction ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:3930", "test:final_tag_transaction"]
-created = "2026-09-18"
-review_after = "2027-03-18"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3930-final-tag-transaction.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3930-final-tag-transaction.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11300"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3789-release-authorization-v1.toml"
-owner = "core/release"
-classification = "release_authorization_contract"
-reason = "Owned revision note for the exact-path non-Rust authorization contract files in issue 3789."
-evidence = ["issue:3789", "test:release_authorization_contract"]
-created = "2026-09-17"
-review_after = "2027-03-17"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3789-release-authorization-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3789-release-authorization-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11303"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3151-release-experience-v1.toml"
-owner = "core/release"
-classification = "release_experience_contract"
-reason = "Owned revision note for the exact-path non-Rust experience contract files in issue 3151."
-evidence = ["issue:3151", "test:release_experience_contract"]
-created = "2026-09-17"
-review_after = "2027-03-17"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3151-release-experience-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3151-release-experience-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0038"
 kind = "panic"
 family = "expect"
@@ -816,28 +600,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-9259"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3875-d-current-behavior.toml"
-owner = "core/policy"
-classification = "configuration_selection_revision_note"
-reason = "Revision receipt for the #3875-D current configuration-selection source-of-truth artifact."
-evidence = ["issue:3875", "doc:docs/source-of-truth/cargo-allow-current-config-selection.md"]
-created = "2026-09-01"
-review_after = "2027-03-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3875-d-current-behavior.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3875-d-current-behavior.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11205"
 kind = "non_rust_file"
 family = "documentation"
@@ -854,28 +616,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/resolved-cargo-allow-config-v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11206"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4049-resolved-config-v1.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the resolved-config v1 component-schema exception added by PR #4049."
-evidence = ["issue:3875", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-30"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4049-resolved-config-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4049-resolved-config-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -12646,27 +12386,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11120"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3369-compat-fixture-split.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3369/#2075 revision note authorizing the weakening-class ledger edits (five fixture entry path moves, one dead-receipt prune); this receipt covers the note file itself as tracked configuration."
-evidence = ["doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-16"
-review_after = "2026-11-13"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3369-compat-fixture-split.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0551"
 kind = "non_rust_file"
 family = "shell_script"
@@ -13613,28 +13332,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11158"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3790-release-authorization.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3790 revision note authorizing the release authorization test and change note; covers the note file itself as tracked configuration."
-evidence = ["issue:3790", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-25"
-review_after = "2027-02-25"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3790-release-authorization.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3790-release-authorization.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11159"
 kind = "non_rust_file"
 family = "release_script"
@@ -13673,28 +13370,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-release-rehearsal.py"
 target_fingerprint = "py"
 glob = "scripts/test-release-rehearsal.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11161"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3792-release-rehearsal.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3792 revision note authorizing release rehearsal receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3792", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-25"
-review_after = "2027-02-25"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3792-release-rehearsal.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3792-release-rehearsal.toml"
 
 [allow.last_seen]
 line = 1
@@ -13855,28 +13530,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11169"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4010-release-gate-recovery.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#4010 revision note authorizing the restored release-gate receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:4010", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4010-release-gate-recovery.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4010-release-gate-recovery.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11170"
 kind = "non_rust_file"
 family = "release_script"
@@ -13915,28 +13568,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-exact-candidate-package-identity.py"
 target_fingerprint = "py"
 glob = "scripts/test-exact-candidate-package-identity.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11172"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3968-prerelease-package-identity.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3968 revision note authorizing the prerelease identity receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3968", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3968-prerelease-package-identity.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3968-prerelease-package-identity.toml"
 
 [allow.last_seen]
 line = 1
@@ -14013,28 +13644,6 @@ line = 121
 column = 17
 
 [[allow]]
-id = "allow-0620"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3745-yaml-rust2-reachability.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3745 revision note authorizing the changie reachability test receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3745", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3745-yaml-rust2-reachability.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3745-yaml-rust2-reachability.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11173"
 kind = "non_rust_file"
 family = "configuration"
@@ -14101,28 +13710,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11176"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3810-evidence-surface-inventory.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3810 revision note authorizing the evidence-surface inventory receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3810", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3810-evidence-surface-inventory.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3810-evidence-surface-inventory.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11177"
 kind = "non_rust_file"
 family = "documentation"
@@ -14183,50 +13770,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/check-ci-environment-profiles.py"
 target_fingerprint = "py"
 glob = "scripts/check-ci-environment-profiles.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11180"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3926-ci-environment-profiles.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3926 revision note authorizing the CI environment profile receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3926", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3926-ci-environment-profiles.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3926-ci-environment-profiles.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0632"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
-owner = "core/devex"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the allow-0498 evidence-pointer and reason transition for the two-subject pre-commit manifest realignment (#4014)."
-evidence = ["doc:docs/how-to/manage-an-exception.md", "issue:4011"]
-created = "2026-08-28"
-review_after = "2026-11-26"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4014-precommit-hook-contract-rename.toml"
 
 [allow.last_seen]
 line = 1
@@ -14361,28 +13904,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0639"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3915-root-bound-cache-receipts.toml"
-owner = "core/rust-scanner"
-classification = "ledger_change_note"
-reason = "Revision note receipting the root-bound scan-cache unsafe surface (#3915, #3939): authorizes the six added_allow transitions for the openat/mkdirat FFI receipts and the safety-analysis document."
-evidence = ["doc:docs/how-to/manage-an-exception.md", "issue:3915"]
-created = "2026-08-28"
-review_after = "2026-11-26"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3915-root-bound-cache-receipts.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3915-root-bound-cache-receipts.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11181"
 kind = "non_rust_file"
 family = "release_script"
@@ -14465,28 +13986,6 @@ ast_kind = "tracked_file"
 symbol = "docs/dogfood/receipts/package-candidate-v2.example.json"
 target_fingerprint = "json"
 glob = "docs/dogfood/receipts/package-candidate-v2.example.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11185"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2924-package-candidate-v2.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#2924 revision note authorizing the package-candidate receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:2924", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2924-package-candidate-v2.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2924-package-candidate-v2.toml"
 
 [allow.last_seen]
 line = 1
@@ -14581,28 +14080,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11190"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2925-isolated-install-v2.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#2925 revision note authorizing the isolated-install receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:2925", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2925-isolated-install-v2.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2925-isolated-install-v2.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11191"
 kind = "non_rust_file"
 family = "shell_script"
@@ -14647,28 +14124,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11193"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2926-exact-candidate-v2.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#2926 revision note authorizing the qualification receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:2926", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2926-exact-candidate-v2.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2926-exact-candidate-v2.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11194"
 kind = "non_rust_file"
 family = "documentation"
@@ -14685,28 +14140,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/github-pr-check-v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/github-pr-check-v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11195"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3965-github-pr-check-v1.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3965 revision note authorizing the PR check schema receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3965", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-28"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3965-github-pr-check-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3965-github-pr-check-v1.toml"
 
 [allow.last_seen]
 line = 1
@@ -14737,28 +14170,6 @@ line = 95
 column = 57
 
 [[allow]]
-id = "allow-0656"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4021-pr-check-adapter-indexing-receipt.toml"
-owner = "core/devex"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the allow-0655 added_allow transition that receipts the panic.indexing finding in the #4021 GitHub PR check adapter test."
-evidence = ["doc:docs/how-to/manage-an-exception.md", "issue:3965"]
-created = "2026-08-29"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4021-pr-check-adapter-indexing-receipt.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4021-pr-check-adapter-indexing-receipt.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11196"
 kind = "non_rust_file"
 family = "ci_declarative"
@@ -14781,72 +14192,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11197"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3970-workflow-sentinel.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3970 revision note authorizing the workflow sentinel receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3970", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-29"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3970-workflow-sentinel.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3970-workflow-sentinel.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0659"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/weak-evidence-retargets.toml"
-owner = "core/docs"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the eight evidence_removed transitions that retarget stale test anchors to their surviving tests in the weak-evidence cleanup lane."
-evidence = ["doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-29"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/weak-evidence-retargets.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/weak-evidence-retargets.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0660"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/allow-9005-review-refresh.toml"
-owner = "release/qualification"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the allow-9005 review_after extension after the operator re-confirmed the 0.1.11 readiness record."
-evidence = ["doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-29"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/allow-9005-review-refresh.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/allow-9005-review-refresh.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11198"
 kind = "non_rust_file"
 family = "configuration"
@@ -14863,28 +14208,6 @@ ast_kind = "tracked_file"
 symbol = "policy/release-identity-consumers.toml"
 target_fingerprint = "toml"
 glob = "policy/release-identity-consumers.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11199"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3752-release-identity-consumer-denominator.toml"
-owner = "core/release"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the added_allow entries for the release-identity consumer denominator and its self-receipt."
-evidence = ["issue:3752"]
-created = "2026-08-29"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3752-release-identity-consumer-denominator.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3752-release-identity-consumer-denominator.toml"
 
 [allow.last_seen]
 line = 1
@@ -15094,28 +14417,6 @@ normalized_snippet_hash = "fnv1a64:be260cd3b6a7d936"
 [allow.last_seen]
 line = 25
 column = 33
-
-[[allow]]
-id = "allow-0672"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
-owner = "core/release"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the added_allow receipts for the rc.1 publication incident reconciliation (#3759)."
-evidence = ["issue:3759"]
-created = "2026-08-30"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3759-rc1-publication-incident-reconciliation.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0673"
@@ -15446,28 +14747,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11204"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3905-feature-configuration-routing.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3905 PR D revision note authorizing the routed-proof receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3905"]
-created = "2026-08-30"
-review_after = "2027-03-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3905-feature-configuration-routing.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3905-feature-configuration-routing.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0688"
 kind = "non_rust_file"
 family = "documentation"
@@ -15506,28 +14785,6 @@ ast_kind = "tracked_file"
 symbol = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
 target_fingerprint = "md"
 glob = "docs/dogfood/receipts/unused-dependency-inventory-v1.md"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0690"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#3909 PR B revision note authorizing the unused-dependency artifact receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:3909", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-08-31"
-review_after = "2027-02-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3909-pr-b-unused-dependency-family-dispositions.toml"
 
 [allow.last_seen]
 line = 1
@@ -15594,28 +14851,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-final-package-docs.py"
 target_fingerprint = "py"
 glob = "scripts/test-final-package-docs.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0696"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3773-final-package-docs-receipt.toml"
-owner = "core/release"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the added_allow receipts for the final package-docs receipt lane (#3773)."
-evidence = ["issue:3773"]
-created = "2026-09-01"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3773-final-package-docs-receipt.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3773-final-package-docs-receipt.toml"
 
 [allow.last_seen]
 line = 1
@@ -15689,28 +14924,6 @@ normalized_snippet_hash = "fnv1a64:3e73816a0c6341c0"
 [allow.last_seen]
 line = 320
 column = 59
-
-[[allow]]
-id = "allow-0700"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3761-reconciled-publication.toml"
-owner = "core/release"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the added_allow receipts for the reconciled-publication construction lane (#3761)."
-evidence = ["issue:3761"]
-created = "2026-09-01"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3761-reconciled-publication.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3761-reconciled-publication.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0703"
@@ -15821,28 +15034,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/check-crate-docs.sh"
 target_fingerprint = "sh"
 glob = "scripts/check-crate-docs.sh"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0708"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3773-crate-docs-warning-clean.toml"
-owner = "core/release"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the added_allow receipts for the crate-docs warning-clean lane (#3773)."
-evidence = ["issue:3773"]
-created = "2026-09-01"
-review_after = "2026-11-27"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3773-crate-docs-warning-clean.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3773-crate-docs-warning-clean.toml"
 
 [allow.last_seen]
 line = 1
@@ -16112,28 +15303,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/candidate-preparation-plan-v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/candidate-preparation-plan-v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0721"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3831-candidate-preparation-plan.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-receipt for the #3831 revision note record; the note documents the added_allow transition for the candidate-preparation receipts"
-evidence = ["issue:3831"]
-created = "2026-09-02"
-review_after = "2026-12-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3831-candidate-preparation-plan.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3831-candidate-preparation-plan.toml"
 
 [allow.last_seen]
 line = 1
@@ -16987,28 +16156,6 @@ line = 1341
 column = 18
 
 [[allow]]
-id = "allow-0759"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3832-candidate-operations.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-receipt for the #3832 revision note record; the note documents the added_allow transition for the candidate-operation receipt set"
-evidence = ["issue:3832"]
-created = "2026-09-02"
-review_after = "2026-12-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3832-candidate-operations.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3832-candidate-operations.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0760"
 kind = "panic"
 family = "panic_macro"
@@ -17860,28 +17007,6 @@ normalized_snippet_hash = "fnv1a64:f7644a6ebcdf7445"
 [allow.last_seen]
 line = 1808
 column = 22
-
-[[allow]]
-id = "allow-0797"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3833-candidate-apply.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-receipt for the #3833 revision note record; the note documents the added_allow transition for the candidate-apply receipt set"
-evidence = ["issue:3833"]
-created = "2026-09-02"
-review_after = "2026-12-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3833-candidate-apply.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3833-candidate-apply.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0798"
@@ -18964,28 +18089,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0845"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3834-candidate-preparation-receipt.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-receipt for the #3834 revision note record; the note documents the added_allow transition for the receipt-lane set"
-evidence = ["issue:3834"]
-created = "2026-09-03"
-review_after = "2026-12-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3834-candidate-preparation-receipt.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3834-candidate-preparation-receipt.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0846"
 kind = "panic"
 family = "expect"
@@ -19190,28 +18293,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0855"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4126-config-authority-denominator.toml"
-owner = "cargo-allow maintainers"
-classification = "reviewed_exception"
-reason = "Revision receipt for the #3876 configuration-authority denominator policy exception."
-evidence = ["issue:3876"]
-created = "2026-09-03"
-review_after = "2026-12-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4126-config-authority-denominator.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4126-config-authority-denominator.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0858"
 kind = "panic"
 family = "expect"
@@ -19227,28 +18308,6 @@ review_after = "2026-12-02"
 [allow.selector]
 callee = "expect"
 glob = "crates/allow-report/src/artifacts/final_support_selection_v1.rs"
-
-[[allow]]
-id = "allow-0857"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3737-final-support-selection.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the final-support-selection expect baseline added by the #3737 final-selection freeze PR."
-evidence = ["issue:3737", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-03"
-review_after = "2026-12-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3737-final-support-selection.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3737-final-support-selection.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0860"
@@ -19267,28 +18326,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/observe-live-release-controls.sh"
 target_fingerprint = "sh"
 glob = "scripts/observe-live-release-controls.sh"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0861"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2501-release-freeze-composition.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the release-freeze composition driver receipts (allow-0859 expect baseline, allow-0860 observation script) added by the #2501 freeze lane."
-evidence = ["issue:2501", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-04"
-review_after = "2026-12-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2501-release-freeze-composition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2501-release-freeze-composition.toml"
 
 [allow.last_seen]
 line = 1
@@ -19400,28 +18437,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0867"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2501-final-freeze-record.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the retained final-freeze evidence artifacts (allow-0863..0866) added by the #2501 freeze-record lane."
-evidence = ["issue:2501", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-04"
-review_after = "2026-12-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2501-final-freeze-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2501-final-freeze-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0868"
 kind = "non_rust_file"
 family = "ci_declarative"
@@ -19461,28 +18476,6 @@ callee = "expect"
 glob = "crates/allow-report/src/artifacts/frozen_subject_lock_v1.rs"
 
 [[allow]]
-id = "allow-0870"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3928-frozen-subject-lock.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the frozen-subject lock additions (allow-0868 workflow receipt, allow-0869 expect ratchet) added by the #3928 lane."
-evidence = ["issue:3928", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-05"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3928-frozen-subject-lock.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3928-frozen-subject-lock.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0871"
 kind = "non_rust_file"
 family = "configuration"
@@ -19520,28 +18513,6 @@ review_after = "2026-12-04"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/cli/frozen_subject_lock_command.rs"
-
-[[allow]]
-id = "allow-0874"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3845-campaign-closeout-verifier.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the campaign-closeout verifier expect ratchet added by the #3845 lane."
-evidence = ["issue:3845", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-05"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3845-campaign-closeout-verifier.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3845-campaign-closeout-verifier.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0875"
@@ -19627,28 +18598,6 @@ review_after = "2026-12-04"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/review_disposition_contract_tests.rs"
-
-[[allow]]
-id = "allow-11209"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3843-review-disposition-v1.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the review-disposition expect ratchets added by the #3843 lane."
-evidence = ["issue:3843", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-05"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3843-review-disposition-v1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3843-review-disposition-v1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11210"
@@ -19746,28 +18695,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11215"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3844-review-readiness-check.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the review-readiness ratchets and declarative-surface receipts added by the #3844 lane."
-evidence = ["issue:3844", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-06"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3844-review-readiness-check.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3844-review-readiness-check.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11216"
 kind = "panic"
 family = "expect"
@@ -19817,28 +18744,6 @@ review_after = "2026-12-05"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/evidence_sufficiency_gate_tests.rs"
-
-[[allow]]
-id = "allow-11219"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3846-closeout-guard-law.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the closeout-guard expect ratchets added by the #3846 lane."
-evidence = ["issue:3846", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-06"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3846-closeout-guard-law.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3846-closeout-guard-law.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11220"
@@ -19924,28 +18829,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11224"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3835-ci-performance-receipt.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the CI-performance receipt ratchets and declarative-surface receipts added by the #3835 lane."
-evidence = ["issue:3835", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-06"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3835-ci-performance-receipt.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3835-ci-performance-receipt.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11225"
 kind = "panic"
 family = "expect"
@@ -19995,28 +18878,6 @@ review_after = "2026-12-05"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/cli/ci_pregate_command.rs"
-
-[[allow]]
-id = "allow-11228"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3836-ci-pregate.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the pre-gate expect ratchets added by the #3836 lane."
-evidence = ["issue:3836", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-06"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3836-ci-pregate.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3836-ci-pregate.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11229"
@@ -20069,28 +18930,6 @@ ast_kind = "tracked_file"
 symbol = "docs/ci/receipts/ci-cache-experiment-v1.json"
 target_fingerprint = "json"
 glob = "docs/ci/receipts/ci-cache-experiment-v1.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11232"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3963-ci-cache-experiment.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the Linux cache experiment ratchets and the retained receipt added by the #3963 lane."
-evidence = ["issue:3963", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-06"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3963-ci-cache-experiment.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3963-ci-cache-experiment.toml"
 
 [allow.last_seen]
 line = 1
@@ -20168,28 +19007,6 @@ review_after = "2026-12-06"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/workspace_lint_policy_tests.rs"
-
-[[allow]]
-id = "allow-11238"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3904-workspace-lint-inventory.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the workspace lint inventory expect ratchets added by the #3904 PR A lane."
-evidence = ["issue:3904", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-07"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3904-workspace-lint-inventory.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3904-workspace-lint-inventory.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-0906"
@@ -20280,28 +19097,6 @@ review_after = "2026-12-06"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/minimum_direct_version_fixtures_tests.rs"
-
-[[allow]]
-id = "allow-11243"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3903-minimum-direct-version.toml"
-owner = "core/deps"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the direct minimum version expect ratchets added by the #3903 PR A lane."
-evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-07"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3903-minimum-direct-version.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3903-minimum-direct-version.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11245"
@@ -20470,28 +19265,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11253"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3903-advisory-products.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the advisory product receipts added by the #3903 PR C lane."
-evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-07"
-review_after = "2026-12-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3903-advisory-products.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3903-advisory-products.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11254"
 kind = "panic"
 family = "expect"
@@ -20560,28 +19333,6 @@ macro_name = "panic"
 glob = "crates/cargo-allow/src/minimum_direct_version_drift_tests.rs"
 
 [[allow]]
-id = "allow-11258"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3903-minimum-version-drift.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the drift-guard source exceptions added by the #3903 PR D lane."
-evidence = ["issue:3903", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-07"
-review_after = "2026-12-06"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3903-minimum-version-drift.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3903-minimum-version-drift.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11259"
 kind = "non_rust_file"
 family = "shell_script"
@@ -20638,72 +19389,6 @@ callee = "expect"
 glob = "crates/cargo-allow/src/workflow_security_fixtures_tests.rs"
 
 [[allow]]
-id = "allow-0921"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4153.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured independent review evidence for PR #4153 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4153", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-09-08"
-review_after = "2026-12-06"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4153.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4153.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11262"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3907-workflow-construction-inventory.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the workflow construction inventory source exceptions added by the #3907 PR A lane."
-evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-08"
-review_after = "2026-12-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3907-workflow-construction-inventory.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3907-workflow-construction-inventory.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-0922"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4153-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4153 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4153", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-08"
-review_after = "2026-12-06"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4153-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4153-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4165-adapter-fixture"
 kind = "non_rust_file"
 family = "shell_script"
@@ -20720,28 +19405,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-project-review-readiness.sh"
 target_fingerprint = "sh"
 glob = "scripts/test-project-review-readiness.sh"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4165-revision-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4165-readiness-publication.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Authored revision note for the two exact non-Rust file additions in issue #4165; receipts the mocked adapter fixture and this note without widening existing exception scope or changing review and release authority."
-evidence = ["issue:4165", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-08"
-review_after = "2026-12-06"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4165-readiness-publication.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4165-readiness-publication.toml"
 
 [allow.last_seen]
 line = 1
@@ -20798,28 +19461,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/check-workflow-syntax.sh"
 target_fingerprint = "sh"
 glob = "scripts/check-workflow-syntax.sh"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11266"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3907-workflow-syntax-lane.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the workflow syntax lane source exceptions added by the #3907 PR B lane."
-evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-08"
-review_after = "2026-12-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3907-workflow-syntax-lane.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3907-workflow-syntax-lane.toml"
 
 [allow.last_seen]
 line = 1
@@ -20896,28 +19537,6 @@ target_fingerprint = "toml"
 glob = "policy/workflow-security-exceptions.toml"
 
 [[allow]]
-id = "allow-11271"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3907-workflow-security-lane.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the workflow security lane source exceptions added by the #3907 PR C lane."
-evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-08"
-review_after = "2026-12-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3907-workflow-security-lane.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3907-workflow-security-lane.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11272"
 kind = "panic"
 family = "expect"
@@ -20970,28 +19589,6 @@ target_fingerprint = "sh"
 glob = "scripts/check-workflow-construction.sh"
 
 [[allow]]
-id = "allow-11275"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3907-workflow-construction-aggregate.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the workflow construction aggregate source exceptions added by the #3907 PR D lane."
-evidence = ["issue:3907", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-08"
-review_after = "2026-12-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3907-workflow-construction-aggregate.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3907-workflow-construction-aggregate.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11276"
 kind = "panic"
 family = "expect"
@@ -21007,28 +19604,6 @@ review_after = "2026-12-09"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/dependency_graph_delta_tests.rs"
-
-[[allow]]
-id = "allow-11277"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3920-dependency-graph-delta.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the dependency graph delta source exceptions added by the #3920 PR A lane."
-evidence = ["issue:3920", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-09"
-review_after = "2026-12-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3920-dependency-graph-delta.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3920-dependency-graph-delta.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11278"
@@ -21187,24 +19762,6 @@ review_after = "2026-12-09"
 callee = "expect"
 
 [[allow]]
-id = "allow-11287"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3920-dependency-graph-evidence.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the dependency graph evidence adjacency source exceptions added by the #3920 PR C lane."
-evidence = ["issue:3920", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-09"
-review_after = "2026-12-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3920-dependency-graph-evidence.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3920-dependency-graph-evidence.toml"
-
-[[allow]]
 id = "allow-11288"
 kind = "panic"
 family = "indexing"
@@ -21256,42 +19813,6 @@ review_after = "2026-12-09"
 [allow.selector]
 callee = "expect"
 glob = "crates/cargo-allow/src/cli/dependency_graph_delta_command.rs"
-
-[[allow]]
-id = "allow-11291"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3920-dependency-graph-routing.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the dependency graph routing source exceptions added by the #3920 PR D lane."
-evidence = ["issue:3920"]
-created = "2026-09-09"
-review_after = "2026-12-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3920-dependency-graph-routing.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3920-dependency-graph-routing.toml"
-
-[[allow]]
-id = "allow-9260"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the freeze-subject hidden-index hardening ratchet rise added by the #4181 lane."
-evidence = ["issue:4181", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-10"
-review_after = "2026-12-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4181-freeze-subject-hidden-index.toml"
 
 [[allow]]
 id = "allow-0963"
@@ -21382,28 +19903,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0967"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4166-floor-regeneration.toml"
-owner = "core/deps"
-classification = "ledger_change_note"
-reason = "Exact revision note for the five reviewed documentation and Python file entries required by #4166; records source-file exceptions without broadening existing selectors or extending lifecycle metadata."
-evidence = ["issue:4166", "doc:docs/ci/direct-floor-proof.md"]
-created = "2026-09-10"
-review_after = "2026-12-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4166-floor-regeneration.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4166-floor-regeneration.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4166-protocol-python"
 kind = "non_rust_file"
 family = "python_tool"
@@ -21464,42 +19963,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-collect-ci-performance.sh"
 target_fingerprint = "sh"
 glob = "scripts/test-collect-ci-performance.sh"
-
-[[allow]]
-id = "allow-9262"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4173-performance-source-provenance.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the performance source provenance source exceptions added by the #4173 lane."
-evidence = ["issue:4173", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-10"
-review_after = "2026-12-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4173-performance-source-provenance.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4173-performance-source-provenance.toml"
-
-[[allow]]
-id = "allow-9263"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4175-rehearsal-subject-binding.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the rehearsal subject-binding ratchet rise added by the #4175 lane."
-evidence = ["issue:4175", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-10"
-review_after = "2026-12-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4175-rehearsal-subject-binding.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4175-rehearsal-subject-binding.toml"
 
 [[allow]]
 id = "allow-4166-selection-cargo-allow"
@@ -21634,28 +20097,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-4217-floor-source-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4217-floor-subject.toml"
-owner = "core/deps"
-classification = "policy_revision"
-reason = "Record exact reviewed additions for the individually scoped floor-subject helper, real-Git fixtures, and this revision note; no existing exception scope is broadened."
-evidence = ["issue:4217", "doc:docs/ci/direct-floor-proof.md"]
-created = "2026-09-12"
-review_after = "2026-12-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4217-floor-subject.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4217-floor-subject.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4131-provider-schema"
 kind = "non_rust_file"
 family = "documentation"
@@ -21672,28 +20113,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/cargo-allow-provider-contract-v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4131-provider-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4131-provider-contract-schema.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Revision note authorizing the two bounded policy additions required to receipt the provider descriptor schema and this note itself for PR #4131."
-evidence = ["pr:4131", "issue:2567", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-06"
-review_after = "2027-03-06"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4131-provider-contract-schema.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4131-provider-contract-schema.toml"
 
 [allow.last_seen]
 line = 1
@@ -21744,28 +20163,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-4277-floor-settlement-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4277-floor-pin-settlement.toml"
-owner = "core/deps"
-classification = "ledger_change_note"
-reason = "Exact transition record for the three path-bounded policy entries reviewed under issue #4277."
-evidence = ["issue:4277", "doc:docs/how-to/manage-an-exception.md", "test:scripts/test_floor_pin_settlement.py"]
-created = "2026-09-15"
-review_after = "2026-12-14"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4277-floor-pin-settlement.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4277-floor-pin-settlement.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11296"
 kind = "non_rust_file"
 family = "python_tool"
@@ -21810,28 +20207,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-4283-direct-floor-product-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4283-direct-floor-product-isolation.toml"
-owner = "core/release"
-classification = "ledger_change_note"
-reason = "Exact transition record for the three path-bounded policy entries reviewed under issue #4283."
-evidence = ["issue:4283", "doc:docs/how-to/manage-an-exception.md", "test:scripts/test_floor_product_workspace.py", "test:scripts/test-proof-direct-floors.sh"]
-created = "2026-09-16"
-review_after = "2027-03-16"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4283-direct-floor-product-isolation.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4283-direct-floor-product-isolation.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4283-workspace-preflight"
 kind = "non_rust_file"
 family = "python_tool"
@@ -21870,28 +20245,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test_floor_workspace_contract.py"
 target_fingerprint = "py"
 glob = "scripts/test_floor_workspace_contract.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4283-workspace-admission-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4283-workspace-contract-admission.toml"
-owner = "EffortlessSteven"
-classification = "reviewed_exception"
-reason = "Exact append-only admission record for the two #4283 Python files and this note; records generated entry fingerprints without changing existing exceptions or authorizing release."
-evidence = ["issue:4283", "doc:docs/ci/direct-floor-proof.md"]
-created = "2026-09-17"
-review_after = "2026-12-16"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4283-workspace-contract-admission.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4283-workspace-contract-admission.toml"
 
 [allow.last_seen]
 line = 1
@@ -21964,50 +20317,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11322"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3940-release-operation-authority.toml"
-owner = "core/release"
-classification = "release_operation_authority"
-reason = "Exact append-only revision note for the #3940 PR A schema and operator-contract ledger admissions; it authorizes no workflow, provider, tag, token, publication, or live-control action."
-evidence = ["issue:3940", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-18"
-review_after = "2027-03-18"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3940-release-operation-authority.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3940-release-operation-authority.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11323"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4303.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact-path receipt for the retained typed same-maintainer disposition of PR #4303; it records the reviewed source pair and explicit non-independent claim boundary, but carries no CI, merge, authorization, or release authority."
-evidence = ["issue:3940", "pull-request:4303", "review:5257051368"]
-created = "2026-09-19"
-review_after = "2027-03-19"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4303.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4303.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11324"
 kind = "non_rust_file"
 family = "release_script"
@@ -22030,28 +20339,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11325"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4304-package-byte-authority.toml"
-owner = "core/release"
-classification = "package_byte_authority"
-reason = "Revision note covering the package-byte authority ledger admission; tracks configuration only, authorizes no release action."
-evidence = ["issue:4304", "test:package_byte_authority"]
-created = "2026-09-19"
-review_after = "2027-03-19"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4304-package-byte-authority.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4304-package-byte-authority.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11326"
 kind = "non_rust_file"
 family = "documentation"
@@ -22068,49 +20355,6 @@ ast_kind = "tracked_file"
 symbol = "docs/release/release-operation-child-inventory-v1.md"
 target_fingerprint = "md"
 glob = "docs/release/release-operation-child-inventory-v1.md"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11327"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3940-operation-migration.toml"
-owner = "core/release"
-classification = "release_operation_authority"
-reason = "Self-receipt for this #3940 PR B revision note; tracks configuration only, authorizes no release action."
-evidence = ["issue:3940", "test:release_operation_authority"]
-created = "2026-09-20"
-review_after = "2027-03-20"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3940-operation-migration.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3940-operation-migration.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11333"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3852-relocated-package-docs-receipts.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-receipt for the #3852 revision note covering the relocated package-docs receipt entries, following the ledger_change_note precedent."
-evidence = ["issue:3852"]
-created = "2026-09-22"
-review_after = "2026-12-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3852-relocated-package-docs-receipts.toml"
 
 [allow.last_seen]
 line = 1
@@ -22183,28 +20427,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11338"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3933-github-release-transaction.toml"
-owner = "core/release"
-classification = "release_operation_authority"
-reason = "Self-receipt for this #3933 revision note file; tracks configuration only, authorizes no release action."
-evidence = ["issue:3933", "test:github_release_journal"]
-created = "2026-09-20"
-review_after = "2027-03-20"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3933-github-release-transaction.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3933-github-release-transaction.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11339"
 kind = "non_rust_file"
 family = "documentation"
@@ -22241,28 +20463,6 @@ review_after = "2027-03-28"
 ast_kind = "tracked_file"
 target_fingerprint = "md"
 glob = "docs/agents/cargo-allow-cadence.md"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11341"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4239-cadence-surface.toml"
-owner = "core/policy"
-classification = "cadence_surface_change_note"
-reason = "Revision note covering the cadence docs surface ledger admissions; tracks configuration only, authorizes no release action."
-evidence = ["issue:4239"]
-created = "2026-09-28"
-review_after = "2027-03-28"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4239-cadence-surface.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4239-cadence-surface.toml"
 
 [allow.last_seen]
 line = 1
@@ -22313,28 +20513,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1044"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3883-default-sensor-burden-audit.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for the #3883 revision note, matching the #3792 precedent"
-evidence = ["issue:3883", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-09-30"
-review_after = "2026-12-29"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3883-default-sensor-burden-audit.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3883-default-sensor-burden-audit.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1045"
 kind = "non_rust_file"
 family = "ci_declarative"
@@ -22351,138 +20529,6 @@ ast_kind = "tracked_file"
 symbol = ".github/workflows/sensor-burden-audit.yml"
 target_fingerprint = "yml"
 glob = ".github/workflows/sensor-burden-audit.yml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1046"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-receipt for this revision note file, matching the #3792 precedent"
-evidence = ["issue:3883"]
-created = "2026-09-30"
-review_after = "2026-12-29"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3883-scheduled-sensor-burden-audit.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1047"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4245-prerelease-version-polarity.toml"
-owner = "core/deps"
-classification = "reviewed_exception"
-reason = "self-receipt for the #4245 revision note, matching the #3792 precedent"
-evidence = ["issue:4245"]
-created = "2026-10-01"
-review_after = "2026-12-30"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4245-prerelease-version-polarity.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4245-prerelease-version-polarity.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1048"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4243-duplicate-version-identity-rows.toml"
-owner = "core/deps"
-classification = "reviewed_exception"
-reason = "self-receipt for the #4243 revision note, matching the #3792 precedent"
-evidence = ["issue:4243"]
-created = "2026-10-01"
-review_after = "2026-12-30"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4243-duplicate-version-identity-rows.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4243-duplicate-version-identity-rows.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1049"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4347-nonorderable-versions-fail-closed.toml"
-owner = "core/deps"
-classification = "reviewed_exception"
-reason = "self-receipt for the #4347 revision note, matching the #3792 precedent"
-evidence = ["issue:4347"]
-created = "2026-10-04"
-review_after = "2027-01-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4347-nonorderable-versions-fail-closed.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4347-nonorderable-versions-fail-closed.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1050"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4359-delta-hardening-bundle.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for this revision note file, matching the #3792 precedent"
-evidence = ["issue:4359"]
-created = "2026-10-04"
-review_after = "2027-01-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4359-delta-hardening-bundle.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4359-delta-hardening-bundle.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1051"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4360-ci-pin-env-and-inventory.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for the #4360 revision note, matching the #3792 precedent"
-evidence = ["issue:4360"]
-created = "2026-10-04"
-review_after = "2027-01-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4360-ci-pin-env-and-inventory.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4360-ci-pin-env-and-inventory.toml"
 
 [allow.last_seen]
 line = 1
@@ -22533,50 +20579,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1054"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4366-agentic-benchmarks.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for this revision note file, matching the #3792 precedent"
-evidence = ["issue:4366"]
-created = "2026-10-05"
-review_after = "2027-01-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4366-agentic-benchmarks.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4366-agentic-benchmarks.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1057"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4392-4391-doc-pointers.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for the #4392/#4391 doc-pointer and boundary-law revision note, matching the #3792 precedent"
-evidence = ["issue:4392"]
-created = "2026-10-07"
-review_after = "2027-01-05"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4392-4391-doc-pointers.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4392-4391-doc-pointers.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1058"
 kind = "non_rust_file"
 family = "documentation"
@@ -22597,51 +20599,6 @@ glob = "docs/schemas/operator-latency.v4.schema.json"
 [allow.last_seen]
 line = 1
 column = 1
-
-[[allow]]
-id = "allow-1059"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for this revision note file, matching the #3792 precedent"
-evidence = ["issue:4403"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4403-perf-semantic-artifact-bytes.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11342"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4279-preserve-ledger-endings.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for the #4279 line-ending preservation revision note, matching the #3792 precedent"
-evidence = ["issue:4279"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4279-preserve-ledger-endings.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4279-preserve-ledger-endings.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
 
 [[allow]]
 id = "allow-1061"
@@ -22690,534 +20647,6 @@ normalized_snippet_hash = "fnv1a64:dcd6df58b4dce308"
 [allow.last_seen]
 line = 369
 column = 44
-
-[[allow]]
-id = "allow-1063"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4279-changed-region-receipt-schema.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for the 4279-changed-region-receipt-schema revision note, following the #3792 precedent"
-evidence = ["issue:4279"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4279-changed-region-receipt-schema.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4279-changed-region-receipt-schema.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11344"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4359-trailing-zero-version-identity-pin.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "self-receipt for this revision note file, matching the #3792 precedent"
-evidence = ["issue:4359"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4359-trailing-zero-version-identity-pin.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4359-trailing-zero-version-identity-pin.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4424-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4424.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4424 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4424", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4424.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4424.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4424-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4424-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4424 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4424", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4424-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4424-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4437-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4437.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4437 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4437", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4437.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4437.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4437-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4437-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4437 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4437", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4437-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4437-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4440-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4440.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4440 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4440", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4440.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4440.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4440-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4440-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4440 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4440", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4440-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4440-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4430-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4430.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4430 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4430", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4430.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4430.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4430-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4430-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4430 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4430", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4430-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4430-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4445-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4445.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4445 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4445", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4445.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4445.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4445-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4445-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4445 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4445", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4445-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4445-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4432-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4432.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4432 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4432", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4432.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4432.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4432-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4432-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4432 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4432", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4432-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4432-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-[[allow]]
-id = "allow-review-4431-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4431.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4431 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4431", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4431.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4431.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4431-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4431-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4431 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4431", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4431-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4431-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4434-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4434.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4434 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4434", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4434.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4434.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4434-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4434-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4434 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4434", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4434-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4434-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4451-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4451.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4451 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4451", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4451.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4451.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4451-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4451-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4451 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4451", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4451-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4451-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4450-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4450.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4450 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4450", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4450.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4450.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4450-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4450-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4450 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4450", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4450-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4450-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4447-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4447.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4447 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4447", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4447.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4447.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4447-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4447-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4447 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4447", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4447-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4447-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-release-4447-store-doc"
@@ -23283,547 +20712,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-release-operation-store.py"
 target_fingerprint = "py"
 glob = "scripts/test-release-operation-store.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4454-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4454.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4454 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4454", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4454.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4454.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4454-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4454-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4454 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4454", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4454-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4454-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4444-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4444.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4444 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4444", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4444.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4444.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4444-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4444-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4444 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4444", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4444-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4444-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4442-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4442.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4442 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4442", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4442.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4442.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4442-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4442-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4442 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4442", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4442-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4442-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4443-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4443.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4443 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4443", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4443.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4443.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4443-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4443-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4443 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4443", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4443-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4443-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4457-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4457.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4457 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4457", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4457.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4457.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4457-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4457-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4457 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4457", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4457-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4457-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4433-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4433.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4433 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4433", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4433.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4433.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4433-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4433-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4433 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4433", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4433-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4433-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-[[allow]]
-id = "allow-1064"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4429.json"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4429 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4429", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4429.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4429.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4429-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4429-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4429 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4429", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4429-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4429-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4463-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4463.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4463 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4463", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-11"
-review_after = "2027-01-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4463.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4463.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4463-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4463-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4463 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4463", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-11"
-review_after = "2027-01-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4463-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4463-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4435-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4435.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4435 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4435", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4435.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4435.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4435-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4435-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4435 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4435", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4435-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4435-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4446-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4446.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4446 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4446", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4446.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4446.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-
-[[allow]]
-id = "allow-review-4446-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4446-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4446 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4446", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4446-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4446-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-review-4436-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4436.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4436 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4436", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4436.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4436.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-
-[[allow]]
-id = "allow-review-4436-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4436-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4436 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4436", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4436-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4436-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11346"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4438-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4438 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4438", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-09"
-review_after = "2027-01-07"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4438-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4438-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-1109"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4438.json"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "review disposition for PR #4438 per the #3844 protocol"
-evidence = ["issue:4374"]
-created = "2026-10-12"
-review_after = "2027-01-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4438.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4438.json"
 
 [allow.last_seen]
 line = 1
@@ -23945,75 +20833,6 @@ column = 1
 
 
 [[allow]]
-id = "allow-3149-command-case-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3149-command-case-evidence.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Record canonical governance fingerprints and genuine rationale for these exact #3149 command-evidence file admissions without broadening directory scope or granting installation, merge or release authority."
-evidence = ["issue:3149", "doc:docs/release/core-command-migration-evidence.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3149-command-case-evidence.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3149-command-case-evidence.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4461-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4461.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4461 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4461", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-11"
-review_after = "2027-01-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4461.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4461.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4461-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4461-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4461 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4461", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-11"
-review_after = "2027-01-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4461-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4461-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
 id = "allow-3149-command-case-catalogue-eol"
 kind = "non_rust_file"
 family = "documentation"
@@ -24090,83 +20909,6 @@ column = 1
 
 
 [[allow]]
-id = "allow-11350"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2501-qualified-freeze-producer.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact #2501 qualifier documentation, producer, protocol fixtures and this note; records the reviewed source exception transitions without granting live qualification, custody, merge, or publication authority."
-evidence = ["issue:2501", "pr:4452", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2501-qualified-freeze-producer.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2501-qualified-freeze-producer.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-
-
-[[allow]]
-id = "allow-11351"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4452.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4452 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4452", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4452.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4452.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-
-
-[[allow]]
-id = "allow-11352"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4452-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4452 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4452", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4452-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4452-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-
-[[allow]]
 id = "allow-1117"
 kind = "non_rust_file"
 family = "documentation"
@@ -24190,145 +20932,6 @@ column = 1
 
 
 [[allow]]
-id = "allow-review-4455-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4455.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained independent source-review evidence for the bounded RC.1 attribution correction in PR #4455; the exact record reports a review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4455", "issue:3759", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4455.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4455.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-review-4455-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4455-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4455 source-review record and this note; records bounded evidence exceptions without widening directory scope or granting merge, CI bypass, or release authority."
-evidence = ["pr:4455", "issue:3759", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4455-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4455-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-review-4460-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4460.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4460 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4460", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4460.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4460.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-review-4460-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4460-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4460 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4460", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4460-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4460-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-review-4456-record"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4456.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4456 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4456", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-11"
-review_after = "2027-01-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4456.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4456.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-review-4456-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4456-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4456 review record and this note; records bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4456", "doc:.agents/skills/review-current-head/SKILL.md", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-11"
-review_after = "2027-01-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4456-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4456-retained-review-record.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11353"
 kind = "non_rust_file"
 family = "release_script"
@@ -24346,30 +20949,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-release-final-tag.py"
 target_fingerprint = "py"
 glob = "scripts/test-release-final-tag.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-
-[[allow]]
-id = "allow-11354"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4448.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4448 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4448", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4448.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4448.json"
 
 [allow.last_seen]
 line = 1
@@ -24403,71 +20982,6 @@ column = 1
 
 
 [[allow]]
-id = "allow-11347"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3930-final-tag-driver.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Authored revision note for these exact #3930 source-inventory entries and this note, under the acknowledged reversible implementation scope. It does not grant merge, CI bypass, release readiness or irreversible-operation authority."
-evidence = ["issue:3930", "issue:3925", "issue:3927", "test:release_final_tag_driver", "doc:docs/release/final-tag-transaction-v1.md"]
-links = ["https://github.com/EffortlessMetrics/cargo-allow/issues/3930#issuecomment-6097229437"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3930-final-tag-driver.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3930-final-tag-driver.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-11355"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4459-retained-review-record.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact retained PR #4459 review record and this note; records two bounded review-evidence exceptions without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["pr:4459","doc:.agents/skills/review-current-head/SKILL.md","doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4459-retained-review-record.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4459-retained-review-record.toml"
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-11356"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4459.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained structured review evidence for PR #4459 under the current-head review protocol; the exact file preserves actual review posture and source identity and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4459","doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-10"
-review_after = "2027-01-08"
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4459.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4459.json"
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1132"
 kind = "panic"
 family = "expect"
@@ -24489,28 +21003,6 @@ normalized_snippet_hash = "fnv1a64:97d452d0a0249937"
 [allow.last_seen]
 line = 243
 column = 40
-
-[[allow]]
-id = "allow-1133"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4507-summary-output-ledger-collision.toml"
-owner = "core/tooling"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact #4507 summary-output ledger-collision receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["issue:4507"]
-created = "2026-10-14"
-review_after = "2027-01-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4507-summary-output-ledger-collision.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4507-summary-output-ledger-collision.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-1134"
@@ -24536,27 +21028,6 @@ line = 16
 column = 10
 
 [[allow]]
-id = "allow-1135"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4509-add-summary-stderr-note.toml"
-owner = "core/tooling"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact #4509 stderr-note receipts and this note; records bounded test-exception provenance without widening directory scope or granting merge, CI-bypass, or release authority."
-created = "2026-10-14"
-review_after = "2027-01-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4509-add-summary-stderr-note.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4509-add-summary-stderr-note.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1136"
 kind = "non_rust_file"
 family = "ci_declarative"
@@ -24579,28 +21050,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1137"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4493-floor-receipt-regeneration.toml"
-owner = "core/ci"
-classification = "reviewed_exception"
-reason = "Authored revision note for the exact #4493 floor-receipt-regeneration workflow receipt and this note; records bounded infra provenance without widening directory scope or granting merge, CI-bypass, or release authority."
-evidence = ["issue:4493"]
-created = "2026-10-15"
-review_after = "2027-01-13"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4493-floor-receipt-regeneration.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4493-floor-receipt-regeneration.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1147"
 kind = "non_rust_file"
 family = "documentation"
@@ -24617,28 +21066,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/evaluation-artifact-set.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/evaluation-artifact-set.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1148"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4583-evaluation-artifact-set-schema.toml"
-owner = "core/schema"
-classification = "fixture"
-reason = "Authored revision-note file for the #4560/#4583 governed artifact-set schema receipt; this self-receipt row covers the note file itself."
-evidence = ["issue:4583"]
-created = "2026-10-16"
-review_after = "2027-01-14"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4583-evaluation-artifact-set-schema.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4583-evaluation-artifact-set-schema.toml"
 
 [allow.last_seen]
 line = 1
@@ -24837,28 +21264,6 @@ line = 141
 column = 5
 
 [[allow]]
-id = "allow-1157"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4605-from-plan-envelope.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering receipt for the authored revision note recording the eight #4605 plan-envelope suppression receipts (#3792 precedent)."
-evidence = ["issue:4605", "doc:docs/how-to/manage-an-exception.md"]
-created = "2026-10-17"
-review_after = "2027-01-15"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4605-from-plan-envelope.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4605-from-plan-envelope.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-2925-consumed-checksum-driver"
 kind = "non_rust_file"
 family = "python_tool"
@@ -24919,50 +21324,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/index-checksum-control-v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/index-checksum-control-v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-2925-consumed-checksum-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2925-consumed-checksum-control.toml"
-owner = "EffortlessMetrics"
-classification = "reviewed_exception"
-reason = "Exact-file admission for the scoped ledger transition note for this repair, retaining official policy fingerprints without broadening any prior allowance."
-evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/2886#issuecomment-6311577396"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2925-consumed-checksum-control.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2925-consumed-checksum-control.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-2925-consumed-checksum-review"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4647.json"
-owner = "EffortlessMetrics"
-classification = "reviewed_exception"
-reason = "Exact-file retention of independent exact-head checksum-control review and currentness; a blocked or stale record is not merge approval."
-evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4647#pullrequestreview-5597377443"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4647.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4647.json"
 
 [allow.last_seen]
 line = 1
@@ -25035,72 +21396,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-4643-worklist-page-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4643-worklist-page-qualification.toml"
-owner = "EffortlessMetrics"
-classification = "reviewed_exception"
-reason = "Exact-file transition note for the bounded worklist coverage admissions; all prior ledger entries and dates remain unchanged."
-evidence = ["https://github.com/EffortlessMetrics/cargo-allow/issues/4643#issuecomment-6311578894"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4643-worklist-page-qualification.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4643-worklist-page-qualification.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4643-worklist-page-review"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4648.json"
-owner = "EffortlessMetrics"
-classification = "reviewed_exception"
-reason = "Exact-file independent review disposition binds the complete source pair, findings, repair route and separate hosted CI obligations; historical blocked evidence is not a clean-review claim."
-evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4648#pullrequestreview-5597548670"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4648.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4648.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4649-prerequisite-review"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4649.json"
-owner = "EffortlessMetrics"
-classification = "reviewed_exception"
-reason = "Exact-file combined prerequisite review disposition; binds full source pair and independent review separately from all required hosted checks, with partial or stale states never authorizing merge."
-evidence = ["https://github.com/EffortlessMetrics/cargo-allow/pull/4649"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4649.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4649.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-3357-exact-journey-driver"
 kind = "non_rust_file"
 family = "python_tool"
@@ -25139,50 +21434,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-exact-candidate-install-journey.py"
 target_fingerprint = "py"
 glob = "scripts/test-exact-candidate-install-journey.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4642-change-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4642-exact-journey-hardening.toml"
-owner = "core/release"
-classification = "policy_change_note"
-reason = "Retains the exact official fingerprints and reviewed rationale for the scoped PR4642 harness, test and review-evidence admissions."
-evidence = ["issue:3357", "doc:AGENTS.md"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4642-exact-journey-hardening.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4642-exact-journey-hardening.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4642-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4642.json"
-owner = "core/review"
-classification = "review_disposition"
-reason = "Retains the exact-head independent review disposition for PR4642; pending state does not assert review cleanliness or authorize a merge."
-evidence = ["doc:AGENTS.md", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-10-21"
-review_after = "2027-01-21"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4642.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4642.json"
 
 [allow.last_seen]
 line = 1
@@ -25300,28 +21551,6 @@ line = 20
 column = 25
 
 [[allow]]
-id = "allow-1178"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering receipt for the authored revision note recording the five bulk-refresh fixture receipts (#4651, #3792 precedent)."
-evidence = ["issue:4651"]
-created = "2026-10-25"
-review_after = "2027-01-23"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4651-bulk-refresh-fixtures.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1173"
 kind = "lint_exception"
 family = "expect_attribute"
@@ -25366,28 +21595,6 @@ normalized_snippet_hash = "fnv1a64:dcfd9e6d8162989e"
 line = 16
 column = 1
 [[allow]]
-id = "allow-1175"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4655-federation-registry-validity.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering receipt for the authored revision note recording the federation registry-validity disclosure receipts (#4655, #3792 precedent)."
-evidence = ["issue:4655"]
-created = "2026-10-25"
-review_after = "2027-01-23"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4655-federation-registry-validity.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4655-federation-registry-validity.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1182"
 kind = "panic"
 family = "expect"
@@ -25427,72 +21634,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1184"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4676-sensor-capabilities-schema.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering receipt for the authored revision note recording the sensor-capabilities schema receipts (#4627, #3792 precedent)."
-evidence = ["issue:4627"]
-created = "2026-10-27"
-review_after = "2027-01-25"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4676-sensor-capabilities-schema.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4676-sensor-capabilities-schema.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4708-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4708.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact-pair review disposition for the November 2 UTC fixture repair (#4707/#4708); binds actual review and CI evidence without waiving source validation, merge controls, or release authority."
-evidence = ["pr:4708", "issue:4707", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-02"
-review_after = "2027-02-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4708.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4708.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4708-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4708-review-disposition.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering change-control note for the exact-file review disposition allowance under #4707/#4708; no broad policy, CI, review, or release bypass."
-evidence = ["pr:4708", "issue:4707"]
-created = "2026-11-02"
-review_after = "2027-02-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4708-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4708-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4703-delta-input-tests"
 kind = "non_rust_file"
 family = "python_tool"
@@ -25509,72 +21650,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-dependency-delta-inputs.py"
 target_fingerprint = "py"
 glob = "scripts/test-dependency-delta-inputs.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4703-delta-input-note"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4703-delta-input-controls.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the exact Python input-boundary test allowance (#4703); grants no policy-wide, CI-bypass, or release authority."
-evidence = ["issue:4703"]
-created = "2026-11-02"
-review_after = "2027-02-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4703-delta-input-controls.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4703-delta-input-controls.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4704-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4704.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact-pair reviewed source disposition for committed dependency-delta input integrity (#4703/#4704); binds real test and review evidence without waiving merge, CI, or release controls."
-evidence = ["pr:4704", "issue:4703", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-02"
-review_after = "2027-02-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4704.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4704.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4704-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4704-review-disposition.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering change-control note for the exact-file #4704 review disposition; no broad policy, scanner, review, CI, or release bypass."
-evidence = ["pr:4704", "issue:4703"]
-created = "2026-11-02"
-review_after = "2027-02-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4704-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4704-review-disposition.toml"
 
 [allow.last_seen]
 line = 1
@@ -25602,28 +21677,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1192"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3844-digest-stability.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Authored revision note receipting the allow-1191 digest-stability fixture addition for #3844; existing policy entries and review, merge, and release authority are preserved."
-evidence = ["issue:3844"]
-created = "2026-11-02"
-review_after = "2027-01-31"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3844-digest-stability.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3844-digest-stability.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1193"
 kind = "non_rust_file"
 family = "shell_script"
@@ -25640,28 +21693,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/check-fmt-relocation.sh"
 target_fingerprint = "sh"
 glob = "scripts/check-fmt-relocation.sh"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1194"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4222-fmt-boundary.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Authored revision note receipting the allow-1193 relocation fixture entry for #4222; existing policy entries and review, merge, and release authority are preserved."
-evidence = ["issue:4222"]
-created = "2026-11-03"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4222-fmt-boundary.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4222-fmt-boundary.toml"
 
 [allow.last_seen]
 line = 1
@@ -25714,28 +21745,6 @@ line = 150
 column = 13
 
 [[allow]]
-id = "allow-1197"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4215-poison-fixture.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Authored revision note receipting the allow-1195/allow-1196 poison-fixture entries for #4215; existing policy entries and review, merge, and release authority are preserved."
-evidence = ["issue:4215"]
-created = "2026-11-03"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4215-poison-fixture.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4215-poison-fixture.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1198"
 kind = "non_rust_file"
 family = "configuration"
@@ -25752,28 +21761,6 @@ ast_kind = "tracked_file"
 symbol = "codecov.yml"
 target_fingerprint = "yml"
 glob = "codecov.yml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1199"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4215-codecov-scope.toml"
-owner = "core/policy"
-classification = "ledger_change_note"
-reason = "Authored revision note receipting the allow-1198 codecov measurement-scope config entry for #4215/#1902; existing policy entries and review, merge, and release authority are preserved."
-evidence = ["issue:4215"]
-created = "2026-11-03"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4215-codecov-scope.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4215-codecov-scope.toml"
 
 [allow.last_seen]
 line = 1
@@ -25824,28 +21811,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1202"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4342-decision-records.toml"
-owner = "core/docs"
-classification = "reviewed_exception"
-reason = "Self-covering governance revision note for the exact-path decision-record retention allowances under #4342; retention only, no ratification or policy broadening."
-evidence = ["issue:4342"]
-created = "2026-11-03"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4342-decision-records.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4342-decision-records.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-1203"
 kind = "non_rust_file"
 family = "release_script"
@@ -25866,29 +21831,6 @@ glob = "scripts/test-generate-release-manifest.sh"
 [allow.last_seen]
 line = 1
 column = 1
-
-[[allow]]
-id = "allow-1204"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3761-release-manifest-proof-suites.toml"
-owner = "core/policy"
-classification = "revision_note"
-reason = "Self-receipt of this lane's revision note covering the #3761 proof-suite receipts, following the #3792 precedent: the note is a tracked non-rust file and its own ledger entry is part of the authorized transition."
-evidence = ["issue:3761"]
-created = "2026-11-03"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3761-release-manifest-proof-suites.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3761-release-manifest-proof-suites.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
 
 [[allow]]
 id = "allow-1205"
@@ -25913,91 +21855,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1206"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4255-review-posting-truth.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering governance revision note for the exact-path posted-claim agreement instrument retention allowance under #4255; ledger-change metadata only, no policy broadening or CI waiver."
-evidence = ["issue:4255"]
-created = "2026-11-04"
-review_after = "2027-02-01"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4255-review-posting-truth.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4255-review-posting-truth.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4716-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4716.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact-current-pair disposition for init common-summary preflight safety (#4714/#4716); no general transaction guarantee or CI/release waiver."
-evidence = ["pr:4716", "issue:4714", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-03"
-review_after = "2027-02-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4716.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4716.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4716-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4716-review-disposition.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering revision for the reviewed #4716 preflight disposition; no broad source exception or safety bypass."
-evidence = ["pr:4716", "issue:4714"]
-created = "2026-11-03"
-review_after = "2027-02-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4716-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4716-review-disposition.toml"
-
-
-[[allow]]
-id = "allow-11370"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4214-execution-provenance.toml"
-owner = "core/deps"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #4214 execution-provenance lane's occurrence-limit loosening of the invariant-guarded floor-selection and drift-test expect exceptions; note retention only, no new scanned surface."
-evidence = ["issue:4214"]
-created = "2026-11-03"
-review_after = "2027-05-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4214-execution-provenance.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4214-execution-provenance.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11371"
 kind = "non_rust_file"
 family = "documentation"
@@ -26014,28 +21871,6 @@ ast_kind = "tracked_file"
 symbol = "docs/schemas/cargo-allow.release-impact.v1.schema.json"
 target_fingerprint = "json"
 glob = "docs/schemas/cargo-allow.release-impact.v1.schema.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11372"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3794-3794-release-impact-routing.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #3794 release-impact schema allowance; note retention only, no new scanned surface, no policy-wide, CI-bypass, or release authority."
-evidence = ["issue:3794"]
-created = "2026-11-04"
-review_after = "2027-05-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3794-3794-release-impact-routing.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3794-3794-release-impact-routing.toml"
 
 [allow.last_seen]
 line = 1
@@ -26065,28 +21900,6 @@ column = 1
 
 
 
-
-[[allow]]
-id = "allow-11373"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3793-3793-escaped-defect-corpus.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #3793 escaped-defect corpus lane's added allow-11374 and allow-11373 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ["issue:3793"]
-created = "2026-11-04"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3793-3793-escaped-defect-corpus.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3793-3793-escaped-defect-corpus.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-1214"
@@ -26155,28 +21968,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1217"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2496-2496-typed-release-records.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #2496 typed release receipt lane added allow-1214 through allow-1216 schema receipts; note retention only, no new scanned surface beyond this file"
-evidence = ["issue:2496"]
-created = "2026-11-04"
-review_after = "2027-02-02"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2496-2496-typed-release-records.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2496-2496-typed-release-records.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11376"
 kind = "non_rust_file"
 family = "release_script"
@@ -26215,28 +22006,6 @@ ast_kind = "tracked_file"
 symbol = "scripts/test-release-source-candidate-smoke-gate.py"
 target_fingerprint = "py"
 glob = "scripts/test-release-source-candidate-smoke-gate.py"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11378"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #2267 publication smoke-gate lane's added allow-11375 through allow-11378 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ["issue:2267"]
-created = "2026-11-04"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2267-2267-candidate-smoke-gate.toml"
 
 [allow.last_seen]
 line = 1
@@ -26289,28 +22058,6 @@ column = 1
 
 
 [[allow]]
-id = "allow-11380"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #2886 staged packaging lane's added allow-11375 and allow-11376 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ["issue:2886"]
-created = "2026-11-04"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2886-2886-mixed-version-packaging.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11381"
 kind = "non_rust_file"
 family = "release_script"
@@ -26361,45 +22108,6 @@ column = 1
 
 
 
-
-[[allow]]
-id = "allow-11384"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3787-3787-typed-release-consumers.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #3787 typed-release-consumers lane's added allow-11375, allow-11376, allow-11377, and allow-11378 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ['issue:3787']
-created = "2026-11-04"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3787-3787-typed-release-consumers.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3787-3787-typed-release-consumers.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-[[allow]]
-id = "allow-11385"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2497-2497-typed-manifest-assembly.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #2497 typed manifest lane's added allow-11375 and allow-11385 receipts; note retention only, no new scanned surface beyond this file, matching the #3793/#4214/#4716 precedents."
-evidence = ["issue:2497"]
-created = "2026-11-04"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2497-2497-typed-manifest-assembly.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2497-2497-typed-manifest-assembly.toml"
 
 [[allow]]
 id = "allow-11386"
@@ -28580,28 +24288,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-11485"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4723-4723-experience-a-installed.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #4723 experience-A lane's added receipts; note retention only, no new scanned surface beyond this file."
-evidence = ["issue:4723"]
-created = "2026-11-05"
-review_after = "2027-02-03"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4723-4723-experience-a-installed.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4723-4723-experience-a-installed.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11492"
 kind = "non_rust_file"
 family = "documentation"
@@ -28646,28 +24332,6 @@ glob = "docs/release/evidence/next-release-qualification.md"
 line = 1
 column = 1
 
-
-[[allow]]
-id = "allow-11494"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2263-2263-qualification-materialization.toml"
-owner = "release/qualification"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #2263 lane's added allow-11386, allow-11387, and allow-11494 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ['issue:2263']
-created = "2026-11-05"
-review_after = "2027-02-05"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2263-2263-qualification-materialization.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2263-2263-qualification-materialization.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 
 [[allow]]
 id = "allow-11495"
@@ -28799,25 +24463,6 @@ line = 7
 column = 14
 
 [[allow]]
-id = "allow-11500"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/2276-2276-determinism-fixture.toml"
-owner = "core/test-platform"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #2276 semantic-determinism lane's added allow-11495 through allow-11499 receipts; note retention only, no new scanned surface beyond this file."
-evidence = ['issue:2276']
-created = "2026-11-05"
-review_after = "2027-02-05"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/2276-2276-determinism-fixture.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/2276-2276-determinism-fixture.toml"
-
-
-[[allow]]
 id = "allow-11487"
 kind = "non_rust_file"
 family = "python_tool"
@@ -28914,63 +24559,6 @@ column = 1
 
 
 [[allow]]
-id = "allow-11491"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4725-4725-experience-mutation-1.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for this lane's added allow-11386 through allow-11491 receipts; note retention only, no new scanned surface beyond this file, matching the #3793/#4214/#4716/#2497 precedents."
-evidence = ["issue:4725"]
-created = "2026-11-05"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4725-4725-experience-mutation-1.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4725-4725-experience-mutation-1.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4760-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4760.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retain exact-pair review state for the command-case declaration admission repair; no semantic execution, CI waiver or release authority."
-evidence = ["pr:4760", "issue:4705", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-09"
-review_after = "2027-02-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4760.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4760.json"
-
-[[allow]]
-id = "allow-4760-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4760-review-disposition.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-cover the exact revision note for PR4760 review-state retention without widening source exceptions."
-evidence = ["pr:4760", "issue:4705"]
-created = "2026-11-09"
-review_after = "2027-02-09"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4760-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4760-review-disposition.toml"
-[[allow]]
 id = "allow-11503"
 kind = "non_rust_file"
 family = "documentation"
@@ -28992,28 +24580,6 @@ glob = "docs/release/evidence/rc1-installed-docs-execution.v1.json"
 line = 1
 column = 1
 [[allow]]
-id = "allow-11502"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4706-4706-experience-docs.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #4706 installed-documentation lane's added allow-11503 receipt; note retention only, no new scanned surface beyond this file, matching the #2497/#3793/#4214/#4716 precedents."
-evidence = ["issue:4706"]
-created = "2026-11-05"
-review_after = "2027-02-05"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4706-4706-experience-docs.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4706-4706-experience-docs.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-4724-presentation-observation"
 kind = "non_rust_file"
 family = "documentation"
@@ -29034,28 +24600,6 @@ glob = "docs/release/evidence/core-command-presentation-4724.v1.json"
 [allow.last_seen]
 line = 1
 column = 1
-[[allow]]
-id = "allow-4724-presentation-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4724-4724-experience-read-only.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering revision note for the #4724 A presentation experience lane's added allow-4724-presentation-observation receipt; note retention only, no new scanned surface beyond this file."
-evidence = ["issue:4724"]
-created = "2026-11-06"
-review_after = "2027-02-06"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4724-4724-experience-read-only.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4724-4724-experience-read-only.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
 [[allow]]
 id = "allow-4725-historical-catalogue"
 kind = "non_rust_file"
@@ -29122,247 +24666,6 @@ glob = "scripts/test-ci-proof-route.py"
 line = 1
 column = 1
 
-[[allow]]
-id = "allow-4332-ledger-fixture"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4332-narrow-route.json"
-owner = "core/ci"
-classification = "ci_routing_fixture"
-reason = "Scratch review-ledger path for the #4332 successor-delta route. It is not a disposition for any open pull request and does not authorize merge, bypass, or release."
-evidence = ["issue:4332"]
-created = "2026-11-10"
-review_after = "2027-05-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4332-narrow-route.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4332-narrow-route.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4332-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4332-narrow-proof-route.toml"
-owner = "core/governance"
-classification = "dogfood_evidence"
-reason = "#4332 revision note authorizing the narrow proof-route receipts; covers the note file itself as tracked configuration."
-evidence = ["issue:4332"]
-created = "2026-11-10"
-review_after = "2027-05-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4332-narrow-proof-route.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4332-narrow-proof-route.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-11501"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4767.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained exact-head review evidence for PR #4767 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4767", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-11"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4767.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4767.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4774-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4774.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained exact-head review evidence for PR #4774 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4774", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-11"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4774.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4774.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4774-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4774-review-disposition.toml"
-owner = "core/governance"
-classification = "reviewed_exception"
-reason = "Self-covering change-control note for the exact-file #4774 review disposition; no broad policy, scanner, review, CI, or release bypass."
-evidence = ["pr:4774", "issue:4332"]
-created = "2026-11-11"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4774-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4774-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4775-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4775.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Retained exact-head review evidence for PR #4775 under the current-head review protocol; the exact file records a bounded source-review disposition and does not authorize CI bypass, merge, or release."
-evidence = ["pr:4775", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-11"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4775.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4775.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4775-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4775-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Self-covering change-control note for the exact-file #4775 review disposition; no broad policy, scanner, review, CI, or release bypass."
-evidence = ["pr:4775", "issue:4332"]
-created = "2026-11-11"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4775-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4775-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4776-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4776.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4776 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4776", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-12"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4776.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4776.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4776-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4776-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4776 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4776", "issue:4602"]
-created = "2026-11-12"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4776-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4776-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4782-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4782.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4782 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4782", "issue:4780"]
-created = "2026-11-12"
-review_after = "2027-02-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4782.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4782.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4782-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4782-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4782 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4782", "issue:4780"]
-created = "2026-11-12"
-review_after = "2027-02-10"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4782-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4782-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
 [[allow]]
 id = "allow-4602-queue-cutover"
 kind = "non_rust_file"
@@ -29452,71 +24755,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-4602-queue-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4602-merge-queue-only-ci.toml"
-owner = "core/ci"
-classification = "reviewed_exception"
-reason = "Retain the self-covering exact-fingerprint revision for the five bounded non-Rust source receipts under #4602; governance metadata only, no proof, admission, merge or release waiver."
-evidence = ["issue:4602"]
-created = "2026-11-04"
-review_after = "2027-02-04"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4602-merge-queue-only-ci.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4602-merge-queue-only-ci.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-[[allow]]
-id = "allow-4744-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4744.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4744 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4744", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-12"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4744.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4744.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4744-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4744-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4744 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4744", "issue:4602"]
-created = "2026-11-12"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4744-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4744-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-11504"
 kind = "non_rust_file"
 family = "configuration"
@@ -29539,50 +24777,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-4787-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4787.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4787 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4787", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-13"
-review_after = "2027-02-13"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4787.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4787.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4787-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4787-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4787 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4787", "issue:4780"]
-created = "2026-11-13"
-review_after = "2027-02-13"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4787-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4787-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-3151-installed-surface"
 kind = "non_rust_file"
 family = "documentation"
@@ -29599,50 +24793,6 @@ ast_kind = "tracked_file"
 symbol = "docs/release/evidence/installed-surface-3151.v1.json"
 target_fingerprint = "json"
 glob = "docs/release/evidence/installed-surface-3151.v1.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-3151-installed-surface-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/3151-installed-surface.toml"
-owner = "core/release"
-classification = "reviewed_exception"
-reason = "Self-covering exact-fingerprint revision for the installed-surface evidence admission; governance metadata only, no proof or release authority."
-evidence = ["issue:3151"]
-created = "2026-11-13"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/3151-installed-surface.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/3151-installed-surface.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-merge-group-checkout-refs-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/merge-group-checkout-refs.toml"
-owner = "core/ci"
-classification = "reviewed_exception"
-reason = "Self-covering exact-fingerprint revision for the checkout-ref guard admission; governance metadata only, no proof, admission, merge or release waiver."
-evidence = ["issue:4602"]
-created = "2026-11-13"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/merge-group-checkout-refs.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/merge-group-checkout-refs.toml"
 
 [allow.last_seen]
 line = 1
@@ -29693,350 +24843,40 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-1376"
+id = "allow-review-dispositions-directory"
 kind = "non_rust_file"
 family = "configuration"
-path = ".allow/review-dispositions/pr-4783.json"
 owner = "core/review"
 classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4783 at 496e9f70 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-created = "2026-11-13"
-review_after = "2027-02-11"
+reason = "Self-covering directory of retained exact-head review dispositions. Each file records bounded source-review evidence for one pull request and grants no code exception, CI bypass, merge authority or release authority; the directory is admitted as a whole so a new disposition does not require a ledger append."
+evidence = ["doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-14"
+review_after = "2027-02-12"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4783.json"
 target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4783.json"
+glob = ".allow/review-dispositions/*.json"
 
 [allow.last_seen]
 line = 1
 column = 1
 
 [[allow]]
-id = "allow-1377"
+id = "allow-review-revisions-directory"
 kind = "non_rust_file"
 family = "configuration"
-path = ".allow/revisions/4783-review-disposition.toml"
 owner = "core/review"
 classification = "reviewed_exception"
-reason = "Exact self-covering note for the source-controlled review disposition receipt at 496e9f70; governance metadata only."
-created = "2026-11-13"
-review_after = "2027-02-11"
+reason = "Self-covering directory of retained change-note revisions. Each file records governance metadata for one reviewed change and grants no code exception, CI bypass, merge authority or release authority; the directory is admitted as a whole so a new revision note does not require a ledger append."
+evidence = ["doc:.agents/skills/review-current-head/SKILL.md"]
+created = "2026-11-14"
+review_after = "2027-02-12"
 
 [allow.selector]
 ast_kind = "tracked_file"
-symbol = ".allow/revisions/4783-review-disposition.toml"
 target_fingerprint = "toml"
-glob = ".allow/revisions/4783-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4784-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4784.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4784 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4784", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-13"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4784.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4784.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4784-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4784-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4784 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4784", "issue:4781"]
-created = "2026-11-13"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4784-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4784-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-
-[[allow]]
-id = "allow-4778-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4778.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4778 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4778", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-13"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4778.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4778.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4778-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4778-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4778 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4778", "issue:3768"]
-created = "2026-11-13"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4778-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4778-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4795-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4795.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4795 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4795", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4795.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4795.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4795-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4795-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records the exact-file #4795 review disposition revision with no CI, merge, or release authority; no broad policy, scanner, review, or release bypass."
-evidence = ["pr:4795", "issue:4794"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4795-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4795-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4791-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4791.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4791 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4791", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4791.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4791.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1384"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4799.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4799 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4799", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4799.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4799.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4791-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4791-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact self-covering note for the source-controlled review disposition receipt at 96edf5bb; governance metadata only."
-evidence = ["pr:4791"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4791-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4791-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1385"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4799-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact self-covering note for the source-controlled review disposition receipt at 3eea0e7c; governance metadata only."
-evidence = ["pr:4799"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4799-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4799-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4814-review-disposition"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4814.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for the #3151 + D7 cut train with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4814", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4814.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4814.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-4814-review-revision"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4814-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact self-covering note for the source-controlled review disposition receipt of the #3151 + D7 cut train; governance metadata only."
-evidence = ["pr:4814"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4814-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4814-review-disposition.toml"
-
-[allow.last_seen]
-line = 1
-column = 1
-[[allow]]
-id = "allow-1386"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/review-dispositions/pr-4794.json"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Records exact-head review evidence for PR #4794 with no CI, merge, or release authority; the exact file holds a bounded source-review disposition and does not authorize a bypass."
-evidence = ["pr:4794", "doc:.agents/skills/review-current-head/SKILL.md"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/review-dispositions/pr-4794.json"
-target_fingerprint = "json"
-glob = ".allow/review-dispositions/pr-4794.json"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
-id = "allow-1387"
-kind = "non_rust_file"
-family = "configuration"
-path = ".allow/revisions/4794-review-disposition.toml"
-owner = "core/review"
-classification = "reviewed_exception"
-reason = "Exact self-covering note for the source-controlled review disposition receipt at de975157; governance metadata only."
-evidence = ["pr:4794"]
-created = "2026-11-14"
-review_after = "2027-02-12"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".allow/revisions/4794-review-disposition.toml"
-target_fingerprint = "toml"
-glob = ".allow/revisions/4794-review-disposition.toml"
+glob = ".allow/revisions/*.toml"
 
 [allow.last_seen]
 line = 1
