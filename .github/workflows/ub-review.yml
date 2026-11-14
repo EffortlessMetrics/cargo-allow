@@ -86,12 +86,22 @@ jobs:
           fi
           grep -Fq 'invalid kind: NotAConfiguredKind' "${tmp}/invalid-kind.out"
 
-          "${CHANGIE_BIN}" batch v999.0.0 --dry-run > "${tmp}/batch.md"
+          # The batch probe runs against an isolated copy with its own
+          # fragment. Asserting on a repository fragment couples this
+          # contract to the unreleased population, which a release cut
+          # empties (#3725).
+          probe="$(mktemp -d)"
+          cp .changie.yaml "${probe}/"
+          cp CHANGELOG.md "${probe}/"
+          cp -r .changes "${probe}/.changes"
+          cat > "${probe}/.changes/Fixed-99999999-999999.yaml" <<'YAML'
+          kind: Fixed
+          body: Changie contract probe.
+          YAML
+          ( cd "${probe}" && "${CHANGIE_BIN}" batch v999.0.0 --dry-run > "${tmp}/batch.md" )
           grep -Fq '## [999.0.0] - ' "${tmp}/batch.md"
           grep -Fq '### Fixed' "${tmp}/batch.md"
-          grep -Fq \
-            'Add an exact Go 1.25 and Changie 1.25.2 compatibility lane' \
-            "${tmp}/batch.md"
+          grep -Fq 'Changie contract probe.' "${tmp}/batch.md"
 
           git status --porcelain=v1 --untracked-files=all > "${tmp}/after.status"
           git diff --binary --no-ext-diff HEAD -- > "${tmp}/after.worktree.diff"

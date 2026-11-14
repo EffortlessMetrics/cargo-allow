@@ -986,8 +986,8 @@ def check_test_docs_only_steps(body: str) -> None:
         fail(f"expected {len(TEST_SETUP_USES)} setup steps, found {setups}")
     if uploads != 4:
         fail(f"expected 4 unconditional artifact uploads, found {uploads}")
-    if heavy != 18:
-        fail(f"expected 18 guarded heavy steps, found {heavy}")
+    if heavy != 19:
+        fail(f"expected 19 guarded heavy steps, found {heavy}")
 
 
 def check_workflow() -> None:
