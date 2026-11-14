@@ -6,23 +6,23 @@
   "base_ref": "main",
   "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
   "head_ref": "fix/4789-unreachable-disposition-publish",
-  "head_sha": "2045dc4c74045308774d23a0da53481b867e72a5",
+  "head_sha": "158be8e59681932dab5dd2e13c0980f76e3a1ac3",
   "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
-  "reviewed_diff_digest": "sha256:v2:0c7ff7987c949cd86c57e3c64c71874cdc4c2b7b72fa42ed6074a7fd00fa8d2a",
+  "reviewed_diff_digest": "sha256:v2:8cb2473d4f45d5ab9be0827c9aee2110324ad36df2b4b94c1fe4e2ac17dcb416",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4794 at 2045dc4c74045308774d23a0da53481b867e72a5 (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5904353863 submitted 2026-11-14T12:34:54Z. That review is at the bound head and recomputed the pinned v2 digest over 5d661202..2045dc4c. It covered the unreachable-disposition branch ordering, the narrowed delta-read 128 re-probe, the five characterization fixtures, and the ledger record's internal consistency. Two non-blocking findings were named and left unfixed: commit_presence cannot separate an absent commit from a present hash-mismatched one (both publish failure, so no false green), and the unreachable failure also fires on the push recompute path (intended fail-closed). Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4794 at 158be8e59681932dab5dd2e13c0980f76e3a1ac3 (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5904345173 submitted 2026-11-14T12:32:18Z. That review is at the bound head and recomputed the pinned v2 digest over 5d661202..158be8e5. It covered the unreachable-disposition branch ordering, the narrowed delta-read 128 re-probe, the five characterization fixtures, and the ledger record's internal consistency. Two non-blocking findings were named and left unfixed: commit_presence cannot separate an absent commit from a present hash-mismatched one (both publish failure, so no false green), and the unreachable failure also fires on the push recompute path (intended fail-closed). Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4794#pullrequestreview-5904353863 - review cargo-allow non-author oppositional exact-head model review of head 2045dc4c74045308774d23a0da53481b867e72a5, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, reviewed_diff_digest=sha256:v2:0c7ff7987c949cd86c57e3c64c71874cdc4c2b7b72fa42ed6074a7fd00fa8d2a, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4794#pullrequestreview-5904345173 - review cargo-allow non-author oppositional exact-head model review of head 158be8e59681932dab5dd2e13c0980f76e3a1ac3, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, reviewed_diff_digest=sha256:v2:8cb2473d4f45d5ab9be0827c9aee2110324ad36df2b4b94c1fe4e2ac17dcb416, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4794",
-    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head 2045dc4c74045308774d23a0da53481b867e72a5, reviewed diff digest sha256:v2:0c7ff7987c949cd86c57e3c64c71874cdc4c2b7b72fa42ed6074a7fd00fa8d2a recomputed with the pinned v2 recipe, verdict APPROVE in review 5904353863.",
-    "Ledger: 19bd6574, 158be8e5, c34582ab and 2045dc4c are disposition-only commits above the reviewed source head de975157. 19bd6574 added this record bound to de975157/a92117bb; 158be8e5 added allow-1384 (the record) and allow-1385 (its self-covering revision note); c34582ab and 2045dc4c rebound the record. This record is bound at 2045dc4c with digest sha256:v2:0c7ff7987c949cd86c57e3c64c71874cdc4c2b7b72fa42ed6074a7fd00fa8d2a, the digest of 5d661202..2045dc4c, and cites the review at that same head. The earlier citation of review 5903912285 was the review of de975157, not of the bound head; it is recorded here as provenance, not as coverage.",
+    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head de975157380b1a71f980c77bec18a67b07dbf7a0, reviewed diff digest sha256:v2:a92117bbe9f3205d46dad1e2a03ce429b6f47dab61a9a88880307fc5d26ffd1d recomputed with the pinned v2 recipe, verdict APPROVE in review 5903912285.",
+    "Ledger: 19bd6574, 158be8e5, c34582ab, 2045dc4c and 3e1e3b61 are disposition-only commits above the reviewed source head de975157. 19bd6574 added this record bound to de975157/a92117bb; 158be8e5 added allow-1384 (the record) and allow-1385 (its self-covering revision note); c34582ab, 2045dc4c and 3e1e3b61 rebound the record. This record is bound at 158be8e5 with digest sha256:v2:8cb2473d4f45d5ab9be0827c9aee2110324ad36df2b4b94c1fe4e2ac17dcb416, the digest of 5d661202..158be8e5, and cites review 5904345173 at that same head.",
     "Zero unresolved review threads: all three threads on this PR are resolved, including the CodeRabbit delta-classification thread resolved as deferred with the finding retained.",
     "The elif chain selects exact_matches, then ancestor_matches, and only then publishes the unreachable failure; ambiguity still fails closed first; the delta-read 128 with the commit present stays an instrument failure.",
     "scripts/test-project-review-readiness.sh passes every case on this head, including stale_and_exact, unreachable_disposition_publishes_failure, input_failed_disposition_probe, unreachable_delta_publishes_failure, and present_commit_unreadable_tree_is_instrument_failure; the same harness fails on main, so the cases bind the change.",
@@ -34,5 +34,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4794",
-  "reviewed_at_utc": "2026-11-14T12:34:54Z"
+  "reviewed_at_utc": "2026-11-14T12:32:18Z"
 }
