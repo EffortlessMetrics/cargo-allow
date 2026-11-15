@@ -24844,3 +24844,69 @@ glob = ".allow/revisions/*.toml"
 [allow.last_seen]
 line = 1
 column = 1
+
+[[allow]]
+id = "allow-3725-union-tool"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/apply-changie-0-2-0-union.py"
+owner = "core/release"
+classification = "changie_history_tool"
+reason = "Unions the pre-cut authored 0.2.0 bullets into the freshly batched version file by kind; reads and writes only .changes markdown and performs no release action."
+evidence = ["issue:3725", "test:scripts/test-changie-0-2-0-union.py"]
+created = "2026-11-14"
+review_after = "2027-02-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/apply-changie-0-2-0-union.py"
+target_fingerprint = "py"
+glob = "scripts/apply-changie-0-2-0-union.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3725-union-test"
+kind = "non_rust_file"
+family = "python_tool"
+path = "scripts/test-changie-0-2-0-union.py"
+owner = "core/release"
+classification = "changie_history_test"
+reason = "Superset assertion that every pre-cut 0.2.0 bullet survives the batch; reddens only when the preserved body is dropped, and performs no release action."
+evidence = ["issue:3725", "doc:scripts/fixtures/changie-0.2.0-precut-bullets.txt"]
+created = "2026-11-14"
+review_after = "2027-02-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/test-changie-0-2-0-union.py"
+target_fingerprint = "py"
+glob = "scripts/test-changie-0-2-0-union.py"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3725-union-fixture"
+kind = "non_rust_file"
+family = "test_fixture"
+path = "scripts/fixtures/changie-0.2.0-precut-bullets.txt"
+owner = "core/release"
+classification = "changie_history_fixture"
+reason = "Pins the 22 pre-cut 0.2.0 bullets and the source blob digest they came from so the union assertion has a fixed expectation; evidence only, no release action."
+evidence = ["issue:3725", "test:scripts/test-changie-0-2-0-union.py"]
+created = "2026-11-14"
+review_after = "2027-02-14"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "scripts/fixtures/changie-0.2.0-precut-bullets.txt"
+target_fingerprint = "txt"
+glob = "scripts/fixtures/changie-0.2.0-precut-bullets.txt"
+
+[allow.last_seen]
+line = 1
+column = 1

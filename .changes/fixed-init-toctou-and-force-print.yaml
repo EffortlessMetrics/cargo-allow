@@ -1,6 +1,0 @@
-kind: Fixed
-body: >-
-  CLI: `init` without `--force` now uses `CreateNewOnly` (race-free exclusive
-  creation) instead of `exists()` + `AtomicReplace` (TOCTOU window). `init
-  --force` now uses `ReplaceWithBackup` and prints "overwrote" instead of
-  "created" when overwriting an existing file.

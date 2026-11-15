@@ -1,5 +1,0 @@
-kind: Documentation
-body: >-
-  Document the current cargo-allow configuration selection behavior, including
-  federation diagnostics and command-parity limitations before consumer
-  migration.

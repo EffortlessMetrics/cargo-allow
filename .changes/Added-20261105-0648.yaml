@@ -1,9 +1,0 @@
-kind: Added
-body: >-
-  Materialize the ReleaseQualificationV1 current-main blocker ledger under
-  docs/release/evidence/ (45 dated rows: reproduction result, capability,
-  closed disposition, timing gate, and next action), bound to exact main
-  basis with derived candidate/tag readiness, a #3737 support-selection
-  cross-check, and a release_qualification checker that regenerates the
-  human projection (#2263).
-time: 2026-11-05T06:48:00Z

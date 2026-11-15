@@ -1,8 +1,0 @@
-kind: Fixed
-body: >-
-  Bind merge-group checkouts to the merge-group head instead of the queue
-  ref. Four ci.yml jobs fell back to github.ref when the pull-request head
-  was empty, so a merge-group run checked out the queue ref rather than the
-  exact subject. The pregate now rejects any merge_group workflow whose
-  checkout ref uses github.ref or github.head_ref without a merge_group
-  term.
