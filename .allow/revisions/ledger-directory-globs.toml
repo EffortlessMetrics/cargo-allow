@@ -1,0 +1,15 @@
+# Directory-glob admission for the review-disposition and revision ledgers.
+# Metadata only; does not waive CI, independent review, branch rules or release authority.
+schema_version = 1
+
+[[records]]
+allow_ids = ["allow-review-dispositions-directory"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:65e04dc595f8ba76b854a38cb0da8a29a49f46ded3eac5d2b19ab059d6c04e4e"
+reason = "Replace the per-file review-disposition entries with one directory glob; the directory is self-covering review evidence and grants no code exception."
+
+[[records]]
+allow_ids = ["allow-review-revisions-directory"]
+change_kinds = ["added_allow"]
+after_fingerprint = "sha256:v1:d86b299e1930ffc2f432928b9b115aa8b244bda62cb1284833d81b2926a7e3b4"
+reason = "Replace the per-file revision-note entries with one directory glob; the directory is governance metadata and grants no code exception."
