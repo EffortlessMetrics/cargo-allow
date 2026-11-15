@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4812,
+  "base_ref": "main",
+  "base_sha": "1cb17d526f675d0b935a861c88bccca0317c73fe",
+  "head_ref": "fix/3725-changie-0-2-0-union",
+  "head_sha": "715ee4b04d7c1f97c71989eb0b18b10003010591",
+  "merge_base": "d16090e1a133d1d607a9c4538fa890128efb8250",
+  "reviewed_diff_digest": "sha256:v2:23fadfc845f9a45b5b707dd6c1201b7abce390045c28ca1041a75bb69461a23d",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4812 at 715ee4b04d7c1f97c71989eb0b18b10003010591 (base d16090e1a133d1d607a9c4538fa890128efb8250, merge-base d16090e1a133d1d607a9c4538fa890128efb8250), verdict APPROVE, review 5909589361 submitted 2026-11-15T07:14:51Z. That review is at the bound head and closes both blocking findings: B-2, both authored sentences restored in full in .changes/0.2.0.md and CHANGELOG.md with no [0.2.0] bullet ending on a connector; B-3, the three named fragments are in the body under Fixed and all 540 deleted base fragments were parsed and found present (0 missing, 0 unparsed). It also re-ran the recurrence guard and confirmed it exits 1 on a truncated bullet. Base movement: main advanced from d16090e1a to 1cb17d526 after the review, and the adapter's own pair line at this head reports merge-base d16090e1a with diff sha256:v2:23fadfc845f9a45b5b707dd6c1201b7abce390045c28ca1041a75bb69461a23d, byte-identical to the reviewed digest, so the reviewed content is unchanged and this record binds the current base with the same merge-base and digest. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4812#pullrequestreview-5909589361 - review cargo-allow non-author oppositional exact-head model review of head 715ee4b04d7c1f97c71989eb0b18b10003010591, base d16090e1a133d1d607a9c4538fa890128efb8250, merge-base d16090e1a133d1d607a9c4538fa890128efb8250, reviewed_diff_digest=sha256:v2:23fadfc845f9a45b5b707dd6c1201b7abce390045c28ca1041a75bb69461a23d, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4812 - reviewed at 715ee4b04d7c1f97c71989eb0b18b10003010591, verdict APPROVE in review 5909589361.",
+    "Reviewed pair base d16090e1a133d1d607a9c4538fa890128efb8250, head 715ee4b04d7c1f97c71989eb0b18b10003010591, reviewed diff digest sha256:v2:23fadfc845f9a45b5b707dd6c1201b7abce390045c28ca1041a75bb69461a23d recomputed with the pinned v2 recipe, verdict APPROVE in review 5909589361.",
+    "B-2 repaired: both authored sentences are present in full in .changes/0.2.0.md and CHANGELOG.md - the #3884 decision-record sentence ending 'ratifiable only by the maintainer.' and the #4238 sentence ending 'the mode-table semantics.' No bullet in the [0.2.0] section ends on a connector.",
+    "B-3 repaired and checked as a whole set: the three named fragments (checkpoint-clean-sentinel, completions-hidden-and-installed-surface, unreachable-disposition-publish) are in the body under Fixed at lines 1200-1204, and all 540 deleted .changes/*.yaml fragments at the base were parsed with each normalized body required to appear in the [0.2.0] section - 540 checked, 0 missing, 0 unparsed.",
+    "Recurrence guard works: scripts/test-changie-0-2-0-union.py exits 0 on the head with 'all 22 pre-cut 0.2.0 bullets retained', and truncating the no-new bullet makes it exit 1 with 'union check: truncated bullet: - Align the no-new mode help with the'.",
+    "Version file vs changelog: .changes/0.2.0.md and the CHANGELOG.md [0.2.0] section are identical in content; the only difference is the version file's header line, which the section body excludes by construction.",
+    "Checks at the reviewed head: 43 runs, 0 failing, 0 pending; test, pregate and frozen-subject-lock SUCCESS; review-readiness NEUTRAL only because no pr-4812 record existed. Zero unresolved review threads (1 total)."
+  ],
+  "required_ci": {
+    "owner": "PR #4812 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4812"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4812",
+  "reviewed_at_utc": "2026-11-15T07:14:51Z"
+}
