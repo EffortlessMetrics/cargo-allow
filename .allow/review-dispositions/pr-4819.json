@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4819,
+  "base_ref": "main",
+  "base_sha": "44dafac86055f43922263264dc8d4a25c0c6d152",
+  "head_ref": "fix/ledger-directory-globs",
+  "head_sha": "28a293b1ea65507571270636ca1af6fe55beccd3",
+  "merge_base": "44dafac86055f43922263264dc8d4a25c0c6d152",
+  "reviewed_diff_digest": "sha256:v2:d2386fa722dd53cefaea3c68fae84a9e0b6754e3f8d9715552d25a297b5e47d2",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4819 at 28a293b1ea65507571270636ca1af6fe55beccd3 (base 44dafac86055f43922263264dc8d4a25c0c6d152, merge-base 44dafac86055f43922263264dc8d4a25c0c6d152), verdict APPROVE, review 5908091168 submitted 2026-11-15T00:21:49Z. That review is at the bound head and covers the merge of main 44dafac8 into the branch: the diff against 44dafac8 is still exactly the record, the revision note and policy/allow.toml; the two ledger files are byte-identical to the versions reviewed at 4a0e83d00; and the merge resolution drops main's two per-file entries (allow-4784-*, allow-4802-*) as the intended effect of the globs. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4819#pullrequestreview-5908091168 - review cargo-allow non-author oppositional exact-head model review of head 28a293b1ea65507571270636ca1af6fe55beccd3, base 44dafac86055f43922263264dc8d4a25c0c6d152, merge-base 44dafac86055f43922263264dc8d4a25c0c6d152, reviewed_diff_digest=sha256:v2:d2386fa722dd53cefaea3c68fae84a9e0b6754e3f8d9715552d25a297b5e47d2, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4819 - reviewed at 28a293b1ea65507571270636ca1af6fe55beccd3, verdict APPROVE in review 5908091168.",
+    "Reviewed pair base 44dafac86055f43922263264dc8d4a25c0c6d152, head 28a293b1ea65507571270636ca1af6fe55beccd3, reviewed diff digest sha256:v2:d2386fa722dd53cefaea3c68fae84a9e0b6754e3f8d9715552d25a297b5e47d2, verdict APPROVE in review 5908091168.",
+    "Ledger: 904186ca7 was the glob commit reviewed at 5906822729; 4e41c2779 and 4a0e83d00 were record-only successors; 28a293b1e merges main 44dafac8 into 4a0e83d00. This record is bound at 28a293b1e with the digest of 44dafac8..28a293b1e and cites review 5908091168 at that same head.",
+    "Zero unresolved review threads on this PR.",
+    "Block accounting recomputed at this pair: base 44dafac8 1395 blocks to head 28a293b1e 1158; 239 removed, 2 added (allow-review-dispositions-directory, allow-review-revisions-directory); retained order preserved, no duplicate ids, preamble identical. Every removed block is kind = non_rust_file in exactly one of the two ledger directories and has selector.glob == path. One removed entry, allow-review-4461-record, names .allow/review-dispositions/pr-4461.json, which is absent at base - a stale entry, not a receipt.",
+    "All 240 files now in those directories are direct children matching *.json / *.toml, and no per-file entry remains inside the two directories.",
+    "Non-blocking, unchanged: match strength drops from Structural to ScopedFamily because the globs carry no selector.symbol; per-disposition owner and the earliest review_after are not preserved; any future file dropped into either directory is receipted with no ledger append, which grants no code exception, CI bypass, merge or release authority."
+  ],
+  "required_ci": {
+    "owner": "PR #4819 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4819"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4819",
+  "reviewed_at_utc": "2026-11-15T00:21:49Z"
+}
