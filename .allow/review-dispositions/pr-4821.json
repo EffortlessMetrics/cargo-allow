@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4821,
+  "base_ref": "main",
+  "base_sha": "d16090e1a133d1d607a9c4538fa890128efb8250",
+  "head_ref": "fix/4810-fail-closed-readiness",
+  "head_sha": "7bc2fa561e5a7c0f4e8db771cc1323d8b07c7f18",
+  "merge_base": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
+  "reviewed_diff_digest": "sha256:v2:ddb559db0488391bca978307933e1abcaa6125b3a5f0c72aa2fe68c4bf64c904",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4821 at 7bc2fa561e5a7c0f4e8db771cc1323d8b07c7f18 (base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4), verdict APPROVE, review 5907363732 submitted 2026-11-14T22:01:18Z. That review is at the bound head and covers the fail-closed absence branch, the neutral-to-failure rewrite, and the preserved bootstrap positives; it executed the 135-case harness and two discriminating mutations. Base movement: main advanced from 757dbabc to d16090e1a after the review, and the adapter's own pair line at this head reports merge-base 757dbabc with diff sha256:v2:ddb559db0488391bca978307933e1abcaa6125b3a5f0c72aa2fe68c4bf64c904, byte-identical to the reviewed digest, so the reviewed content is unchanged and this record binds the current base with the same merge-base and digest. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4821#pullrequestreview-5907363732 - review cargo-allow non-author oppositional exact-head model review of head 7bc2fa561e5a7c0f4e8db771cc1323d8b07c7f18, base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4, reviewed_diff_digest=sha256:v2:ddb559db0488391bca978307933e1abcaa6125b3a5f0c72aa2fe68c4bf64c904, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4821 - reviewed at 7bc2fa561e5a7c0f4e8db771cc1323d8b07c7f18, verdict APPROVE in review 5907363732.",
+    "Reviewed pair base 757dbabc17a94d313c208274bf3c25f0360ee3a4, head 7bc2fa561e5a7c0f4e8db771cc1323d8b07c7f18, reviewed diff digest sha256:v2:ddb559db0488391bca978307933e1abcaa6125b3a5f0c72aa2fe68c4bf64c904 recomputed with the pinned v2 recipe, verdict APPROVE in review 5907363732.",
+    "Absence publishes failure before the projector: the empty-selected branch publishes failure and returns before cargo run review-readiness project, and the harness asserts the projector was never invoked.",
+    "A neutral projection maps to failure at the required boundary, with the product's three-state vocabulary untouched (no Rust changes).",
+    "Preserved behaviour confirmed by the harness positives and negatives: ancestor_success, ancestor_rename_decomposed, unreachable_disposition_publishes_failure, input_failed_partial_bootstrap_delta, present_commit_unreadable_tree_is_instrument_failure, merge_group_exact_pr, plus the acquisition/publication fence inside publish().",
+    "Falsifiers executed: removing the neutral-to-failure block reproduces FAIL retained_neutral_fails_closed; reverting the absence branch reproduces FAIL pull_request_missing_denied. Both sites are load-bearing.",
+    "One unresolved thread remains: a low-priority gemini-code-assist style suggestion at scripts/project-review-readiness.sh:593 (prefer [[ ]] over [ ]). Non-blocking; the reviewer approved with no blocking findings.",
+    "Material, non-blocking: the live check at this head reads neutral because a base-push recompute ran main's pre-fix adapter over the PR's failure. That is deployment order, not a defect in this diff, and it is the overwrite this PR targets."
+  ],
+  "required_ci": {
+    "owner": "PR #4821 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4821"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4821",
+  "reviewed_at_utc": "2026-11-14T22:01:18Z"
+}
