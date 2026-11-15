@@ -105,7 +105,8 @@ pub use loaders::{
     load_executable_compat_config, load_generated_compat_config, load_legacy_or_canonical,
     load_legacy_policy_dir, load_legacy_policy_dir_with_non_rust_findings,
     load_network_compat_config, load_no_panic_allowlist_compat_config,
-    load_no_panic_baseline_compat_config, load_non_rust_compat_config, load_process_compat_config,
+    load_no_panic_baseline_compat_config, load_non_rust_compat_config,
+    load_non_rust_compat_config_relaxed, load_process_compat_config,
     load_unsafe_allowlist_compat_config, load_workflow_compat_config, migration_notes,
 };
 pub use migration_closeout::{

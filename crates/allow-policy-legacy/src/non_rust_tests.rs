@@ -207,6 +207,30 @@ reason = "Language field from the legacy schema."
     );
 
     // The read path itself must succeed; the unmapped field is reported, not fatal.
-    load_non_rust_compat_config(&policy, &[])
-        .unwrap_or_else(|err| std::panic::panic_any(format!("compat config loads: {err}")));
+    load_non_rust_compat_config_relaxed(&policy, &[])
+        .unwrap_or_else(|err| std::panic::panic_any(format!("relaxed compat config loads: {err}")));
+}
+
+// #4817 regression: `migrate --repo-policy` reaches the same loader through
+// import_legacy_policy_dir -> load_lane_config -> load_non_rust_compat_config.
+// That is a write path, so it must keep #3508 and refuse the file rather than
+// emit a canonical policy that silently drops `language`.
+#[test]
+fn write_path_still_refuses_unmapped_legacy_field() {
+    let policy = non_rust_policy_with_entry(
+        r#"id = "shiplog-language"
+path = "src/main.rs"
+language = "rust"
+owner = "shiplog"
+reason = "Language field from the legacy schema."
+"#,
+    );
+
+    let err = load_non_rust_compat_config(&policy, &[])
+        .expect_err("the migrate path must refuse an unmapped legacy field");
+    assert!(
+        err.to_string()
+            .contains("non-rust allow entry 0 has unsupported field `language`"),
+        "unexpected error: {err}"
+    );
 }
