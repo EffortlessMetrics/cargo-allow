@@ -4,32 +4,29 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4819,
   "base_ref": "main",
-  "base_sha": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
+  "base_sha": "44dafac86055f43922263264dc8d4a25c0c6d152",
   "head_ref": "fix/ledger-directory-globs",
-  "head_sha": "904186ca75f761b47b2e89bb58225b52ef09a8b6",
-  "merge_base": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
-  "reviewed_diff_digest": "sha256:v2:4236ba83d000dfca25e85760f8909ce125b27cce8a7e23a98f8a47634ab9aff0",
+  "head_sha": "28a293b1ea65507571270636ca1af6fe55beccd3",
+  "merge_base": "44dafac86055f43922263264dc8d4a25c0c6d152",
+  "reviewed_diff_digest": "sha256:v2:d2386fa722dd53cefaea3c68fae84a9e0b6754e3f8d9715552d25a297b5e47d2",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4819 at 904186ca75f761b47b2e89bb58225b52ef09a8b6 (base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4), verdict APPROVE, review 5906822729 submitted 2026-11-14T19:57:54Z. That review is at the bound head and covers the post-rebase ledger: 1393 to 1158 blocks, 237 per-file bookkeeping entries removed, two directory globs added, 1156 retained blocks byte-identical and in order. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4819 at 28a293b1ea65507571270636ca1af6fe55beccd3 (base 44dafac86055f43922263264dc8d4a25c0c6d152, merge-base 44dafac86055f43922263264dc8d4a25c0c6d152), verdict APPROVE, review 5908091168 submitted 2026-11-15T00:21:49Z. That review is at the bound head and covers the merge of main 44dafac8 into the branch: the diff against 44dafac8 is still exactly the record, the revision note and policy/allow.toml; the two ledger files are byte-identical to the versions reviewed at 4a0e83d00; and the merge resolution drops main's two per-file entries (allow-4784-*, allow-4802-*) as the intended effect of the globs. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4819#pullrequestreview-5906822729 - review cargo-allow non-author oppositional exact-head model review of head 904186ca75f761b47b2e89bb58225b52ef09a8b6, base 757dbabc17a94d313c208274bf3c25f0360ee3a4, merge-base 757dbabc17a94d313c208274bf3c25f0360ee3a4, reviewed_diff_digest=sha256:v2:4236ba83d000dfca25e85760f8909ce125b27cce8a7e23a98f8a47634ab9aff0, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4819#pullrequestreview-5908091168 - review cargo-allow non-author oppositional exact-head model review of head 28a293b1ea65507571270636ca1af6fe55beccd3, base 44dafac86055f43922263264dc8d4a25c0c6d152, merge-base 44dafac86055f43922263264dc8d4a25c0c6d152, reviewed_diff_digest=sha256:v2:d2386fa722dd53cefaea3c68fae84a9e0b6754e3f8d9715552d25a297b5e47d2, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4819 - reviewed at 904186ca75f761b47b2e89bb58225b52ef09a8b6, verdict APPROVE in review 5906822729.",
-    "Reviewed pair base 757dbabc17a94d313c208274bf3c25f0360ee3a4, head 904186ca75f761b47b2e89bb58225b52ef09a8b6, reviewed diff digest sha256:v2:4236ba83d000dfca25e85760f8909ce125b27cce8a7e23a98f8a47634ab9aff0 recomputed with the pinned v2 recipe, verdict APPROVE in review 5906822729.",
-    "Ledger: 27433d1a is the pre-rebase head reviewed in full; 904186ca7 is the rebase onto 757dbabc, which changed only policy/allow.toml's inherited ledger block, and every check was re-run at the new head rather than carried forward. This record is bound at 904186ca7 with the digest of 757dbabc..904186ca7 and cites review 5906822729 at that same head.",
-    "Zero unresolved review threads.",
-    "Block accounting: 1393 to 1158 blocks, 237 removed (56 .allow/review-dispositions/*.json, 181 .allow/revisions/*.toml), 2 added (allow-review-dispositions-directory, allow-review-revisions-directory), 1156 retained byte-identical and in order, preamble identical, no duplicate ids.",
-    "Glob reach: glob_match_tokens treats * as within one path segment and only ** crosses /, so both globs match direct children only and cannot admit a nested directory; build_file_finding supplies ast_kind=tracked_file, family=configuration and target_fingerprint=lower_extension for every covered file.",
-    "Change-note fingerprints recomputed at this head yield sha256:v1:65e04dc5... and sha256:v1:d86b299e..., matching .allow/revisions/ledger-directory-globs.toml; the 237 removals are Improvement severity and need no note, the two additions are Review severity and are exactly the two covered.",
-    "No collateral gate depends on per-file enumeration: no test, script or crate asserts an entry count, a removed id, or a revision-file/per-file-entry bijection; the readiness adapter reads .allow/review-dispositions/*.json directly and never consults the allow ledger.",
-    "Committed blob has 0 CR bytes and no BOM.",
-    "Terminal readback at 4e41c2779: pregate, test, frozen-subject-lock and review-readiness are all SUCCESS, and review-readiness reports review is clean and current. Non-blocking, named and unfixed: merge_group is unexercised on a PR head; match strength drops from Structural to ScopedFamily because the globs carry no selector.symbol; per-disposition owner and earliest review_after are not preserved; any future file dropped into either directory is receipted with no ledger append, which grants no code exception, CI bypass, merge or release authority."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4819 - reviewed at 28a293b1ea65507571270636ca1af6fe55beccd3, verdict APPROVE in review 5908091168.",
+    "Reviewed pair base 44dafac86055f43922263264dc8d4a25c0c6d152, head 28a293b1ea65507571270636ca1af6fe55beccd3, reviewed diff digest sha256:v2:d2386fa722dd53cefaea3c68fae84a9e0b6754e3f8d9715552d25a297b5e47d2, verdict APPROVE in review 5908091168.",
+    "Ledger: 904186ca7 was the glob commit reviewed at 5906822729; 4e41c2779 and 4a0e83d00 were record-only successors; 28a293b1e merges main 44dafac8 into 4a0e83d00. This record is bound at 28a293b1e with the digest of 44dafac8..28a293b1e and cites review 5908091168 at that same head.",
+    "Zero unresolved review threads on this PR.",
+    "Block accounting recomputed at this pair: base 44dafac8 1395 blocks to head 28a293b1e 1158; 239 removed, 2 added (allow-review-dispositions-directory, allow-review-revisions-directory); retained order preserved, no duplicate ids, preamble identical. Every removed block is kind = non_rust_file in exactly one of the two ledger directories and has selector.glob == path. One removed entry, allow-review-4461-record, names .allow/review-dispositions/pr-4461.json, which is absent at base - a stale entry, not a receipt.",
+    "All 240 files now in those directories are direct children matching *.json / *.toml, and no per-file entry remains inside the two directories.",
+    "Non-blocking, unchanged: match strength drops from Structural to ScopedFamily because the globs carry no selector.symbol; per-disposition owner and the earliest review_after are not preserved; any future file dropped into either directory is receipted with no ledger append, which grants no code exception, CI bypass, merge or release authority."
   ],
   "required_ci": {
     "owner": "PR #4819 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
@@ -37,5 +34,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4819",
-  "reviewed_at_utc": "2026-11-14T19:57:54Z"
+  "reviewed_at_utc": "2026-11-15T00:21:49Z"
 }
