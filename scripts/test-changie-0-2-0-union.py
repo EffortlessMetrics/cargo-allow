@@ -49,6 +49,85 @@ def section_body(text: str) -> str:
     return "\n".join(body)
 
 
+# A bullet that ends on one of these words was cut mid-sentence. The 0.2.0
+# cut lost two authored sentences this way: an unquoted ` #` in a plain-scalar
+# YAML body is read as a comment, so the fragment body stopped at the `#` and
+# the rest of the sentence never reached the cut. The preserved-bullet fixture
+# cannot see that, because the truncated entries came from fragments rather
+# than from the pre-cut body.
+DANGLING_TAIL_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "be",
+        "been",
+        "but",
+        "by",
+        "for",
+        "from",
+        "in",
+        "into",
+        "is",
+        "its",
+        "not",
+        "of",
+        "on",
+        "or",
+        "plus",
+        "than",
+        "that",
+        "the",
+        "their",
+        "to",
+        "was",
+        "were",
+        "which",
+        "with",
+    }
+)
+
+
+def truncated_bullets(body: str) -> list[str]:
+    """Bullets whose last word is a connector, i.e. the sentence was cut.
+
+    A bullet may wrap across several lines, so continuation lines are joined
+    before the tail is inspected.
+    """
+    bullets: list[str] = []
+    current: list[str] = []
+    for line in body.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("- "):
+            if current:
+                bullets.append(" ".join(current))
+            current = [stripped]
+        elif stripped and current:
+            current.append(stripped)
+        elif not stripped and current:
+            bullets.append(" ".join(current))
+            current = []
+    if current:
+        bullets.append(" ".join(current))
+
+    truncated: list[str] = []
+    for bullet in bullets:
+        trimmed = bullet.rstrip("`*_ ")
+        if not trimmed:
+            continue
+        # A sentence that ends on punctuation is complete even when its last
+        # word is a connector ("... has not agreed to.").
+        if trimmed[-1] in ".!?)]\"'`":
+            continue
+        words = trimmed.split()
+        last = words[-1].strip("`*_.,;:()[]\"'").lower()
+        if last in DANGLING_TAIL_WORDS:
+            truncated.append(bullet)
+    return truncated
+
+
 def fixture_bullets() -> list[str]:
     bullets: list[str] = []
     for line in FIXTURE.read_text(encoding="utf-8").splitlines():
@@ -59,7 +138,8 @@ def fixture_bullets() -> list[str]:
 
 
 def main() -> int:
-    body = normalize(section_body(CHANGELOG.read_text(encoding="utf-8")))
+    raw_body = section_body(CHANGELOG.read_text(encoding="utf-8"))
+    body = normalize(raw_body)
     bullets = fixture_bullets()
     if not bullets:
         print("union check: fixture has no bullets", file=sys.stderr)
@@ -70,6 +150,15 @@ def main() -> int:
             print(f"union check: dropped pre-cut bullet: {bullet[:120]}", file=sys.stderr)
         print(
             f"union check: {len(missing)} of {len(bullets)} pre-cut 0.2.0 bullets are missing",
+            file=sys.stderr,
+        )
+        return 1
+    truncated = truncated_bullets(raw_body)
+    if truncated:
+        for bullet in truncated:
+            print(f"union check: truncated bullet: {bullet[:120]}", file=sys.stderr)
+        print(
+            f"union check: {len(truncated)} 0.2.0 bullets end mid-sentence",
             file=sys.stderr,
         )
         return 1
