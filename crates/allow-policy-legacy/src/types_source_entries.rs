@@ -1,5 +1,20 @@
 use allow_core::{Finding, FindingKind, glob_matches, normalize_path};
 
+/// A field present on a legacy non-Rust allow entry that the compat read path
+/// does not map into the canonical shape.
+///
+/// #4817: `check --compat` must be able to read a real legacy file even when it
+/// carries fields this parser does not know. The field is reported here rather
+/// than silently dropped, so the read path can say what it did not understand.
+/// The write path (`migrate`) still refuses such a file outright.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnmappedNonRustField {
+    /// The entry id, or the synthesized `legacy-non-rust-<index>` id.
+    pub entry_id: String,
+    /// The field name that was not mapped.
+    pub field: String,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct LegacyNonRustRule {
     pub(crate) id: String,
