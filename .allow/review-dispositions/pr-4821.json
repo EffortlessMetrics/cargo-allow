@@ -4,7 +4,7 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4821,
   "base_ref": "main",
-  "base_sha": "d16090e1a133d1d607a9c4538fa890128efb8250",
+  "base_sha": "1cb17d526f675d0b935a861c88bccca0317c73fe",
   "head_ref": "fix/4810-fail-closed-readiness",
   "head_sha": "7bc2fa561e5a7c0f4e8db771cc1323d8b07c7f18",
   "merge_base": "757dbabc17a94d313c208274bf3c25f0360ee3a4",
