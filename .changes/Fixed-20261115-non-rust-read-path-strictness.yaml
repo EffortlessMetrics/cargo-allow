@@ -2,9 +2,11 @@ kind: Fixed
 body: >-
   Let `check --compat` and `audit` read a legacy non-Rust allowlist that carries
   entry fields the canonical shape does not model. The compat read path now
-  tolerates those fields and reports them as unmapped instead of failing with
-  `E0009_UNKNOWN`, so a real legacy file such as shiplog's
-  `non-rust-allowlist.toml` (which sets `language` on every entry) can be read.
+  tolerates those fields instead of failing with `E0009_UNKNOWN`, so a real
+  legacy file such as shiplog's `non-rust-allowlist.toml` (which sets
+  `language` on every entry) can be read; the tolerated fields are exposed
+  through `non_rust_unmapped_fields`, and the compat report does not yet render
+  them (#4824).
   The migration write path keeps the #3508 refusal: `migrate` and
   `migrate --repo-policy` still reject an entry whose field would be silently
   dropped from the canonical output, and a refused migration writes no policy
