@@ -1184,6 +1184,13 @@ jobs:
       - name: Changie fragment schema independent-validation smoke (#3613)
         if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         run: bash scripts/test-changie-fragment-schema-smoke.sh
+      - name: Changie 0.2.0 union superset assertion (#3725)
+        if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
+        # The batch rewrites .changes/0.2.0.md from the fragments; the
+        # pre-cut authored bullets have no fragment source. This is the
+        # only check that reddens when that body is dropped, because the
+        # history generator derives its expectation from CHANGELOG.md.
+        run: python scripts/test-changie-0-2-0-union.py
       - name: Changie sensor self-dogfood (#3623)
         if: ${{ success() && (needs.proof-route.result != 'success' || needs.proof-route.outputs.narrow != 'true' || needs.proof-route.outputs.class != 'docs_only') }}
         # cargo-allow analyzes its own .changie.yaml and complete

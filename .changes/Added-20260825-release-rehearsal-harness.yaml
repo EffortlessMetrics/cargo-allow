@@ -1,4 +1,0 @@
-kind: Added
-body: >-
-  Add exact-subject zero-upload release rehearsal harness and typed
-  ReleaseRehearsalReceiptV1 with multi-phase validation and negative controls.
