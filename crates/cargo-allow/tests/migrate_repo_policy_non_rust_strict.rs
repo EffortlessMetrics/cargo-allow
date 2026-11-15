@@ -8,10 +8,26 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn unique_root(label: &str) -> PathBuf {
-    let root = std::env::temp_dir().join(format!("{label}-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&root);
-    root
+/// Owns the temporary repository so a panic in setup or in an assertion still
+/// removes it during unwinding.
+struct TempRoot(PathBuf);
+
+impl TempRoot {
+    fn new(label: &str) -> Self {
+        let root = std::env::temp_dir().join(format!("{label}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        Self(root)
+    }
+
+    fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for TempRoot {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
 }
 
 fn git_init(root: &Path) {
@@ -53,7 +69,8 @@ reason = "Language field from the legacy schema."
 
 #[test]
 fn migrate_repo_policy_refuses_unmapped_non_rust_field_and_writes_nothing() {
-    let root = unique_root("migrate-repo-policy-strict-non-rust");
+    let temp = TempRoot::new("migrate-repo-policy-strict-non-rust");
+    let root = temp.path();
     fs::create_dir_all(root.join("policy"))
         .unwrap_or_else(|err| std::panic::panic_any(format!("create policy dir: {err}")));
     fs::write(root.join("README.md"), "# readme\n")
@@ -86,6 +103,4 @@ fn migrate_repo_policy_refuses_unmapped_non_rust_field_and_writes_nothing() {
         !out.exists(),
         "a refused migration must not write an output policy"
     );
-
-    let _ = fs::remove_dir_all(&root);
 }
