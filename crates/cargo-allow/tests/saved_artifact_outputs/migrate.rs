@@ -682,40 +682,56 @@ fn saved_migrate_output_is_deterministic_for_shuffled_non_rust_rows() {
 
 #[test]
 fn saved_migrate_non_rust_negative_controls_fail_closed_or_surface_debt() {
-    for (fixture_name, diagnostic, line) in [
-        ("non-rust-malformed.toml", "invalid basic string", Some(6)),
+    for (fixture_name, diagnostic, line, compat_tolerates_unknown_field) in [
+        (
+            "non-rust-malformed.toml",
+            "invalid basic string",
+            Some(6),
+            false,
+        ),
         (
             "non-rust-unsupported.toml",
             "unsupported field `approval_ticket`",
             Some(4),
+            true,
         ),
         (
             "non-rust-conflict.toml",
             "defines both path and glob",
             Some(5),
+            false,
         ),
         (
             "non-rust-duplicate.toml",
             "non-rust allow entry 1 duplicates earlier id `negative-duplicate`",
             Some(10),
+            false,
         ),
         (
             "non-rust-invalid-owner.toml",
             "field `owner` must be a string",
             Some(4),
+            false,
         ),
         (
             "non-rust-invalid-evidence.toml",
             "field `evidence` must be a string or string array",
             Some(4),
+            false,
         ),
         (
             "non-rust-invalid-covered-by.toml",
             "field `covered_by` must be a string or string array",
             Some(4),
+            false,
         ),
     ] {
-        assert_non_rust_fixture_rejected(fixture_name, diagnostic, line);
+        assert_non_rust_fixture_outcome(
+            fixture_name,
+            diagnostic,
+            line,
+            compat_tolerates_unknown_field,
+        );
     }
 
     assert_non_rust_dual_evidence_preserved();
@@ -925,10 +941,14 @@ fn assert_non_rust_dual_evidence_preserved() {
     );
 }
 
-fn assert_non_rust_fixture_rejected(
+/// #4817: `non-rust-unsupported.toml` carries a field outside the canonical
+/// shape. The read path must now accept it (and report it as unmapped), while
+/// the write path must still refuse it rather than silently dropping it.
+fn assert_non_rust_fixture_outcome(
     fixture_name: &str,
     expected_diagnostic: &str,
     expected_line: Option<usize>,
+    compat_tolerates_unknown_field: bool,
 ) {
     let fixture = SourceTreeFixture::new(&format!("saved-migrate-{fixture_name}"));
     let legacy_dir = fixture.root.join("legacy-policy");
@@ -982,6 +1002,14 @@ fn assert_non_rust_fixture_rejected(
             .unwrap_or_else(|err| {
                 std::panic::panic_any(format!("run {command} for {fixture_name}: {err}"))
             });
+        if command == "compat" && compat_tolerates_unknown_field {
+            assert!(
+                output.status.success(),
+                "compat must read {fixture_name} even though it carries an unmapped field (#4817): {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            continue;
+        }
         assert!(
             !output.status.success(),
             "{command} unexpectedly accepted {fixture_name}"

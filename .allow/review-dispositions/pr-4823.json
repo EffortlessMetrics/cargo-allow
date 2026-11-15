@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4823,
+  "base_ref": "main",
+  "base_sha": "d16090e1a133d1d607a9c4538fa890128efb8250",
+  "head_ref": "fix/4817-compat-read-path",
+  "head_sha": "f68cb0fbc6ac5374f6b6d2071c905aabe0f2c943",
+  "merge_base": "d16090e1a133d1d607a9c4538fa890128efb8250",
+  "reviewed_diff_digest": "sha256:v2:3a9c788d007ab7c2cace4982f29503b9048c29e7d628b654a91e16f2ceaafd2d",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4823 at f68cb0fbc6ac5374f6b6d2071c905aabe0f2c943 (base d16090e1a133d1d607a9c4538fa890128efb8250, merge-base d16090e1a133d1d607a9c4538fa890128efb8250), verdict APPROVE, review 5909101616 submitted 2026-11-15T04:38:37Z. The reviewer discarded three superseded passes as the head moved (9d4dfaedf, c4c822057, 606673d9f) and re-bound at f68cb0fb. It confirmed both blocking findings repaired: the changelog no longer claims the compat report renders unmapped fields and names #4824, and docs/dogfood/shiplog-non-rust.md records the real-file read against shiplog 0e89da59 with the command and counts. It independently re-read shiplog's policy file: 43 entries, 43 unique ids, no path/glob conflict, `language` the only field outside NON_RUST_ENTRY_FIELDS. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4823#pullrequestreview-5909101616 - review cargo-allow non-author oppositional exact-head model review of head f68cb0fbc6ac5374f6b6d2071c905aabe0f2c943, base d16090e1a133d1d607a9c4538fa890128efb8250, merge-base d16090e1a133d1d607a9c4538fa890128efb8250, reviewed_diff_digest=sha256:v2:3a9c788d007ab7c2cace4982f29503b9048c29e7d628b654a91e16f2ceaafd2d, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4823 - reviewed at f68cb0fbc6ac5374f6b6d2071c905aabe0f2c943, verdict APPROVE in review 5909101616.",
+    "Reviewed pair base d16090e1a133d1d607a9c4538fa890128efb8250, head f68cb0fbc6ac5374f6b6d2071c905aabe0f2c943, reviewed diff digest sha256:v2:3a9c788d007ab7c2cace4982f29503b9048c29e7d628b654a91e16f2ceaafd2d, verdict APPROVE in review 5909101616.",
+    "Four review threads were open during the review and all four are resolved: two devin findings on loader_file_compat.rs (the strict/relaxed split and the changelog coverage), CodeRabbit compat.rs:226 (the reporting-claim defect, answered by removing the claim), and CodeRabbit's non-blocking temp-cleanup nit on migrate_repo_policy_non_rust_strict.rs, which was subsequently reverted and filed as #4829.",
+    "Zero unresolved review threads at this head.",
+    "The direction split is load-bearing in both directions: the compat read path tolerates fields outside the canonical shape and exposes them through non_rust_unmapped_fields, while migrate and migrate --repo-policy keep #3508 and refuse the same file. The saved-artifact negative control asserts compat-accept plus migrate-refuse for non-rust-unsupported.toml, and the malformed, conflict, duplicate and invalid-type fixtures keep both-directions rejection.",
+    "Real-file evidence, recorded in the tree at this head: check --compat --kind non-rust --mode no-new against shiplog 0e89da59 passes (518 findings, 36 matched, 0 new, 0 stale, 0 ambiguous); migrate --repo-policy refuses with E0009_UNKNOWN on `language` and writes no output file.",
+    "The claimed report surface is explicitly not delivered: non_rust_unmapped_fields has no non-test consumer and load_compat_world returns only AllowConfig. That gap is #4824 and the changelog states it.",
+    "Non-blocking: the source digest moved during review and returned to 6096f917 at this head because the temp-dir guard was reverted; reintroducing it requires a floor-receipt regeneration in the same change (#4829)."
+  ],
+  "required_ci": {
+    "owner": "PR #4823 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4823"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4823",
+  "reviewed_at_utc": "2026-11-15T04:38:37Z"
+}

@@ -223,7 +223,7 @@ pub(crate) fn load_compat_world(
     }
     let (findings, inventory_facts) = scan_non_rust_compat(&root, include_untracked)?;
     let policy_path = compat_policy_path(config, &root, "policy/non-rust-allowlist.toml");
-    let cfg = allow_policy_legacy::load_non_rust_compat_config(policy_path, &findings)?;
+    let cfg = allow_policy_legacy::load_non_rust_compat_config_relaxed(policy_path, &findings)?;
     Ok((root, cfg, findings, inventory_facts))
 }
 
