@@ -99,12 +99,14 @@ pub use legacy_sources::{
     LegacyPolicySource, legacy_compat_kind, legacy_policy_source_for_path,
     list_legacy_policy_sources_in_dir,
 };
+pub use loader_file_compat::non_rust_unmapped_fields;
 pub use loaders::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,
     load_executable_compat_config, load_generated_compat_config, load_legacy_or_canonical,
     load_legacy_policy_dir, load_legacy_policy_dir_with_non_rust_findings,
     load_network_compat_config, load_no_panic_allowlist_compat_config,
-    load_no_panic_baseline_compat_config, load_non_rust_compat_config, load_process_compat_config,
+    load_no_panic_baseline_compat_config, load_non_rust_compat_config,
+    load_non_rust_compat_config_relaxed, load_process_compat_config,
     load_unsafe_allowlist_compat_config, load_workflow_compat_config, migration_notes,
 };
 pub use migration_closeout::{
@@ -119,6 +121,7 @@ pub use migration_lane_descriptors::{
     all_legacy_lane_descriptors, descriptor_for_compat_kind_id, descriptor_for_legacy_filename,
     descriptor_for_legacy_policy_key, legacy_lane_descriptor, legacy_policy_filenames,
 };
+pub use types_source_entries::UnmappedNonRustField;
 
 const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;
 

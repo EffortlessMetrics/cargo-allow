@@ -7,8 +7,8 @@ pub use crate::loader_compat::{
     load_clippy_exceptions_compat_config, load_dependency_surface_compat_config,
     load_executable_compat_config, load_generated_compat_config, load_network_compat_config,
     load_no_panic_allowlist_compat_config, load_no_panic_baseline_compat_config,
-    load_non_rust_compat_config, load_process_compat_config, load_unsafe_allowlist_compat_config,
-    load_workflow_compat_config,
+    load_non_rust_compat_config, load_non_rust_compat_config_relaxed, load_process_compat_config,
+    load_unsafe_allowlist_compat_config, load_workflow_compat_config,
 };
 use crate::loader_legacy_dispatch::config_from_legacy_table;
 pub use crate::loader_policy_dir::{
