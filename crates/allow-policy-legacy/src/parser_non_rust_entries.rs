@@ -518,4 +518,56 @@ classification = "generated"
             "defines conflicting category `documentation` and classification `generated`"
         ));
     }
+
+    // #4817: the read path must be able to read a real legacy file that carries
+    // a field this parser does not map, and must say which field it did not map.
+    #[test]
+    fn compat_read_tolerates_unknown_field_and_reports_it_as_unmapped() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "shiplog-language"
+path = "src/main.rs"
+language = "rust"
+owner = "shiplog"
+reason = "Language field from the legacy schema."
+"#,
+        );
+
+        let (rules, unmapped) = parse_non_rust_rules_compat(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("compat read of unknown field must succeed: {err}"))
+        });
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].id, "shiplog-language");
+        assert_eq!(
+            unmapped,
+            vec![UnmappedNonRustField {
+                entry_id: "shiplog-language".to_string(),
+                field: "language".to_string(),
+            }]
+        );
+    }
+
+    // #4817: the write path must keep #3508 and refuse the same file, because a
+    // canonical policy written from it would silently drop `language`.
+    #[test]
+    fn migrate_write_still_refuses_unknown_field() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "shiplog-language"
+path = "src/main.rs"
+language = "rust"
+"#,
+        );
+
+        let err = parse_non_rust_rules(&table)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("migrate must refuse an unknown field"));
+        assert!(
+            err.to_string()
+                .contains("non-rust allow entry 0 has unsupported field `language`"),
+            "unexpected error: {err}"
+        );
+    }
 }
