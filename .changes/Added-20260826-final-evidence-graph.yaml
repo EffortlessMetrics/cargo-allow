@@ -1,3 +1,0 @@
-kind: Added
-body: >-
-  Establish CargoAllowFinalEvidenceGraphV1 contract and transitive staleness propagation evaluator.

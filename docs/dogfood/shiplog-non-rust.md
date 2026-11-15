@@ -527,6 +527,47 @@ the migrated policy checks cleanly without introducing generated baseline debt
 or evidence-repair queues. The unrelated Shiplog source changes were outside
 this non-Rust migration proof.
 
+## 2026-11-15 Non-Rust Read-Path Observation (#4817)
+
+Shiplog's `policy/non-rust-allowlist.toml` carries `language` on 43 of 43
+entries. Before #4817 the compat read path refused that file with
+`E0009_UNKNOWN`. This records the read against the real checkout:
+
+```text
+repository: H:\Code\Rust\shiplog
+head:       0e89da59f61564f85ecf461a1746f9980582fc4f
+```
+
+Command:
+
+```bash
+cargo-allow check --compat --kind non-rust --mode no-new --root H:\Code\Rust\shiplog
+```
+
+Observed result:
+
+```text
+status:                    passed
+findings scanned:          518
+files scanned:             818
+matched:                    36
+new:                         0
+review_due:                482
+stale:                       0
+ambiguous:                   0
+baseline_debt:               0
+weak_evidence_references:  518
+```
+
+The run did not modify shiplog. `review_due` and `weak_evidence_references` are
+advisory outcomes carried by the retained legacy entries; they are not new
+findings and do not fail `--mode no-new`.
+
+This proves the compat read path accepts the real file with its unmapped
+`language` field. It does not prove that the unmapped fields are reported in
+the check output: this change exposes them through `non_rust_unmapped_fields`
+only, and surfacing them in the report is a follow-up.
+
 ## No-Panic Baseline Migration Result
 
 The existing no-panic xtask gate passed:

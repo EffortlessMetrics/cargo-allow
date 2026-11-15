@@ -1,3 +1,0 @@
-kind: Added
-body: Complete the per-field rehearsal subject-binding controls (#4249) — non-string commit_sha/subject_lockfile_digest/subject_topology_digest values, a removed lockfile digest, topology varied alone, and foreign topology with the commit held constant each fail closed with field-specific diagnostics and keep the required rehearsal node a Mismatch through the composed readiness aggregate; the binder now gives present-but-non-string subject fields their own non-string note instead of the misleading missing-field note.
-time: 2026-11-03T19:37:00Z
