@@ -434,7 +434,7 @@ document compiles `Complete` against independently observed facts:
 git tag -a v0.2.0 -m "cargo-allow 0.2.0
 
 authorization-run-id: <authorizing workflow run id>
-authorization-digest: <canonical sha256 digest, optional>"
+authorization-digest: sha256:<64 hex characters, lower or upper case, optional>"
 git push origin v0.2.0
 ```
 
@@ -453,12 +453,22 @@ their own paths and never present clean authorization.
    GitHub release notes draft under `docs/release/github/vX.Y.Z.md`, and promote
    [`docs/dogfood/fixtures/getting-started/published-command-registry.toml`](../dogfood/fixtures/getting-started/published-command-registry.toml)
    so the Published first-run command contract matches the crates.io binary).
-2. Push an annotated tag matching the workspace version:
+2. Push an annotated tag matching the workspace version, carrying the
+   authorization binding described in the section above. A tag without it is
+   refused before token access:
 
    ```bash
-   git tag -a v0.2.0 -m "cargo-allow 0.2.0"
+   git tag -a v0.2.0 -m "cargo-allow 0.2.0
+
+   authorization-run-id: <authorizing workflow run id>
+   authorization-digest: sha256:<64 hex characters, lower or upper case>"
    git push origin v0.2.0
    ```
+
+   The digest line is optional. When present it must be the
+   `sha256:`-prefixed 64-hex form above: the release workflow parses only that
+   shape, so an unprefixed digest is read as absent and the comparison against
+   the compiled authorization document is skipped.
 
 3. The [Release workflow](../../.github/workflows/release.yml) runs:
    - **preflight** — `fmt`, `clippy`, `cargo test --workspace`, the

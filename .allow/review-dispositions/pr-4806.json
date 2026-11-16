@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4806,
+  "base_ref": "main",
+  "base_sha": "d17544add926f9e3096a2caeb9f6545b12d1a056",
+  "head_ref": "fix/4804-checkpoint-download-retry",
+  "head_sha": "a4c5924d45a6a68bba1f62f9e41f5052b83c8a04",
+  "merge_base": "bc6a95012f22b8076a31b773023e980f288450d1",
+  "reviewed_diff_digest": "sha256:v2:7923da2c5da1094b3df267badac67d2102fbd4aec32900d77cfb6fd0574c0baf",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4806 at a4c5924d45a6a68bba1f62f9e41f5052b83c8a04, verdict APPROVE, review 5923965706 submitted 2026-11-16T16:57:15Z (base d17544add, merge-base bc6a95012). The reviewer verified the assertions rather than the description: the per-pair tuples tie each wait's ARTIFACT_NAME to its fetch's name:, and require_wait_step_contract carries delay=2 and the attempt guard, with repointing the post-observation wait, delay=1000 and guard-removal each failing the suite. It recomputed selected_source_digest over the head's 1385 crates/**/*.rs files as 69969274, exactly the committed receipt value, and confirmed all seven review threads resolved. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4806#pullrequestreview-5923965706 - review cargo-allow non-author oppositional exact-head model review of head a4c5924d45a6a68bba1f62f9e41f5052b83c8a04, base d17544add926f9e3096a2caeb9f6545b12d1a056, merge-base bc6a95012f22b8076a31b773023e980f288450d1, reviewed_diff_digest=sha256:v2:7923da2c5da1094b3df267badac67d2102fbd4aec32900d77cfb6fd0574c0baf, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4806 - reviewed at a4c5924d45a6a68bba1f62f9e41f5052b83c8a04, verdict APPROVE in review 5923965706.",
+    "Reviewed pair: base d17544add926f9e3096a2caeb9f6545b12d1a056 (live main after #4821 landed), merge-base bc6a95012f22b8076a31b773023e980f288450d1, head a4c5924d45a6a68bba1f62f9e41f5052b83c8a04, reviewed diff digest sha256:v2:7923da2c over 40574 bytes, matching the readiness adapter's own pair line.",
+    "Seven review threads, zero unresolved. The CodeRabbit README:464 thread is resolved with the disposition that it was pre-existing #3790 wording.",
+    "The change adds a bounded artifact-index poll before each checkpoint fetch in release.yml: six attempts at 2/4/8/16/32s, a guarded read with an empty fallback, and a terminal ::error:: plus exit 1. Both checkpoint waits sit strictly before their fetches and are pinned to the same ARTIFACT_NAME the following download uses.",
+    "The fetch binding is the repair that makes the identity true: both checkpoint fetches pass github-token, repository and run-id to the pinned download-artifact, so they resolve the name through the REST findBy path the wait polls. Without it the wait could pass while the by-name download used a different listing, and the post-observation case runs after the irreversible upload.",
+    "docs/release/README.md now states the sha256:<64 hex> form at both the example and Canonical Path step 2, matching what release.yml:236 parses, so a bare digest can no longer be pasted in silently.",
+    "Receipts: the direct-floor receipts were regenerated at the last content commit (13565beac) and committed byte-identical at b2c3614cd; nothing under crates/ changed afterwards, so pregate passes at this head and the projection is 69969274."
+  ],
+  "required_ci": {
+    "owner": "PR #4806 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4806"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4806",
+  "reviewed_at_utc": "2026-11-16T16:57:15Z"
+}

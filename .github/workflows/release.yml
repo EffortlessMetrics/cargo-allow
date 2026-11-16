@@ -900,12 +900,60 @@ jobs:
           path: target/cargo-allow/checkpoints/publication-checkpoint-pre-intent.json
           if-no-files-found: error
           retention-days: 90
+      - name: Wait for the pre-intent checkpoint artifact to reach the run index
+        if: always() && steps.store_pre_intent_checkpoint.outcome == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          ARTIFACT_NAME: publication-checkpoint-pre-intent
+        run: |
+          # #4804: the by-name download reads the run artifact index, which can
+          # lag the upload's finalize by a few hundred milliseconds. The store
+          # step's artifact exists while the fetch cannot see it yet. Poll the
+          # index (which is the same one actions/download-artifact reads) so the
+          # fetch starts only once the name is visible.
+          set -euo pipefail
+          delay=2
+          for attempt in 1 2 3 4 5 6; do
+            # Capture the names first: piping gh into `grep -q` makes grep
+            # close the pipe on the first match, gh dies on SIGPIPE (141),
+            # and pipefail turns a found artifact into a failed attempt.
+            # A transient API failure is not proof the artifact is missing:
+            # under `set -e` an unguarded read would abort the step, and for
+            # the post-observation fetch that red lands after the irreversible
+            # upload, publishing-but-never-reconciling. Treat a failed read as
+            # "not visible yet" and retry inside the same bounded loop.
+            if ! names="$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+              --jq '.artifacts[].name')"; then
+              echo "attempt ${attempt}: artifact index read failed; treating as not yet visible"
+              names=""
+            fi
+            if [[ $'\n'"${names}"$'\n' == *$'\n'"${ARTIFACT_NAME}"$'\n'* ]]; then
+              echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
+              exit 0
+            fi
+            if [ "${attempt}" -lt 6 ]; then
+              echo "attempt ${attempt}: ${ARTIFACT_NAME} is not in the index yet; sleeping ${delay}s"
+              sleep "${delay}"
+              delay=$((delay * 2))
+            fi
+          done
+          echo "::error::artifact ${ARTIFACT_NAME} never appeared in the run artifact index"
+          exit 1
       - name: Fetch the stored pre-intent checkpoint for independent readback
         id: fetch_pre_intent_checkpoint
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: publication-checkpoint-pre-intent
           path: target/cargo-allow/checkpoints/pre-intent-readback
+          # #4804: pass the token/run binding so the action resolves the name
+          # through the REST findBy path the wait step polls, instead of the
+          # artifact service's nameFilter listing the wait cannot see.
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
       - name: Verify the independent pre-intent checkpoint readback
         id: verify_pre_intent_checkpoint
         env:
@@ -1317,12 +1365,58 @@ jobs:
           path: target/cargo-allow/checkpoints/publication-checkpoint-post-observation.json
           if-no-files-found: error
           retention-days: 90
+      - name: Wait for the post-observation checkpoint artifact to reach the run index
+        if: always() && steps.store_post_observation_checkpoint.outcome == 'success'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          ARTIFACT_NAME: publication-checkpoint-post-observation
+        run: |
+          # #4804: this fetch runs after the irreversible upload, so a red here
+          # means published-but-unreconciled. Use the same bounded index poll as
+          # the pre-intent fetch.
+          set -euo pipefail
+          delay=2
+          for attempt in 1 2 3 4 5 6; do
+            # Capture the names first: piping gh into `grep -q` makes grep
+            # close the pipe on the first match, gh dies on SIGPIPE (141),
+            # and pipefail turns a found artifact into a failed attempt.
+            # A transient API failure is not proof the artifact is missing:
+            # under `set -e` an unguarded read would abort the step, and for
+            # the post-observation fetch that red lands after the irreversible
+            # upload, publishing-but-never-reconciling. Treat a failed read as
+            # "not visible yet" and retry inside the same bounded loop.
+            if ! names="$(gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
+              --jq '.artifacts[].name')"; then
+              echo "attempt ${attempt}: artifact index read failed; treating as not yet visible"
+              names=""
+            fi
+            if [[ $'\n'"${names}"$'\n' == *$'\n'"${ARTIFACT_NAME}"$'\n'* ]]; then
+              echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
+              exit 0
+            fi
+            if [ "${attempt}" -lt 6 ]; then
+              echo "attempt ${attempt}: ${ARTIFACT_NAME} is not in the index yet; sleeping ${delay}s"
+              sleep "${delay}"
+              delay=$((delay * 2))
+            fi
+          done
+          echo "::error::artifact ${ARTIFACT_NAME} never appeared in the run artifact index"
+          exit 1
       - name: Fetch the stored post-observation checkpoint for independent readback
         id: fetch_post_observation_checkpoint
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: publication-checkpoint-post-observation
           path: target/cargo-allow/checkpoints/post-observation-readback
+          # #4804: same binding as the pre-intent fetch; this is the fetch that
+          # runs after the irreversible upload, so it must read the same
+          # surface the wait polls.
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
       - name: Verify the independent post-observation checkpoint readback
         id: verify_post_observation_checkpoint
         env:
