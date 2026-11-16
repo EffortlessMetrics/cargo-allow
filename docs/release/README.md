@@ -461,9 +461,14 @@ their own paths and never present clean authorization.
    git tag -a v0.2.0 -m "cargo-allow 0.2.0
 
    authorization-run-id: <authorizing workflow run id>
-   authorization-digest: <canonical sha256 digest, optional>"
+   authorization-digest: sha256:<64 hex characters, lower or upper case>"
    git push origin v0.2.0
    ```
+
+   The digest line is optional. When present it must be the
+   `sha256:`-prefixed 64-hex form above: the release workflow parses only that
+   shape, so an unprefixed digest is read as absent and the comparison against
+   the compiled authorization document is skipped.
 
 3. The [Release workflow](../../.github/workflows/release.yml) runs:
    - **preflight** — `fmt`, `clippy`, `cargo test --workspace`, the
