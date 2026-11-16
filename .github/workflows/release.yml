@@ -948,6 +948,12 @@ jobs:
         with:
           name: publication-checkpoint-pre-intent
           path: target/cargo-allow/checkpoints/pre-intent-readback
+          # #4804: pass the token/run binding so the action resolves the name
+          # through the REST findBy path the wait step polls, instead of the
+          # artifact service's nameFilter listing the wait cannot see.
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
       - name: Verify the independent pre-intent checkpoint readback
         id: verify_pre_intent_checkpoint
         env:
@@ -1405,6 +1411,12 @@ jobs:
         with:
           name: publication-checkpoint-post-observation
           path: target/cargo-allow/checkpoints/post-observation-readback
+          # #4804: same binding as the pre-intent fetch; this is the fetch that
+          # runs after the irreversible upload, so it must read the same
+          # surface the wait polls.
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ github.run_id }}
       - name: Verify the independent post-observation checkpoint readback
         id: verify_post_observation_checkpoint
         env:
