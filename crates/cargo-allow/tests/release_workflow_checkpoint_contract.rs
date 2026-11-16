@@ -395,3 +395,91 @@ fn test_release_workflow_gates_remain_untouched() -> Result<(), Box<dyn Error>> 
     }
     Ok(())
 }
+
+/// #4804: the bounded artifact-index wait and the REST token/run binding are
+/// the whole subject of the change, so they need an asserting instrument.
+/// Each wait must sit strictly before the fetch it protects, carry the
+/// six-attempt 2/4/8/16/32 s envelope that ends in a non-zero exit, and each
+/// checkpoint fetch must bind the token, repository and run so it resolves the
+/// name through the same REST surface the wait polls.
+fn require_wait_step_contract(step: &str, label: &str) -> Result<(), Box<dyn Error>> {
+    for required in [
+        "for attempt in 1 2 3 4 5 6",
+        "if ! names=\"$(gh api --paginate",
+        "names=\"\"",
+        "sleep \"${delay}\"",
+        "delay=$((delay * 2))",
+        "::error::",
+        "exit 1",
+    ] {
+        require(
+            step.contains(required),
+            &format!("{label} must keep the bounded index wait contract: missing {required}"),
+        )?;
+    }
+    Ok(())
+}
+
+/// The fetch must read the surface the wait polls: without the token/run
+/// binding the pinned action resolves names through the artifact service
+/// filter, so the wait would not prove the fetch's precondition.
+fn require_fetch_binding(step: &str, label: &str) -> Result<(), Box<dyn Error>> {
+    for required in [
+        "github-token: ${{ github.token }}",
+        "repository: ${{ github.repository }}",
+        "run-id: ${{ github.run_id }}",
+    ] {
+        require(
+            step.contains(required),
+            &format!("{label} must bind the REST artifact lookup: missing {required}"),
+        )?;
+    }
+    Ok(())
+}
+
+#[test]
+fn test_release_workflow_waits_for_the_index_the_fetch_reads() -> Result<(), Box<dyn Error>> {
+    let root = repo_root()?;
+    let content = workflow(&root, "release.yml")?;
+
+    let publish = position(&content, "  publish:")
+        .ok_or_else(|| io::Error::other("release.yml must define the publish job"))?;
+    let next_job = content
+        .get(publish..)
+        .and_then(|rest| rest.find("\n  install-smoke:"))
+        .map(|index| publish + index)
+        .unwrap_or(content.len());
+    let job = content
+        .get(publish..next_job)
+        .ok_or_else(|| io::Error::other("publish job slice unavailable"))?
+        .to_string();
+
+    for (wait, fetch) in [
+        (
+            "Wait for the pre-intent checkpoint artifact to reach the run index",
+            "Fetch the stored pre-intent checkpoint for independent readback",
+        ),
+        (
+            "Wait for the post-observation checkpoint artifact to reach the run index",
+            "Fetch the stored post-observation checkpoint for independent readback",
+        ),
+    ] {
+        let wait_block = step_block(&job, wait)
+            .ok_or_else(|| io::Error::other(format!("publish job must define {wait}")))?;
+        require_wait_step_contract(&wait_block, wait)?;
+        let fetch_block = step_block(&job, fetch)
+            .ok_or_else(|| io::Error::other(format!("publish job must define {fetch}")))?;
+        require_fetch_binding(&fetch_block, fetch)?;
+
+        let wait_at = position(&job, wait)
+            .ok_or_else(|| io::Error::other(format!("publish job must define {wait}")))?;
+        let fetch_at = position(&job, fetch)
+            .ok_or_else(|| io::Error::other(format!("publish job must define {fetch}")))?;
+        require(
+            wait_at < fetch_at,
+            &format!("{wait} must run strictly before {fetch}"),
+        )?;
+    }
+
+    Ok(())
+}
