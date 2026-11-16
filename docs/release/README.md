@@ -434,7 +434,7 @@ document compiles `Complete` against independently observed facts:
 git tag -a v0.2.0 -m "cargo-allow 0.2.0
 
 authorization-run-id: <authorizing workflow run id>
-authorization-digest: <canonical sha256 digest, optional>"
+authorization-digest: sha256:<64 hex characters, lower or upper case, optional>"
 git push origin v0.2.0
 ```
 
