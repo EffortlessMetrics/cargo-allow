@@ -256,8 +256,12 @@ validate_projection() {
 }
 
 # project <pr_number> <event> -> publishes the check run for the PR.
-# Returns nonzero on adapter breakage, a Failure conclusion, or a
-# refused publish (fork token downgrade); the caller aggregates.
+# Returns 0 when a success conclusion is published, 2 when a typed
+# Failure conclusion is published (the PR's own required context now
+# carries it), and 1 on adapter breakage or a refused publish (fork
+# token downgrade). The push aggregate treats 2 as a per-PR result and
+# only 1 as a job failure; the pull_request and merge_group paths still
+# fail on either nonzero code.
 project_pr() {
   local pr_number="$1" event="$2"
   local pr_json base_ref base_sha head_ref head_sha draft_state merge_base diff_digest input_status
@@ -478,13 +482,13 @@ project_pr() {
     publish "${head_sha}" "failure" \
       "unreadable retained disposition records for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${malformed[*]}; malformed review evidence fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
-    return 1
+    return 2
   elif [ "${#exact_matches[@]}" -gt 1 ] || [ "${#ancestor_matches[@]}" -gt 1 ]; then
     rm -f "${live_file}"
     publish "${head_sha}" "failure" \
       "ambiguous retained dispositions for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: exact=${exact_matches[*]:-} ancestor=${ancestor_matches[*]:-}; disposition discovery fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
-    return 1
+    return 2
   elif [ "${#exact_matches[@]}" -eq 1 ]; then
     selected="${exact_matches[0]}"
   elif [ "${#ancestor_matches[@]}" -eq 1 ]; then
@@ -499,7 +503,7 @@ project_pr() {
     publish "${head_sha}" "failure" \
       "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${unreachable[*]} binds a commit this checkout does not contain; a rebase or force-push dropped it, so a fresh exact-head review and rebind are required; stale review evidence fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
-    return 1
+    return 2
   fi
 
   if [ -n "${selected}" ]; then
@@ -538,7 +542,7 @@ project_pr() {
             publish "${head_sha}" "failure" \
               "unreachable retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}: ${selected} binds ${bound_head}, which this checkout no longer contains; a fresh exact-head review and rebind are required; stale review evidence fails closed" \
               "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
-            return 1
+            return 2
           fi
         fi
         printf 'review-readiness: instrument failure: disposition delta read failed (exit %s)\n' "${input_status}" >&2
@@ -557,7 +561,7 @@ project_pr() {
     publish "${head_sha}" "failure" \
       "no retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}; exact-head review readiness is unproven and fails closed" \
       "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
-    return 1
+    return 2
   fi
 
   local projection_file exit_code=0
@@ -600,8 +604,13 @@ project_pr() {
     return 1
   fi
   rm -f "${projection_file}"
+  # validate_projection admits exactly two shapes: exit 0 with a
+  # non-failure conclusion, or exit 1 with a typed failure. A typed
+  # failure is a per-PR result, not an adapter breakage.
+  if [ "${conclusion}" = "failure" ]; then
+    return 2
+  fi
   [ "${exit_code}" -eq 0 ] || return 1
-  [ "${conclusion}" != "failure" ] || return 1
 }
 
 # A merge-group ref names one pull request:
@@ -699,7 +708,14 @@ if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
   while IFS= read -r open_pr; do
     [ -n "$open_pr" ] || continue
     echo "review-readiness: base movement recompute for PR #${open_pr}"
-    project_pr "$open_pr" "base_moved" || overall=1
+    # A typed failure (2) is that PR's own published result; only an
+    # instrument or publish failure (1) makes this job red. The job
+    # status reports adapter health, not aggregate PR readiness.
+    pr_status=0
+    project_pr "$open_pr" "base_moved" || pr_status=$?
+    if [ "${pr_status}" -eq 1 ]; then
+      overall=1
+    fi
   done <<<"$open_prs"
 elif [ "${GITHUB_EVENT_NAME}" = "merge_group" ]; then
   resolved_pr=""
