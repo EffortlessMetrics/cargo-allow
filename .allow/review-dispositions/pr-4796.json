@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4796,
   "base_ref": "main",
-  "base_sha": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
+  "base_sha": "e42bea7430954af62ebc3a26606406bfef1231b0",
   "head_ref": "fix/pregate-queue-subject-fail-closed",
   "head_sha": "eaa4891d4f5e4e58b8107e64063ce435fe0fa570",
   "merge_base": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
   "reviewed_diff_digest": "sha256:v2:0b9f6255593a04e24ba84ffa780b84a1ac9c69dabae7da379bee5e84082a6e4e",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at eaa4891d4f5e4e58b8107e64063ce435fe0fa570 (base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6), verdict APPROVE, review 5920766398. That review is at the bound head and covers the post-glob shape: the branch's policy/allow.toml hunk is dropped entirely, the diff is the changelog fragment, ci.yml and the pregate test plus the eight regenerated direct-floor receipts, and the receipts bind the merged head. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at eaa4891d4f5e4e58b8107e64063ce435fe0fa570 (base e42bea7430954af62ebc3a26606406bfef1231b0, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6), verdict APPROVE, review 5920766398. That review is at the bound head and covers the post-glob shape: the branch's policy/allow.toml hunk is dropped entirely, the diff is the changelog fragment, ci.yml and the pregate test plus the eight regenerated direct-floor receipts, and the receipts bind the merged head. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5920766398 - review cargo-allow non-author oppositional exact-head model review of head eaa4891d4f5e4e58b8107e64063ce435fe0fa570, base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, reviewed_diff_digest=sha256:v2:0b9f6255593a04e24ba84ffa780b84a1ac9c69dabae7da379bee5e84082a6e4e, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5920766398 - review cargo-allow non-author oppositional exact-head model review of head eaa4891d4f5e4e58b8107e64063ce435fe0fa570, base e42bea7430954af62ebc3a26606406bfef1231b0, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, reviewed_diff_digest=sha256:v2:0b9f6255593a04e24ba84ffa780b84a1ac9c69dabae7da379bee5e84082a6e4e, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
