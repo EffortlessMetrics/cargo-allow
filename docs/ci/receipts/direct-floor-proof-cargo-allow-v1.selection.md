@@ -7,18 +7,18 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-allow
 - Package roots: cargo-allow
 - Selected closure: allow-core, allow-diff, allow-files, allow-inventory, allow-match, allow-policy, allow-policy-legacy, allow-report, allow-rust, cargo-allow, effortless-repo-edit, effortless-repo-protocol, effortless-repo-snapshot
-- Starting source commit: efb0215c61e6e2329aeab0ddeca5c146b2b7b178
+- Starting source commit: c3fcba2cf2404b53053568cc31da06e7d0bab5f0
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:36b8acc4eddb70fedd8bbe35dd0869ab16cde657fdac6f6fe58ec156bd325b9a
 - Certified member paths: crates/cargo-allow, crates/allow-core, crates/allow-policy, crates/allow-inventory, crates/allow-files, crates/allow-rust, crates/allow-match, crates/allow-report, crates/allow-diff, crates/allow-policy-legacy, crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit
 - Execution member paths: crates/cargo-allow, crates/allow-core, crates/allow-policy, crates/allow-inventory, crates/allow-files, crates/allow-rust, crates/allow-match, crates/allow-report, crates/allow-diff, crates/allow-policy-legacy, crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-repo-edit, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine
-- Executed floor commit: 8f24d585ac17d8aae2f8c6d6bfa3f7015e4ab279
-- Executed floor tree: da1ddc47af6fe8d155e7f590788e466de606971b
+- Executed floor commit: a0ab32d7380c498ba800567e99e2f389488f3945
+- Executed floor tree: 059127d22cadb2eaf261bd54f8430376218235cf
 - Receipt: direct-floor-proof-cargo-allow-v1.json
-- Receipt SHA-256: sha256:v1:6784ea421b195732d76f55ff9602bdd300c23d56dd0492f1766a7624a94a1092
+- Receipt SHA-256: sha256:v1:5916acf57a36649309bea47e183fc19ff3efb7271380ef2e602d5d1d99c3e832
 - Manifest-set digest: 18db841f212518f4d9575251c764300c2962c7bbba0d96f72a68745a0698f8db
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
-- Executed floor-lock digest: sha256:v1:e3ff969e39c570d0651b7fcd4e5e80b983a622de4f02b42842288db118cd2cd9
+- Executed floor-lock digest: sha256:v1:1684b6088cf61e20dc3fb31d1959ed1d9da6a66be3a52e0cf0f391b27039e40d
 
 | Owner | Table | Optional dependency | Disposition | Reason | Activation witnesses |
 | --- | --- | --- | --- | --- | --- |
@@ -30,14 +30,14 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 
 Original locked-workspace topology contracts only; not direct-floor proof. These tests remain enforced before the product workspace is projected.
 
-- Source commit: efb0215c61e6e2329aeab0ddeca5c146b2b7b178
-- Source tree: a212f231721a17f928cffaab4beb1d521268048b
+- Source commit: c3fcba2cf2404b53053568cc31da06e7d0bab5f0
+- Source tree: 0d75f620329af03975ed6eb26fb96db10a69ea5a
 - Original manifest digest: sha256:v1:6e7ff2802c635fe2ad17a5ca85826931d5a580eeff97f7291b86d309d1b84319
 - Original lock digest: sha256:v1:0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
 - Target: x86_64-unknown-linux-gnu
 - Command: cargo test --locked --target x86_64-unknown-linux-gnu --target-dir target/floor-proof/source-workspace-target -p cargo-allow --bin cargo-allow -- --format pretty --color never ci_lane_topology_tests::crate_sets_partition_the_workspace_exactly package_topology_enforcement_tests::topology_classifies_every_workspace_package_exactly product_package_topology_tests::current_v2_authorities_drive_package_candidate publish_order_validation_tests::publish_order_covers_all_workspace_members release_prep_tests::published_release_versions_match_workspace
 - Standard-output digest: sha256:v1:7268daa0685c3b4de7526262f13a186aecfb3a6ab79fc86616f1002601e64298
-- Standard-error digest: sha256:v1:4a7fd366599af49518d3751179f22f2e2d262c6713546d8faf6f84a4d70dba4a
+- Standard-error digest: sha256:v1:9d7ae699f07eb840c1ebd9e28375c36e9bd3965a7e344543634f637550adfcd7
 
 - Passed before projection: ci_lane_topology_tests::crate_sets_partition_the_workspace_exactly
 - Passed before projection: package_topology_enforcement_tests::topology_classifies_every_workspace_package_exactly
