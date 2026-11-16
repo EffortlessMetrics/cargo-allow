@@ -919,9 +919,17 @@ jobs:
             # Capture the names first: piping gh into `grep -q` makes grep
             # close the pipe on the first match, gh dies on SIGPIPE (141),
             # and pipefail turns a found artifact into a failed attempt.
-            names="$(gh api --paginate \
+            # A transient API failure is not proof the artifact is missing:
+            # under `set -e` an unguarded read would abort the step, and for
+            # the post-observation fetch that red lands after the irreversible
+            # upload, publishing-but-never-reconciling. Treat a failed read as
+            # "not visible yet" and retry inside the same bounded loop.
+            if ! names="$(gh api --paginate \
               "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
-              --jq '.artifacts[].name')"
+              --jq '.artifacts[].name')"; then
+              echo "attempt ${attempt}: artifact index read failed; treating as not yet visible"
+              names=""
+            fi
             if [[ $'\n'"${names}"$'\n' == *$'\n'"${ARTIFACT_NAME}"$'\n'* ]]; then
               echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
               exit 0
@@ -1368,9 +1376,17 @@ jobs:
             # Capture the names first: piping gh into `grep -q` makes grep
             # close the pipe on the first match, gh dies on SIGPIPE (141),
             # and pipefail turns a found artifact into a failed attempt.
-            names="$(gh api --paginate \
+            # A transient API failure is not proof the artifact is missing:
+            # under `set -e` an unguarded read would abort the step, and for
+            # the post-observation fetch that red lands after the irreversible
+            # upload, publishing-but-never-reconciling. Treat a failed read as
+            # "not visible yet" and retry inside the same bounded loop.
+            if ! names="$(gh api --paginate \
               "repos/${GITHUB_REPOSITORY}/actions/runs/${RUN_ID}/artifacts" \
-              --jq '.artifacts[].name')"
+              --jq '.artifacts[].name')"; then
+              echo "attempt ${attempt}: artifact index read failed; treating as not yet visible"
+              names=""
+            fi
             if [[ $'\n'"${names}"$'\n' == *$'\n'"${ARTIFACT_NAME}"$'\n'* ]]; then
               echo "artifact ${ARTIFACT_NAME} is listed on attempt ${attempt}"
               exit 0
