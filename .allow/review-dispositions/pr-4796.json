@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4796,
+  "base_ref": "main",
+  "base_sha": "e42bea7430954af62ebc3a26606406bfef1231b0",
+  "head_ref": "fix/pregate-queue-subject-fail-closed",
+  "head_sha": "eaa4891d4f5e4e58b8107e64063ce435fe0fa570",
+  "merge_base": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
+  "reviewed_diff_digest": "sha256:v2:0b9f6255593a04e24ba84ffa780b84a1ac9c69dabae7da379bee5e84082a6e4e",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4796 at eaa4891d4f5e4e58b8107e64063ce435fe0fa570 (base e42bea7430954af62ebc3a26606406bfef1231b0, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6), verdict APPROVE, review 5920766398. That review is at the bound head and covers the post-glob shape: the branch's policy/allow.toml hunk is dropped entirely, the diff is the changelog fragment, ci.yml and the pregate test plus the eight regenerated direct-floor receipts, and the receipts bind the merged head. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796#pullrequestreview-5920766398 - review cargo-allow non-author oppositional exact-head model review of head eaa4891d4f5e4e58b8107e64063ce435fe0fa570, base e42bea7430954af62ebc3a26606406bfef1231b0, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, reviewed_diff_digest=sha256:v2:0b9f6255593a04e24ba84ffa780b84a1ac9c69dabae7da379bee5e84082a6e4e, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4796 - reviewed at eaa4891d4f5e4e58b8107e64063ce435fe0fa570, verdict APPROVE in review 5920766398.",
+    "Reviewed pair base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, head eaa4891d4f5e4e58b8107e64063ce435fe0fa570, reviewed diff digest sha256:v2:0b9f6255593a04e24ba84ffa780b84a1ac9c69dabae7da379bee5e84082a6e4e over 35be8cfd2..eaa4891d4.",
+    "Ledger-clean after #4819: the branch's per-file policy hunk was dropped entirely rather than rebased, so the glob admits .allow/review-dispositions/pr-4796.json with no policy/allow.toml change.",
+    "The eight direct-floor receipts were regenerated for the merged head by floor-receipt-regeneration run 43716162480 and committed byte-identical; pregate reports FLOOR_FRESHNESS success with min-version-drift verdict=current for all four products.",
+    "The pregate reads needs.queue-subject.result and fails unless success; the guard contract test asserts the job exists and declares needs: instead of skipping an empty block.",
+    "Zero unresolved review threads on this PR."
+  ],
+  "required_ci": {
+    "owner": "PR #4796 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4796"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4796",
+  "reviewed_at_utc": "2026-11-16T00:00:00Z"
+}

@@ -7,15 +7,15 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-intent
 - Package roots: cargo-intent
 - Selected closure: cargo-intent, effortless-repo-protocol, effortless-repo-snapshot, effortless-rust-source-index, intent-compiler, intent-model, intent-protocol
-- Starting source commit: c3fcba2cf2404b53053568cc31da06e7d0bab5f0
+- Starting source commit: 15f47ab1008781fbce0b6e48419c97df2c71a0af
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:a49e484f401abb31a0fb66c602225c488a5969cfd5e7d16df5eb37329aa6e6db
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-repo-snapshot, crates/effortless-rust-source-index, crates/intent-model, crates/intent-protocol, crates/intent-engine, crates/cargo-intent
-- Executed floor commit: 70d4342a58775a79c59b6a9532509b90079b1118
-- Executed floor tree: 676b0c3fc6cc91e9783ef17c0637faa30cd902af
+- Executed floor commit: 8bacdbea1d9ed3330b3d25429d471b681dba9c63
+- Executed floor tree: 51b1bbb8a13d612792a80a3061daf0f41d69da36
 - Receipt: direct-floor-proof-cargo-intent-v1.json
-- Receipt SHA-256: sha256:v1:ca4b366ba9173ba77cdeea68e6d896a5899174d8b30cf1cd1d3f66ad70041d05
+- Receipt SHA-256: sha256:v1:63779f80d90f6c315094818e6cdeef1987a3ce5aecea4744b1139cb01b20352e
 - Manifest-set digest: 18db841f212518f4d9575251c764300c2962c7bbba0d96f72a68745a0698f8db
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
 - Executed floor-lock digest: sha256:v1:aaacf0391f7b0105f3c99efe5df991218c433168495c4b0f0479e2d394978d19

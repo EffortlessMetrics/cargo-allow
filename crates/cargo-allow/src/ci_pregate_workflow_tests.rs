@@ -33,6 +33,44 @@ fn workflow_after(workflow: &str, job: &str) -> String {
     }
 }
 
+/// Return one job body, from its `  name:` header to the next job header.
+fn job_block(workflow: &str, job: &str) -> String {
+    let mut block = String::new();
+    let mut in_job = false;
+    for line in workflow.lines() {
+        if let Some(name) = line
+            .strip_prefix("  ")
+            .and_then(|rest| rest.strip_suffix(':'))
+            && !name.is_empty()
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+        {
+            if in_job {
+                break;
+            }
+            if name == job {
+                in_job = true;
+                continue;
+            }
+        }
+        if in_job {
+            block.push_str(line);
+            block.push('\n');
+        }
+    }
+    block
+}
+
+/// Return the job-level `if:` value, if the job has one. Step-level `if:`
+/// keys are indented deeper, so only a four-space `if:` counts.
+fn job_level_if(block: &str) -> Option<String> {
+    block
+        .lines()
+        .find_map(|line| line.strip_prefix("    if:"))
+        .map(|value| value.trim().to_string())
+}
+
 /// The measured-heavy set from the #3835 baseline: these must gate on
 /// the pre-gate.
 const HEAVY_JOBS: [&str; 12] = [
@@ -192,5 +230,66 @@ fn ci_pregate_workflow_does_not_own_proof_routing() {
     assert!(
         !pregate_block.contains("paths:"),
         "the pre-gate must not gain path-based proof selection"
+    );
+}
+
+#[test]
+fn required_contexts_with_needs_carry_a_job_level_guard_and_pregate_requires_queue_subject() {
+    // A required context with `needs:` and no job-level `if:` inherits the
+    // default success(), so a failed non-required dependency skips it and
+    // GitHub counts the skipped required check as passing. The guard must be
+    // exactly !cancelled(): a prefix or conjunction match would let
+    // `!cancelled() && needs.queue-subject.result == 'success'` reintroduce
+    // the skip, and `continue-on-error: true` would swallow the failure.
+    // Scope note: this binds required contexts that declare `needs:` here; it
+    // does not claim that no required context can be skipped for any reason,
+    // such as a failed package-smoke.
+    let root = workspace_root();
+    let workflow = read_workspace_file(&root, ".github/workflows/ci.yml");
+    for job in ["pregate", "test"] {
+        let block = job_block(&workflow, job);
+        assert!(
+            block.contains("needs:"),
+            "{job} is a required context: a missing job or a job without needs: must fail here instead of skipping the guard checks"
+        );
+        let guard = job_level_if(&block).unwrap_or_default();
+        assert!(
+            guard.starts_with("${{ !cancelled()"),
+            "{job} is a required context with needs: and must carry a job-level !cancelled() guard; a missing guard lets a failed dependency skip it"
+        );
+        assert!(
+            !guard.contains("needs.queue-subject.result"),
+            "{job} must not gate on needs.queue-subject.result: queue-subject is not a required context, so that conjunct reintroduces the skip this guard exists to prevent"
+        );
+        assert!(
+            !block
+                .lines()
+                .any(|line| line.starts_with("    continue-on-error:")),
+            "{job} must not swallow a failed dependency with a job-level continue-on-error"
+        );
+    }
+    // The pregate's only dependency is the non-required queue-subject, so its
+    // guard must be exactly !cancelled() with no result conjunct at all.
+    assert_eq!(
+        job_level_if(&pregate_block(&workflow)).as_deref(),
+        Some("${{ !cancelled() }}"),
+        "the pregate must run on exactly !cancelled(); any conjunct on a non-required dependency can skip this required context"
+    );
+    let pregate = pregate_block(&workflow);
+    assert!(
+        pregate.contains("needs.queue-subject.result"),
+        "the pregate must read needs.queue-subject.result; an always() upload can leave the artifact behind after the job fails"
+    );
+    assert!(
+        pregate.contains("download-artifact"),
+        "the pregate must download the queue-subject artifact"
+    );
+    assert!(
+        pregate.contains("queue-subject-${{ github.run_id }}-${{ github.run_attempt }}"),
+        "the pregate must name the queue-subject artifact"
+    );
+    assert!(
+        pregate.contains("subject.json") && pregate.contains("head_sha"),
+        "the pregate must fail when the queue subject is absent or bound to another head"
     );
 }

@@ -52,6 +52,11 @@ jobs:
   # release secrets are read here.
   pregate:
     needs: queue-subject
+    # Run even when queue-subject fails: the default success() would skip
+    # this required context, and GitHub counts a skipped required check as
+    # passing. The queue-subject artifact is then required below, so a
+    # missing or mismatched subject fails the pregate instead of skipping it.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # Same precedence law the msrv job documents: `rust-toolchain.toml`
@@ -72,6 +77,41 @@ jobs:
         with:
           ref: ${{ github.event.merge_group.head_sha }}
           persist-credentials: false
+      # The artifact is uploaded from an always() step, so a failed
+      # queue-subject can still leave a valid-looking subject behind. Read
+      # the dependency's result explicitly; presence alone is not proof
+      # that the job that authored the subject succeeded.
+      - name: Require the queue-subject job to have succeeded
+        if: ${{ !cancelled() }}
+        env:
+          QUEUE_SUBJECT_RESULT: ${{ needs.queue-subject.result }}
+        run: |
+          set -euo pipefail
+          if [ "${QUEUE_SUBJECT_RESULT}" != "success" ]; then
+            echo "::error::queue-subject concluded ${QUEUE_SUBJECT_RESULT}; a failed subject must fail the pregate, not pass it by artifact presence"
+            exit 1
+          fi
+      - name: Download the queue subject
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: queue-subject-${{ github.run_id }}-${{ github.run_attempt }}
+          path: target/queue
+      - name: Require the queue subject
+        if: ${{ !cancelled() && github.event_name == 'merge_group' }}
+        run: |
+          set -euo pipefail
+          test -f target/queue/subject.json
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          receipt = json.load(open("target/queue/subject.json", encoding="utf-8"))
+          expected = os.environ["GITHUB_SHA"]
+          if receipt.get("head_sha") != expected:
+              sys.exit(f"queue subject head {receipt.get('head_sha')} != {expected}")
+          PY
       - uses: dtolnay/rust-toolchain@1.95.0
         # The RUSTUP_TOOLCHAIN pin above selects this exact toolchain, so
         # the components the pregate needs must be installed here: the
