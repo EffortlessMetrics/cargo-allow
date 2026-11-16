@@ -31,6 +31,40 @@ impl MatchStrength {
     }
 }
 
+/// Literal specificity of the selector scope that matched `finding`.
+///
+/// Mirrors the legacy non-Rust rule (`literal_chars`, plus 10,000 for an
+/// exact path) so a migrated policy resolves the same overlap the legacy
+/// tool and the compat reader resolved (#4840). Only the scope that
+/// actually matched contributes; a broader glob that also matches does not.
+#[must_use]
+pub fn match_specificity(entry: &AllowEntry, finding: &Finding) -> usize {
+    let finding_path = normalize_path(&finding.path);
+    if let Some(path) = &entry.path
+        && normalize_path(path) == finding_path
+    {
+        return literal_chars(&normalize_path(path)) + 10_000;
+    }
+    if let Some(glob) = &entry.glob
+        && glob_matches(glob, &finding.path)
+    {
+        return literal_chars(glob);
+    }
+    if let Some(glob) = &entry.selector.glob
+        && glob_matches(glob, &finding.path)
+    {
+        return literal_chars(glob);
+    }
+    0
+}
+
+fn literal_chars(pattern: &str) -> usize {
+    pattern
+        .chars()
+        .filter(|ch| !matches!(ch, '*' | '?' | '[' | ']' | '{' | '}' | ',' | '!'))
+        .count()
+}
+
 /// Classify how strongly `entry` matches `finding`. Returns `None` if any hard
 /// gate (kind, family, path/glob, structural-identity requirement, or an exact
 /// selector field) fails. Returns `Some(strength)` describing the match tier.
