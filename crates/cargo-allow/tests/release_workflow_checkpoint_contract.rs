@@ -407,6 +407,10 @@ fn require_wait_step_contract(step: &str, label: &str) -> Result<(), Box<dyn Err
         "for attempt in 1 2 3 4 5 6",
         "if ! names=\"$(gh api --paginate",
         "names=\"\"",
+        // The envelope starts at two seconds and only sleeps while attempts
+        // remain, so the final failed attempt exits without a 64 s wait.
+        "delay=2",
+        "if [ \"${attempt}\" -lt 6 ]",
         "sleep \"${delay}\"",
         "delay=$((delay * 2))",
         "::error::",
@@ -454,22 +458,35 @@ fn test_release_workflow_waits_for_the_index_the_fetch_reads() -> Result<(), Box
         .ok_or_else(|| io::Error::other("publish job slice unavailable"))?
         .to_string();
 
-    for (wait, fetch) in [
+    for (wait, fetch, artifact) in [
         (
             "Wait for the pre-intent checkpoint artifact to reach the run index",
             "Fetch the stored pre-intent checkpoint for independent readback",
+            "publication-checkpoint-pre-intent",
         ),
         (
             "Wait for the post-observation checkpoint artifact to reach the run index",
             "Fetch the stored post-observation checkpoint for independent readback",
+            "publication-checkpoint-post-observation",
         ),
     ] {
         let wait_block = step_block(&job, wait)
             .ok_or_else(|| io::Error::other(format!("publish job must define {wait}")))?;
         require_wait_step_contract(&wait_block, wait)?;
+        // The two waits are copy-paste, so the name each pol s must be pinned
+        // to the artifact the fetch below it downloads. A wait repointed at the
+        // sibling artifact would pass instantly and prove nothing.
+        require(
+            wait_block.contains(&format!("ARTIFACT_NAME: {artifact}")),
+            &format!("{wait} must poll ARTIFACT_NAME: {artifact}"),
+        )?;
         let fetch_block = step_block(&job, fetch)
             .ok_or_else(|| io::Error::other(format!("publish job must define {fetch}")))?;
         require_fetch_binding(&fetch_block, fetch)?;
+        require(
+            fetch_block.contains(&format!("name: {artifact}")),
+            &format!("{fetch} must download name: {artifact}"),
+        )?;
 
         let wait_at = position(&job, wait)
             .ok_or_else(|| io::Error::other(format!("publish job must define {wait}")))?;
