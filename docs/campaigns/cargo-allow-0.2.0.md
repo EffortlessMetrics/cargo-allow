@@ -38,7 +38,7 @@ obligation; the frozen-manifest role stays a live owner decision.
 
 Release-path closeout. Checkpoints: 2026-11-19 = #4744 landed, #3792 first slice merged, #3151 producer sequence started; 2026-11-26 = second slice, not a release date. Target end of Q1 2027, reviewed at the 19 November checkpoint. In order:
 
-1. #4744 — land the merge-queue step-1 cutover with the frozen-subject invalidation record and the sentinel concurrency fix. It merged through the queue as entry 1; the AGENTS.md reconciliation to the pre-enqueue judgment did not land with it and is being restored separately.
+1. #4744 — land the merge-queue step-1 cutover with the frozen-subject invalidation record and the sentinel concurrency fix. It merged through the queue as entry 1; the AGENTS.md reconciliation to the pre-enqueue judgment did not land with it.
 2. #3792 — the seven `zero_mutation_proof` flags in `scripts/release-rehearsal.py` become measured outcomes with falsifiers instead of hardcoded `False`. First slice: one Linux worker profile plus the tag-mutation denial family end to end, producing the first true flag; the invocation-boundary guard is part of that slice, not a separate first step.
 3. #3151 - produce installed-surface evidence and a named residual. The `release_freeze_experience.rs::retain_dependencies` node stays `NotProven`: it records `#2466` (clean-pilot producer/reader) and `#3151` (selected-case documentation producer and byte oracle) unconditionally, and `#3149` for `CommandCaseJoin::Absent`. A Complete freeze needs a v2 docs-execution contract plus the `#2466` and `#3149` producers; that is a campaign, not a slice, and the contract amendment is a user decision.
 4. #2501 — refreeze on the post-#4744 merged tree.
