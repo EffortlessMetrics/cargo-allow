@@ -6,28 +6,29 @@
   "base_ref": "main",
   "base_sha": "9be148d8a98481deefd4f0c0395bc4cd66a133ed",
   "head_ref": "fix/0-2-0-rebatch",
-  "head_sha": "31b1cc5c05e99fc0fb34b07c438266214a490c7f",
+  "head_sha": "34ec333eec947898a261f69691838c7c00f2a70e",
   "merge_base": "9be148d8a98481deefd4f0c0395bc4cd66a133ed",
-  "reviewed_diff_digest": "sha256:v2:2df4f12b084bed521df0ba54a9cb34ec7060b88c2decc5e4b4d2ca1c25f7d188",
+  "reviewed_diff_digest": "sha256:v2:2edcef0d173fd3c4d0163c19543c4540056a3eca6b5632b625f05be5c49e212e",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4838 at 31b1cc5c05e99fc0fb34b07c438266214a490c7f, verdict APPROVE, review 5925835506 submitted 2026-11-16T19:08:19Z (base and merge-base 9be148d8a). The reviewer independently counted the changelog bullets (564 base, 568 head, +4/-0, ordered subsequence, 0 duplicates), parsed all seven deleted fragment bodies and required each to appear exactly once, confirmed the 22 pre-cut bullets, the RC.1 blob identity, the changelog-to-version-file equality, and re-ran the union and history-corpus checks; it also read the frozen-subject-lock model and confirmed the existing 63248416c invalidations cover the .changes movement, with the lock check green. One non-blocking scope note: the head adds one campaign-plan line while the PR body still says 'Changelog only'. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4838 at 34ec333eec947898a261f69691838c7c00f2a70e, verdict APPROVE, review 5926761016 submitted 2026-11-16T20:09:17Z (base and merge-base 9be148d8a). Delta review on top of the head approved at 31b1cc5c0: the only content movement is the claim-boundary blockquote plus its separating blank line in .changes/0.2.0.md and CHANGELOG.md, and the reviewer confirmed the blockquote is exact and immediately under the [0.2.0] heading, that .changes/0.2.0.md minus its heading is byte-equal (normalized) to the CHANGELOG [0.2.0] body, that no v0.2.0 tag exists and the newest published crate is 0.2.0-rc.1, and that generate-changie-history.py:69 and test-changie-0-2-0-union.py:43 remain satisfied. The reviewer re-ran test-changie-0-2-0-union.py (all 22 pre-cut bullets retained) and generate-changie-history.py --check (9 files verified) at this head. The bullet census and fragment accounting from the 31b1cc5c0 review carry forward because the delta adds no bullet. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4838#pullrequestreview-5925835506 - review cargo-allow non-author oppositional exact-head model review of head 31b1cc5c05e99fc0fb34b07c438266214a490c7f, base 9be148d8a98481deefd4f0c0395bc4cd66a133ed, merge-base 9be148d8a98481deefd4f0c0395bc4cd66a133ed, reviewed_diff_digest=sha256:v2:2df4f12b084bed521df0ba54a9cb34ec7060b88c2decc5e4b4d2ca1c25f7d188, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4838#pullrequestreview-5926761016 - review cargo-allow non-author oppositional exact-head model review of head 34ec333eec947898a261f69691838c7c00f2a70e, base 9be148d8a98481deefd4f0c0395bc4cd66a133ed, merge-base 9be148d8a98481deefd4f0c0395bc4cd66a133ed, reviewed_diff_digest=sha256:v2:2edcef0d173fd3c4d0163c19543c4540056a3eca6b5632b625f05be5c49e212e, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
   "findings": [],
   "threads_inspected": [
-    "https://github.com/EffortlessMetrics/cargo-allow/pull/4838 - reviewed at 31b1cc5c05e99fc0fb34b07c438266214a490c7f, verdict APPROVE in review 5925835506.",
-    "Reviewed pair: base and merge-base 9be148d8a98481deefd4f0c0395bc4cd66a133ed, head 31b1cc5c05e99fc0fb34b07c438266214a490c7f, reviewed diff digest sha256:v2:2df4f12b over 16185 bytes.",
-    "Bullet census: 564 base bullets, 568 head bullets, multiset delta +4 / -0, zero duplicates, base bullets an ordered subsequence of the head list.",
-    "All seven deleted fragment bodies appear exactly once in the 0.2.0 body under exact normalized comparison; the 22 pre-cut fixture bullets are retained; scripts/test-changie-0-2-0-union.py and scripts/generate-changie-history.py --check both exit 0 at 1ae2f833b.",
-    ".changes/0.2.0.md minus its heading is byte-equal to the CHANGELOG [0.2.0] body; .changes/0.2.0-rc.1.md is blob-identical at base and head; no fragments remain at the head.",
-    "Frozen-subject-lock: .changes is in the ReleaseRecords surface; two invalidations name 63248416c, so load-bearing movement yields Stale-under-invalidation rather than RequiresInvalidation, and frozen-subject-lock is SUCCESS at the head.",
-    "Non-blocking: the head adds one line to docs/campaigns/cargo-allow-0.2.0.md while the PR body still says 'Changelog only'; the body should be updated.",
-    "Head moved during the post; the review body was re-bound with updatePullRequestReview so the verdict line and the attached commit both name 31b1cc5c0."
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4838 - reviewed at 34ec333eec947898a261f69691838c7c00f2a70e, verdict APPROVE in review 5926761016.",
+    "Reviewed pair: base and merge-base 9be148d8a98481deefd4f0c0395bc4cd66a133ed, head 34ec333eec947898a261f69691838c7c00f2a70e, reviewed diff digest sha256:v2:2edcef0d over 21587 bytes.",
+    "Delta 381eecee4..34ec333ee is two added lines in each changelog file: the claim-boundary blockquote plus its separating blank line. Delta 31b1cc5c0..34ec333ee is the disposition record plus those four lines, nothing else; no source, workflow or policy path.",
+    "The blockquote '> Not published. This is the 0.2.0 candidate; the date is the batch date, not a release date.' sits immediately under '## [0.2.0] - 2026-11-14' in both .changes/0.2.0.md and CHANGELOG.md; .changes/0.2.0.md minus its heading is byte-equal (normalized) to the CHANGELOG [0.2.0] body.",
+    "The claim is true: no v0.2.0 tag exists and the newest published crate is 0.2.0-rc.1; keeping the date is required by generate-changie-history.py:69 and test-changie-0-2-0-union.py:43, which the note does not disturb.",
+    "Bullet census and fragment accounting from the 31b1cc5c0 review carry forward: 564 base bullets, 568 head bullets, multiset delta +4 / -0, zero duplicates, base bullets an ordered subsequence of the head list; all seven deleted fragment bodies appear exactly once; the 22 pre-cut fixture bullets are retained.",
+    "Checks re-run at this head: python scripts/test-changie-0-2-0-union.py exits 0 (all 22 pre-cut 0.2.0 bullets retained); python scripts/generate-changie-history.py --check exits 0 (history corpus current: 9 files verified).",
+    "Check posture at the reviewed head: review-readiness and its publisher failed because the retained record still bound 31b1cc5c0 while the head was 34ec333ee and the delta was no longer ledger-only; this rebind clears that stale binding. Fourteen lanes were still pending at review time.",
+    "Non-blocking from the 31b1cc5c0 review: the head adds one line to docs/campaigns/cargo-allow-0.2.0.md while the PR body still says 'Changelog only'; the body should be updated."
   ],
   "required_ci": {
     "owner": "PR #4838 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
@@ -35,5 +36,5 @@
   },
   "evidence_class": "current_observation",
   "scope_claim_boundary": "pull-request:4838",
-  "reviewed_at_utc": "2026-11-16T19:08:19Z"
+  "reviewed_at_utc": "2026-11-16T20:09:17Z"
 }
