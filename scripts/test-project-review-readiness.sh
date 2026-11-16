@@ -295,6 +295,16 @@ run_case() {
   if [ "${FIXTURE_LEDGER}" = ancestor ]; then
     printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 3 \
       >"${work}/repo/.allow/review-dispositions/fixture.json"
+  elif [ "${FIXTURE_LEDGER}" = exact ]; then
+    printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4165,"head_sha":"%040d"}\n' 2 \
+      >"${work}/repo/.allow/review-dispositions/fixture.json"
+    if [ "${FIXTURE_TWO_PRS}" = 1 ]; then
+      printf '{"repository":"EffortlessMetrics/cargo-allow","pr_number":4166,"head_sha":"%040d"}\n' 5 \
+        >"${work}/repo/.allow/review-dispositions/second.json"
+    fi
+  elif [ "${FIXTURE_LEDGER}" = wrong_subject ]; then
+    printf '{"repository":"EffortlessMetrics/other","pr_number":4165,"head_sha":"%040d"}\n' 2 \
+      >"${work}/repo/.allow/review-dispositions/fixture.json"
   elif [ "${FIXTURE_LEDGER}" = malformed ]; then
     printf '{' >"${work}/repo/.allow/review-dispositions/fixture.json"
   elif [ "${FIXTURE_LEDGER}" = ambiguous ]; then
@@ -325,10 +335,10 @@ run_case() {
     [ ! -e "${FIXTURE_STATE}/mutation-args" ] || fail "unexpected API mutation"
   else
     grep -Fxq "${expected_write}" "${FIXTURE_STATE}/mutation-args" || fail "wrong API method"
-    grep -Fxq "conclusion=${FIXTURE_CONCLUSION}" "${FIXTURE_STATE}/mutation-args" || fail "wrong conclusion"
+    grep -Fxq "conclusion=${EXPECTED_CONCLUSION:-${FIXTURE_CONCLUSION}}" "${FIXTURE_STATE}/mutation-args" || fail "wrong conclusion"
     grep -Fq 'output[summary]=pair: base=' "${FIXTURE_STATE}/mutation-args" || fail "missing bound summary"
     if [ -e "${FIXTURE_STATE}/projector-called" ]; then
-      grep -Fxq 'fixture typed result' "${FIXTURE_STATE}/mutation-args" || fail "missing reason"
+      grep -Fq 'fixture typed result' "${FIXTURE_STATE}/mutation-args" || fail "missing reason"
     else
       grep -Fq 'fails closed' "${FIXTURE_STATE}/mutation-args" || fail "missing discovery failure reason"
     fi
@@ -389,7 +399,7 @@ run_case() {
 export FIXTURE_OUTPUT=json FIXTURE_CARGO_STATUS=0 FIXTURE_CONCLUSION=success FIXTURE_FILTER=.
 export FIXTURE_LOOKUP_STATUS=0 FIXTURE_WRITE_STATUS=0 GITHUB_EVENT_NAME=pull_request
 export FIXTURE_PR_STATUS=0 FIXTURE_MERGE_BASE_STATUS=0 FIXTURE_DIFF_STATUS=0 FIXTURE_MKTEMP_FAILURE=0
-export FIXTURE_LEDGER=missing FIXTURE_ANCESTRY_STATUS=0 FIXTURE_DELTA_STATUS=0 FIXTURE_ENUMERATION_STATUS=0
+export FIXTURE_LEDGER=exact FIXTURE_ANCESTRY_STATUS=0 FIXTURE_DELTA_STATUS=0 FIXTURE_ENUMERATION_STATUS=0
 export FIXTURE_OBJECT_PROBE_STATUS=0 FIXTURE_OBJECT_PROBE_STATUS_2=
 export FIXTURE_BASE_ID=1 FIXTURE_FETCH_STATUS=0 FIXTURE_FETCH_FAIL_PR=none
 export FIXTURE_OBJECT_MODE=valid FIXTURE_OBJECT_STATUS=0 FIXTURE_MERGE_BASE_OUTPUT=single
@@ -399,8 +409,24 @@ export FIXTURE_PR_FILTER=. FIXTURE_READBACK_STATUS=0 FIXTURE_REF_STATUS=0 FIXTUR
 export FIXTURE_MOVE=none FIXTURE_MOVE_AT=projector FIXTURE_REF_READBACK_STATUS=0 FIXTURE_TWO_PRS=0
 check_runs='{"check_runs":[]}'
 run_case create_success 0 POST 'published success'
+# #4810: absence must fail even if a broken projector would claim success.
+# Repeat against an existing failure to cover the historical push overwrite.
+for event in pull_request push; do
+  GITHUB_EVENT_NAME="$event"
+  for ledger in missing wrong_subject; do
+    FIXTURE_LEDGER="$ledger"
+    EXPECTED_CONCLUSION=failure run_case "${event}_${ledger}_denied" 1 POST 'published failure'
+    check_runs='{"check_runs":[{"name":"review-readiness","id":42,"conclusion":"failure"}]}'
+    EXPECTED_CONCLUSION=failure run_case "${event}_${ledger}_preserves_failure" 1 PATCH 'updated run 42 -> failure'
+    check_runs='{"check_runs":[]}'
+  done
+done
+GITHUB_EVENT_NAME=pull_request FIXTURE_LEDGER=exact
 FIXTURE_CONCLUSION=neutral
-run_case create_neutral 0 POST 'published neutral'
+EXPECTED_CONCLUSION=failure run_case retained_neutral_fails_closed 1 POST 'published failure'
+check_runs='{"check_runs":[{"name":"review-readiness","id":42,"conclusion":"failure"}]}'
+EXPECTED_CONCLUSION=failure run_case retained_neutral_preserves_failure 1 PATCH 'updated run 42 -> failure'
+check_runs='{"check_runs":[]}'
 FIXTURE_CONCLUSION=failure FIXTURE_CARGO_STATUS=1
 run_case typed_failure 1 POST 'published failure'
 FIXTURE_CONCLUSION=success FIXTURE_CARGO_STATUS=0
@@ -463,7 +489,7 @@ FIXTURE_OBJECT_PROBE_STATUS=127
 run_case input_failed_disposition_probe 1 none 'disposition object probe failed (exit 127)'
 FIXTURE_OBJECT_PROBE_STATUS=0 FIXTURE_CONCLUSION=success
 FIXTURE_ANCESTRY_STATUS=1 FIXTURE_CONCLUSION=neutral
-run_case nonancestor_is_missing 0 POST 'published neutral'
+EXPECTED_CONCLUSION=failure run_case nonancestor_is_missing 1 POST 'published failure'
 FIXTURE_ANCESTRY_STATUS=2 FIXTURE_CONCLUSION=success
 run_case input_failed_ancestry 1 none 'ancestry read failed (exit 2)'
 FIXTURE_ANCESTRY_STATUS=0 FIXTURE_JQ_FAILURE=candidate
@@ -481,10 +507,10 @@ run_case unreachable_delta_publishes_failure 1 POST 'published failure'
 FIXTURE_DELTA_STATUS=128 FIXTURE_OBJECT_PROBE_STATUS_2=0 FIXTURE_CONCLUSION=success
 run_case present_commit_unreadable_tree_is_instrument_failure 1 none 'disposition delta read failed (exit 128)'
 FIXTURE_DELTA_STATUS=0 FIXTURE_OBJECT_PROBE_STATUS_2= FIXTURE_CONCLUSION=success
-FIXTURE_DELTA_STATUS=0 FIXTURE_LEDGER=missing
+FIXTURE_DELTA_STATUS=0 FIXTURE_LEDGER=exact
 FIXTURE_LEDGER=array
 run_case input_invalid_candidate_array 1 none 'could not read candidate disposition binding'
-FIXTURE_LEDGER=missing
+FIXTURE_LEDGER=exact
 
 FIXTURE_OUTPUT=empty FIXTURE_CARGO_STATUS=101
 run_case failed_cargo_empty 1 none 'unusable projection (projector exit 101)'
@@ -592,13 +618,13 @@ run_case partial_pr_readback_failure 1 none 'PR snapshot read failed (exit 29)'
 FIXTURE_READBACK_STATUS=0 FIXTURE_REF_READBACK_STATUS=29
 run_case partial_ref_readback_failure 1 none 'base ref read failed (exit 29)'
 FIXTURE_REF_READBACK_STATUS=0 FIXTURE_CONCLUSION=failure
-for ledger in malformed ambiguous; do
+for ledger in malformed ambiguous missing; do
   FIXTURE_LEDGER="$ledger" FIXTURE_MOVE_AT=lookup FIXTURE_MOVE=base
   run_case "${ledger}_failure_fenced" 1 none 'no check published'
   FIXTURE_MOVE=none
   run_case "${ledger}_failure_current" 1 POST 'published failure'
 done
-FIXTURE_LEDGER=missing FIXTURE_CONCLUSION=success FIXTURE_MOVE_AT=projector
+FIXTURE_LEDGER=exact FIXTURE_CONCLUSION=success FIXTURE_MOVE_AT=projector
 GITHUB_EVENT_NAME=push FIXTURE_TWO_PRS=1
 PR_HEAD_SHA="$(printf '%040d' 9)"
 run_case push_two_independent_pairs 0 POST 'published success'
@@ -626,7 +652,7 @@ grep -q -- 'sha256:v2:' "${live_args_file}" || {
 # still has to be the two-parent merge of that pull request. A bad ref
 # publishes failure on the queue commit and does not call the projector.
 FIXTURE_TWO_PRS=0 FIXTURE_FETCH_FAIL_PR=none FIXTURE_MOVE=none
-FIXTURE_MOVE_AT=projector FIXTURE_CONCLUSION=success FIXTURE_LEDGER=missing
+FIXTURE_MOVE_AT=projector FIXTURE_CONCLUSION=success FIXTURE_LEDGER=exact
 GITHUB_EVENT_NAME=merge_group
 PR_NUMBER=""
 PR_HEAD_SHA="$(printf '%040d' 7)"
@@ -638,6 +664,15 @@ MERGE_GROUP_BASE_REF=refs/heads/main
 MERGE_GROUP_BASE_SHA="$(printf '%040d' 1)"
 MERGE_GROUP_HEAD_REF="gh-readonly-queue/main/pr-4165-$(printf '%040d' 1)"
 run_case merge_group_exact_pr 0 POST 'published success'
+FIXTURE_LEDGER=missing
+EXPECTED_CONCLUSION=failure run_case merge_group_missing_denied 1 POST 'published failure'
+grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_missing_denied/mutation-args" || fail 'absence attached to PR rather than queue subject'
+FIXTURE_LEDGER=wrong_subject
+EXPECTED_CONCLUSION=failure run_case merge_group_wrong_subject_denied 1 POST 'published failure'
+FIXTURE_LEDGER=exact
+FIXTURE_CONCLUSION=neutral
+EXPECTED_CONCLUSION=failure run_case merge_group_neutral_denied 1 POST 'published failure'
+FIXTURE_CONCLUSION=success
 grep -Fq "head_sha=$(printf '%040d' 7)" "${work}/merge_group_exact_pr/mutation-args" || {
   echo 'review-readiness: merge group check was not published on the queue commit' >&2
   exit 1

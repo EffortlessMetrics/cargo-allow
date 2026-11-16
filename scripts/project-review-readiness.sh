@@ -9,9 +9,9 @@
 # state onto the stable `review-readiness` check context, and
 # publishes the result as ONE authoritative GitHub check run at the PR
 # head — updated in place when it already exists — so the typed
-# conclusion (success / neutral / failure) is visible at the check
-# boundary and a missing disposition publishes `neutral`, never a
-# green check.
+# conclusion (success / failure) is visible at the required check
+# boundary. Missing or neutral (unproven) review evidence publishes
+# failure; GitHub accepts neutral as passing, so it is not safe here.
 #
 # On pushes to the base branch (no pull_request event fires), the
 # adapter iterates ALL open pull requests and republishes each
@@ -550,7 +550,14 @@ project_pr() {
       done <<<"${delta_output}"
     fi
   else
-    echo "review-readiness: no retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}"
+    # Absence is known evidence absence, not a projector/instrument error.
+    # Do not ask the product CLI to turn Missing into neutral: neutral passes
+    # a required GitHub context and can overwrite a previous failure on push.
+    rm -f "${live_file}"
+    publish "${head_sha}" "failure" \
+      "no retained disposition for ${GITHUB_REPOSITORY}#${pr_number}@${head_sha}; exact-head review readiness is unproven and fails closed" \
+      "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json" || return 1
+    return 1
   fi
 
   local projection_file exit_code=0
@@ -579,6 +586,13 @@ project_pr() {
     echo "review-readiness: instrument failure: could not read validated projection; no check published" >&2
     rm -f "${projection_file}"
     return 1
+  fi
+  # The product projection retains its three-state vocabulary. This adapter
+  # enforces the stricter required-check boundary without changing that API.
+  # A retained record alone is not affirmative readiness evidence.
+  if [ "${conclusion}" = neutral ]; then
+    conclusion=failure
+    summary="${summary}; neutral projection does not prove exact-head review readiness; required context fails closed"
   fi
   if ! publish "${head_sha}" "${conclusion}" "${summary}" \
     "${base_sha}" "${merge_base}" "${diff_digest}" "$pr_number" "$pr_json"; then
