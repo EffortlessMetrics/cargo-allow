@@ -1197,3 +1197,130 @@ fn evaluator_source_has_no_hidden_system_clock() {
         "core matcher evaluation must receive its lifecycle date from the caller"
     );
 }
+
+fn non_rust_glob_entry(id: &str, glob: &str) -> AllowEntry {
+    AllowEntry {
+        id: id.to_string(),
+        kind: FindingKind::NonRustFile,
+        family: Some("non_rust_file".to_string()),
+        path: None,
+        glob: Some(glob.to_string()),
+        owner: "docs".to_string(),
+        classification: "tracked_file".to_string(),
+        reason: "tracked non-Rust file".to_string(),
+        evidence: Vec::new(),
+        links: Vec::new(),
+        occurrence_limit: None,
+        lifecycle: Lifecycle {
+            created: None,
+            review_after: None,
+            expires: Some("never".to_string()),
+        },
+        selector: Selector::default(),
+        last_seen: None,
+    }
+}
+
+fn non_rust_finding(path: &str) -> Finding {
+    Finding {
+        kind: FindingKind::NonRustFile,
+        family: Some("non_rust_file".to_string()),
+        path: PathBuf::from(path),
+        span: Some(Span { line: 1, column: 1 }),
+        identity: StructuralIdentity::new("file", "tracked_file"),
+        message: String::new(),
+        ledger: None,
+    }
+}
+
+#[test]
+fn more_specific_glob_wins_over_broader_glob() {
+    // #4840: `.github/workflows/*.yml` must beat `.github/**` for a finding
+    // under .github/workflows, matching the legacy non-Rust specificity rule.
+    let finding = non_rust_finding(".github/workflows/ci.yml");
+    let mut cfg = AllowConfig::empty();
+    cfg.allow.push(non_rust_glob_entry(
+        "non-rust-github-workflows",
+        ".github/workflows/*.yml",
+    ));
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-github-meta", ".github/**"));
+
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    assert!(
+        outcomes.iter().any(|o| {
+            o.status == MatchStatus::Matched
+                && o.allow_id.as_deref() == Some("non-rust-github-workflows")
+        }),
+        "the more specific workflows glob should win"
+    );
+    assert!(
+        !outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
+        "no Ambiguous when specificity resolves the overlap"
+    );
+}
+
+#[test]
+fn equal_literal_globs_remain_ambiguous() {
+    // `src/*.r?` and `src/*.?s` both carry six literal characters and both
+    // match src/lib.rs. Neither should win, so this stays Ambiguous.
+    let finding = non_rust_finding("src/lib.rs");
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-r-question", "src/*.r?"));
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-question-s", "src/*.?s"));
+
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    assert!(
+        outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
+        "equal literal specificity should stay Ambiguous"
+    );
+}
+
+#[test]
+fn exact_path_beats_equal_glob_and_broader_glob() {
+    // The legacy rule ranks an exact path above a glob with the same literal
+    // spelling, and both above a broader glob. The canonical matcher now
+    // follows the same order (#4840).
+    let finding = non_rust_finding("docs/guide.md");
+    let mut cfg = AllowConfig::empty();
+    let mut path_entry = non_rust_glob_entry("non-rust-path", "docs/guide.md");
+    path_entry.glob = None;
+    path_entry.path = Some(PathBuf::from("docs/guide.md"));
+    cfg.allow.push(path_entry);
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-glob", "docs/guide.md"));
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-broad", "docs/**"));
+
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    assert!(
+        outcomes.iter().any(|o| {
+            o.status == MatchStatus::Matched && o.allow_id.as_deref() == Some("non-rust-path")
+        }),
+        "the exact path should win"
+    );
+    assert!(
+        !outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
+        "no Ambiguous when the path is more specific"
+    );
+}

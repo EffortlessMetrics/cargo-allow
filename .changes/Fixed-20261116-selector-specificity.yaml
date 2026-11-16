@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Resolve overlapping canonical selectors by literal specificity instead of
+  reporting an ambiguity the legacy policy never had (#4840). A migrated
+  non-Rust policy keeps both `.github/workflows/*.yml` and `.github/**`, and
+  every workflow file matched both at the old single `ScopedFamily` strength.
+  `match_specificity` now mirrors the legacy rule (literal characters, plus
+  10,000 for an exact path) and breaks a tie inside one strength tier, so the
+  more specific glob wins, an exact path beats an equal glob, and two globs
+  with equal literal specificity still report `Ambiguous`. On shiplog
+  `0e89da59`, the direct single-file migration's 43-entry canonical policy
+  drops from 32 ambiguous to 0 while the scans still match 36 findings.

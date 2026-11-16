@@ -8,7 +8,7 @@ use crate::classification::classify_matched;
 use crate::lifecycle::unused_entry_status;
 use crate::messages::{family_suffix, finding_location};
 use crate::mode::CheckMode;
-use crate::scoring::{MatchStrength, classify_match, score_match};
+use crate::scoring::{MatchStrength, classify_match, match_specificity, score_match};
 
 /// Per-entry occurrence accounting produced by [`evaluate_detailed`].
 ///
@@ -242,19 +242,47 @@ pub fn evaluate_detailed(
                 let Some(max_strength) = max_strength else {
                     continue;
                 };
-                let top_candidates: Vec<_> = many
+                let top_candidates: Vec<(usize, MatchStrength)> = many
                     .iter()
                     .filter(|(_, strength)| *strength == max_strength)
+                    .copied()
                     .collect();
+                // #4840: within one strength tier, a selector scope with
+                // more literal specificity wins, mirroring the legacy
+                // non-Rust rule (literal characters, plus an exact path).
+                // Equal specificity stays a genuine tie.
+                let tied_candidates: Vec<(usize, MatchStrength)> = if top_candidates.len() > 1 {
+                    let max_specificity = top_candidates
+                        .iter()
+                        .filter_map(|(entry_index, _)| {
+                            cfg.allow
+                                .get(*entry_index)
+                                .map(|entry| match_specificity(entry, finding))
+                        })
+                        .max();
+                    match max_specificity {
+                        Some(max) => top_candidates
+                            .iter()
+                            .copied()
+                            .filter(|(entry_index, _)| {
+                                cfg.allow
+                                    .get(*entry_index)
+                                    .is_some_and(|entry| match_specificity(entry, finding) == max)
+                            })
+                            .collect(),
+                        None => top_candidates.clone(),
+                    }
+                } else {
+                    top_candidates.clone()
+                };
 
-                if top_candidates.len() == 1 {
-                    // Unique winner — evaluate it through the same
+                if tied_candidates.len() == 1 {
+                    // Unique winner - either the only top-strength candidate
+                    // or the most specific one. Evaluate it through the same
                     // selected-candidate path as the single-candidate case so
                     // lifecycle and occurrence accounting stay identical
                     // (#2336). The full candidate set is preserved as context.
-                    let Some((entry_index, strength)) =
-                        top_candidates.first().map(|candidate| **candidate)
-                    else {
+                    let Some(&(entry_index, strength)) = tied_candidates.first() else {
                         continue;
                     };
                     let candidate_ids: Vec<String> = many
@@ -288,10 +316,11 @@ pub fn evaluate_detailed(
                         );
                     }
                 } else {
-                    // Genuine tie — report Ambiguous with candidate IDs.
-                    // Mark ALL tied candidates as used so they are NOT
+                    // Genuine tie at the top strength and specificity -
+                    // report Ambiguous with candidate IDs. Mark ALL
+                    // top-strength candidates as used so they are NOT
                     // demoted to Stale in the unused-entry scan (#2042).
-                    let ids = top_candidates
+                    let ids = tied_candidates
                         .iter()
                         .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
                         .collect::<Vec<_>>()
@@ -302,7 +331,7 @@ pub fn evaluate_detailed(
                     state.outcomes.push(MatchOutcome {
                         status: MatchStatus::Ambiguous,
                         allow_id: None,
-                        candidate_ids: top_candidates
+                        candidate_ids: tied_candidates
                             .iter()
                             .filter_map(|(idx, _)| {
                                 cfg.allow.get(*idx).map(|entry| entry.id.clone())
@@ -530,6 +559,25 @@ fn fallback_candidate(
         .map(|(_, strength)| *strength)
         .max_by(|left, right| left.as_priority().cmp(&right.as_priority()))?;
     live.retain(|(_, strength)| *strength == max_strength);
+    if live.len() > 1 {
+        // #4840: apply the same literal-specificity tie-break as the main
+        // candidate path so a more specific fallback wins deterministically.
+        let max_specificity = live
+            .iter()
+            .filter_map(|(entry_index, _)| {
+                cfg.allow
+                    .get(*entry_index)
+                    .map(|entry| match_specificity(entry, finding))
+            })
+            .max();
+        if let Some(max) = max_specificity {
+            live.retain(|(entry_index, _)| {
+                cfg.allow
+                    .get(*entry_index)
+                    .is_some_and(|entry| match_specificity(entry, finding) == max)
+            });
+        }
+    }
     if live.len() == 1 {
         live.into_iter().next()
     } else {

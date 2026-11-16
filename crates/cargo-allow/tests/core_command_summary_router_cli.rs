@@ -1178,7 +1178,9 @@ fn explain_lifecycle_status_preserves_tied_finding_decisions() -> Result<(), Str
         );
         for (id, scope) in [
             ("allow-tied-a", "glob = \"src/*.rs\""),
-            ("allow-tied-b", "path = \"src/lib.rs\""),
+            // #4840: a path no longer ties with a glob; use an equal-literal
+            // glob so this fixture remains a genuine ambiguity.
+            ("allow-tied-b", "glob = \"src/lib*\""),
         ] {
             policy.push_str(&format!(
                 "\n[[allow]]\nid = \"{id}\"\nkind = \"panic\"\nfamily = \"unwrap\"\n\
