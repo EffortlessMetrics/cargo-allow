@@ -1,5 +1,0 @@
-kind: Fixed
-body: >-
-  Capture observed rustc and Cargo versions in source-candidate smoke receipts.
-  The release aggregate refuses missing, malformed or mismatched observations
-  instead of trusting the declared matrix toolchain alone.
