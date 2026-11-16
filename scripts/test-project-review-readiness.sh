@@ -415,9 +415,13 @@ for event in pull_request push; do
   GITHUB_EVENT_NAME="$event"
   for ledger in missing wrong_subject; do
     FIXTURE_LEDGER="$ledger"
-    EXPECTED_CONCLUSION=failure run_case "${event}_${ledger}_denied" 1 POST 'published failure'
+    # #4837: a push aggregate reports adapter health, so a per-PR typed
+    # failure exits 0 there; the pull_request job still fails on it.
+    expected=1
+    [ "$event" = push ] && expected=0
+    EXPECTED_CONCLUSION=failure run_case "${event}_${ledger}_denied" "$expected" POST 'published failure'
     check_runs='{"check_runs":[{"name":"review-readiness","id":42,"conclusion":"failure"}]}'
-    EXPECTED_CONCLUSION=failure run_case "${event}_${ledger}_preserves_failure" 1 PATCH 'updated run 42 -> failure'
+    EXPECTED_CONCLUSION=failure run_case "${event}_${ledger}_preserves_failure" "$expected" PATCH 'updated run 42 -> failure'
     check_runs='{"check_runs":[]}'
   done
 done
@@ -545,6 +549,15 @@ GITHUB_EVENT_NAME=push FIXTURE_WRITE_STATUS=22
 run_case push_publication_failure 1 POST 'POST failed (exit 22)'
 FIXTURE_WRITE_STATUS=0
 run_case push_success 0 POST 'published success'
+# #4837: a push to main must not fail the job for a per-PR typed
+# failure. The PR's own published context still carries failure.
+GITHUB_EVENT_NAME=push FIXTURE_CONCLUSION=failure FIXTURE_CARGO_STATUS=1
+EXPECTED_CONCLUSION=failure run_case push_typed_failure_exits_zero 0 POST 'published failure'
+FIXTURE_CONCLUSION=success FIXTURE_CARGO_STATUS=0
+# #4837: an instrument failure on any PR still fails the push job.
+GITHUB_EVENT_NAME=push FIXTURE_PR_STATUS=28
+run_case push_instrument_failure_exits_one 1 none 'PR snapshot read failed (exit 28)'
+FIXTURE_PR_STATUS=0
 FIXTURE_ENUMERATION_STATUS=26
 run_case input_failed_push_enumeration 1 none 'open PR enumeration failed (exit 26)'
 
