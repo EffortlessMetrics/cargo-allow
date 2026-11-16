@@ -4,17 +4,17 @@
   "repository": "EffortlessMetrics/cargo-allow",
   "pr_number": 4821,
   "base_ref": "main",
-  "base_sha": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
+  "base_sha": "e42bea7430954af62ebc3a26606406bfef1231b0",
   "head_ref": "fix/4810-fail-closed-readiness",
   "head_sha": "ec598ed45b1e36cb8223f9aae019be7734d393a5",
   "merge_base": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
   "reviewed_diff_digest": "sha256:v2:ae34536f4df35ef2a8a64c52cc525d795e1970e08eb677f8a969605e6846fe7a",
   "review_protocol": "review-current-head-gen1",
   "actor_class": "independent_model",
-  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4821 at ec598ed45b1e36cb8223f9aae019be7734d393a5 (base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6), verdict APPROVE, review 5920655695. That review is at the bound head and covers the merge of main 35be8cfd2: the diff is four files (the three source/test files plus this record), there is no policy/allow.toml hunk, and the retained record is admitted by #4819's allow-review-dispositions-directory glob, so the pre-glob per-file entry and its revision note are correctly gone. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4821 at ec598ed45b1e36cb8223f9aae019be7734d393a5 (base e42bea7430954af62ebc3a26606406bfef1231b0, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6), verdict APPROVE, review 5920655695. That review is at the bound head and covers the merge of main 35be8cfd2: the diff is four files (the three source/test files plus this record), there is no policy/allow.toml hunk, and the retained record is admitted by #4819's allow-review-dispositions-directory glob, so the pre-glob per-file entry and its revision note are correctly gone. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
   "independent_review": {
     "proven": {
-      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4821#pullrequestreview-5920655695 - review cargo-allow non-author oppositional exact-head model review of head ec598ed45b1e36cb8223f9aae019be7734d393a5, base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, reviewed_diff_digest=sha256:v2:ae34536f4df35ef2a8a64c52cc525d795e1970e08eb677f8a969605e6846fe7a, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4821#pullrequestreview-5920655695 - review cargo-allow non-author oppositional exact-head model review of head ec598ed45b1e36cb8223f9aae019be7734d393a5, base e42bea7430954af62ebc3a26606406bfef1231b0, merge-base 35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, reviewed_diff_digest=sha256:v2:ae34536f4df35ef2a8a64c52cc525d795e1970e08eb677f8a969605e6846fe7a, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
     }
   },
   "claimed_verdict": "review_clean",
