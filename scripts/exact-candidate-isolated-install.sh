@@ -12,6 +12,20 @@
 
 set -euo pipefail
 
+# Read the path and token of a lifecycle JSON object without whitespace
+# splitting: paths may contain spaces, so the fields are tab separated and
+# written as bytes so Windows never inserts a CR before the newline.
+read_owned_fields() {
+  local json=$1 path token
+  IFS=$'\t' read -r path token < <(
+    printf '%s' "${json}" | python3 -c 'import json,sys
+v = json.load(sys.stdin)
+sys.stdout.buffer.write((v["path"] + "\t" + v["token"] + "\n").encode())'
+  )
+  printf -v "$2" '%s' "${path}"
+  printf -v "$3" '%s' "${token}"
+}
+
 ROOT="$(git rev-parse --show-toplevel)"
 CANDIDATE_ARTIFACT="${CANDIDATE_ARTIFACT:-target/exact-candidate-package-candidate/package-candidate-v2.json}"
 PACKAGES_DIR="${PACKAGES_DIR:-target/exact-candidate-package-set/packages}"
@@ -72,13 +86,9 @@ CANDIDATE_VERSION="$(python3 -c "import json;print(json.load(open('$CANDIDATE_AR
 
 lifecycle="scripts/candidate-harness-owned-dir.py"
 test_root_json="$(python3 "$lifecycle" allocate --root "${TMPDIR:-/tmp}" --purpose exact-candidate-isolated-install-test-root)"
-read -r test_root test_root_token < <(
-  printf '%s' "${test_root_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
-)
+read_owned_fields "${test_root_json}" test_root test_root_token
 work_json="$(python3 "$lifecycle" allocate --root "$test_root" --purpose exact-candidate-isolated-install)"
-read -r work_parent work_token < <(
-  printf '%s' "${work_json}" | python3 -c 'import json,sys; v=json.load(sys.stdin); print(v["path"], v["token"])'
-)
+read_owned_fields "${work_json}" work_parent work_token
 offline_root="${work_parent}/offline"
 extracted_root="${work_parent}/extracted"
 registry="${work_parent}/registry"

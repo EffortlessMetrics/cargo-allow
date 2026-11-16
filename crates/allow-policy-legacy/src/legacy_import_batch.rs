@@ -276,7 +276,7 @@ mod tests {
     use super::*;
     use crate::migration_lane_descriptors::CompatKind;
     use crate::test_support::{
-        clippy_policy_fixture_text, fixture_dir, no_panic_allowlist_fixture_text,
+        clippy_policy_fixture_text, finding, fixture_dir, no_panic_allowlist_fixture_text,
         no_panic_baseline_fixture_text,
     };
     use allow_core::FindingKind;
@@ -519,6 +519,41 @@ review_after = "2026-09-09"
         assert!(
             ids.iter().any(|id| id.starts_with("unsafe-allowlist--")),
             "unsafe lane entry should be namespaced: {ids:?}"
+        );
+    }
+
+    // #4817 regression (directory migration): `migrate --repo-policy` reaches
+    // this batch importer, which always supplies current findings and so takes
+    // the *write* loader. An unmapped legacy field must still refuse the whole
+    // import rather than emit a canonical policy that silently drops it.
+    #[test]
+    fn directory_import_with_findings_still_refuses_unmapped_non_rust_field() {
+        let dir = fixture_dir();
+        fs::write(
+            dir.join("non-rust-allowlist.toml"),
+            r#"schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "shiplog-language"
+path = "docs/readme.md"
+language = "markdown"
+owner = "shiplog"
+reason = "Language field from the legacy schema."
+"#,
+        )
+        .unwrap_or_else(|err| std::panic::panic_any(format!("non-rust fixture: {err}")));
+
+        let findings = vec![finding("docs/readme.md", "tracked_file")];
+        let error = import_legacy_policy_dir(&dir, Some(&findings))
+            .expect_err("directory migration must refuse an unmapped non-Rust field");
+        assert!(
+            error
+                .to_string()
+                .contains("non-rust allow entry 0 has unsupported field `language`"),
+            "unexpected error: {error}"
         );
     }
 }

@@ -1,0 +1,192 @@
+{
+  "schema_id": "cargo-allow.installed-surface-evidence.v1",
+  "schema_version": 1,
+  "issue": 3151,
+  "subject": {
+    "binary": "F:\\Temp\\opencode\\3151-prefix\\bin\\cargo-allow.exe",
+    "binary_digest": "sha256:bfca1b941b4045c48de4b7b406df2694fd267cc249c1a9c45b4cc97174a64c40",
+    "version": "cargo-allow 0.2.0",
+    "visible_commands": [
+      "init",
+      "adopt",
+      "audit",
+      "check",
+      "capabilities",
+      "diff",
+      "list",
+      "explain",
+      "why",
+      "add",
+      "propose",
+      "worklist",
+      "cadence",
+      "migrate",
+      "refresh",
+      "prune",
+      "doctor",
+      "vocabulary",
+      "tool",
+      "completions",
+      "reference",
+      "hooks",
+      "extraction-parity",
+      "changie",
+      "help"
+    ],
+    "hidden_sample": [
+      "release-identity",
+      "release-authorization",
+      "release-manifest",
+      "prep-candidate",
+      "release-freeze",
+      "release-final-tag-bridge",
+      "frozen-subject-lock",
+      "campaign-closeout",
+      "review-disposition",
+      "review-readiness",
+      "ci-pregate",
+      "min-version-drift",
+      "workflow-syntax",
+      "workflow-security",
+      "workflow-construction",
+      "dependency-graph-evidence",
+      "dependency-graph-delta",
+      "release-impact",
+      "reconcile-package-publication",
+      "command-migration-evidence",
+      "release-rehearsal",
+      "release-operation",
+      "release-closeout",
+      "release-unknown-upload-recovery"
+    ]
+  },
+  "checks": [
+    {
+      "id": "G1",
+      "result": "pass",
+      "detail": "installed binary F:\\Temp\\opencode\\3151-prefix\\bin\\cargo-allow.exe sha256=sha256:bfca1b941b4045c48de4b7b406df2694fd267cc249c1a9c45b4cc97174a64c40"
+    },
+    {
+      "id": "G2",
+      "result": "pass",
+      "detail": "cargo-allow 0.2.0"
+    },
+    {
+      "id": "G3",
+      "result": "pass",
+      "detail": "25 visible commands"
+    },
+    {
+      "id": "R4",
+      "result": "pass",
+      "detail": "0.2.0"
+    },
+    {
+      "id": "H1",
+      "result": "pass",
+      "detail": "missing from help: []"
+    },
+    {
+      "id": "H2",
+      "result": "pass",
+      "detail": "hidden in help: []"
+    },
+    {
+      "id": "C1-bash",
+      "result": "pass",
+      "detail": "exit=0 bytes=94401"
+    },
+    {
+      "id": "C3-bash",
+      "result": "pass",
+      "detail": "leaked: []"
+    },
+    {
+      "id": "C1-zsh",
+      "result": "pass",
+      "detail": "exit=0 bytes=84387"
+    },
+    {
+      "id": "C3-zsh",
+      "result": "pass",
+      "detail": "leaked: []"
+    },
+    {
+      "id": "C1-fish",
+      "result": "pass",
+      "detail": "exit=0 bytes=96264"
+    },
+    {
+      "id": "C3-fish",
+      "result": "pass",
+      "detail": "leaked: []"
+    },
+    {
+      "id": "C1-powershell",
+      "result": "pass",
+      "detail": "exit=0 bytes=109310"
+    },
+    {
+      "id": "C3-powershell",
+      "result": "pass",
+      "detail": "leaked: []"
+    },
+    {
+      "id": "C1-elvish",
+      "result": "pass",
+      "detail": "exit=0 bytes=62319"
+    },
+    {
+      "id": "C3-elvish",
+      "result": "pass",
+      "detail": "leaked: []"
+    },
+    {
+      "id": "M1",
+      "result": "pass",
+      "detail": ".TH CARGO-ALLOW 1 \"\" \"cargo-allow 0.2.0\" \"User Commands\""
+    },
+    {
+      "id": "M2",
+      "result": "pass",
+      "detail": "missing sections: []"
+    },
+    {
+      "id": "M3",
+      "result": "pass",
+      "detail": "hidden in man: []"
+    },
+    {
+      "id": "R1",
+      "result": "pass",
+      "detail": "missing from markdown: []"
+    },
+    {
+      "id": "P1",
+      "result": "pass",
+      "detail": "cargo-allow.support-matrix.v1"
+    },
+    {
+      "id": "P2",
+      "result": "pass",
+      "detail": "0.1.11 -> 0.2.0"
+    },
+    {
+      "id": "P4",
+      "result": "pass",
+      "detail": "0.2.0"
+    },
+    {
+      "id": "K1",
+      "result": "pass",
+      "detail": "published commands missing: []"
+    },
+    {
+      "id": "D1",
+      "result": "pass",
+      "detail": "README commands missing: []"
+    }
+  ],
+  "result": "pass",
+  "claim_boundary": "Installed-surface evidence for the selected 0.2.0 candidate on this host. It records the binary identity, visible/hidden command sets, help, reference, man page, five completion scripts, support matrix and registry/README claims. It does not supply the v1 selected-case documentation producer or byte oracle, so the #3151 retain_dependencies note stays NotProven."
+}

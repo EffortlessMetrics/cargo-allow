@@ -1,3 +1,0 @@
-kind: Added
-body: >-
-  Reconcile exact final package visibility across API, sparse index, download, resolver, and docs.rs surfaces.

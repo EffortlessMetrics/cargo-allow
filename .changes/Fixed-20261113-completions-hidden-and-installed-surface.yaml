@@ -1,0 +1,10 @@
+kind: Fixed
+body: >-
+  Stop leaking hidden subcommands into shell completions. `clap_complete`'s
+  AOT generators do not check `is_hide_set`, so every `#[command(hide = true)]`
+  command (including `release-identity`) appeared in all five shell scripts.
+  The generator now rebuilds the visible clap graph before rendering, and a
+  five-shell test fails if any hidden name appears. Retains the 25-check
+  installed-surface receipt for the selected 0.2.0 candidate; the #3151
+  `retain_dependencies` note stays `NotProven` because v1 cannot supply the
+  selected-case documentation producer and byte oracle.

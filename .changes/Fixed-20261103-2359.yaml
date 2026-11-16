@@ -1,3 +1,0 @@
-kind: Fixed
-body: Reject invalid init summary destinations before policy mutation and protect recovery backups across write, preview, and error paths, including canonical config aliases and conflicting file ancestry.
-time: 2026-11-03T23:59:00Z

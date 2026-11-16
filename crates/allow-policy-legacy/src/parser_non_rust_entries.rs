@@ -5,6 +5,7 @@ use crate::fields::{raw_string_field, string_field, string_or_array_field};
 use crate::parser_support::normalize_legacy_date_field;
 use crate::parser_support::normalize_legacy_expires;
 use crate::types::LegacyNonRustRule;
+use crate::types_source_entries::UnmappedNonRustField;
 
 const NON_RUST_ENTRY_FIELDS: &[&str] = &[
     "id",
@@ -25,15 +26,49 @@ const NON_RUST_ENTRY_FIELDS: &[&str] = &[
 pub(crate) fn parse_non_rust_rules(
     table: &toml::Table,
 ) -> CargoAllowResult<Vec<LegacyNonRustRule>> {
+    parse_non_rust_rules_with_direction(table, NonRustParseDirection::Migrate)
+        .map(|(rules, _unmapped)| rules)
+}
+
+/// Parse a legacy non-Rust allowlist for the read path (`check --compat`).
+///
+/// Unlike [`parse_non_rust_rules`], fields the parser does not map are
+/// tolerated and returned as [`UnmappedNonRustField`] values instead of
+/// failing the read. Every other shape error still fails.
+pub(crate) fn parse_non_rust_rules_compat(
+    table: &toml::Table,
+) -> CargoAllowResult<(Vec<LegacyNonRustRule>, Vec<UnmappedNonRustField>)> {
+    parse_non_rust_rules_with_direction(table, NonRustParseDirection::Compat)
+}
+
+/// Which direction is reading the legacy file.
+///
+/// #4817: `check --compat` must be able to read a legacy file in order to
+/// report on it, while `migrate` must not write a canonical policy that drops
+/// a field. The strictness therefore belongs to the direction, not the parser.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NonRustParseDirection {
+    /// Read path: tolerate unmapped fields and report them.
+    Compat,
+    /// Write path: keep #3508 and refuse unmapped fields.
+    Migrate,
+}
+
+fn parse_non_rust_rules_with_direction(
+    table: &toml::Table,
+    direction: NonRustParseDirection,
+) -> CargoAllowResult<(Vec<LegacyNonRustRule>, Vec<UnmappedNonRustField>)> {
     let entries = table
         .get("allow")
         .and_then(Value::as_array)
         .ok_or_else(|| CargoAllowError::new("non-rust-allowlist missing allow entries"))?;
-    let rules = entries
-        .iter()
-        .enumerate()
-        .map(|(index, entry)| parse_non_rust_rule(index, entry))
-        .collect::<CargoAllowResult<Vec<_>>>()?;
+    let mut rules = Vec::with_capacity(entries.len());
+    let mut unmapped = Vec::new();
+    for (index, entry) in entries.iter().enumerate() {
+        let (rule, entry_unmapped) = parse_non_rust_rule(index, entry, direction)?;
+        unmapped.extend(entry_unmapped);
+        rules.push(rule);
+    }
     let mut ids = std::collections::BTreeSet::new();
     for (index, rule) in rules.iter().enumerate() {
         if !ids.insert(rule.id.as_str()) {
@@ -43,15 +78,26 @@ pub(crate) fn parse_non_rust_rules(
             )));
         }
     }
-    Ok(rules)
+    Ok((rules, unmapped))
 }
 
-fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNonRustRule> {
+fn parse_non_rust_rule(
+    index: usize,
+    entry: &Value,
+    direction: NonRustParseDirection,
+) -> CargoAllowResult<(LegacyNonRustRule, Vec<UnmappedNonRustField>)> {
     let table = entry.as_table().ok_or_else(|| {
         CargoAllowError::new(format!("non-rust allow entry {index} is not a table"))
     })?;
-    validate_non_rust_entry_shape(index, table)?;
+    let unknown_fields = validate_non_rust_entry_shape(index, table, direction)?;
     let id = string_field(table, "id").unwrap_or_else(|| format!("legacy-non-rust-{index:04}"));
+    let unmapped = unknown_fields
+        .into_iter()
+        .map(|field| UnmappedNonRustField {
+            entry_id: id.clone(),
+            field,
+        })
+        .collect();
     let (pattern, is_path) = match (string_field(table, "path"), string_field(table, "glob")) {
         (Some(path), None) => (path, true),
         (None, Some(glob)) => (glob, false),
@@ -107,18 +153,21 @@ fn parse_non_rust_rule(index: usize, entry: &Value) -> CargoAllowResult<LegacyNo
         (None, Some(classification)) => classification,
         (None, None) => "legacy_non_rust".to_string(),
     };
-    Ok(LegacyNonRustRule {
-        id: id.clone(),
-        pattern,
-        is_path,
-        owner: string_field(table, "owner").unwrap_or_default(),
-        classification,
-        reason,
-        evidence: non_rust_evidence(table),
-        created: normalize_legacy_date_field(string_field(table, "created")),
-        review_after: normalize_legacy_date_field(string_field(table, "review_after")),
-        expires: normalize_legacy_expires(string_field(table, "expires")),
-    })
+    Ok((
+        LegacyNonRustRule {
+            id: id.clone(),
+            pattern,
+            is_path,
+            owner: string_field(table, "owner").unwrap_or_default(),
+            classification,
+            reason,
+            evidence: non_rust_evidence(table),
+            created: normalize_legacy_date_field(string_field(table, "created")),
+            review_after: normalize_legacy_date_field(string_field(table, "review_after")),
+            expires: normalize_legacy_expires(string_field(table, "expires")),
+        },
+        unmapped,
+    ))
 }
 
 fn non_rust_evidence(table: &toml::Table) -> Vec<String> {
@@ -131,12 +180,25 @@ fn non_rust_evidence(table: &toml::Table) -> Vec<String> {
     evidence
 }
 
-fn validate_non_rust_entry_shape(index: usize, table: &toml::Table) -> CargoAllowResult<()> {
+fn validate_non_rust_entry_shape(
+    index: usize,
+    table: &toml::Table,
+    direction: NonRustParseDirection,
+) -> CargoAllowResult<Vec<String>> {
+    // #4817: the read path (`check --compat`) must be able to read a legacy
+    // file that carries fields this parser does not map, so unknown fields are
+    // tolerated there and returned as unmapped. The write path (`migrate`)
+    // keeps #3508: an unknown field is refused rather than silently dropped on
+    // the way into the canonical ledger.
+    let mut unknown_fields = Vec::new();
     for key in table.keys() {
         if !NON_RUST_ENTRY_FIELDS.contains(&key.as_str()) {
-            return Err(CargoAllowError::new(format!(
-                "non-rust allow entry {index} has unsupported field `{key}`"
-            )));
+            if direction == NonRustParseDirection::Migrate {
+                return Err(CargoAllowError::new(format!(
+                    "non-rust allow entry {index} has unsupported field `{key}`"
+                )));
+            }
+            unknown_fields.push(key.clone());
         }
     }
     for field in [
@@ -172,7 +234,7 @@ fn validate_non_rust_entry_shape(index: usize, table: &toml::Table) -> CargoAllo
             )));
         }
     }
-    Ok(())
+    Ok(unknown_fields)
 }
 
 fn is_broad_legacy_glob(pattern: &str) -> bool {
@@ -455,5 +517,57 @@ classification = "generated"
         assert!(err.to_string().contains(
             "defines conflicting category `documentation` and classification `generated`"
         ));
+    }
+
+    // #4817: the read path must be able to read a real legacy file that carries
+    // a field this parser does not map, and must say which field it did not map.
+    #[test]
+    fn compat_read_tolerates_unknown_field_and_reports_it_as_unmapped() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "shiplog-language"
+path = "src/main.rs"
+language = "rust"
+owner = "shiplog"
+reason = "Language field from the legacy schema."
+"#,
+        );
+
+        let (rules, unmapped) = parse_non_rust_rules_compat(&table).unwrap_or_else(|err| {
+            std::panic::panic_any(format!("compat read of unknown field must succeed: {err}"))
+        });
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].id, "shiplog-language");
+        assert_eq!(
+            unmapped,
+            vec![UnmappedNonRustField {
+                entry_id: "shiplog-language".to_string(),
+                field: "language".to_string(),
+            }]
+        );
+    }
+
+    // #4817: the write path must keep #3508 and refuse the same file, because a
+    // canonical policy written from it would silently drop `language`.
+    #[test]
+    fn migrate_write_still_refuses_unknown_field() {
+        let table = parse_table(
+            r#"
+[[allow]]
+id = "shiplog-language"
+path = "src/main.rs"
+language = "rust"
+"#,
+        );
+
+        let err = parse_non_rust_rules(&table)
+            .err()
+            .unwrap_or_else(|| std::panic::panic_any("migrate must refuse an unknown field"));
+        assert!(
+            err.to_string()
+                .contains("non-rust allow entry 0 has unsupported field `language`"),
+            "unexpected error: {err}"
+        );
     }
 }

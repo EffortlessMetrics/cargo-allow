@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4799,
+  "base_ref": "main",
+  "base_sha": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "head_ref": "fix/3922-checkpoint-clean-sentinel",
+  "head_sha": "ae5f5446ac8e4cdf66249e886f558a2ae226960e",
+  "merge_base": "5d66120212f10f7eaae4b50aeb736882f48e67b9",
+  "reviewed_diff_digest": "sha256:v2:bda6f58e39007e7ebbdef6a10220034c426057de9870f683fbfdcb159e90852e",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4799 at ae5f5446ac8e4cdf66249e886f558a2ae226960e (base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9), verdict APPROVE, review 5903338844 submitted 2026-11-14T09:06:07Z. It confirmed the policy receipts allow-1384 and allow-1385 inside the bound tree at ae5f5446, the corrected ordering (policy append below the reviewed head, ledger-only delta above it), and that the source at crates/cargo-allow/src/release_prep_tests.rs and .github/workflows/release.yml is byte-identical at 3eea0e7c and ae5f5446. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4799#pullrequestreview-5903338844 - review cargo-allow non-author oppositional exact-head model review of head ae5f5446ac8e4cdf66249e886f558a2ae226960e, base 5d66120212f10f7eaae4b50aeb736882f48e67b9, merge-base 5d66120212f10f7eaae4b50aeb736882f48e67b9, verdict APPROVE. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4799",
+    "Reviewed pair base 5d66120212f10f7eaae4b50aeb736882f48e67b9, head ae5f5446ac8e4cdf66249e886f558a2ae226960e, verdict APPROVE in review 5903338844.",
+    "The previous citation was review 5903028478, which GitHub has at 3eea0e7c; the reviews at the bound head ae5f5446 were a BLOCK (5903287995) and this APPROVE (5903338844). This record-only commit cites the review of the bound head.",
+    "The devin-ai-integration thread on policy/allow.toml is addressed by this rebind: the policy edit sits below the bound head, and the bound-head review covers it; review replies with that evidence and resolves the thread.",
+    "The pregate blocker at 81626d8e was three unreceipted panic.indexing findings at crates/cargo-allow/src/release_prep_tests.rs:345; d2f90e9d replaced the bracket lookups with a .get() chain and check --mode no-new now passes.",
+    "Direct-floor receipts are current for all four products after regeneration run 43572965774."
+  ],
+  "required_ci": {
+    "owner": "PR #4799 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4799"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4799",
+  "reviewed_at_utc": "2026-11-14T09:06:07Z"
+}

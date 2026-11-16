@@ -192,6 +192,7 @@ TEST_ONLY_SCRIPT_DECISIONS = frozenset(
         "scripts/test-audit-default-sensor-burden.sh",
         "scripts/test-campaign-issue-closeout.py",
         "scripts/test-candidate-harness-lifecycle.py",
+        "scripts/test-changie-0-2-0-union.py",
         "scripts/test-changie-fragment-schema-smoke.sh",
         "scripts/test-changie-history-roundtrip.sh",
         "scripts/test-changie-sensor-external-consumer.sh",

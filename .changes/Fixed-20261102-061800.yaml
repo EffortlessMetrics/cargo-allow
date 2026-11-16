@@ -1,3 +1,0 @@
-kind: Fixed
-body: Bind dependency-delta producer inputs to both declared Git commits and reject lossy base-member decoding.
-time: 2026-11-02T06:18:00Z

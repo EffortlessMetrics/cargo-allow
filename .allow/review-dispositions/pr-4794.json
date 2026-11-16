@@ -1,0 +1,38 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4794,
+  "base_ref": "main",
+  "base_sha": "c6b50ae41035cc5563799193e160cd13db9a84f3",
+  "head_ref": "fix/4789-unreachable-disposition-publish",
+  "head_sha": "9cc49e55b4614c37bd163774f1c921c1ec733838",
+  "merge_base": "c6b50ae41035cc5563799193e160cd13db9a84f3",
+  "reviewed_diff_digest": "sha256:v2:f3649fdd45212e31b66a5707df07876f681ee92a6e244ebea033ff1d9009b9f4",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4794 at 9cc49e55b4614c37bd163774f1c921c1ec733838 (base c6b50ae41035cc5563799193e160cd13db9a84f3, merge-base c6b50ae41035cc5563799193e160cd13db9a84f3), verdict APPROVE, review 5906213559 submitted 2026-11-14T18:00:58Z. That review is at the bound head and covers the post-train merge resolution: the policy entries renumbered to allow-1386/allow-1387 because the landed train took allow-1384/allow-1385 for #4799, the recomputed revision-note fingerprints, and the eight direct-floor receipts taken from main. The source change is the review-readiness adapter's unreachable-binding probe and its characterization tests. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4794#pullrequestreview-5906213559 - review cargo-allow non-author oppositional exact-head model review of head 9cc49e55b4614c37bd163774f1c921c1ec733838, base c6b50ae41035cc5563799193e160cd13db9a84f3, merge-base c6b50ae41035cc5563799193e160cd13db9a84f3, reviewed_diff_digest=sha256:v2:f3649fdd45212e31b66a5707df07876f681ee92a6e244ebea033ff1d9009b9f4, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4794 - reviewed at 9cc49e55b4614c37bd163774f1c921c1ec733838, verdict APPROVE in review 5906213559.",
+    "Reviewed pair base c6b50ae41035cc5563799193e160cd13db9a84f3, head 9cc49e55b4614c37bd163774f1c921c1ec733838, reviewed diff digest sha256:v2:f3649fdd45212e31b66a5707df07876f681ee92a6e244ebea033ff1d9009b9f4 recomputed with the pinned v2 recipe, verdict APPROVE in review 5906213559.",
+    "Ledger: 19bd6574, 158be8e5, c34582ab, 2045dc4c, 3e1e3b61, 2b6a0278 and 9cc49e55 are disposition-only or merge commits above the reviewed source head de975157. 19bd6574 added this record bound to de975157/a92117bb; 158be8e5 added the policy admission and its revision note; the later commits rebound the record; 9cc49e55 merges main c6b50ae4 and renumbers the policy entries to allow-1386/allow-1387. This record is bound at 9cc49e55 with digest sha256:v2:f3649fdd45212e31b66a5707df07876f681ee92a6e244ebea033ff1d9009b9f4, the digest of c6b50ae4..9cc49e55, and cites review 5906213559 at that same head.",
+    "Zero unresolved review threads: all three threads on this PR are resolved, including the CodeRabbit delta-classification thread resolved as deferred with the finding retained.",
+    "The elif chain selects exact_matches, then ancestor_matches, and only then publishes the unreachable failure; ambiguity still fails closed first; the delta-read 128 with the commit present stays an instrument failure.",
+    "scripts/test-project-review-readiness.sh passes every case on this head, including stale_and_exact, unreachable_disposition_publishes_failure, input_failed_disposition_probe, unreachable_delta_publishes_failure, and present_commit_unreadable_tree_is_instrument_failure; the same harness fails on main, so the cases bind the change.",
+    "Non-blocking, named and unfixed: commit_presence aliases absent and hash-mismatched commits to exit 1 (diagnostic label only; both paths publish failure); the unreachable failure also fires on the push recompute path (intended fail-closed semantics, worth one line in the campaign record)."
+  ],
+  "required_ci": {
+    "owner": "PR #4794 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4794"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4794",
+  "reviewed_at_utc": "2026-11-14T18:00:58Z"
+}
