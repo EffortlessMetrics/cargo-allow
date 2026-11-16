@@ -23,8 +23,8 @@
   "environment": {
     "os": "linux",
     "arch": "x86_64",
-    "rustc_version": null,
-    "cargo_version": null,
+    "rustc_version": "rustc 1.100.0 (0ef1bc386 2026-11-09)",
+    "cargo_version": "cargo 1.100.0 (3acc79c0c 2026-11-05)",
     "network_posture": "not_required_for_core_journey"
   },
   "installed_binary": {

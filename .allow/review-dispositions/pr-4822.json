@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4822,
+  "base_ref": "main",
+  "base_sha": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
+  "head_ref": "fix/4818-observed-smoke-toolchain",
+  "head_sha": "0e36e7f83b3e3b363a80176a6846ddd5579976f9",
+  "merge_base": "35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6",
+  "reviewed_diff_digest": "sha256:v2:baefd138166b485178747422e26b3fe3ae908f50f5c5c48d2aa2016ea7684d46",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4822, verdict APPROVE, review 5909151528 submitted at head 425e9a0c46c3b9739089e0ab0a4b0e82c4cc7266 and re-bound in review 5909462727. The live pair published by the readiness adapter at the bound head is base=merge-base=35be8cfd2, diff=sha256:v2:baefd138..., which is the same diff digest the reviewer bound at 425e9a0c: the intervening commits are a merge of main and a no-tree-change commit, so the reviewed diff is unchanged. One non-blocking finding stands and is tracked as #4826: the gate accepts a multi-line version observation because it inspects only the first two tokens; no wrong toolchain passes that way. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4822#pullrequestreview-5909151528 - review cargo-allow non-author oppositional exact-head model review of PR #4822, verdict APPROVE with no blocking findings, reviewed_diff_digest=sha256:v2:baefd138166b485178747422e26b3fe3ae908f50f5c5c48d2aa2016ea7684d46. Re-bound at 425e9a0c in review 5909462727. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4822 - reviewed at 425e9a0c46c3b9739089e0ab0a4b0e82c4cc7266, verdict APPROVE in review 5909151528, re-bound in 5909462727.",
+    "The live pair at 0e36e7f83b3e3b363a80176a6846ddd5579976f9 is base=merge-base=35be8cfd2f197eff421ebbd3f03fd6bcec45e9b6, diff=sha256:v2:baefd138166b485178747422e26b3fe3ae908f50f5c5c48d2aa2016ea7684d46, taken from the readiness adapter's own published pair line. The digest is unchanged from the reviewed head because the succeeding commits are a merge of main and a no-tree-change commit.",
+    "Zero unresolved review threads at this head.",
+    "The change makes the source-candidate smoke gate require the observed rustc and cargo versions instead of attesting a configured value: capture, gate token equality, and two negatives. Five tested claims held under the reviewer's own probes: prerelease, build metadata, four-part, short, case, tool swap, list value and wrong cargo all refuse; CRLF, tab, leading space and trailing hash all pass correctly.",
+    "Non-blocking, tracked as #4826: the gate inspects only the first two whitespace-separated tokens of the observation, so a multi-line capture whose first line matches returns 0. The shipped producer captures a single-line command and no wrong toolchain passes this way, but the repair (require len(observed.splitlines()) == 1) is not applied here.",
+    "The residual throwaway-dir note on the migrate test belongs to a different PR and is not part of this change."
+  ],
+  "required_ci": {
+    "owner": "PR #4822 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4822"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4822",
+  "reviewed_at_utc": "2026-11-15T04:50:45Z"
+}

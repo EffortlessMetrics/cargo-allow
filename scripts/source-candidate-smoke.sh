@@ -1251,6 +1251,9 @@ case "${arch_name}" in
   aarch64|arm64) arch_name="aarch64" ;;
 esac
 
+rustc_version="$(rustc --version 2>/dev/null | tr -d '\r')" || rustc_version=""
+cargo_version="$(cargo --version 2>/dev/null | tr -d '\r')" || cargo_version=""
+
 log "writing receipt ${receipt}"
 RECEIPT_PATH="${receipt}" \
 SCHEMA_ID="${schema_id}" \
@@ -1259,6 +1262,8 @@ GIT_HEAD="${git_head}" \
 INSTALL_METHOD="${install_method}" \
 OS_NAME="${os_name}" \
 ARCH_NAME="${arch_name}" \
+RUSTC_VERSION="${rustc_version}" \
+CARGO_VERSION="${cargo_version}" \
 VERSION_OUTPUT="${version_output}" \
 BINARY_PATH="${cargo_bin}" BINARY_SHA256="${binary_sha256}" \
 STEP_VERSION_EXIT="${step_version_exit}" \
@@ -1415,8 +1420,8 @@ receipt = {
     "environment": {
         "os": os.environ["OS_NAME"],
         "arch": os.environ["ARCH_NAME"],
-        "rustc_version": None,
-        "cargo_version": None,
+        "rustc_version": os.environ["RUSTC_VERSION"] or None,
+        "cargo_version": os.environ["CARGO_VERSION"] or None,
         "network_posture": "not_required_for_core_journey",
     },
     "installed_binary": {

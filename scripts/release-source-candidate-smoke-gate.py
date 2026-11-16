@@ -206,6 +206,18 @@ def check_harness_receipt(
             f"{platform} harness receipt result is "
             f"{harness.get('result')!r}, never acceptable for publication"
         )
+    environment = harness.get("environment")
+    if not isinstance(environment, dict):
+        refuse(f"{platform} harness receipt has no environment object")
+    declared = next(entry for entry in REQUIRED_ROWS if entry["platform"] == platform)
+    for tool in ("rustc", "cargo"):
+        observed = environment.get(f"{tool}_version")
+        parts = observed.split() if isinstance(observed, str) else []
+        if len(parts) < 2 or parts[0] != tool or parts[1] != declared["toolchain"]:
+            refuse(
+                f"{platform} harness observed {tool} version {observed!r}; "
+                f"expected {tool} {declared['toolchain']}"
+            )
     candidate = harness.get("candidate")
     if not isinstance(candidate, dict):
         refuse(f"{platform} harness receipt has no candidate object")
