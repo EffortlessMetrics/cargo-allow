@@ -399,7 +399,8 @@ fn test_release_workflow_gates_remain_untouched() -> Result<(), Box<dyn Error>> 
 /// #4804: the bounded artifact-index wait and the REST token/run binding are
 /// the whole subject of the change, so they need an asserting instrument.
 /// Each wait must sit strictly before the fetch it protects, carry the
-/// six-attempt 2/4/8/16/32 s envelope that ends in a non-zero exit, and each
+/// six-attempt 2/4/8/16/32 s envelope that ends in a non-zero exit, stay
+/// reachable on the store step it follows, and each
 /// checkpoint fetch must bind the token, repository and run so it resolves the
 /// name through the same REST surface the wait polls.
 fn require_wait_step_contract(step: &str, label: &str) -> Result<(), Box<dyn Error>> {
@@ -458,16 +459,18 @@ fn test_release_workflow_waits_for_the_index_the_fetch_reads() -> Result<(), Box
         .ok_or_else(|| io::Error::other("publish job slice unavailable"))?
         .to_string();
 
-    for (wait, fetch, artifact) in [
+    for (wait, fetch, artifact, store) in [
         (
             "Wait for the pre-intent checkpoint artifact to reach the run index",
             "Fetch the stored pre-intent checkpoint for independent readback",
             "publication-checkpoint-pre-intent",
+            "store_pre_intent_checkpoint",
         ),
         (
             "Wait for the post-observation checkpoint artifact to reach the run index",
             "Fetch the stored post-observation checkpoint for independent readback",
             "publication-checkpoint-post-observation",
+            "store_post_observation_checkpoint",
         ),
     ] {
         let wait_block = step_block(&job, wait)
@@ -479,6 +482,15 @@ fn test_release_workflow_waits_for_the_index_the_fetch_reads() -> Result<(), Box
         require(
             wait_block.contains(&format!("ARTIFACT_NAME: {artifact}")),
             &format!("{wait} must poll ARTIFACT_NAME: {artifact}"),
+        )?;
+        // A guard flipped to `if: false` (or narrowed off the store step) would
+        // skip the wait entirely and restore the #4804 race while every other
+        // token still matched, so the guard is part of the contract.
+        require(
+            wait_block.contains(&format!(
+                "if: always() && steps.{store}.outcome == 'success'"
+            )),
+            &format!("{wait} must keep its guard on steps.{store}"),
         )?;
         let fetch_block = step_block(&job, fetch)
             .ok_or_else(|| io::Error::other(format!("publish job must define {fetch}")))?;
