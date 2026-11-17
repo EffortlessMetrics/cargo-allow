@@ -81,6 +81,77 @@ expires = "never"
 "#
 }
 
+fn malformed_policy() -> &'static str {
+    r#"schema_version = 1
+policy = "non-rust-allowlist"
+owner = "EffortlessMetrics"
+status = "advisory"
+
+[[allow]]
+id = "non-rust-docs"
+glob = "docs/**"
+owner = "docs"
+reason = "Documentation tree."
+broad_glob_reason = "Documentation is intentionally tree-shaped."
+expires = "never"
+language = "markdown"
+"#
+}
+
+#[test]
+fn migrate_single_file_keeps_filename_and_line_on_a_parse_error() {
+    let root = unique_root("migrate-non-rust-parse-context");
+    fs::create_dir_all(root.join("policy"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("policy dir: {err}")));
+    fs::create_dir_all(root.join("docs"))
+        .unwrap_or_else(|err| std::panic::panic_any(format!("docs dir: {err}")));
+    fs::write(root.join("docs/guide.md"), "# guide\n")
+        .unwrap_or_else(|err| std::panic::panic_any(format!("guide fixture: {err}")));
+    fs::write(
+        root.join("policy/non-rust-allowlist.toml"),
+        malformed_policy(),
+    )
+    .unwrap_or_else(|err| std::panic::panic_any(format!("policy fixture: {err}")));
+    git_init(&root);
+
+    let out = root.join("policy/candidate.toml");
+    let output = Command::new(env!("CARGO_BIN_EXE_cargo-allow"))
+        .current_dir(&root)
+        .args([
+            "migrate",
+            "--from",
+            "policy/non-rust-allowlist.toml",
+            "--out",
+        ])
+        .arg(&out)
+        .output()
+        .unwrap_or_else(|err| std::panic::panic_any(format!("run migrate: {err}")));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        !output.status.success(),
+        "an unsupported field must refuse: {stderr}"
+    );
+    assert!(
+        stderr.contains("non-rust-allowlist.toml"),
+        "a parse error must name the legacy file: {stderr}"
+    );
+    assert!(
+        stderr.contains("legacy source"),
+        "a parse error must carry the legacy source location: {stderr}"
+    );
+    assert!(
+        stderr.contains("unsupported field `language`"),
+        "the structured parse error must survive: {stderr}"
+    );
+    assert!(
+        !out.exists(),
+        "a refused migration must not write an output policy"
+    );
+
+    let _ = fs::remove_dir_all(&root);
+}
+
 #[test]
 fn migrate_single_file_refuses_overlapping_globs_and_names_both() {
     let root = unique_root("migrate-overlap-refusal");

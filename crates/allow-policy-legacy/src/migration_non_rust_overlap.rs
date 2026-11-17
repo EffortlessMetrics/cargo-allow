@@ -17,6 +17,7 @@ use crate::converter_file_configs::{
 use crate::io::{legacy_table_at, read_policy};
 use crate::loaders::load_legacy_or_canonical;
 use crate::parsers::parse_non_rust_rules;
+use crate::source_context::at_legacy_source;
 use crate::types::LegacyNonRustRule;
 
 /// What the overlap scan found for one legacy file.
@@ -87,13 +88,28 @@ pub fn load_non_rust_migration_config(
     if table.get("policy").and_then(Value::as_str) != Some("non-rust-allowlist") {
         return load_legacy_or_canonical(path);
     }
-    let rules = parse_non_rust_rules(&table)?;
+    // #1868: a parse or conversion error must keep the legacy filename and
+    // source line, as `load_legacy_or_canonical` does for every other lane.
+    // The overlap refusal is a new diagnostic that already names the file's
+    // selectors and the colliding path, so it is not wrapped here.
+    let rules =
+        parse_non_rust_rules(&table).map_err(|err| with_legacy_file_context(err, path, &text))?;
     match scan_non_rust_overlaps(&rules, findings)? {
-        NonRustOverlap::None => config_from_non_rust_rules(&table, &rules),
+        NonRustOverlap::None => config_from_non_rust_rules(&table, &rules)
+            .map_err(|err| with_legacy_file_context(err, path, &text)),
         NonRustOverlap::PathShadowOnly => {
             config_from_current_non_rust_findings(&table, &rules, findings)
+                .map_err(|err| with_legacy_file_context(err, path, &text))
         }
     }
+}
+
+fn with_legacy_file_context(error: CargoAllowError, path: &Path, text: &str) -> CargoAllowError {
+    let path_label = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("legacy-policy");
+    at_legacy_source(error, path, text).with_message_prefix(format!("legacy file `{path_label}`: "))
 }
 
 #[cfg(test)]
