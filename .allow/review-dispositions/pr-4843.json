@@ -21,7 +21,7 @@
   "findings": [],
   "threads_inspected": [
     "https://github.com/EffortlessMetrics/cargo-allow/pull/4843 - reviewed at 639d91352e99e8c8901f238d4c8bacc8edc4d26b, verdict APPROVE in review 5930687729.",
-    "Reviewed pair: base and merge-base a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f, head 639d91352e99e8c8901f238d4c8bacc8edc4d26b, reviewed diff digest sha256:v2:05bde97e over 44,482 bytes.",
+    "Reviewed pair: base and merge-base a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f, head 639d91352e99e8c8901f238d4c8bacc8edc4d26b, reviewed diff digest sha256:v2:05bde97e over 45,126 bytes.",
     "The change refines, not relaxes, the matching contract: inside one strength tier a more literal selector wins (literal characters, plus 10,000 for an exact path), an exact path beats an equal glob, and equal literal specificity still reports Ambiguous. It applies in the main candidate path and the fallback path.",
     "Shadowed top-strength candidates that matched a finding are recorded as used rather than unused, in both the unique-winner and ambiguity branches, so the unused-entry scan cannot emit a false Stale and prune --stale cannot delete a load-bearing entry; the ambiguity row's candidate_ids stay narrowed to the tied set.",
     "The winning site uses tied_candidates.first() with let-else, so pregate's no-new guard reports no unreceipted panic.indexing entry and policy/allow.toml was not edited.",
