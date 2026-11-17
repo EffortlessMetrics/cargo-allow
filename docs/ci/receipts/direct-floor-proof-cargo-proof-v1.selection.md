@@ -7,15 +7,15 @@ they are local activation witnesses, not a complete cross-crate feature graph.
 - Product: cargo-proof
 - Package roots: cargo-proof
 - Selected closure: cargo-proof, effortless-repo-protocol, effortless-rust-source-index, intent-protocol, proof-orchestrator, proof-protocol
-- Starting source commit: 7017dc2bf94d9d573c8b1b4d41cc1b4a5d21aa74
+- Starting source commit: 7f5779b1ad17bdcce2ced0c0bbdc33622de1cb11
 - Workspace projection: cargo-allow.direct-floor-product-workspace.v1
 - Projected manifest digest: sha256:v1:d7920866352596500e11aadaca783a3aabb9d648c3ade074508ab45c8b4dfa02
 - Certified member paths: crates/effortless-repo-protocol, crates/effortless-rust-source-index, crates/intent-protocol, crates/proof-protocol, crates/proof-engine, crates/cargo-proof
 - Execution member paths: crates/effortless-repo-protocol, crates/effortless-rust-source-index, crates/intent-protocol, crates/proof-protocol, crates/proof-engine, crates/cargo-proof
-- Executed floor commit: e7475ee2ae3a95f43b02e541b68c762953de540d
-- Executed floor tree: c9ae1543daa3b978d7623638f2c2e750335b90aa
+- Executed floor commit: 6a0bff26a7c2aef3e390872561662d5a76013eec
+- Executed floor tree: d982e21f5742a0c143a558348aecf62045501e43
 - Receipt: direct-floor-proof-cargo-proof-v1.json
-- Receipt SHA-256: sha256:v1:9e2286f7b496655172340394ffa5e56715f047d7a551e6495f18d69ea914e3bd
+- Receipt SHA-256: sha256:v1:198d28e03700c64ea220ce63c47785a0252f650a7013ddb410bc26cd606576be
 - Manifest-set digest: 18db841f212518f4d9575251c764300c2962c7bbba0d96f72a68745a0698f8db
 - Starting lock digest: 0f1dc82202812f4db3d2e6820329b2da2f28deae57b393e79cbb68d05ff1b06c
 - Executed floor-lock digest: sha256:v1:52a3026369f4a81d059149e739b6aa559604f7e0c3fbfcb5acb1cad30e1c4123
