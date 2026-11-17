@@ -55,6 +55,7 @@ mod loader_workflow_dependency_compat;
 mod loaders;
 mod migration_closeout;
 mod migration_lane_descriptors;
+mod migration_non_rust_overlap;
 mod parser_clippy_entries;
 mod parser_dependency_entries;
 mod parser_executable_entries;
@@ -121,6 +122,7 @@ pub use migration_lane_descriptors::{
     all_legacy_lane_descriptors, descriptor_for_compat_kind_id, descriptor_for_legacy_filename,
     descriptor_for_legacy_policy_key, legacy_lane_descriptor, legacy_policy_filenames,
 };
+pub use migration_non_rust_overlap::load_non_rust_migration_config;
 pub use types_source_entries::UnmappedNonRustField;
 
 const BASELINE_DEBT_DEFAULT_DAYS: i64 = 67;
