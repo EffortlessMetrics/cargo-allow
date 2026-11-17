@@ -1264,6 +1264,12 @@ fn more_specific_glob_wins_over_broader_glob() {
         !outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
         "no Ambiguous when specificity resolves the overlap"
     );
+    assert!(
+        !outcomes.iter().any(|o| {
+            o.status == MatchStatus::Stale && o.allow_id.as_deref() == Some("non-rust-github-meta")
+        }),
+        "a shadowed top-strength entry matched the finding and must not be reported Stale"
+    );
 }
 
 #[test]
@@ -1288,6 +1294,48 @@ fn equal_literal_globs_remain_ambiguous() {
         outcomes.iter().any(|o| o.status == MatchStatus::Ambiguous),
         "equal literal specificity should stay Ambiguous"
     );
+}
+
+#[test]
+fn shadowed_entry_is_not_demoted_to_stale_when_winners_tie() -> Result<(), String> {
+    // #4840: two equal-literal globs tie for the finding, so they stay
+    // Ambiguous. The broader glob also matched at the same strength but lost
+    // the specificity tie. It is not part of the reported tie, but it did
+    // match, so it must not be demoted to Stale or become a prune candidate.
+    let finding = non_rust_finding("src/lib.rs");
+    let mut cfg = AllowConfig::empty();
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-r-question", "src/*.r?"));
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-question-s", "src/*.?s"));
+    cfg.allow
+        .push(non_rust_glob_entry("non-rust-broad", "src/**"));
+
+    let outcomes = evaluate(
+        &cfg,
+        &[finding],
+        CheckMode::NoNew,
+        allow_core::SimpleDate::today_utc_approx(),
+    );
+
+    let ambiguous = outcomes
+        .iter()
+        .find(|o| o.status == MatchStatus::Ambiguous)
+        .ok_or_else(|| "equal literal specificity should stay Ambiguous".to_string())?;
+    assert_eq!(
+        ambiguous.candidate_ids,
+        vec![
+            "non-rust-r-question".to_string(),
+            "non-rust-question-s".to_string()
+        ]
+    );
+    assert!(
+        !outcomes.iter().any(|o| {
+            o.status == MatchStatus::Stale && o.allow_id.as_deref() == Some("non-rust-broad")
+        }),
+        "a shadowed entry that matched must not be demoted to Stale"
+    );
+    Ok(())
 }
 
 #[test]

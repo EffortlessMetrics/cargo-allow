@@ -315,11 +315,27 @@ pub fn evaluate_detailed(
                             candidate_ids,
                         );
                     }
+                    // #4840: a top-strength candidate that lost the
+                    // specificity tie still matched this finding. Record it
+                    // as used so the unused-entry scan does not report it
+                    // Stale ("no current finding matched") and `prune
+                    // --stale` cannot delete a load-bearing entry. This is
+                    // bookkeeping only: the shadowed entry consumes no
+                    // occurrence headroom because it did not authorize the
+                    // finding.
+                    for (shadowed_index, _) in &top_candidates {
+                        if *shadowed_index != entry_index {
+                            state.used_entries.insert(*shadowed_index);
+                        }
+                    }
                 } else {
                     // Genuine tie at the top strength and specificity -
-                    // report Ambiguous with candidate IDs. Mark ALL
-                    // top-strength candidates as used so they are NOT
-                    // demoted to Stale in the unused-entry scan (#2042).
+                    // report Ambiguous with candidate IDs. Mark every
+                    // top-strength candidate used so a shadowed entry is
+                    // neither demoted to Stale in the unused-entry scan
+                    // (#2042) nor selected by `prune --stale`; the
+                    // `candidate_ids` stay narrowed to the tied set so the
+                    // Ambiguous row does not overstate the tie (#4840).
                     let ids = tied_candidates
                         .iter()
                         .filter_map(|(idx, _)| cfg.allow.get(*idx).map(|entry| entry.id.clone()))
