@@ -1,0 +1,39 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4843,
+  "base_ref": "main",
+  "base_sha": "a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f",
+  "head_ref": "fix/4840-selector-specificity",
+  "head_sha": "639d91352e99e8c8901f238d4c8bacc8edc4d26b",
+  "merge_base": "a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f",
+  "reviewed_diff_digest": "sha256:v2:05bde97e163701f8ac5ed336af76eb35fe40867c6c3b7bcf0e47a9a717c2f01b",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "review cargo-allow non-author oppositional exact-head model review of PR #4843 at 639d91352e99e8c8901f238d4c8bacc8edc4d26b, verdict APPROVE, review 5930687729 (base and merge-base a801c75d1). The reviewer re-bound from 7f5779b1a as a receipts-only delta (eight docs/ci/receipts files; crates/allow-match/src/evaluation.rs byte-identical, blob bf98bb71f90464dc07387aa465000e5df8f27020), recomputed the selected-source projection over the head's 1,385 crates/**/*.rs files as db397434841b956277c6e5b363037cedfdd5de2ac99a685d6a1d8f379554e73d, matching the committed receipts, and found no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4843#pullrequestreview-5930687729 - review cargo-allow non-author oppositional exact-head model review of head 639d91352e99e8c8901f238d4c8bacc8edc4d26b, base and merge-base a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f, reviewed_diff_digest=sha256:v2:05bde97e163701f8ac5ed336af76eb35fe40867c6c3b7bcf0e47a9a717c2f01b, verdict APPROVE with no blocking findings. Shared repository instructions, account, and model context are a correlated-failure limit. No independent-human approval."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4843 - reviewed at 639d91352e99e8c8901f238d4c8bacc8edc4d26b, verdict APPROVE in review 5930687729.",
+    "Reviewed pair: base and merge-base a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f, head 639d91352e99e8c8901f238d4c8bacc8edc4d26b, reviewed diff digest sha256:v2:05bde97e over 44,482 bytes.",
+    "The change refines, not relaxes, the matching contract: inside one strength tier a more literal selector wins (literal characters, plus 10,000 for an exact path), an exact path beats an equal glob, and equal literal specificity still reports Ambiguous. It applies in the main candidate path and the fallback path.",
+    "Shadowed top-strength candidates that matched a finding are recorded as used rather than unused, in both the unique-winner and ambiguity branches, so the unused-entry scan cannot emit a false Stale and prune --stale cannot delete a load-bearing entry; the ambiguity row's candidate_ids stay narrowed to the tied set.",
+    "The winning site uses tied_candidates.first() with let-else, so pregate's no-new guard reports no unreceipted panic.indexing entry and policy/allow.toml was not edited.",
+    "Characterization on shiplog 0e89da59's migrated 43-entry canonical policy: base a801c75d1 reports 32 ambiguous (exit 1) and the head reports 0 ambiguous (exit 0), with 36 matched findings in both.",
+    "The four direct-floor receipts were regenerated at the final source head (floor-receipt-regeneration run 43987954433) and the local min-version-drift check reports every product verdict=current, blocking=false.",
+    "Devin thread 0001 (shadowed entries disappearing) and CodeRabbit evaluation.rs:279 (preserve matching-entry bookkeeping) are both disposed by the used-entry bookkeeping; the pregate indexing thread is disposed by the first()/let-else winner extraction."
+  ],
+  "required_ci": {
+    "owner": "PR #4843 orchestrator: verify the exact-head review, live review-readiness, applicable checks, threads, and branch protection, and make separate Ready, enqueue and expected-head merge judgments. This record does not merge.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/pull/4843"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4843",
+  "reviewed_at_utc": "2026-11-17T00:50:46Z"
+}
