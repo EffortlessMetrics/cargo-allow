@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[test]
-fn upgrade_guide_contract_is_recorded() -> Result<(), Box<dyn Error>> {
+fn upgrade_guide_preserves_baseline_and_limits_rollback_scope() -> Result<(), Box<dyn Error>> {
     let root = repository_root()?;
     if !root.join(".git").exists() {
         return Ok(());
@@ -17,19 +17,45 @@ fn upgrade_guide_contract_is_recorded() -> Result<(), Box<dyn Error>> {
         "UpgradeRollbackGuideV1",
         "0.1.11",
         "0.2.0",
-        "ReadUnchanged",
-        "ReadWithCompatibleProjection",
+        "Before the final `0.2.0` release is published, keep shared CI pinned to `0.1.11`.",
+        "not a compatibility guarantee",
+        "Linux with Bash and GNU utilities",
+        "Rust 1.85 or later for published",
+        "Rust 1.95 or later for `0.2.0`",
+        "Keep the copies and baseline evidence outside directories you might clean",
+        "Do not remove the entire output directory.",
+        "Restore an entire file only when it contains no unrelated changes",
+        "Do not use the current `HEAD` as the pre-upgrade reference",
+        r#"check_version "$baseline_bin" 0.1.11 &&"#,
+        r#"$(mktemp -d "target/cargo-allow/$2.XXXXXXXX")"#,
+        "sha256sum --check --strict",
+        "git diff --cached -- .github/workflows/ci.yml",
+        "If the CI pin and unrelated changes overlap, stop",
+        "cargo install cargo-allow --version 0.2.0 --locked --registry crates-io",
         "Pre-Upgrade State Capture",
         "Rollback Journey",
     ] {
         require_contains(&doc, marker, "upgrade-and-rollback guide")?;
     }
 
+    for unsafe_guidance in [
+        "rm -rf target/cargo-allow",
+        "git checkout HEAD -- .github/workflows/ci.yml",
+        "ensure zero data loss",
+    ] {
+        if doc.contains(unsafe_guidance) {
+            return Err(io::Error::other(format!(
+                "upgrade-and-rollback guide contains unsafe or unproven guidance: {unsafe_guidance}"
+            ))
+            .into());
+        }
+    }
+
     Ok(())
 }
 
 #[test]
-fn cli_diagnostics_and_compatibility_execution() -> Result<(), Box<dyn Error>> {
+fn release_identity_parses_published_baseline_version() -> Result<(), Box<dyn Error>> {
     let bin = env!("CARGO_BIN_EXE_cargo-allow");
 
     // Verify binary executes and outputs version
@@ -38,7 +64,7 @@ fn cli_diagnostics_and_compatibility_execution() -> Result<(), Box<dyn Error>> {
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("cargo-allow"));
 
-    // Verify release-identity confirms stable 0.1.11 compatibility
+    // This checks identity parsing only, not compatibility between installed releases.
     let output = Command::new(bin)
         .args(["release-identity", "--version", "0.1.11"])
         .output()?;
