@@ -35,7 +35,7 @@ selected policy or configuration files, and the exact CI install pin. Keep the
 copies and baseline evidence outside directories you might clean during rollback.
 
 Use the absolute path to your retained, published `0.1.11` binary. The examples
-below are for Linux with Bash and GNU utilities. Run them from the repository
+below are for Linux with Bash and GNU utilities. Run from the repository
 root in the same shell. They are not copy-and-paste Windows or macOS
 instructions. The helper creates a fresh directory for each check and records
 its exit separately, including a nonzero baseline:
@@ -71,9 +71,10 @@ check_version "$baseline_bin" 0.1.11 &&
   capture_check "$baseline_bin" pre-upgrade
 ```
 
-Stop if the binary or its receipt cannot be verified. Copy the baseline
-evidence to the same safe location as the pre-upgrade files. Existing policy
-failures are part of the baseline; do not silently convert them to allowances.
+Stop if the binary or its receipt cannot be verified. Copy the pre-upgrade
+evidence directory, including `source.txt` and the check receipt, to the same
+safe location as the pre-upgrade files. Existing policy failures are part of
+the baseline; do not silently convert them to allowances.
 
 ## 3. Try the upgrade before changing the CI pin
 
@@ -161,7 +162,9 @@ the frozen-candidate evidence tracked in [#2485].
    reference: it may already contain the new CI pin.
 
    For example, examine the committed, staged, and unstaged CI changes
-   separately. Use the commit captured in step 2:
+   separately. Set `pre_upgrade_ref` to the commit in the saved `source.txt`
+   from [Pre-Upgrade State Capture](#2-pre-upgrade-state-capture). Use the
+   pre-upgrade evidence directory, not a later candidate or rollback run:
 
    ```bash
    pre_upgrade_ref=REPLACE_WITH_RECORDED_COMMIT
