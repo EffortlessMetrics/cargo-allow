@@ -106,26 +106,15 @@ The namespace publication and the cargo-allow tag release are distinct,
 irreversible operations. A document, issue, pull request, rehearsal, or merged
 authorization-file template does not authorize either operation.
 
-Run them in this order:
+The twelve-row namespace publication is already reconciled below. Do not
+repeat it. For the prospective stable release:
 
 1. **Rehearse without publishing.** A normal `workflow_dispatch` of
    [`.github/workflows/release.yml`](../../.github/workflows/release.yml) and
    package-only topology publisher runs do not read the registry token or upload
    crates. They prove the selected source candidate and workflow path, not
    registry publication.
-2. **Freeze one exact namespace candidate.** Create
-   `release/authorize-v0.2.0.json` only after explicit publication
-   authorization. Its commit, parent tree, lockfile digest, topology digest,
-   and selected rows must match the authorized candidate exactly.
-3. **Publish the new namespaces.** The authorization-file push triggers
-   [`.github/workflows/release-authorized.yml`](../../.github/workflows/release-authorized.yml),
-   which publishes exactly twelve `0.1.0` namespace rows: four shared, five
-   cargo-intent, and three cargo-proof packages. This workflow stops after its
-   registry receipt; it does not push a tag or dispatch the cargo-allow release.
-4. **Reconcile publication truth.** Verify exact registry checksums, update the
-   V2 topology publication state and release/support docs through a separate
-   reviewed change, and preserve the namespace receipt.
-5. **Authorize the cargo-allow release separately.** Only an explicitly
+2. **Authorize the cargo-allow release separately.** Only an explicitly
    authorized annotated `v0.2.0` tag may trigger
    [`.github/workflows/release.yml`](../../.github/workflows/release.yml). Its
    topology-selected candidate has thirteen rows: ten cargo-allow packages plus
@@ -139,9 +128,54 @@ Run them in this order:
    version mismatch, checksum mismatch, malformed response, registry error, or
    incomplete result fails closed. Once it is satisfied, the expected missing
    uploads are the ten cargo-allow rows.
-   `effortless-rust-source-index` belongs only to the namespace rail;
+   `effortless-rust-source-index` belongs only to the historical namespace set;
    cargo-intent and cargo-proof packages are not part of the cargo-allow
    candidate.
+
+### Historical namespace publication
+
+[#3729](https://github.com/EffortlessMetrics/cargo-allow/pull/3729) ran
+[GitHub Actions run 32676021656](https://github.com/EffortlessMetrics/cargo-allow/actions/runs/32676021656)
+from `3942873eb18b9f88dfdfcc013ca013452fdb23b1`, packaging exact parent
+`970fd5edf6fb345f2bf0ea9eb8111fde93b85258`, tree
+`131d1d240fdd87237e0272eba0af98a4f2951cc6`. The then-executed
+[workflow](https://github.com/EffortlessMetrics/cargo-allow/blob/3942873eb18b9f88dfdfcc013ca013452fdb23b1/.github/workflows/release-authorized.yml)
+has Git blob `0abf8581eb7f959346ab3a2d065be554651dee71`.
+The retained `release/authorize-v0.2.0.json` marker is unchanged
+(Git blob `bf9aef1592f0353bd6072bf92617a4afdb934d00`; SHA-256
+`c4247439e3c15e4fc796b2f8e82529afa600114da14871cffe27e6fc783131fc`).
+It records the historical event only. It does not authorize a rerun,
+another namespace upload, a tag, or the independent stable release.
+
+The [exact #3733 observation](https://github.com/EffortlessMetrics/cargo-allow/issues/3733)
+found exactly twelve `0.1.0` namespace rows PublishedExact and unyanked:
+four shared, five cargo-intent, and three cargo-proof packages. Their
+immutable registry and downloaded archive SHA-256 values match the
+original run's local package checksums; the V2 topology pins those values.
+This supersedes the provisional #3733 checksum/time table, not the historic
+record. It establishes byte equality to the retained operation, not a new
+reproducible build, installed experience, or any `0.2.0` publication.
+
+Attempts 1–7 failed after partial publication; the original job logs report
+crates.io HTTP 429 from rate limiting. Attempt 8 completed by publishing
+`cargo-proof` and verified the other eleven existing rows. The first
+irreversible row remains `80` from attempt 1; the final attempt's local
+`incident_state: none` does not erase that lineage. The
+[tracked observation](evidence/namespace-publication-incident.v1.json)
+retains all eight byte-exact receipt members and their digests independent
+of GitHub artifact expiration. It contains no credential or authority.
+Original artifact identities:
+
+| Attempt | Receipt artifact ID | First irreversible row in attempt | ZIP SHA-256 |
+| --- | ---: | ---: | --- |
+| 1 | 9502787699 | 80 | `c501f9262885ef89c3c0a52d680e803da11ad0ec6c39a0f23cea11b4d30d22e8` |
+| 2 | 9502975257 | 320 | `4b0a80496db961c925845f719f5681a6451d34e7312d4b1a23e8ac499151bbe6` |
+| 3 | 9503139200 | 330 | `f187dea7f4795aa8d29a1c21d0ebf1866e81b0257354199d9fc58a8b8091181f` |
+| 4 | 9503308151 | 340 | `b6e1e230cda84b0dc92d069d18e145d400066ec55dc6b8e4cd8f370f768a5769` |
+| 5 | 9503455585 | 360 | `96f3da490f6fe7828ccc14c3564f989a2c8eec890cce9f7eabc81fe1b79f717c` |
+| 6 | 9503601911 | 410 | `d3f5aef713c26f1d24b386801aff301f14648e5f0ac51f2e404278e3c0df18f2` |
+| 7 | 9503747722 | 430 | `a8b7db3db20243259c5a46d21391023d457fa0fd18c5bae3a19a10a25307bd0b` |
+| 8 | 9503901811 | 435 | `6de37c9fffec68d6f4fe1af3732d55ea5b15e157eee436fab8faca770ecb810b` |
 
 When a release may be incomplete, unsafe, or unsupported after publication,
 follow the [release incident and recovery runbook](incident-recovery.md). It
@@ -418,10 +452,10 @@ Complete these checks before the `0.2.0` tag-triggered cargo-allow release:
 | Release prep merged | Version bump, `docs/release/X.Y.Z.md`, and `docs/release/github/vX.Y.Z.md` on `main` before tagging |
 | No-new guard green on release head | `cargo-allow check --mode no-new` receipt on the commit to tag |
 
-Do not create `release/authorize-v0.2.0.json` or push a version tag without
-separate explicit authorization for that irreversible operation. Before tag
-authorization, require the reconciled namespace receipt and a recent green
-non-publishing `workflow_dispatch` rehearsal.
+Do not create or refresh the retired namespace marker. Push a version tag
+only with separate explicit authorization for that exact irreversible
+operation. Before tag authorization, require the reconciled namespace
+receipt and an exact non-publishing `workflow_dispatch` rehearsal.
 
 ## Authorization-gated tag pushes (#3790)
 
@@ -573,10 +607,10 @@ runbook](incident-recovery.md).
 
 ## Manual Publish Fallback
 
-Manual fallback does not bypass either release authorization. For `0.2.0`, use
-it only after the twelve-row namespace rail has separate explicit authorization
-and a reconciled receipt, and after the cargo-allow rail receives separate
-explicit authorization for the exact candidate. When automation cannot run
+Manual fallback does not bypass either release authorization. The historical
+namespace operation is complete and must not be repeated. For `0.2.0`, use
+fallback only after verifying the reconciled receipt and obtaining separate
+explicit authorization for the exact cargo-allow candidate. When automation cannot run
 after those gates are satisfied, follow the per-release record (for example
 [0.1.9.md](0.1.9.md) for the historical patch-release shape):
 

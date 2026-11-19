@@ -456,15 +456,6 @@ sites = [
 claim_boundary = "Hard-codes published/candidate version-prefix assumptions with wildcard tails that silently accept prerelease variants; replace with exact typed identity when the #2485 journey is refreshed."
 
 [[consumers]]
-id = "release-authorized-workflow"
-path = ".github/workflows/release-authorized.yml"
-role = "one-shot authorized publication workflow"
-disposition = "exact-value-pass-through"
-marker_classes = []
-sites = ["release/authorize-v0.2.0.json"]
-claim_boundary = "Validates an exact already-projected identity (the checked authorization artifact names the tag); update this row when the authorization target changes. Hard-coded per-release identity is the issue-selected design."
-
-[[consumers]]
 id = "release-prep-rust-classifier"
 path = "crates/cargo-allow/src/release_prep_tests.rs"
 role = "cross-artifact release-contract tests (Rust)"

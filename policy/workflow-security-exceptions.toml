@@ -20,11 +20,3 @@ owner = "core/release"
 reason = "Deliberate tag-credential interpolation documented in-tree since the #3836 pregate tiering notes: the release workflow intentionally interpolates the tag event payload into its release command; the workflow runs only on trusted tag pushes by release maintainers."
 evidence = ["issue:3907", "workflow:.github/workflows/release.yml"]
 review_after = "2026-12-08"
-
-[[exceptions]]
-path = ".github/workflows/release-authorized.yml"
-rule = "template-injection"
-owner = "core/release"
-reason = "Deliberate interpolation of the maintainer-supplied release authorization inputs (#3760 authority): the workflow runs only on workflow_dispatch by release maintainers holding the release secrets."
-evidence = ["issue:3907", "issue:3760"]
-review_after = "2026-12-08"

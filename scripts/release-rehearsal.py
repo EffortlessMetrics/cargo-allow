@@ -785,67 +785,62 @@ def run_phase_manifest_and_assets(receipt: dict[str, Any]) -> str:
     )
 
 
-AUTHORIZATION_ARTIFACT = "release/authorize-v0.2.0.json"
+AUTHORIZATION_ARTIFACT = "out-of-tree:release-authorization"
 AUTHORIZATION_SCHEMA = "cargo-allow.release-authorization.v1"
+HISTORICAL_NAMESPACE_MARKER = "release/authorize-v0.2.0.json"
 
 
 def run_phase_authorization_boundary(receipt: dict[str, Any]) -> str:
-    """Check the selected registry-token environment boundary and bind the checked
-    authorization artifact's identity (#3751 phase: authorization boundary).
-
-    The rehearsal never consumes authorization: the selected token's environment
-    key is an instrument failure without reading its value, and the checked
-    CargoAllowReleaseAuthorizationV1 artifact is read only to record which
-    release identity would gate the authorized run. The phase deliberately
-    stays Incomplete — only the authorized run (#3760/#2502) can claim
-    authorization.
-    """
+    """Describe the unconsumed boundary. Never inspect an authorization input."""
     if _selected_token_present():
         return PHASE_INSTRUMENT_FAILURE
-    try:
-        artifact = json.loads(
-            (ROOT / AUTHORIZATION_ARTIFACT).read_text(encoding="utf-8")
-        )
-    except (OSError, json.JSONDecodeError):
-        return PHASE_MISMATCH
-    release = artifact.get("release")
-    commit = artifact.get("candidate_parent_commit")
-    tree = artifact.get("candidate_parent_tree")
-    lock = artifact.get("cargo_lock_sha256")
-    hex_ok = lambda value: (
-        isinstance(value, str)
-        and len(value) in (40, 64)
-        and all(char in "0123456789abcdef" for char in value)
-    )
-    # The checked artifact stores the lock digest in its own bare-hex form
-    # (no sha256: prefix); the phase validates that stored form rather than
-    # imposing the receipt convention or re-deriving the value.
-    lock_ok = lambda value: (
-        isinstance(value, str)
-        and len(value) == 64
-        and all(char in "0123456789abcdef" for char in value)
-    )
-    if (
-        artifact.get("schema_id") != AUTHORIZATION_SCHEMA
-        or not isinstance(release, str)
-        or not release.startswith("v")
-        or not hex_ok(commit)
-        or not hex_ok(tree)
-        or not lock_ok(lock)
-    ):
+    identity = receipt.get("release_identity") or {}
+    tag = identity.get("tag")
+    commit = receipt.get("commit_sha")
+    if not isinstance(tag, str) or not isinstance(commit, str):
         return PHASE_MISMATCH
     receipt["authorization_boundary"] = {
         "authorization_artifact": AUTHORIZATION_ARTIFACT,
         "schema": AUTHORIZATION_SCHEMA,
-        "named_release": release,
+        "named_release": tag,
         "candidate_commit": commit,
         "token_present": False,
         "phase_status_note": (
-            "deliberately Incomplete: the rehearsal never consumes "
-            "authorization; #3760/#2502 gate the authorized run"
+            "deliberately Incomplete: no authorization artifact was read or "
+            "proven; only an independently authorized run can satisfy #3760/#2502"
         ),
     }
     return PHASE_INCOMPLETE
+
+
+def legacy_namespace_route_retired(root: Path) -> bool:
+    """Check the current repository entrypoints, not provider-level prevention.
+
+    A retained marker is historical data, never a workflow input. Check active
+    workflows and local composite actions so renaming a workflow or moving
+    the old job into a called action does not hide the old route.
+    """
+    workflows = root / ".github/workflows"
+    active = sorted(path for path in workflows.iterdir()
+                    if path.suffix in {".yml", ".yaml"})
+    if not any(path.name == "release.yml" for path in active):
+        return False
+    active.extend(sorted((root / ".github").rglob("action.y*ml")))
+    if (root / "action.yml").is_file():
+        active.append(root / "action.yml")
+    if (root / "action.yaml").is_file():
+        active.append(root / "action.yaml")
+    for path in active:
+        text = path.read_text(encoding="utf-8")
+        if (
+            path.name == "release-authorized.yml"
+            or HISTORICAL_NAMESPACE_MARKER in text
+            or "publish-namespace:" in text
+            or "--mode namespace" in " ".join(text.split())
+            or (path != workflows / "release.yml" and CARGO_TOKEN_ENV in text)
+        ):
+            return False
+    return True
 
 
 def _yaml_workflow_inventory(path: Path) -> dict[str, Any] | None:
@@ -876,15 +871,14 @@ def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
 
     Enforces the least-privilege law — top-level ``actions: read`` and
     ``contents: write``, with ``github-release`` as the write/OIDC-scoped
-    job and the authorized namespace workflow in namespace mode — and
+    job and no live legacy namespace route — and
     records the proof. PyYAML is used when available; otherwise the same
     law is checked on the pinned manifest strings.
     """
     release_path = ROOT / ".github/workflows/release.yml"
-    authorized_path = ROOT / ".github/workflows/release-authorized.yml"
     try:
         release_text = release_path.read_text(encoding="utf-8")
-        authorized_text = authorized_path.read_text(encoding="utf-8")
+        namespace_route_retired = legacy_namespace_route_retired(ROOT)
     except (OSError, UnicodeDecodeError):
         return PHASE_MISMATCH
 
@@ -892,7 +886,6 @@ def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
     if parsed is not None and "error" in parsed:
         return PHASE_MISMATCH
 
-    authorized_namespace_mode = "--mode namespace" in authorized_text
     if parsed is None:
         proof = {
             "mode": "text",
@@ -901,7 +894,7 @@ def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
             "top_level_read_scoped": "actions: read" in release_text,
             "top_level_write_scoped": "contents: write" in release_text,
             "github_release_scoped": "id-token: write" in release_text,
-            "authorized_namespace_mode": authorized_namespace_mode,
+            "legacy_namespace_route_retired": namespace_route_retired,
         }
     else:
         jobs = parsed["jobs"]
@@ -928,14 +921,14 @@ def run_phase_workflow_graph_permissions(receipt: dict[str, Any]) -> str:
                 "permissions", {}
             ).get("id-token")
             == "write",
-            "authorized_namespace_mode": authorized_namespace_mode,
+            "legacy_namespace_route_retired": namespace_route_retired,
         }
 
     if not (
         proof["top_level_read_scoped"]
         and proof["top_level_write_scoped"]
         and proof["github_release_scoped"]
-        and proof["authorized_namespace_mode"]
+        and proof["legacy_namespace_route_retired"]
     ):
         return PHASE_MISMATCH
     receipt["workflow_graph_permissions"] = proof
@@ -1332,7 +1325,6 @@ def run_phase_escaped_defect_corpus(
         workflow.get("top_level_read_scoped") is True
         and workflow.get("top_level_write_scoped") is True
         and workflow.get("github_release_scoped") is True
-        and workflow.get("authorized_namespace_mode") is True
     ):
         return _corpus_failure(PHASE_MISMATCH, "attestation_permission_binding_mismatch")
     machine = receipt.get("publisher_state_machine") or {}
@@ -1502,9 +1494,9 @@ def _build_rehearsal_receipt(
             "pending seams are recorded with their owner issues. The "
             "authorization_boundary phase deliberately stays Incomplete: the "
             "rehearsal checks the selected CARGO_REGISTRY_TOKEN environment "
-            "entry without reading its value and records the checked "
-            "authorization artifact's identity but never consumes "
-            "authorization. Other credential sources and whole-workflow mutation "
+            "entry without reading its value and describes the selected subject's "
+            "out-of-tree authorization boundary without reading or consuming "
+            "an authorization artifact. Other credential sources and whole-workflow mutation "
             "prevention remain unproven, so the aggregate cannot satisfy a release gate."
         ),
     }

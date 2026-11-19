@@ -78,7 +78,7 @@ struct WorkflowGraphPermissionsRecordV1 {
     top_level_read_scoped: bool,
     top_level_write_scoped: bool,
     github_release_scoped: bool,
-    authorized_namespace_mode: bool,
+    legacy_namespace_route_retired: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -588,19 +588,23 @@ fn rehearsal_characterization_fails_closed() -> Result<(), Box<dyn Error>> {
         workflow.top_level_read_scoped
             && workflow.top_level_write_scoped
             && workflow.github_release_scoped
-            && workflow.authorized_namespace_mode,
+            && workflow.legacy_namespace_route_retired,
         "the recorded workflow graph proof must carry every least-privilege law",
     )?;
     let authorization = receipt.authorization_boundary.as_ref().ok_or_else(|| {
-        io::Error::other("the authorization boundary phase must record the checked artifact")
+        io::Error::other(
+            "the authorization boundary must describe the unconsumed out-of-tree input",
+        )
     })?;
     require(
         !authorization.token_present,
         "the rehearsal must prove the publish token was absent",
     )?;
     require(
-        authorization.named_release.starts_with('v'),
-        "the checked authorization artifact must name its release",
+        authorization.named_release == identity.tag
+            && authorization.candidate_commit == receipt.commit_sha
+            && authorization.authorization_artifact == "out-of-tree:release-authorization",
+        "the unproven boundary must describe the same selected typed subject",
     )?;
 
     let docs_status = receipt
@@ -809,14 +813,12 @@ fn rehearsal_fixture_in(
         "scripts/test-final-packaged-surface.py",
         "scripts/generate-changie-history.py",
         ".github/workflows/release.yml",
-        ".github/workflows/release-authorized.yml",
         "docs/schemas/topology-publish-receipt.schema.json",
         "docs/schemas/shared-package-candidate.v1.schema.json",
         "docs/release/0.2.0.md",
         "docs/release/github/v0.2.0.md",
         "docs/support-matrix.toml",
         "docs/getting-started.md",
-        "release/authorize-v0.2.0.json",
         "CHANGELOG.md",
         "policy/product-package-topology-v2.toml",
     ];

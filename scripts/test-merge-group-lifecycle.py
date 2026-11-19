@@ -270,9 +270,6 @@ class WorkflowWiringTests(unittest.TestCase):
                 if "push" in events:
                     if name == "release.yml":
                         self.assertEqual(events["push"], {"tags": ["v*"]})
-                    elif name == "release-authorized.yml":
-                        self.assertEqual(events["push"], {"branches": ["main"],
-                            "paths": ["release/authorize-v0.2.0.json"]})
                     elif name in {"ci.yml", "review-readiness.yml", "sentinel.yml"}:
                         self.assertEqual(events["push"], {"branches": ["main"]})
                     else:

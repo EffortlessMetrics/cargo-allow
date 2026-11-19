@@ -129,7 +129,10 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
             .push("fail:rehearsal records no authorization_boundary evidence object".to_string()),
         Some(boundary) => {
             for (field, expected) in [
-                ("authorization_artifact", "release/authorize-v0.2.0.json"),
+                (
+                    "authorization_artifact",
+                    "out-of-tree:release-authorization",
+                ),
                 ("schema", "cargo-allow.release-authorization.v1"),
                 ("named_release", release_tag),
             ] {
@@ -139,21 +142,12 @@ pub(super) fn binding_notes(value: &Json, release_tag: &str) -> Vec<String> {
                     ));
                 }
             }
-            // This is the historical artifact inspected by the producer,
-            // not authority for the selected candidate. Do not equate its
-            // candidate_commit with the freeze subject or consume it.
-            if !boundary
-                .get("candidate_commit")
-                .and_then(Json::as_str)
-                .is_some_and(|commit| {
-                    matches!(commit.len(), 40 | 64)
-                        && commit
-                            .bytes()
-                            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
-                })
-            {
+            // Only the selected subject is described; no external input
+            // is read or accepted and authorization must stay Incomplete.
+            let candidate = boundary.get("candidate_commit").and_then(Json::as_str);
+            if candidate.is_none() || candidate != value.get("commit_sha").and_then(Json::as_str) {
                 notes.push(
-                    "fail:rehearsal authorization_boundary.candidate_commit is malformed"
+                    "fail:rehearsal authorization_boundary.candidate_commit must match the selected subject"
                         .to_string(),
                 );
             }

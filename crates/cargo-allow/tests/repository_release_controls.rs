@@ -22,16 +22,8 @@ fn repo_root() -> Result<PathBuf, Box<dyn Error>> {
     Ok(root.to_path_buf())
 }
 
-fn release_workflows(root: &Path) -> Result<Vec<(String, String)>, Box<dyn Error>> {
-    let mut workflows = Vec::new();
-    for name in ["release.yml", "release-authorized.yml"] {
-        let path = root.join(".github/workflows").join(name);
-        if path.exists() {
-            workflows.push((name.to_string(), fs::read_to_string(&path)?));
-        }
-    }
-    require(!workflows.is_empty(), "no release workflow under test")?;
-    Ok(workflows)
+fn release_workflow(root: &Path) -> Result<String, io::Error> {
+    fs::read_to_string(root.join(".github/workflows/release.yml"))
 }
 
 /// #3790: token-access inventory. Exactly the two known steps may reference
@@ -42,12 +34,7 @@ fn test_token_access_points_are_inventoried_and_gated() -> Result<(), Box<dyn Er
     if !root.join(".git").exists() {
         return Ok(());
     }
-    let workflows = release_workflows(&root)?;
-    let release = workflows
-        .iter()
-        .find(|(name, _)| name == "release.yml")
-        .map(|(_, content)| content.clone())
-        .ok_or_else(|| io::Error::other("release.yml is absent"))?;
+    let release = release_workflow(&root)?;
     let references: Vec<&str> = release
         .lines()
         .filter(|line| line.contains("secrets.CARGO_REGISTRY_TOKEN"))
@@ -85,12 +72,7 @@ fn test_skipped_or_failed_gate_cannot_reach_token() -> Result<(), Box<dyn Error>
     if !root.join(".git").exists() {
         return Ok(());
     }
-    let workflows = release_workflows(&root)?;
-    let release = workflows
-        .iter()
-        .find(|(name, _)| name == "release.yml")
-        .map(|(_, content)| content.clone())
-        .ok_or_else(|| io::Error::other("release.yml is absent"))?;
+    let release = release_workflow(&root)?;
     require(
         release.contains("needs: [preflight, authorize, source-candidate-smoke-aggregate]"),
         "publish must need preflight, the authorize gate, and the #2267 \
@@ -139,12 +121,7 @@ fn test_rehearsal_stays_zero_token_and_recovery_stays_separate() -> Result<(), B
     if !root.join(".git").exists() {
         return Ok(());
     }
-    let workflows = release_workflows(&root)?;
-    let release = workflows
-        .iter()
-        .find(|(name, _)| name == "release.yml")
-        .map(|(_, content)| content.clone())
-        .ok_or_else(|| io::Error::other("release.yml is absent"))?;
+    let release = release_workflow(&root)?;
     // The authorize job marks rehearsal dispatches explicitly; token steps
     // require valid or recovery, so rehearsal (both false) stays zero-token.
     require(

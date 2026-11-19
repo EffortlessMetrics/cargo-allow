@@ -345,8 +345,7 @@
       "capability": "provenance-manifest",
       "platform": null,
       "evidence_current_main": [
-        ".github/workflows/release.yml",
-        ".github/workflows/release-authorized.yml"
+        ".github/workflows/release.yml"
       ],
       "reproduction_command_or_query": "grep -ho \"uses: [^ ]*\" .github/workflows/release.yml | sort -u",
       "reproduction_result": "AlreadyFixed",
@@ -356,8 +355,8 @@
       "severity": "none",
       "failure_class": "stale-issue-premise",
       "next_action": "Owner closes #1896 against the SHA-pinned release surfaces.",
-      "closure_proof_required": "Issue closed citing the unique uses: inventory of the release workflows.",
-      "claim_boundary": "release.yml and release-authorized.yml pin every third-party action to a provider commit SHA with a version comment (checkout, rust-toolchain, upload/download-artifact, attest-build-provenance, action-gh-release, setup-python); ordinary ci.yml lanes retain dtolnay toolchain-selector refs, which select toolchain versions and are outside the release-surface pin claim."
+      "closure_proof_required": "Issue closed citing the unique uses: inventory of the active release workflow.",
+      "claim_boundary": "The active release.yml pins every third-party action to a provider commit SHA with a version comment (checkout, rust-toolchain, upload/download-artifact, attest-build-provenance, action-gh-release, setup-python); ordinary ci.yml lanes retain dtolnay toolchain-selector refs, which select toolchain versions and are outside the release-surface pin claim."
     },
     {
       "id": "R12",
@@ -818,8 +817,7 @@
       "evidence_current_main": [
         "docs/release/release-authorization-v1.md",
         "docs/release/release-authorization-custody-v1.md",
-        ".github/workflows/release-authorized.yml",
-        "release/authorize-v0.2.0.json"
+        ".github/workflows/release.yml"
       ],
       "reproduction_command_or_query": "query: publication authorization is owner authority under #3760; this ledger records the disposition law only",
       "reproduction_result": "NeedsOperatorProof",
@@ -830,7 +828,7 @@
       "failure_class": "authorization-boundary",
       "next_action": "The owner grants explicit release authorization under #3760 and the authorized publication executes under #2502 through the custody protocol (#3927).",
       "closure_proof_required": "The owner's explicit authorization event and the typed authorization records consumed by the custody protocol for the exact operation identity.",
-      "claim_boundary": "This ledger classifies and routes work; it cannot create, validate, modify, or convey release authorization. Authorization belongs to the owner under #3760; existing authorization surfaces were referenced read-only."
+      "claim_boundary": "This ledger classifies and routes work; it cannot create, validate, modify, or convey release authorization. Authorization belongs to the owner under #3760; the retired #3729 namespace marker is historical evidence only and provides no final stable authority."
     },
     {
       "id": "R31",
@@ -1016,7 +1014,7 @@
       "evidence_current_main": [
         "docs/release/release-operation-authority-v1.md",
         "docs/release/release-operation-child-inventory-v1.md",
-        ".github/workflows/release-authorized.yml",
+        ".github/workflows/release.yml",
         "crates/allow-report/src/artifacts/release_identity_v1.rs",
         "crates/allow-report/src/artifacts/release_operation_authority_v1.rs"
       ],
@@ -1028,8 +1026,8 @@
       "severity": "none",
       "failure_class": "stale-issue-premise",
       "next_action": "Owner closes the landed identity/cutover issues against the operation authority and child inventory.",
-      "closure_proof_required": "Issues closed citing the authority, child inventory, and the release-authorized workflow.",
-      "claim_boundary": "The canonical operation identity, child bindings (custody, journal, checkpoint, lease, tag transaction), and the workflow cutover are landed; release-sensitive PRs route through the exact-subject rehearsal."
+      "closure_proof_required": "Issues closed citing the authority, child inventory, and the active tag workflow.",
+      "claim_boundary": "The canonical operation identity, child bindings (custody, journal, checkpoint, lease, tag transaction), and the typed tag-workflow consumers are landed; the historical namespace rail is not a current cutover or authorization producer; release-sensitive PRs route through the exact-subject rehearsal."
     },
     {
       "id": "R39",

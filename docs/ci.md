@@ -419,10 +419,10 @@ three selected shared rows from the V2 topology and enforces a shared-first,
 commit/tree/topology-bound read-only registry preflight proving
 `AlreadyPublishedExact` and checksum equality. A missing or malformed result
 fails closed. With that precondition
-satisfied, the expected missing uploads are the ten cargo-allow-family rows. The separate
-[authorized namespace workflow](../.github/workflows/release-authorized.yml)
-publishes twelve `0.1.0` namespace rows and deliberately does not trigger the
-cargo-allow tag rail.
+satisfied, the expected missing uploads are the ten cargo-allow-family rows.
+The distinct publication of twelve `0.1.0` namespace rows is historical
+([reconciliation](release/README.md#historical-namespace-publication)).
+No main push can authorize or restart it.
 
 See [Release Operations](release/README.md) for Trusted Publishing setup, manual
 dry-run via workflow dispatch, and the manual publish fallback.

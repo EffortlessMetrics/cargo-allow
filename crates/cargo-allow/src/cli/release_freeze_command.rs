@@ -2284,7 +2284,7 @@ mod tests {
             "subject_topology_digest": subject.topology_digest,
             "aggregate_status": "Incomplete",
             "authorization_boundary": {
-                "authorization_artifact": "release/authorize-v0.2.0.json",
+                "authorization_artifact": "out-of-tree:release-authorization",
                 "schema": "cargo-allow.release-authorization.v1",
                 "named_release": "v0.2.0",
                 "candidate_commit": subject.commit,
@@ -2397,6 +2397,32 @@ mod tests {
             &rehearsal_value(9, "Complete"),
         );
         assert!(authorized.iter().any(|note| note.starts_with("fail:")));
+
+        // The historical marker or another candidate cannot act as a
+        // current authorization-boundary record even at the same release tag.
+        for (field, replacement) in [
+            ("authorization_artifact", "release/authorize-v0.2.0.json"),
+            (
+                "candidate_commit",
+                "ffffffffffffffffffffffffffffffffffffffff",
+            ),
+        ] {
+            let mut legacy = rehearsal_value_for(&subject, 9, "Incomplete");
+            legacy
+                .get_mut("authorization_boundary")
+                .and_then(serde_json::Value::as_object_mut)
+                .ok_or("rehearsal fixture is missing its boundary")?
+                .insert(field.to_string(), serde_json::json!(replacement));
+            assert!(
+                bind_evidence(&subject, FreezeEvidenceRole::Rehearsal, &legacy)
+                    .iter()
+                    .any(
+                        |note| note.starts_with("fail:rehearsal authorization_boundary.")
+                            && note.contains(field)
+                    ),
+                "{field} must not substitute historic or foreign evidence"
+            );
+        }
 
         // Subject binding (#4175): a same-version receipt from another
         // source subject must not read as current. Each documented

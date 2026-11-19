@@ -21,8 +21,7 @@ const CANDIDATE_RELEASE_VERSION: &str = "0.2.0";
 const PACKAGE_TOPOLOGY: &str = "policy/product-package-topology-v2.toml";
 
 const RELEASE_WORKFLOW: &str = ".github/workflows/release.yml";
-const AUTHORIZED_RELEASE_WORKFLOW: &str = ".github/workflows/release-authorized.yml";
-const RELEASE_AUTHORIZATION_ARTIFACT: &str = "release/authorize-v0.2.0.json";
+const HISTORICAL_NAMESPACE_MARKER: &str = "release/authorize-v0.2.0.json";
 const RELEASE_DOC: &str = "docs/release/README.md";
 const CI_DOC: &str = "docs/ci.md";
 const RELEASE_TOPOLOGY_PUBLISHER: &str = "scripts/release-topology-publisher.py";
@@ -87,16 +86,15 @@ fn release_workflow_exists_and_lists_publish_order() {
             && !workflow.contains("crates-io-auth-action@"),
         "{RELEASE_WORKFLOW} should use the token-backed crates.io authentication contract"
     );
-    for required_path in [
-        RELEASE_WORKFLOW,
-        AUTHORIZED_RELEASE_WORKFLOW,
-        RELEASE_AUTHORIZATION_ARTIFACT,
-    ] {
-        assert!(
-            release_doc.contains(required_path),
-            "{RELEASE_DOC} should document release authority `{required_path}`"
-        );
-    }
+    assert!(
+        release_doc.contains(RELEASE_WORKFLOW),
+        "{RELEASE_DOC} should document the stable tag workflow"
+    );
+    assert!(
+        release_doc.contains(HISTORICAL_NAMESPACE_MARKER)
+            && release_doc.contains("historical event only"),
+        "{RELEASE_DOC} must describe the retired marker as historical evidence only"
+    );
     assert!(
         workflow.contains(RELEASE_TOPOLOGY_PUBLISHER),
         "{RELEASE_WORKFLOW} should delegate publication to the topology publisher"
@@ -176,13 +174,6 @@ fn release_workflow_exists_and_lists_publish_order() {
         "topology receipt checksums should be canonicalized and tested across recovery"
     );
 
-    let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);
-    assert!(
-        authorized.contains("--mode namespace")
-            && !authorized.contains("Push exact v0.2.0 tag")
-            && !authorized.contains("gh workflow run release.yml"),
-        "{AUTHORIZED_RELEASE_WORKFLOW} must stop after namespace publication"
-    );
     assert_eq!(
         (namespace_rows.len(), cargo_candidate_rows.len()),
         (12, 13),
@@ -321,13 +312,6 @@ fn topology_publish_receipt_preserves_incident_recovery_boundary() {
             && workflow.contains("RELEASE_TREE"),
         "shared registry preflight should emit identity-bound evidence"
     );
-    let authorized = read_workspace_file(&root, AUTHORIZED_RELEASE_WORKFLOW);
-    assert!(
-        authorized.contains("secrets.CARGO_REGISTRY_TOKEN")
-            && authorized.contains("--mode namespace")
-            && !authorized.contains("crates-io-auth-action@"),
-        "namespace publication should use the shared token-backed publisher"
-    );
 }
 
 #[test]
@@ -372,20 +356,18 @@ fn checkpoint_sentinel_refuses_anything_but_the_clean_incident_state() {
     // absent field) renders a checkpoint over an unsettled publish.
     let clean_predicate = format!("receipt_document.get(\"incident_state\") != \"{clean}\"");
     let inverted_predicate = "receipt_document.get(\"incident_state\") is not None";
-    for workflow_path in [RELEASE_WORKFLOW, AUTHORIZED_RELEASE_WORKFLOW] {
-        let workflow = read_workspace_file(&root, workflow_path);
-        assert!(
-            !workflow.contains(inverted_predicate),
-            "{workflow_path} must not treat a present incident_state as an incident: \
-             the clean sentinel is the string \"{clean}\", which is not None"
-        );
-        assert_eq!(
-            workflow.matches(&clean_predicate).count(),
-            1,
-            "{workflow_path} should gate the post-observation checkpoint on exactly one \
-             comparison against the schema's clean sentinel"
-        );
-    }
+    let workflow = read_workspace_file(&root, RELEASE_WORKFLOW);
+    assert!(
+        !workflow.contains(inverted_predicate),
+        "{RELEASE_WORKFLOW} must not treat a present incident_state as an incident: \
+         the clean sentinel is the string \"{clean}\", which is not None"
+    );
+    assert_eq!(
+        workflow.matches(&clean_predicate).count(),
+        1,
+        "{RELEASE_WORKFLOW} should gate the post-observation checkpoint on exactly one \
+         comparison against the schema's clean sentinel"
+    );
 }
 
 #[test]

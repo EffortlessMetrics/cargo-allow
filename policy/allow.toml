@@ -1104,28 +1104,6 @@ line = 1
 column = 1
 
 [[allow]]
-id = "allow-0521"
-kind = "non_rust_file"
-family = "ci_declarative"
-path = ".github/workflows/release-authorized.yml"
-owner = "core/release"
-classification = "authorized_release_workflow"
-reason = "Exact-authorization workflow that proves the selected release candidate, publishes the namespace graph, and pushes the tag only after verification; publication remains token-gated and separately authorized."
-evidence = ["issue:3389", "issue:3390", "doc:docs/release/README.md"]
-created = "2026-08-11"
-review_after = "2027-02-11"
-
-[allow.selector]
-ast_kind = "tracked_file"
-symbol = ".github/workflows/release-authorized.yml"
-target_fingerprint = "yml"
-glob = ".github/workflows/release-authorized.yml"
-
-[allow.last_seen]
-line = 1
-column = 1
-
-[[allow]]
 id = "allow-0522"
 kind = "non_rust_file"
 family = "release_script"
@@ -12963,9 +12941,9 @@ kind = "non_rust_file"
 family = "configuration"
 path = "release/authorize-v0.2.0.json"
 owner = "@EffortlessMetrics/maintainers"
-classification = "reviewed_exception"
-reason = "Release authorization payload for 0.2.0 candidate binding"
-evidence = ["issue:3708"]
+classification = "historical_release_evidence"
+reason = "Preserves the retired #3729 namespace marker byte-for-byte as incident evidence; no workflow can consume it as authority."
+evidence = ["issue:3733", "issue:3734", "doc:docs/release/README.md"]
 created = "2026-08-24"
 review_after = "2026-11-22"
 
@@ -24906,6 +24884,28 @@ ast_kind = "tracked_file"
 symbol = "scripts/fixtures/changie-0.2.0-precut-bullets.txt"
 target_fingerprint = "txt"
 glob = "scripts/fixtures/changie-0.2.0-precut-bullets.txt"
+
+[allow.last_seen]
+line = 1
+column = 1
+
+[[allow]]
+id = "allow-3734-namespace-incident-evidence"
+kind = "non_rust_file"
+family = "documentation"
+path = "docs/release/evidence/namespace-publication-incident.v1.json"
+owner = "core/release"
+classification = "historical_release_evidence"
+reason = "Retain the byte-exact #3729 namespace publication receipts independent of expiring Actions artifacts; no current authorization."
+evidence = ["issue:3733", "issue:3734"]
+created = "2026-11-19"
+review_after = "2027-02-17"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = "docs/release/evidence/namespace-publication-incident.v1.json"
+target_fingerprint = "json"
+glob = "docs/release/evidence/namespace-publication-incident.v1.json"
 
 [allow.last_seen]
 line = 1

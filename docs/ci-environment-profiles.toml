@@ -107,16 +107,6 @@ result_posture = "release-gate"
 claim = "Installed release behavior on the declared platform matrix"
 
 [[profile]]
-id = "authorized-release-namespace"
-workflow = ".github/workflows/release-authorized.yml"
-job = "publish-namespace"
-posture = "FixedMajorRunnerObservation"
-runner = "ubuntu-24.04"
-toolchain = "stable"
-result_posture = "authorized-release"
-claim = "Authorized namespace release operation in the observed fixed-label environment"
-
-[[profile]]
 id = "ub-review-contract"
 workflow = ".github/workflows/ub-review.yml"
 job = "changie-contract"

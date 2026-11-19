@@ -200,9 +200,6 @@ class TestReceiptOutput(unittest.TestCase):
         self.assertNotIn("CARGO_REGISTRY_TOKEN", environment.value_reads)
 
     def test_final_token_observation_controls_builder_and_written_receipt(self) -> None:
-        authorization = self.root / REHEARSAL.AUTHORIZATION_ARTIFACT
-        authorization.parent.mkdir(parents=True)
-        authorization.write_bytes((ROOT / REHEARSAL.AUTHORIZATION_ARTIFACT).read_bytes())
         output = self.sandbox / "final-receipt.json"
 
         for boundary in ("workflow", "checkout"):
@@ -250,7 +247,13 @@ class TestReceiptOutput(unittest.TestCase):
                                     if phase in {"authorization_boundary", "workflow_graph_permissions"}:
                                         continue
                                     name = "run_phase_" + ("docs_and_support" if phase == "docs_and_support_identity" else phase)
-                                    stack.enter_context(mock.patch.object(REHEARSAL, name, return_value="Complete"))
+                                    if phase == "release_identity":
+                                        def selected(receipt, **kwargs):
+                                            receipt["release_identity"] = {"tag": "v0.2.0"}
+                                            return "Complete"
+                                        stack.enter_context(mock.patch.object(REHEARSAL, name, side_effect=selected))
+                                    else:
+                                        stack.enter_context(mock.patch.object(REHEARSAL, name, return_value="Complete"))
                                 stack.enter_context(mock.patch.object(
                                     REHEARSAL, "run_phase_workflow_graph_permissions", side_effect=workflow,
                                 ))
@@ -701,7 +704,7 @@ class TestEscapedDefectCorpus(unittest.TestCase):
             },
             "workflow_graph_permissions": {
                 "top_level_read_scoped": True, "top_level_write_scoped": True,
-                "github_release_scoped": True, "authorized_namespace_mode": True,
+                "github_release_scoped": True, "legacy_namespace_route_retired": True,
             },
             "publisher_state_machine": {
                 "fixture_matrix": "scripts/test-release-topology-publisher.py",
@@ -861,6 +864,48 @@ class TestEscapedDefectCorpus(unittest.TestCase):
         self.assertNotIn("escaped_defect_corpus", self.receipt)
 
 
+class TestNamespaceRetirement(unittest.TestCase):
+    def test_live_inventory_and_negative_routes(self) -> None:
+        self.assertTrue(REHEARSAL.legacy_namespace_route_retired(ROOT))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            active = root / ".github/workflows"
+            action = root / ".github/actions/indirect/action.yml"
+            active.mkdir(parents=True)
+            action.parent.mkdir(parents=True)
+            (active / "release.yml").write_text(
+                'on: {push: {tags: ["v*"]}}', encoding="utf-8",
+            )
+            artifact = root / REHEARSAL.HISTORICAL_NAMESPACE_MARKER
+            artifact.parent.mkdir()
+            artifact.write_text("not an authorization", encoding="utf-8")
+            self.assertTrue(REHEARSAL.legacy_namespace_route_retired(root))
+            controls = (
+                (active / "renamed.yml", 'on: {push: {paths: ["' +
+                    REHEARSAL.HISTORICAL_NAMESPACE_MARKER + '"]}}'),
+                (active / "broadened.yaml", "on: push\njobs: {}\n# --mode namespace"),
+                (active / "release-authorized.yml", "on: push"),
+                (action, "runs: {using: composite}\n# CARGO_REGISTRY_TOKEN"),
+            )
+            for path, source in controls:
+                with self.subTest(path=path):
+                    path.write_text(source, encoding="utf-8")
+                    self.assertFalse(REHEARSAL.legacy_namespace_route_retired(root))
+                    path.unlink()
+            self.assertTrue(REHEARSAL.legacy_namespace_route_retired(root))
+
+    def test_authorization_boundary_does_not_read_historical_marker(self) -> None:
+        receipt = {"commit_sha": "b" * 40, "release_identity": {"tag": "v0.2.0"}}
+        with mock.patch.object(Path, "read_text") as read:
+            result = REHEARSAL.run_phase_authorization_boundary(receipt)
+            read.assert_not_called()
+        self.assertEqual(result, "Incomplete")
+        boundary = receipt["authorization_boundary"]
+        self.assertEqual(boundary["authorization_artifact"], REHEARSAL.AUTHORIZATION_ARTIFACT)
+        self.assertEqual(boundary["candidate_commit"], receipt["commit_sha"])
+        self.assertFalse(boundary["token_present"])
+
+
 class TestReleaseRehearsal(unittest.TestCase):
     def test_characterization_cannot_report_complete(self) -> None:
         receipt = REHEARSAL.build_rehearsal_receipt("HEAD")
@@ -902,7 +947,7 @@ class TestReleaseRehearsal(unittest.TestCase):
             self.assertTrue(workflow["top_level_read_scoped"])
             self.assertTrue(workflow["top_level_write_scoped"])
             self.assertTrue(workflow["github_release_scoped"])
-            self.assertTrue(workflow["authorized_namespace_mode"])
+            self.assertTrue(workflow["legacy_namespace_route_retired"])
 
         authorization = receipt.get("authorization_boundary")
         self.assertEqual(phases["authorization_boundary"], "Incomplete")

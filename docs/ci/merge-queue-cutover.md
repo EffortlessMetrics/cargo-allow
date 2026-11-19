@@ -74,7 +74,7 @@ additional required context until its obligation has a reviewed disposition.
 | Model-backed `ub-review.yml` / `review` | Actions job removed | Review and disposition remain in-session obligations under #3977/#4252/#4255. Missing, quota-limited or failed review is not clean. |
 | Feature-configuration full union and sensor-burden audit | Explicit `workflow_dispatch` only | Separate deep/audit requests; no recurring main proof or development-event bridge. |
 | Floor-receipt regeneration | Existing explicit dispatch | Existing exact-source regeneration purpose/owner retained. |
-| `release.yml`, `release-authorized.yml` | Existing tag/authorization-path triggers and release producers unchanged | Separate release authority, immutable versions, package/MSRV/platform/freeze requirements remain. |
+| `release.yml` | Existing tag trigger and release producer unchanged; the historical namespace file-push route is retired (#3734) | Separate release authority, immutable versions, package/MSRV/platform/freeze requirements remain. |
 | Campaign closeout issue guard | Existing issue-close observation | Does not request ordinary product qualification. |
 
 The queue result refuses missing, extra, malformed, failed, cancelled, skipped
