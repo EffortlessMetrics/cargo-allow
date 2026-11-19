@@ -18,6 +18,7 @@ pub struct InitSummaryFactsV1 {
     pub dry_run: bool,
     pub force: bool,
     pub path_existed: bool,
+    pub in_git_worktree: bool,
 }
 
 pub fn core_command_summary_from_init(
@@ -31,6 +32,7 @@ pub fn core_command_summary_from_init(
         dry_run,
         force,
         path_existed,
+        in_git_worktree,
     } = facts;
     let action = if dry_run {
         if path_existed && !force {
@@ -95,7 +97,17 @@ pub fn core_command_summary_from_init(
                     "does not execute repository code or external evidence tools".to_string(),
                 ],
             },
-            Some(
+            Some(if in_git_worktree {
+                CoreCommandActionV1::decision(
+                    "init.ensure_policy_tracked",
+                    "Make sure the starter policy is tracked by Git before checking",
+                )
+                .with_contract(
+                    "the default Git-tracked inventory can omit an untracked starter policy",
+                    "the operator ensures the policy is in the Git index for the local check",
+                    "initialization does not stage or commit files or prove repository posture",
+                )
+            } else {
                 CoreCommandActionV1::command(
                     "init.full_no_new_check",
                     "Run the enforcing no-new check",
@@ -113,8 +125,8 @@ pub fn core_command_summary_from_init(
                     "initialization changes policy bytes but does not establish repository posture",
                     "the current source tree is evaluated under the no-new gate",
                     "source-syntax evaluation does not prove compiled or runtime correctness",
-                ),
-            ),
+                )
+            }),
         )
     };
     build_core_command_summary(CoreCommandSummaryInputV1 {

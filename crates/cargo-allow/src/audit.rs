@@ -7,10 +7,10 @@ mod audit_args;
 pub(crate) use audit_args::ReportArgs;
 
 use crate::{
-    EvidenceReportSummary, EvidenceValidationMode, ProfileArg, ReportRenderArgs,
+    EvidenceReportSummary, ProfileArg, ReportRenderArgs,
     evidence_inventory::current_evidence_source_tree_files, load_compat_world,
-    load_read_only_world, policy_baseline_debt_entries, print_report,
-    reject_compat_only_kind_filter, report_config, reporting::SourceTreeReportContext, spec_system,
+    policy_baseline_debt_entries, reject_compat_only_kind_filter, report_config,
+    reporting::SourceTreeReportContext, spec_system,
 };
 
 pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
@@ -43,30 +43,31 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
 
     crate::emit_scan_status("audit", args.format, args.output.as_deref(), None);
 
-    let world = if args.compat {
+    let (world, preview_missing_policy) = if args.compat {
         load_compat_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
             args.kind.as_deref(),
             args.include_untracked,
         )
-        .map(
-            |(root, cfg, findings, inventory_facts)| crate::world::CoreWorldContext {
-                root,
-                cfg,
-                findings,
-                inventory_facts,
-                federation: crate::world::default_federation_evaluation(),
-            },
-        )?
+        .map(|(root, cfg, findings, inventory_facts)| {
+            (
+                crate::world::CoreWorldContext {
+                    root,
+                    cfg,
+                    findings,
+                    inventory_facts,
+                    federation: crate::world::default_federation_evaluation(),
+                },
+                false,
+            )
+        })?
     } else {
-        load_read_only_world(
+        crate::world::load_audit_world(
             args.root.root.as_deref(),
             args.config.as_deref(),
-            false,
             args.kind.as_deref(),
             args.include_untracked,
-            EvidenceValidationMode::ReportOnly,
         )?
     };
     let crate::world::CoreWorldContext {
@@ -74,8 +75,13 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         cfg,
         findings,
         mut inventory_facts,
-        federation: _federation,
+        federation,
     } = world;
+    let policy_commands_unavailable = args.compat
+        || args.config.is_some()
+        || inventory_facts.policy_digest_text().is_none()
+        || federation.registry_validity
+            == allow_policy::federation::FederationRegistryValidity::Invalid;
     // #4576 review: under --compat the run loads a legacy policy file, not
     // the canonically discovered one; protect the file actually selected
     // for this invocation.
@@ -118,23 +124,27 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         &outcomes,
         evidence_source_tree_files.as_ref(),
     );
-    print_report(ReportRenderArgs {
-        command: "audit",
-        format: args.format,
-        baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
-        evidence,
-        findings: &findings,
-        outcomes: &projected_outcomes,
-        failed: false,
-        output: args.output.as_deref(),
-        root: &root,
-        inventory_facts,
-        inventory_source_identity: None,
-        // `audit` never fails a run; its pass is advisory by definition.
-        enforcement: Some(allow_report::RECEIPT_ENFORCEMENT_ADVISORY),
-        denied_classes: None,
-        artifact_emission: args.artifact_dir.as_deref(),
-    })?;
+    crate::core_command_router::print_audit_report(
+        ReportRenderArgs {
+            command: "audit",
+            format: args.format,
+            baseline_debt_entries: policy_baseline_debt_entries(&report_cfg),
+            evidence,
+            findings: &findings,
+            outcomes: &projected_outcomes,
+            failed: false,
+            output: args.output.as_deref(),
+            root: &root,
+            inventory_facts,
+            inventory_source_identity: None,
+            // `audit` never fails a run; its pass is advisory by definition.
+            enforcement: Some(allow_report::RECEIPT_ENFORCEMENT_ADVISORY),
+            denied_classes: None,
+            artifact_emission: args.artifact_dir.as_deref(),
+        },
+        preview_missing_policy,
+        policy_commands_unavailable,
+    )?;
 
     if let (Some(artifact_dir), Some(emit_raw)) = (&args.artifact_dir, &args.emit) {
         // The identical mistake on `check` exits 2 with a typed Usage error
@@ -152,6 +162,7 @@ pub(crate) fn cmd_audit(args: &ReportArgs) -> CargoAllowResult<()> {
         let mut artifact_context =
             source_ctx.report(Some(policy_baseline_debt_entries(&report_cfg)));
         evidence.apply_to(&mut artifact_context);
+        artifact_context.audit_policy_commands_unavailable = policy_commands_unavailable;
         artifact_context.tool_version = Some(env!("CARGO_PKG_VERSION"));
         let emit_ctx = artifact_emit::ArtifactEmitContext {
             command: "audit",

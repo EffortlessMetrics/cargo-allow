@@ -61,7 +61,8 @@ cargo run -p cargo-allow -- doctor
 
 The source-candidate binary can project the bounded adoption plan before the
 first policy decision. It is read-only and does not execute the recommended
-command:
+command. With no policy, use the plan and audit as advisory guidance, not as
+evidence that an enforcing CI gate is ready:
 
 ```bash
 cargo run -p cargo-allow -- adopt
@@ -205,7 +206,9 @@ bootstrap does exactly that.
 | `html` | A static report for maintainers or auditors. |
 | `sarif` | Code-scanning integrations; it contains source-tree outcomes, not build or proof-tool results. |
 
-Write a non-terminal report to a file with `--output`:
+Write a non-terminal report to a file with `--output`. You can run the audit
+example now. The SARIF check below is a format example to use after completing
+[steps 4](#4-choose-one-bootstrap-path) and [5](#5-run-the-no-new-check):
 
 ```bash
 cargo-allow audit --format html --output target/cargo-allow/audit.html
@@ -219,9 +222,9 @@ CLI alias for interactive use.
 
 When the audit summary shows no findings (JSON markers including
 `"command": "audit"`, `"findings": 0`, and `"new": 0`), **do not manufacture baseline debt**.
-Wire CI later with `check --mode no-new` only after you deliberately create a
-policy (`init` for a strict empty ledger, or keep scanning advisory until you
-need a gate).
+Keep scanning in advisory mode until you need a gate. To enable CI enforcement,
+choose the `init` path in [step 4](#4-choose-one-bootstrap-path) and pass the local
+no-new check in [step 5](#5-run-the-no-new-check) first.
 
 ### Branch B — retained findings
 
@@ -252,20 +255,26 @@ Useful when the tree is clean or you want to receipt findings one-by-one with
 
 **Set the first-run expectation before you choose.** On an ordinary existing
 repository, `init` followed by `check --mode no-new` is expected to be red:
-the strict ledger receipts nothing yet, so every retained finding reports as
-`new: unreceipted` and the check fails. That red is the tool working as
-designed, not a broken install — it is the list of decisions still to make.
-If you want the first gate green while you work through that list, choose
+the strict ledger does not receipt existing source exceptions. Each retained
+finding reports as `new: unreceipted` and the check fails. That red is the tool
+working as designed, not a broken install — it is the list of decisions still
+to make. If you want the first gate green while you work through that list, choose
 `propose` (reviewed `baseline_debt`) instead; if you stay on `init`, expect
 to receipt findings deliberately until the check turns green.
 
-Both bootstrap paths seed one entry: the ledger's receipt for itself. The
-policy file is a tracked non-Rust file, so once it is committed it appears in
-its own inventory; without that receipt the first `check --mode no-new` after
+On the 0.2.0 source candidate, both bootstrap paths seed a receipt for the
+ledger itself. Once the policy file is tracked, it appears in its own non-Rust
+inventory. Without that receipt, the first `check --mode no-new` after
 adoption would fail on `policy/allow.toml` rather than on your code. It is
 recorded as `classification = "source_exception_policy"` with a `review_after`
 date, not as `baseline_debt` — the ledger is a governance record, not retained
 debt. It is not generated debt and does not expire.
+
+Published `0.1.11` does not seed this receipt on `init`. If the first check
+after tracking the starter policy flags `policy/allow.toml` itself, run
+`cargo-allow worklist --status new` and review that exact configuration item
+before accepting a narrow exception. Do not remove the policy or exclude
+configuration files just to pass.
 
 ### `propose` — existing debt (preview, then write)
 
@@ -317,14 +326,16 @@ spec-system profile, and federation precedence contract is in
 ## 5. Run the no-new check
 
 Prerequisite: `policy/allow.toml` must exist from step 4's `init` or
-`propose --write` path, unless you pass an explicit `--config` path.
+`propose --write` path, unless you pass an explicit `--config` path. Run
+`git add policy/allow.toml` and commit the policy first (use the actual policy
+path if it differs). Then run the check locally from the repository root. Enable
+enforcement in CI only after it passes on your intended baseline.
 
 ```bash
 cargo-allow check --mode no-new
 ```
 
-Passing baseline (after `propose --write` or an empty `init` ledger with no new
-debt) includes:
+A passing baseline includes:
 
 ```text
 Result: passed (enforcing)

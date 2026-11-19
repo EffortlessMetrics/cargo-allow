@@ -89,12 +89,34 @@ pub(crate) fn print_report(args: ReportRenderArgs<'_>) -> CargoAllowResult<()> {
     print_report_with_summary_config(args, SUMMARY_OUTPUT.get())
 }
 
+pub(crate) fn print_audit_report(
+    args: ReportRenderArgs<'_>,
+    preview_missing_policy: bool,
+    policy_commands_unavailable: bool,
+) -> CargoAllowResult<()> {
+    render_report_with_summary_config(
+        args,
+        SUMMARY_OUTPUT.get(),
+        preview_missing_policy,
+        policy_commands_unavailable,
+    )
+}
+
 fn print_report_with_summary_config(
     args: ReportRenderArgs<'_>,
     summary_config: Option<&SummaryOutputConfig>,
 ) -> CargoAllowResult<()> {
-    let summary = build_report_summary(&args)?;
-    let detail = render_detail(&args);
+    render_report_with_summary_config(args, summary_config, false, false)
+}
+
+fn render_report_with_summary_config(
+    args: ReportRenderArgs<'_>,
+    summary_config: Option<&SummaryOutputConfig>,
+    preview_missing_policy: bool,
+    policy_commands_unavailable: bool,
+) -> CargoAllowResult<()> {
+    let summary = build_report_summary_with_policy_commands(&args, policy_commands_unavailable)?;
+    let detail = render_detail(&args, preview_missing_policy, policy_commands_unavailable);
     let rendered = if args.format == OutputFormat::Human {
         format!("{}\n{detail}", render_core_command_summary_human(&summary))
     } else {
@@ -326,19 +348,34 @@ pub(crate) struct ReportSummaryFacts<'a> {
 }
 
 fn build_report_summary(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreCommandSummaryV1> {
+    build_report_summary_with_policy_commands(args, false)
+}
+
+fn build_report_summary_with_policy_commands(
+    args: &ReportRenderArgs<'_>,
+    policy_commands_unavailable: bool,
+) -> CargoAllowResult<CoreCommandSummaryV1> {
     build_report_summary_from_facts(ReportSummaryFacts {
         command: args.command,
         root: args.root,
         inventory_facts: args.inventory_facts,
         failed: args.failed,
         advisory_count: report_advisory_count(args.outcomes, args.evidence),
-        subject: report_subject(args)?,
+        subject: report_subject(args, policy_commands_unavailable)?,
         artifact_emission: args.artifact_emission,
     })
 }
 
 pub(crate) fn build_report_summary_from_facts(
     facts: ReportSummaryFacts<'_>,
+) -> CargoAllowResult<CoreCommandSummaryV1> {
+    build_report_summary_projection(facts, false)
+}
+
+/// Reproduce the published RC.1 projection only for retained evidence readback.
+pub(crate) fn build_report_summary_projection(
+    facts: ReportSummaryFacts<'_>,
+    legacy_rc1_audit: bool,
 ) -> CargoAllowResult<CoreCommandSummaryV1> {
     let completeness = summary_completeness(&facts.inventory_facts);
     let advisory_count = facts.advisory_count;
@@ -400,7 +437,8 @@ pub(crate) fn build_report_summary_from_facts(
                 "doctor remains read-only and does not repair or authorize exceptions",
             ),
         )
-    } else if advisory_count > 0 || facts.failed {
+    } else if (facts.command != "audit" || legacy_rc1_audit) && (advisory_count > 0 || facts.failed)
+    {
         Some(
             CoreCommandActionV1::command(
                 format!("{}.inspect_worklist", facts.command),
@@ -425,27 +463,30 @@ pub(crate) fn build_report_summary_from_facts(
         None
     };
 
+    // RC.1 readback reconstructs its historical recommendation; live audit
+    // never offers an enforcing action based on advisory evidence alone.
     let next_proof =
-        (facts.command == "audit" && completeness == CompletenessV1::Complete).then(|| {
-            CoreCommandActionV1::command(
-                "audit.full_no_new_check",
-                "Run the enforcing no-new check",
-                "cargo-allow",
-                crate::core_command_summary::rooted_command_args(
-                    &root_path,
-                    &[
-                        "check".to_string(),
-                        "--mode".to_string(),
-                        "no-new".to_string(),
-                    ],
-                ),
-            )
-            .with_contract(
-                "audit is informational even when its source inputs are complete",
-                "the current repository is evaluated under the no-new gate",
-                "the source-syntax gate does not prove compiled or runtime correctness",
-            )
-        });
+        (legacy_rc1_audit && facts.command == "audit" && completeness == CompletenessV1::Complete)
+            .then(|| {
+                CoreCommandActionV1::command(
+                    "audit.full_no_new_check",
+                    "Run the enforcing no-new check",
+                    "cargo-allow",
+                    crate::core_command_summary::rooted_command_args(
+                        &root_path,
+                        &[
+                            "check".to_string(),
+                            "--mode".to_string(),
+                            "no-new".to_string(),
+                        ],
+                    ),
+                )
+                .with_contract(
+                    "audit is informational even when its source inputs are complete",
+                    "the current repository is evaluated under the no-new gate",
+                    "the source-syntax gate does not prove compiled or runtime correctness",
+                )
+            });
 
     let subject = facts.subject;
     let mut limitations = vec![
@@ -529,9 +570,12 @@ pub(crate) fn build_report_summary_from_facts(
     })
 }
 
-fn report_subject(args: &ReportRenderArgs<'_>) -> CargoAllowResult<CoreSourceSubjectV1> {
+fn report_subject(
+    args: &ReportRenderArgs<'_>,
+    policy_commands_unavailable: bool,
+) -> CargoAllowResult<CoreSourceSubjectV1> {
     Ok(report_subject_from_identity(
-        &canonical_report_identity(args)?,
+        &canonical_semantic_identity(&render_detail_json(args, policy_commands_unavailable), None)?,
         args.inventory_facts,
         args.inventory_source_identity,
     ))
@@ -569,10 +613,6 @@ pub(crate) fn report_subject_from_identity(
         paths: Vec::new(),
         limitations,
     }
-}
-
-fn canonical_report_identity(args: &ReportRenderArgs<'_>) -> CargoAllowResult<String> {
-    canonical_semantic_identity(&render_detail_json(args), None)
 }
 
 /// Derive a relocation-stable semantic identity from a command's own JSON
@@ -818,7 +858,11 @@ pub(crate) fn partial_coverage_reason(facts: &crate::InventoryFacts) -> String {
     }
 }
 
-fn render_detail(args: &ReportRenderArgs<'_>) -> String {
+fn render_detail(
+    args: &ReportRenderArgs<'_>,
+    preview_missing_policy: bool,
+    policy_commands_unavailable: bool,
+) -> String {
     let source_context = SourceTreeReportContext::new_with_identity(
         args.root,
         args.inventory_facts,
@@ -827,6 +871,9 @@ fn render_detail(args: &ReportRenderArgs<'_>) -> String {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.audit_policy_commands_unavailable = policy_commands_unavailable;
+    context.audit_bootstrap_preview = preview_missing_policy
+        && summary_completeness(&args.inventory_facts) == CompletenessV1::Complete;
     context.denied_classes = args.denied_classes;
     // #4677: an enforcing check that fails only through the completeness gate
     // has zero blocking outcomes to name. Compose the partial-coverage
@@ -884,7 +931,7 @@ fn render_detail(args: &ReportRenderArgs<'_>) -> String {
     }
 }
 
-fn render_detail_json(args: &ReportRenderArgs<'_>) -> String {
+fn render_detail_json(args: &ReportRenderArgs<'_>, policy_commands_unavailable: bool) -> String {
     let source_context = SourceTreeReportContext::new_with_identity(
         args.root,
         args.inventory_facts,
@@ -893,6 +940,7 @@ fn render_detail_json(args: &ReportRenderArgs<'_>) -> String {
     let mut context = source_context.report(Some(args.baseline_debt_entries));
     args.evidence.apply_to(&mut context);
     context.enforcement = args.enforcement;
+    context.audit_policy_commands_unavailable = policy_commands_unavailable;
     allow_report::render_json_with_context(
         args.command,
         args.findings,

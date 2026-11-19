@@ -227,7 +227,7 @@ pub use artifacts::{
     WhyProofPlan, WhyReport, WhyTargetScan, WhyTargetScanReport, WorklistFilters, WorklistItem,
     WorklistPaging, WritePosture, build_github_pr_check_receipt, compile_candidate_operations,
     manifest_rows_from_reconciled, prepare_candidate_plan, project_github_pr_check,
-    receipt_matches_current, recommend_core_adoption_plan,
+    receipt_matches_current, recommend_core_adoption_plan, reconstruct_rc1_core_adoption_plan,
     render_crates_io_first_publication_bootstrap_receipt_v1,
     render_crates_io_first_publication_bootstrap_receipt_v1_bytes,
     render_crates_io_registry_install_journey_receipt_v1,

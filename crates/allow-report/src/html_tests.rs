@@ -141,9 +141,9 @@ fn html_audit_report_routes_clean_policy_to_no_new_ci() {
     let html = render_html_with_context("audit", &[], &[], false, context("git_tracked"));
 
     assert!(html.contains("<h2>Audit Summary</h2>"));
-    assert!(html.contains(
-        "Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI."
-    ));
+    assert!(
+        html.contains("This advisory audit does not establish that an enforcing gate is ready.")
+    );
     assert!(!html.contains("<h2>Audit Remediation Roadmap</h2>"));
     assert!(!html.contains("<h2>Audit Review Queue</h2>"));
 }

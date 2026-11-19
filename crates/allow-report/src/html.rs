@@ -174,8 +174,14 @@ fn render_audit_summary_html(
         ));
     }
     out.push_str("</tbody></table>\n");
-    if signals.review_items == 0 {
-        out.push_str("<p>Recommended next step: keep <code>cargo-allow check --mode no-new</code> in CI.</p>\n");
+    if context.audit_policy_commands_unavailable && signals.review_items > 0 {
+        out.push_str("<p>Review the findings below and diagnose policy selection before running policy-dependent commands.</p>\n");
+    } else if signals.review_items == 0 {
+        if context.audit_bootstrap_preview {
+            out.push_str("<p>Recommended next step: if you want an enforcing policy, run <code>cargo-allow init --dry-run</code> from the repository root to preview the starter ledger.</p>\n");
+        } else {
+            out.push_str("<p>This advisory audit does not establish that an enforcing gate is ready. Confirm the selected policy and inputs before configuring CI.</p>\n");
+        }
     } else if queue.is_empty() && signals.broken_evidence_links > 0 {
         out.push_str(&format!("<p>Recommended next step: run <code>{}</code> to repair broken local evidence/link references.</p>\n", html_escape(BROKEN_EVIDENCE_LINK_COMMAND)));
     } else if queue.is_empty()
@@ -191,8 +197,10 @@ fn render_audit_summary_html(
             "<p>Recommended next step: review the queue below before tightening policy.</p>\n",
         );
     }
-    render_audit_remediation_roadmap_html(summary, signals, out);
-    render_evidence_repair_queues_html(summary, signals, out);
+    if !context.audit_policy_commands_unavailable {
+        render_audit_remediation_roadmap_html(summary, signals, out);
+        render_evidence_repair_queues_html(summary, signals, out);
+    }
     if !queue.is_empty() {
         out.push_str("<h2>Audit Review Queue</h2>\n<ul>\n");
         for outcome in queue {

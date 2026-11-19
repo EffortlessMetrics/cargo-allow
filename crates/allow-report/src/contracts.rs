@@ -569,6 +569,10 @@ pub struct ReportContext<'a> {
     /// never reference it, so those formats cannot emit ANSI regardless of
     /// what the CLI decides (#2572).
     pub style: crate::style::Style,
+    /// Audited discovery confirmed a missing default policy on a full scan.
+    pub audit_bootstrap_preview: bool,
+    /// The audit cannot bind its default-policy remediation commands.
+    pub audit_policy_commands_unavailable: bool,
     pub inventory: InventoryContext<'a>,
     pub baseline_debt_entries: Option<usize>,
     pub policy_missing_evidence_entries: Option<usize>,
@@ -704,6 +708,8 @@ impl<'a> ReportContext<'a> {
             lifecycle_posture: None,
             denied_classes: None,
             partial_coverage_reason: None,
+            audit_bootstrap_preview: false,
+            audit_policy_commands_unavailable: false,
         }
     }
 

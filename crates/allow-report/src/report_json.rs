@@ -97,8 +97,10 @@ fn render_json_report(
     out.push_str("  \"trend\": {\n");
     out.push_str(&render_advisory_count_fields(&summary, context, "    "));
     out.push_str("  },\n");
-    append_audit_remediation_roadmap_json(command, &summary, context, &mut out);
-    append_evidence_repair_queues_json(&summary, context, &mut out);
+    if command != "audit" || !context.audit_policy_commands_unavailable {
+        append_audit_remediation_roadmap_json(command, &summary, context, &mut out);
+        append_evidence_repair_queues_json(&summary, context, &mut out);
+    }
     if let Some(source_inventory) = crate::render_source_inventory_json(findings, outcomes, "  ") {
         out.push_str("  \"source_inventory\": ");
         out.push_str(&source_inventory);

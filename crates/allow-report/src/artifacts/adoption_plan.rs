@@ -171,6 +171,19 @@ pub struct CoreAdoptionPlanV1 {
 }
 
 pub fn recommend_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1 {
+    recommend_core_adoption_plan_projection(facts, false)
+}
+
+/// Reconstruct the published RC.1 plan for retained evidence, not live guidance.
+#[must_use]
+pub fn reconstruct_rc1_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1 {
+    recommend_core_adoption_plan_projection(facts, true)
+}
+
+fn recommend_core_adoption_plan_projection(
+    facts: &AdoptionFacts,
+    legacy_rc1: bool,
+) -> CoreAdoptionPlanV1 {
     let policy = AdoptionPolicyFacts {
         path: facts
             .policy
@@ -181,7 +194,7 @@ pub fn recommend_core_adoption_plan(facts: &AdoptionFacts) -> CoreAdoptionPlanV1
     };
     let (bootstrap_disposition, primary_kind) = primary_route(facts, &policy);
     let primary_action = action(primary_kind, facts);
-    let follow_up_actions = follow_up_actions(facts, &policy, primary_kind);
+    let follow_up_actions = follow_up_actions(facts, &policy, primary_kind, legacy_rc1);
     let any_action_may_write = primary_action.write_posture == WritePosture::MayWrite
         || follow_up_actions
             .iter()
@@ -469,7 +482,10 @@ fn follow_up_actions(
     facts: &AdoptionFacts,
     policy: &AdoptionPolicyFacts,
     primary_kind: AdoptionActionKind,
+    legacy_rc1: bool,
 ) -> Vec<AdoptionAction> {
+    // CI actions are available only through the healthy primary route. A
+    // diagnostic or preview cannot establish that a later gate is ready.
     let candidates = [
         AdoptionActionKind::ApplyStaleSafeFindingPlan,
         AdoptionActionKind::PreviewRefresh,
@@ -477,22 +493,24 @@ fn follow_up_actions(
         AdoptionActionKind::InspectAllow,
         AdoptionActionKind::PreviewPrune,
         AdoptionActionKind::ReconcileMirror,
-        AdoptionActionKind::RunNoNewCheck,
-        AdoptionActionKind::ConfigureCi,
+    ];
+    let rc1_ci = [
+        ((facts.ci_guidance_completed
+            && policy.state == PolicyState::Valid
+            && facts.inventory.completeness == InventoryCompleteness::Complete)
+            .then_some(AdoptionActionKind::RunNoNewCheck)),
+        (!facts.ci_guidance_completed).then_some(AdoptionActionKind::ConfigureCi),
     ];
     candidates
         .into_iter()
+        .filter(|kind| action_is_relevant(*kind, policy))
+        .chain(rc1_ci.into_iter().flatten().filter(|_| legacy_rc1))
         .filter(|kind| *kind != primary_kind)
-        .filter(|kind| action_is_relevant(*kind, facts, policy))
         .map(|kind| action(kind, facts))
         .collect()
 }
 
-fn action_is_relevant(
-    kind: AdoptionActionKind,
-    facts: &AdoptionFacts,
-    policy: &AdoptionPolicyFacts,
-) -> bool {
+fn action_is_relevant(kind: AdoptionActionKind, policy: &AdoptionPolicyFacts) -> bool {
     match kind {
         AdoptionActionKind::ApplyStaleSafeFindingPlan => policy.stale_entries > 0,
         AdoptionActionKind::PreviewRefresh => policy.location_drift_entries > 0,
@@ -504,18 +522,14 @@ fn action_is_relevant(
             policy.occurrence_headroom_entries > 0 || policy.mirror_divergence
         }
         AdoptionActionKind::ReconcileMirror => policy.mirror_divergence,
-        AdoptionActionKind::RunNoNewCheck => {
-            facts.ci_guidance_completed
-                && policy.state == PolicyState::Valid
-                && facts.inventory.completeness == InventoryCompleteness::Complete
-        }
-        AdoptionActionKind::ConfigureCi => !facts.ci_guidance_completed,
         AdoptionActionKind::ContinueAdvisoryAudit
         | AdoptionActionKind::PreviewInit
         | AdoptionActionKind::PreviewPropose
         | AdoptionActionKind::InspectNewFinding
         | AdoptionActionKind::DiagnoseInventory
-        | AdoptionActionKind::RepairPolicy => false,
+        | AdoptionActionKind::RepairPolicy
+        | AdoptionActionKind::RunNoNewCheck
+        | AdoptionActionKind::ConfigureCi => false,
     }
 }
 

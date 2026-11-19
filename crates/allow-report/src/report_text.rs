@@ -329,13 +329,20 @@ fn render_audit_summary_human(
         "  {:24} {}\n",
         "baseline_debt", signals.baseline_debt
     ));
-    out.push_str(&audit_recommended_next_step(
-        summary,
-        signals,
-        queue.is_empty(),
-    ));
-    append_audit_remediation_roadmap_human(summary, signals, out);
-    append_evidence_repair_queues_human(summary, signals, out);
+    if context.audit_policy_commands_unavailable && signals.review_items > 0 {
+        out.push_str("\nReview the findings below and diagnose policy selection before running policy-dependent commands.\n");
+    } else {
+        out.push_str(&audit_recommended_next_step(
+            summary,
+            signals,
+            queue.is_empty(),
+            context.audit_bootstrap_preview,
+        ));
+    }
+    if !context.audit_policy_commands_unavailable {
+        append_audit_remediation_roadmap_human(summary, signals, out);
+        append_evidence_repair_queues_human(summary, signals, out);
+    }
     let queue_lines = deduped_outcome_lines(queue.iter().copied());
     if !queue_lines.is_empty() {
         out.push_str("\nAudit review queue:\n");
@@ -608,13 +615,20 @@ fn render_audit_summary_markdown(
         signals.weak_evidence_references
     ));
     out.push_str(&format!("| Baseline debt | {} |\n", signals.baseline_debt));
-    out.push_str(&audit_recommended_next_step(
-        summary,
-        signals,
-        queue.is_empty(),
-    ));
-    append_audit_remediation_roadmap_markdown(summary, signals, out);
-    append_evidence_repair_queues_markdown(summary, signals, out);
+    if context.audit_policy_commands_unavailable && signals.review_items > 0 {
+        out.push_str("\nReview the findings below and diagnose policy selection before running policy-dependent commands.\n");
+    } else {
+        out.push_str(&audit_recommended_next_step(
+            summary,
+            signals,
+            queue.is_empty(),
+            context.audit_bootstrap_preview,
+        ));
+    }
+    if !context.audit_policy_commands_unavailable {
+        append_audit_remediation_roadmap_markdown(summary, signals, out);
+        append_evidence_repair_queues_markdown(summary, signals, out);
+    }
 
     let queue_lines = deduped_outcome_lines(queue.iter().copied());
     if !queue_lines.is_empty() {
@@ -808,9 +822,14 @@ fn audit_recommended_next_step(
     summary: &Summary,
     signals: ReviewSignals,
     queue_empty: bool,
+    bootstrap_preview: bool,
 ) -> String {
     if signals.review_items == 0 {
-        "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n".to_string()
+        if bootstrap_preview {
+            "\nRecommended next step: if you want an enforcing policy, run `cargo-allow init --dry-run` from the repository root to preview the starter ledger.\n".to_string()
+        } else {
+            "\nThis advisory audit does not establish that an enforcing gate is ready. Confirm the selected policy and inputs before configuring CI.\n".to_string()
+        }
     } else if queue_empty && signals.broken_evidence_links > 0 {
         format!(
             "\nRecommended next step: run `{BROKEN_EVIDENCE_LINK_COMMAND}` to repair broken local evidence/link references.\n"
@@ -1014,27 +1033,32 @@ mod tests {
         let summary = Summary::from_outcomes(&[]);
 
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0, 0), true),
-            "\nRecommended next step: keep `cargo-allow check --mode no-new` in CI.\n"
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0, 0), true, false),
+            "\nThis advisory audit does not establish that an enforcing gate is ready. Confirm the selected policy and inputs before configuring CI.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 1, 0, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(0, 0, 1, 0, 0, 0, 1), true, false),
             "\nRecommended next step: run `cargo-allow worklist --broken-evidence --format json` to repair broken local evidence/link references.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 1, 0, 0, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(0, 1, 0, 0, 0, 0, 1), true, false),
             "\nRecommended next step: run `cargo-allow worklist --format json` to route retained entries with no evidence references; add `--missing-evidence` to focus that queue.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 1, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 1, 0, 0, 1), true, false),
             "\nRecommended next step: run `cargo-allow worklist --weak-evidence --format json` to replace unstructured or unknown-prefix evidence/link references.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(1, 0, 0, 0, 0, 0, 1), true),
+            audit_recommended_next_step(&summary, review_signals(1, 0, 0, 0, 0, 0, 1), true, false),
             "\nRecommended next step: run `cargo-allow worklist --format json` to review generated baseline debt.\n"
         );
         assert_eq!(
-            audit_recommended_next_step(&summary, review_signals(0, 0, 0, 0, 0, 0, 1), false),
+            audit_recommended_next_step(
+                &summary,
+                review_signals(0, 0, 0, 0, 0, 0, 1),
+                false,
+                false
+            ),
             "\nRecommended next step: review the queue below before tightening policy.\n"
         );
     }

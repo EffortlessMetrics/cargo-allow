@@ -1,4 +1,4 @@
-//! Real-process backup collision regressions for #4714 / PR #4716.
+//! Real-process summary, backup, and next-step regressions for `init`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -61,7 +61,7 @@ impl Root {
             "dry-run" => {
                 command.arg("--dry-run");
             }
-            "refusal" => {}
+            "apply" | "refusal" => {}
             _ => return Err(format!("unknown test mode: {mode}")),
         }
         command.output().map_err(|error| error.to_string())
@@ -172,6 +172,71 @@ fn init_separate_summary_keeps_success_preview_and_error_outputs() -> Result<(),
         }
     }
     Ok(())
+}
+
+#[test]
+fn init_git_write_reports_tracking_before_check_without_staging() -> Result<(), String> {
+    let root = Root::new()?;
+    let git = |args: &[&str]| -> Result<Output, String> {
+        let output = Command::new("git")
+            .current_dir(&root.0)
+            .args(args)
+            .output()
+            .map_err(|error| error.to_string())?;
+        require(
+            output.status.success(),
+            format!("git {args:?}: {}", String::from_utf8_lossy(&output.stderr)),
+        )?;
+        Ok(output)
+    };
+    git(&["init", "--quiet"])?;
+    let config = "policy/allow.toml";
+    let summary_path = root.0.join("summary.json");
+    let read_summary = || -> Result<serde_json::Value, String> {
+        let data = fs::read(&summary_path).map_err(|error| error.to_string())?;
+        serde_json::from_slice(&data).map_err(|error| error.to_string())
+    };
+
+    let preview = root.run(config, &summary_path, "dry-run")?;
+    let preview_summary = read_summary()?;
+    let preview_action = preview_summary
+        .get("primary_action")
+        .ok_or("missing init preview action")?;
+    require(
+        preview.status.success()
+            && bytes(&root.0.join(config))?.is_none()
+            && preview_action.get("id").and_then(serde_json::Value::as_str) == Some("init.apply")
+            && preview_action
+                .get("program")
+                .and_then(serde_json::Value::as_str)
+                == Some("cargo-allow"),
+        "dry run must leave the policy absent and still offer init apply",
+    )?;
+
+    let applied = root.run(config, &summary_path, "apply")?;
+    let applied_summary = read_summary()?;
+    let action = applied_summary
+        .get("primary_action")
+        .ok_or("missing init tracking action")?;
+    require(
+        applied.status.success()
+            && bytes(&root.0.join(config))?.is_some()
+            && git(&["ls-files", "--", config])?.stdout.is_empty()
+            && action.get("id").and_then(serde_json::Value::as_str)
+                == Some("init.ensure_policy_tracked")
+            && action.get("kind").and_then(serde_json::Value::as_str) == Some("decision")
+            && action.get("program").is_none()
+            && action.get("args").is_none()
+            && applied_summary
+                .get("next_proof")
+                .is_none_or(serde_json::Value::is_null)
+            && String::from_utf8_lossy(&applied.stdout)
+                .lines()
+                .any(|line| {
+                    line == "Next: Make sure the starter policy is tracked by Git before checking"
+                }),
+        "live Git init must write the untracked policy and guide the operator without emitting executable check argv",
+    )
 }
 
 #[cfg(unix)]

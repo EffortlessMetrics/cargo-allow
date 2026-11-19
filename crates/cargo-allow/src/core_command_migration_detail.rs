@@ -468,7 +468,7 @@ fn adoption(
             && plan.inventory.completeness == expected_complete,
         "adoption inventory contradicts the selected fixture",
     )?;
-    let expected = allow_report::recommend_core_adoption_plan(&allow_report::AdoptionFacts {
+    let facts = allow_report::AdoptionFacts {
         tool_version: binary.tool_version.clone(),
         repository_identity: plan.repository_identity.clone(),
         selected_root: "<repository-root>".to_string(),
@@ -482,7 +482,12 @@ fn adoption(
         instrument_failure: None,
         strict_gate_requested: false,
         ci_guidance_completed: false,
-    });
+    };
+    let expected = if binary.tool_version == "0.2.0-rc.1" {
+        allow_report::reconstruct_rc1_core_adoption_plan(&facts)
+    } else {
+        allow_report::recommend_core_adoption_plan(&facts)
+    };
     need(
         expected == *plan,
         "adoption actions/disposition/effects contradict the native plan projection",
@@ -826,6 +831,8 @@ fn report(
     let root = Path::new(&context.root);
     let source_context = crate::reporting::SourceTreeReportContext::new(root, facts);
     let mut report_context = source_context.report(Some(baseline_debt));
+    report_context.audit_policy_commands_unavailable =
+        spec.command == "audit" && binary.tool_version != "0.2.0-rc.1" && fixture.policy.is_none();
     evidence.apply_to(&mut report_context);
     // The existing renderer owns counter presence, roadmap fields, queue
     // order and command text. Its count/routing projection needs only typed
@@ -861,7 +868,7 @@ fn report(
         facts,
         detail.inventory.source_identity.as_deref(),
     );
-    let summary = crate::core_command_router::build_report_summary_from_facts(
+    let summary = crate::core_command_router::build_report_summary_projection(
         crate::core_command_router::ReportSummaryFacts {
             command: &spec.command,
             root,
@@ -871,6 +878,7 @@ fn report(
             artifact_emission: None,
             subject,
         },
+        binary.tool_version == "0.2.0-rc.1",
     )
     .map_err(|error| error.to_string())?;
     if spec.command == "check" {

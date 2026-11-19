@@ -191,6 +191,7 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
             == Some("PreviewPropose"),
         "findings action",
     )?;
+    require_no_adopt_ci_follow_up(&findings_root, &findings_artifact, true)?;
     remove_temp_root(findings_root)?;
 
     let healthy_root = temp_root("adoption-healthy-policy")?;
@@ -238,13 +239,7 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
             == Some("InspectNewFinding"),
         "new finding should remain the primary action",
     )?;
-    require(
-        healthy_artifact
-            .pointer("/plan/follow_up_actions/0/kind")
-            .and_then(Value::as_str)
-            == Some("RunNoNewCheck"),
-        "ci guidance should produce a no-new follow-up",
-    )?;
+    require_no_adopt_ci_follow_up(&healthy_root, &healthy_artifact, true)?;
     let absolute_config = run_adopt(
         &healthy_root,
         &[
@@ -270,6 +265,184 @@ fn adopt_projects_findings_without_policy_and_ci_guidance() -> Result<(), String
     parse_stdout(&include_untracked)?;
     remove_temp_root(healthy_root)?;
     Ok(())
+}
+
+fn require_no_adopt_ci_follow_up(
+    root: &Path,
+    artifact: &Value,
+    success: bool,
+) -> Result<(), String> {
+    require(
+        artifact
+            .pointer("/plan/follow_up_actions")
+            .and_then(Value::as_array)
+            .is_some_and(|actions| {
+                !actions.iter().any(|action| {
+                    matches!(
+                        action.get("kind").and_then(Value::as_str),
+                        Some("ConfigureCi" | "RunNoNewCheck")
+                    )
+                })
+            }),
+        "JSON must not suggest an executable CI follow-up before a healthy policy",
+    )?;
+    let human = run_adopt(root, &["--color", "never"])?;
+    let text = String::from_utf8(human.stdout).map_err(|error| error.to_string())?;
+    require(
+        human.status.success() == success
+            && !text.contains("Then: configure_ci")
+            && !text.contains("Then: run_no_new_check")
+            && !text.contains("Then: cargo-allow check --mode no-new")
+            && !text.contains("CI: ready")
+            && text.contains("CI: docs/how-to/adopt-cargo-allow.md#step-3-ci-integration"),
+        &format!("human adoption must provide descriptive, not executable, CI guidance: {text}"),
+    )
+}
+
+#[test]
+fn adopt_ci_actions_require_healthy_fresh_evaluation() -> Result<(), String> {
+    let root = temp_root("adoption-ci-eligibility")?;
+    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+    git(&root, &["init"])?;
+    git(&root, &["add", "src/lib.rs"])?;
+    git(
+        &root,
+        &[
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "-m",
+            "adoption CI eligibility fixture",
+        ],
+    )?;
+
+    fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+    let policy_path = root.join("policy/allow.toml");
+    let empty_policy = "policy = \"cargo-allow\"\n";
+    fs::write(&policy_path, empty_policy).map_err(|error| error.to_string())?;
+    let setup = run_adopt(&root, &["--format", "json"])?;
+    require(
+        setup.status.success(),
+        "healthy adoption without CI must succeed",
+    )?;
+    require(
+        parse_stdout(&setup)?
+            .pointer("/plan/primary_action/kind")
+            .and_then(Value::as_str)
+            == Some("ConfigureCi"),
+        "healthy policy without CI recommends configuration as the primary action",
+    )?;
+
+    write_source(&root, "pub fn value() -> u8 { None::<u8>.unwrap() }\n")?;
+    let new_finding = run_adopt(&root, &["--format", "json"])?;
+    require(
+        new_finding.status.success(),
+        "a new finding has an advisory plan",
+    )?;
+    let new_finding = parse_stdout(&new_finding)?;
+    require(
+        new_finding
+            .pointer("/plan/primary_action/kind")
+            .and_then(Value::as_str)
+            == Some("InspectNewFinding"),
+        "new findings must keep the read-only inspection action",
+    )?;
+    require_no_adopt_ci_follow_up(&root, &new_finding, true)?;
+    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+
+    fs::create_dir_all(root.join(".github/workflows")).map_err(|error| error.to_string())?;
+    fs::write(
+        root.join(".github/workflows/ci.yml"),
+        "cargo-allow check --mode no-new\n",
+    )
+    .map_err(|error| error.to_string())?;
+    git(&root, &["add", ".github/workflows/ci.yml"])?;
+
+    let ci_entry = r#"
+[[allow]]
+id = "fixture-ci"
+kind = "non_rust_file"
+family = "ci_declarative"
+path = ".github/workflows/ci.yml"
+owner = "core"
+classification = "fixture"
+reason = "Exercise the configured no-new route."
+created = "2026-01-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "tracked_file"
+symbol = ".github/workflows/ci.yml"
+target_fingerprint = "yml"
+glob = ".github/workflows/ci.yml"
+"#;
+    let base = format!("{empty_policy}{ci_entry}");
+    fs::write(&policy_path, &base).map_err(|error| error.to_string())?;
+    let configured = run_adopt(&root, &["--format", "json"])?;
+    require(
+        configured.status.success(),
+        "healthy adoption with CI must succeed",
+    )?;
+    require(
+        parse_stdout(&configured)?
+            .pointer("/plan/primary_action/kind")
+            .and_then(Value::as_str)
+            == Some("RunNoNewCheck"),
+        "healthy policy with CI recommends its check as the primary action",
+    )?;
+    let configured_human = run_adopt(&root, &["--color", "never"])?;
+    require(
+        configured_human.status.success()
+            && String::from_utf8_lossy(&configured_human.stdout).contains("CI: ready ("),
+        "only the healthy configured plan shows the ready marker",
+    )?;
+
+    write_source(&root, "pub fn value() -> u8 { None::<u8>.unwrap() }\n")?;
+    let mut tied = base;
+    for suffix in ["a", "b"] {
+        tied.push_str(&format!(
+            r#"
+[[allow]]
+id = "allow-tied-{suffix}"
+kind = "panic"
+family = "unwrap"
+path = "src/lib.rs"
+owner = "core"
+classification = "reviewed_exception"
+reason = "Equally matching reviewed exception."
+evidence = ["test:tied_{suffix}"]
+created = "2026-01-01"
+review_after = "2099-01-01"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+"#,
+        ));
+    }
+    fs::write(&policy_path, tied).map_err(|error| error.to_string())?;
+    let diagnostic = run_adopt(&root, &["--format", "json"])?;
+    require_exit_code(&diagnostic, 1, "ambiguous policy match")?;
+    let diagnostic = parse_stdout(&diagnostic)?;
+    require(
+        diagnostic
+            .pointer("/plan/bootstrap_disposition")
+            .and_then(Value::as_str)
+            == Some("InvalidPolicy")
+            && diagnostic
+                .pointer("/plan/policy/state")
+                .and_then(Value::as_str)
+                == Some("Valid")
+            && diagnostic
+                .pointer("/plan/inventory/completeness")
+                .and_then(Value::as_str)
+                == Some("Complete"),
+        "loaded valid ledger with ambiguous matches must exercise a policy diagnostic under complete inventory",
+    )?;
+    require_no_adopt_ci_follow_up(&root, &diagnostic, false)?;
+    remove_temp_root(root)
 }
 
 #[cfg(unix)]
@@ -408,6 +581,137 @@ fn adopt_fails_closed_for_invalid_policy_and_preserves_collision_targets() -> Re
         "output collision must preserve existing bytes",
     )?;
     remove_temp_root(collision_root)?;
+    Ok(())
+}
+
+#[test]
+fn clean_advisory_audit_previews_policy_before_the_first_enforcing_check() -> Result<(), String> {
+    let root = temp_root("adoption-first-enforcing-check")?;
+    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+    git(&root, &["init"])?;
+    git(&root, &["add", "src/lib.rs"])?;
+    let run = |args: &[&str]| -> Result<Output, String> {
+        cargo_allow_command()
+            .current_dir(&root)
+            .args(args)
+            .output()
+            .map_err(|error| format!("run {args:?}: {error}"))
+    };
+    let adopt = run(&["adopt"])?;
+    require_exit_code(&adopt, 0, "initial adoption remains advisory")?;
+    for format in ["human", "markdown", "html"] {
+        let audit = run(&["audit", "--format", format])?;
+        require_exit_code(&audit, 0, "initial advisory scan")?;
+        let text = String::from_utf8_lossy(&audit.stdout);
+        require(
+            text.contains("cargo-allow init --dry-run") && !text.contains("check --mode no-new"),
+            "clean audit must preview setup instead of recommending unavailable enforcement",
+        )?;
+    }
+    let adopt_text = String::from_utf8_lossy(&adopt.stdout);
+    require(
+        adopt_text.contains("Run: cargo-allow audit") && !adopt_text.contains("Then: configure_ci"),
+        "clean adoption hands off to audit without premature setup",
+    )?;
+    let restricted_audit = run(&["audit", "--kind", "panic"])?;
+    require_exit_code(&restricted_audit, 0, "filtered audit")?;
+    let restricted_text = String::from_utf8_lossy(&restricted_audit.stdout);
+    require(
+        !restricted_text.contains("init --dry-run")
+            && !restricted_text.contains("check --mode no-new"),
+        "a filtered scan must not recommend bootstrapping",
+    )?;
+    let explicit_audit = run(&["audit", "--config", "missing-custom.toml"])?;
+    let explicit_text = String::from_utf8_lossy(&explicit_audit.stdout);
+    require(
+        !explicit_text.contains("init --dry-run") && !explicit_text.contains("check --mode no-new"),
+        "a rejected explicit config is not confirmed canonical absence",
+    )?;
+    let registry = root.join(".allow/config.toml");
+    fs::create_dir_all(root.join(".allow")).map_err(|error| error.to_string())?;
+    let duplicate = r#"
+[[ledgers]]
+id = "source-policy"
+path = "policy/allow.toml"
+dialect = "cargo-allow"
+role = "canonical"
+lanes = ["source-exception"]
+mode = "blocking"
+priority = 10
+"#;
+    let invalid_registry = format!(r#"schema_version = "1.0"{duplicate}{duplicate}"#);
+    for (contents, explanation) in [
+        ("mode = [\n", "unparseable federation registry"),
+        (
+            invalid_registry.as_str(),
+            "parsed registry with duplicate ledger IDs",
+        ),
+    ] {
+        fs::write(&registry, contents).map_err(|error| error.to_string())?;
+        let report = run(&["audit"])?;
+        require_exit_code(&report, 0, explanation)?;
+        let text = String::from_utf8_lossy(&report.stdout);
+        require(
+            !text.contains("init --dry-run") && !text.contains("check --mode no-new"),
+            "a present invalid registry must not be treated as absent configuration",
+        )?;
+    }
+    fs::remove_file(registry).map_err(|error| error.to_string())?;
+    fs::remove_dir(root.join(".allow")).map_err(|error| error.to_string())?;
+
+    write_source(&root, "pub fn value() -> u8 { None::<u8>.unwrap() }\n")?;
+    git(&root, &["add", "src/lib.rs"])?;
+    for format in ["human", "markdown", "html", "json"] {
+        let audit = run(&["audit", "--format", format])?;
+        require_exit_code(
+            &audit,
+            0,
+            "policyless audit with a finding remains advisory",
+        )?;
+        let text = String::from_utf8_lossy(&audit.stdout);
+        require(
+            text.contains("src/lib.rs")
+                && !text.contains("init --dry-run")
+                && !text.contains("check --mode no-new")
+                && !text.contains("cargo-allow worklist")
+                && !text.contains("cargo-allow why"),
+            "policyless audit must retain the finding without emitting unavailable commands",
+        )?;
+    }
+    write_source(&root, "pub fn value() -> u8 { 1 }\n")?;
+    git(&root, &["add", "src/lib.rs"])?;
+    let preview = run(&["init", "--dry-run"])?;
+    require_exit_code(&preview, 0, "explicit non-writing bootstrap preview")?;
+    require(
+        !root.join("policy/allow.toml").exists(),
+        "preview must not write the policy",
+    )?;
+    let early_check = run(&["check", "--mode", "no-new"])?;
+    require_exit_code(
+        &early_check,
+        1,
+        "without intent and init, check still refuses",
+    )?;
+    require(
+        String::from_utf8_lossy(&early_check.stderr).contains("E0002"),
+        "no policy must remain an enforcing configuration failure",
+    )?;
+    let init = run(&["init"])?;
+    require_exit_code(&init, 0, "separately requested init")?;
+    git(&root, &["add", "policy/allow.toml"])?;
+    let post_init = run(&["check", "--mode", "no-new"])?;
+    require_exit_code(
+        &post_init,
+        0,
+        "tracked 0.2 starter policy authorizes its own ledger",
+    )?;
+    let existing_audit = run(&["audit"])?;
+    require_exit_code(&existing_audit, 0, "initialized advisory scan")?;
+    require(
+        !String::from_utf8_lossy(&existing_audit.stdout).contains("init --dry-run"),
+        "initialized policy does not advise starting over",
+    )?;
+    remove_temp_root(root)?;
     Ok(())
 }
 

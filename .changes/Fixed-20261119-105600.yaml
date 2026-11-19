@@ -1,0 +1,3 @@
+kind: Fixed
+body: "After initializing a starter policy in a Git worktree, cargo-allow now asks you to make sure the policy is tracked before running the no-new check. Stage it for local checks and commit it before relying on CI."
+time: 2026-11-19T10:56:00Z

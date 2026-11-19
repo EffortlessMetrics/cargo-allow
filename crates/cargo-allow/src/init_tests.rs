@@ -467,8 +467,8 @@ fn post_write_announcement_shares_next_steps_with_dry_run() {
 }
 
 #[test]
-fn announcements_name_commit_step_only_in_git_worktree() {
-    // #4479: inside a Git worktree the next steps name the commit that makes
+fn announcements_name_tracking_step_only_in_git_worktree() {
+    // #4479: inside a Git worktree the next steps name staging, which lets
     // git-tracked inventory see the starter policy; outside one the text is
     // byte-identical to the historical guidance.
     let with_git = super::post_write_announcement_styled(
@@ -479,7 +479,7 @@ fn announcements_name_commit_step_only_in_git_worktree() {
     );
     assert!(
         with_git.contains("git add policy/allow.toml"),
-        "git worktree next steps should name the commit step: {with_git}"
+        "git worktree next steps should name the staging step: {with_git}"
     );
     assert!(
         with_git.contains("reads stale until then"),

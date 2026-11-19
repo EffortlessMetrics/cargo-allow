@@ -456,7 +456,9 @@ fn human_audit_report_routes_clean_policy_to_no_new_ci() {
     assert!(text.contains("Audit summary:"));
     assert!(text.contains("review_items"));
     assert!(text.contains(" 0\n"));
-    assert!(text.contains("Recommended next step: keep `cargo-allow check --mode no-new` in CI."));
+    assert!(
+        text.contains("This advisory audit does not establish that an enforcing gate is ready.")
+    );
     assert!(!text.contains("Audit remediation roadmap:"));
     assert!(!text.contains("Audit review queue:"));
 }

@@ -119,6 +119,7 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
         dry_run: true,
         force: true,
         path_existed: true,
+        in_git_worktree: true,
     })?;
     ensure(
         preview.posture == CoreCommandPostureV1::Advisory
@@ -147,6 +148,7 @@ fn core_command_summary_init_distinguishes_preview_and_live_write() -> Result<()
         dry_run: false,
         force: false,
         path_existed: false,
+        in_git_worktree: false,
     })?;
     ensure(
         applied.operation_effects.writes_repository

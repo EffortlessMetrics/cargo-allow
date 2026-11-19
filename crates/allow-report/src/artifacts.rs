@@ -82,7 +82,7 @@ pub use add_plan_application::{AddPlanApplicationV1, ChangedRegionV1};
 pub use adoption_plan::{
     AdoptionAction, AdoptionActionKind, AdoptionFacts, AdoptionInventoryFacts, AdoptionPolicyFacts,
     BootstrapDisposition, CoreAdoptionPlanV1, InventoryCompleteness, InventoryMode, PolicyState,
-    WritePosture, recommend_core_adoption_plan,
+    WritePosture, recommend_core_adoption_plan, reconstruct_rc1_core_adoption_plan,
 };
 pub use campaign_issue_closeout_v1::{
     CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_ID, CAMPAIGN_ISSUE_CLOSEOUT_SCHEMA_VERSION,

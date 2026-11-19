@@ -1,5 +1,5 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult, normalize_path};
-use allow_inventory::resolve_source_tree_root;
+use allow_inventory::{git_worktree_metadata_present, resolve_source_tree_root};
 use allow_policy::starter_policy;
 #[cfg(test)]
 use effortless_repo_edit::apply_single_target;
@@ -68,6 +68,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     let cwd = current_dir()?;
     let root = resolve_source_tree_root(args.root.root.as_deref(), cwd)?;
     let path = root_relative_path(&root, &args.config);
+    let in_git_worktree = git_worktree_metadata_present(&root);
     if args.dry_run {
         let display = created_path_display(&root, &path);
         let action = if path.exists() && !args.force {
@@ -77,7 +78,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
         } else {
             "create"
         };
-        let summary = init_summary(&root, &display, args, path.exists())?;
+        let summary = init_summary(&root, &display, args, path.exists(), in_git_worktree)?;
         crate::core_command_router::write_summary_artifact(&root, &summary)?;
         print!(
             "{}{}",
@@ -87,7 +88,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
                 &display,
                 args.strict,
                 crate::reporting::output_style(),
-                git_add_step(&root, &display),
+                in_git_worktree.then_some(display.as_str()),
             )
         );
         return Ok(());
@@ -149,7 +150,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
     // an existing file, "created" for a new file.
     let action = if path_existed { "overwrote" } else { "created" };
     let display = created_path_display(&root, &path);
-    let summary = init_summary(&root, &display, args, path_existed)?;
+    let summary = init_summary(&root, &display, args, path_existed, in_git_worktree)?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
     print!(
         "{}{}",
@@ -158,7 +159,7 @@ pub(crate) fn cmd_init(args: &InitArgs) -> CargoAllowResult<()> {
             action,
             &display,
             crate::reporting::output_style(),
-            git_add_step(&root, &display),
+            in_git_worktree.then_some(display.as_str()),
         )
     );
     Ok(())
@@ -169,6 +170,7 @@ fn init_summary(
     config_path: &str,
     args: &InitArgs,
     path_existed: bool,
+    in_git_worktree: bool,
 ) -> CargoAllowResult<crate::core_command_summary::CoreCommandSummaryV1> {
     crate::core_command_summary::core_command_summary_from_init(
         crate::core_command_summary::InitSummaryFactsV1 {
@@ -179,6 +181,7 @@ fn init_summary(
             dry_run: args.dry_run,
             force: args.force,
             path_existed,
+            in_git_worktree,
         },
     )
     .map_err(|error| {
@@ -187,17 +190,6 @@ fn init_summary(
             format!("failed to build init command summary: {error}"),
         )
     })
-}
-
-/// The `git add <policy>` next step, present only inside a Git worktree
-/// where git-tracked inventory cannot see the new policy file until it is
-/// committed (#4479). An explicit `--root` may name a directory nested
-/// inside the worktree, so `.git` (file or directory) is probed at the
-/// root and every ancestor, mirroring Git's own discovery.
-fn git_add_step<'a>(root: &Path, display: &'a str) -> Option<&'a str> {
-    root.ancestors()
-        .any(|ancestor| ancestor.join(".git").exists())
-        .then_some(display)
 }
 
 fn spec_system_config_arg(config: &Path) -> Option<PathBuf> {
@@ -313,12 +305,12 @@ fn style_init_action(style: allow_report::Style, action: &str) -> String {
 
 pub(crate) fn next_steps_block(git_add_step: Option<&str>) -> String {
     // The starter policy inventories git-tracked files, so until the new
-    // policy file itself is committed its seeded self-receipt reads stale
-    // and the first check confuses a brand-new user (#4479). Naming the
-    // commit step is guidance only; nothing is staged or committed here.
+    // policy file itself is tracked its seeded self-receipt reads stale
+    // and the first check confuses a brand-new user (#4479). Staging makes
+    // it visible to a local check; commit it before relying on CI.
     let git_step = match git_add_step {
         Some(display) => format!(
-            "  git add {display}               # commit the starter policy so git-tracked inventory sees it (its self-receipt reads stale until then)\n"
+            "  git add {display}               # stage the starter policy so git-tracked inventory sees it (its self-receipt reads stale until then); commit it for CI\n"
         ),
         None => String::new(),
     };

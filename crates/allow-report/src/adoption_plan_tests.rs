@@ -234,13 +234,85 @@ fn core_adoption_plan_orders_repair_follow_ups_deterministically() -> Result<(),
         AdoptionActionKind::InspectAllow,
         AdoptionActionKind::PreviewPrune,
         AdoptionActionKind::ReconcileMirror,
-        AdoptionActionKind::ConfigureCi,
     ];
     if kinds != expected {
         return Err(format!("unexpected follow-up order: {kinds:?}"));
     }
     if plan.may_write_paths != vec!["policy/allow.toml".to_string()] {
         return Err("stale plan did not expose the normalized policy write path".into());
+    }
+    Ok(())
+}
+
+#[test]
+fn core_adoption_plan_recommends_ci_actions_only_for_healthy_policy() -> Result<(), String> {
+    let is_ci = |kind| {
+        matches!(
+            kind,
+            AdoptionActionKind::ConfigureCi | AdoptionActionKind::RunNoNewCheck
+        )
+    };
+    for (configured, expected) in [
+        (false, AdoptionActionKind::ConfigureCi),
+        (true, AdoptionActionKind::RunNoNewCheck),
+    ] {
+        let mut healthy = facts();
+        healthy.ci_guidance_completed = configured;
+        let plan = recommend_core_adoption_plan(&healthy);
+        if plan.bootstrap_disposition != BootstrapDisposition::ExistingPolicyHealthy
+            || plan.primary_action.kind != expected
+            || !plan.follow_up_actions.is_empty()
+        {
+            return Err(format!(
+                "healthy configured={configured}: expected primary {expected:?} only"
+            ));
+        }
+
+        let mut clean_absent = healthy.clone();
+        clean_absent.policy.state = PolicyState::Absent;
+        let mut findings_absent = clean_absent.clone();
+        findings_absent.policy.total_findings = 2;
+        let mut new_findings = healthy.clone();
+        new_findings.policy.new_unreceipted_findings = 1;
+        let mut needs_repair = healthy.clone();
+        needs_repair.policy.stale_entries = 1;
+        let mut invalid = healthy.clone();
+        invalid.policy.state = PolicyState::Invalid;
+        let mut diagnostic = healthy.clone();
+        diagnostic.policy_config_diagnostic = Some("ambiguous match".into());
+        let mut partial = healthy.clone();
+        partial.inventory.completeness = InventoryCompleteness::Partial;
+        let mut unsupported = healthy.clone();
+        unsupported.unsupported_repository_state = true;
+        let mut instrument_failure = healthy;
+        instrument_failure.instrument_failure = Some("executable identity unavailable".into());
+
+        for (name, input) in [
+            ("clean absent policy", clean_absent),
+            ("findings absent policy", findings_absent),
+            ("new findings", new_findings),
+            ("policy repair", needs_repair),
+            ("invalid policy", invalid),
+            ("policy diagnostic", diagnostic),
+            ("partial inventory", partial),
+            ("unsupported repository", unsupported),
+            ("instrument failure", instrument_failure),
+        ] {
+            let plan = recommend_core_adoption_plan(&input);
+            if is_ci(plan.primary_action.kind)
+                || plan
+                    .follow_up_actions
+                    .iter()
+                    .any(|action| is_ci(action.kind))
+            {
+                return Err(format!(
+                    "{name}, configured={configured}: suggested CI before a healthy policy"
+                ));
+            }
+            if !plan.ci_example_path.ends_with("#step-3-ci-integration") {
+                return Err(format!("{name}: missing descriptive CI guide"));
+            }
+        }
     }
     Ok(())
 }

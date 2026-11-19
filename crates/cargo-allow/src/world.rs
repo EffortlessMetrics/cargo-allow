@@ -363,6 +363,7 @@ pub(crate) type WorldLoadResult = CargoAllowResult<(
 struct LoadedWorld {
     root: PathBuf,
     selected_policy_path: Option<PathBuf>,
+    confirmed_missing_policy: bool,
     cfg: AllowConfig,
     findings: Vec<Finding>,
     inventory_facts: InventoryFacts,
@@ -426,6 +427,35 @@ pub(crate) fn load_read_only_world_and_cache(
         inventory_facts: loaded.inventory_facts,
         federation: loaded.federation,
     })
+}
+
+/// Preserve the actual default discovery result for advisory audit guidance.
+pub(crate) fn load_audit_world(
+    explicit_root: Option<&Path>,
+    config: Option<&Path>,
+    kind_filter: Option<&str>,
+    include_untracked: bool,
+) -> CargoAllowResult<(CoreWorldContext, bool)> {
+    let loaded = load_world_with_evidence_mode_and_cache_internal(
+        explicit_root,
+        config,
+        false,
+        kind_filter,
+        include_untracked,
+        EvidenceValidationMode::ReportOnly,
+        true,
+    )?;
+    let preview = loaded.confirmed_missing_policy && kind_filter.is_none() && !include_untracked;
+    Ok((
+        CoreWorldContext {
+            root: loaded.root,
+            cfg: loaded.cfg,
+            findings: loaded.findings,
+            inventory_facts: loaded.inventory_facts,
+            federation: loaded.federation,
+        },
+        preview,
+    ))
 }
 
 pub(crate) fn load_read_only_world_with_selected_policy(
@@ -516,7 +546,14 @@ fn load_world_with_evidence_mode_and_cache_internal(
     let root = resolve_source_tree_root(explicit_root, cwd)?;
     let (policy_path, federation) = match evaluate_source_exception_policy(&root, config) {
         Ok(value) => value,
-        Err(_err) if !require_config => {
+        Err(error) if !require_config => {
+            let confirmed_missing_policy = config.is_none() && crate::policy_config::is_missing_policy_config_error(&error)
+                // Invalid registry state can collapse to the same discovery
+                // error. Only the absence of the registry proves this route.
+                && matches!(
+                    root.join(".allow/config.toml").symlink_metadata(),
+                    Err(ref error) if error.kind() == std::io::ErrorKind::NotFound
+                );
             return load_world_without_policy_and_cache(
                 &root,
                 kind_filter,
@@ -529,6 +566,7 @@ fn load_world_with_evidence_mode_and_cache_internal(
                 |(root, cfg, findings, inventory_facts, federation)| LoadedWorld {
                     root,
                     selected_policy_path: None,
+                    confirmed_missing_policy,
                     cfg,
                     findings,
                     inventory_facts,
@@ -590,6 +628,7 @@ fn load_world_with_evidence_mode_and_cache_internal(
     Ok(LoadedWorld {
         root,
         selected_policy_path: Some(policy_path),
+        confirmed_missing_policy: false,
         cfg,
         findings,
         inventory_facts: inventory_facts
