@@ -212,7 +212,9 @@ def check_harness_receipt(
     declared = next(entry for entry in REQUIRED_ROWS if entry["platform"] == platform)
     for tool in ("rustc", "cargo"):
         observed = environment.get(f"{tool}_version")
-        parts = observed.split() if isinstance(observed, str) else []
+        if not isinstance(observed, str) or len(observed.splitlines()) != 1:
+            refuse(f"{platform} harness observed {tool} version {observed!r}; expected one line")
+        parts = observed.split()
         if len(parts) < 2 or parts[0] != tool or parts[1] != declared["toolchain"]:
             refuse(
                 f"{platform} harness observed {tool} version {observed!r}; "
