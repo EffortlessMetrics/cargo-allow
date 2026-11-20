@@ -2434,29 +2434,7 @@ fn worklist_read_only_actions_replay_the_selected_policy_from_a_sibling() -> Res
     let selected_reason = "Selected policy fixture";
     let default_reason = "Target default policy fixture";
     let sibling_reason = "Sibling default policy fixture";
-    let today = allow_core::SimpleDate::today_utc_approx();
-    let selected = format!(
-        r#"schema_version = "0.1"
-policy = "cargo-allow"
-owner = "fixture"
-
-[[allow]]
-id = "allow-shared"
-kind = "unsafe"
-family = "unsafe_block"
-path = "src/lib.rs"
-owner = "fixture"
-classification = "baseline_debt"
-reason = "{selected_reason}"
-evidence = ["TODO: add boundary-test evidence"]
-created = "{}"
-expires = "{}"
-[allow.selector]
-ast_kind = "unsafe_block"
-"#,
-        today.add_days(-10),
-        today.add_days(20),
-    );
+    let selected = worklist_replay_policy(selected_reason);
     let policies = [
         (target.join(config), selected.clone()),
         (
@@ -2590,6 +2568,129 @@ ast_kind = "unsafe_block"
         unfiltered.status.success() && stdout(&unfiltered)?.contains(selected_reason),
         format!("unfiltered worklist replay did not select the custom entry: {unfiltered:?}"),
     )?;
+    for (path, bytes) in &policies {
+        require(
+            fs::read(path).map_err(|error| error.to_string())? == bytes.as_bytes(),
+            format!("policy bytes changed at {}", path.display()),
+        )?;
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn worklist_replay_policy(selected_reason: &str) -> String {
+    let today = allow_core::SimpleDate::today_utc_approx();
+    format!(
+        r#"schema_version = "0.1"
+policy = "cargo-allow"
+owner = "fixture"
+
+[[allow]]
+id = "allow-shared"
+kind = "unsafe"
+family = "unsafe_block"
+path = "src/lib.rs"
+owner = "fixture"
+classification = "baseline_debt"
+reason = "{selected_reason}"
+evidence = ["TODO: add boundary-test evidence"]
+created = "{}"
+expires = "{}"
+[allow.selector]
+ast_kind = "unsafe_block"
+"#,
+        today.add_days(-10),
+        today.add_days(20),
+    )
+}
+
+#[cfg(unix)]
+#[test]
+fn worklist_with_non_unicode_policy_omits_read_only_replay() -> Result<(), String> {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    let fixture = InitSummaryRootCleanup(temp_root("unrepresentable-policy-replay")?);
+    let root = &fixture.0;
+    let selected = OsStr::from_bytes(b"policy/candidate-\xff.toml");
+    let decoy = "policy/candidate-�.toml";
+    let reason =
+        "read-only replay unavailable because the selected policy path is not valid Unicode";
+    let policies = [
+        (
+            root.join(selected),
+            worklist_replay_policy("Byte-exact policy"),
+        ),
+        (
+            root.join(decoy),
+            worklist_replay_policy("Replacement-character decoy"),
+        ),
+    ];
+    fs::create_dir_all(root.join("policy")).map_err(|error| error.to_string())?;
+    write_source(
+        root,
+        "pub fn load(ptr: *const u8) -> u8 { unsafe { *ptr } }\n",
+    )?;
+    for (path, bytes) in &policies {
+        fs::write(path, bytes).map_err(|error| error.to_string())?;
+    }
+    git_commit_fixture(root)?;
+
+    // This valid alternate spelling would succeed and choose the decoy.
+    let fallback = run_from(root, &["explain", "allow-shared", "--config", decoy])?;
+    require(
+        fallback.status.success() && stdout(&fallback)?.contains("Replacement-character decoy"),
+        format!("lossy-path control did not reach the decoy: {fallback:?}"),
+    )?;
+
+    let sidecar = root.join("worklist-summary.json");
+    let worklist = |tail: &[&str]| {
+        fixture_command(env!("CARGO_BIN_EXE_cargo-allow"))
+            .current_dir(root)
+            .arg("--command-summary-output")
+            .arg(&sidecar)
+            .args(["worklist", "--config"])
+            .arg(selected)
+            .args(tail)
+            .output()
+            .map_err(|error| error.to_string())
+    };
+    let output = worklist(&["--item-kind", "weak_evidence_reference", "--format", "json"])?;
+    require(
+        output.status.success(),
+        format!("worklist failed: {output:?}"),
+    )?;
+    let text = stdout(&output)?;
+    let detail: Value = serde_json::from_str(&text).map_err(|error| error.to_string())?;
+    require(
+        text.contains("Byte-exact policy")
+            && text.contains(reason)
+            && detail.pointer("/work_items/0/proof_commands") == Some(&serde_json::json!([])),
+        format!("unrepresentable policy emitted replay commands or lost the diagnosis: {detail}"),
+    )?;
+    let human = worklist(&["--item-kind", "weak_evidence_reference"])?;
+    require(
+        human.status.success() && stdout(&human)?.contains(reason),
+        format!("worklist did not explain why replay was unavailable: {human:?}"),
+    )?;
+    let populated = read_summary_json(&sidecar)?;
+    let empty = worklist(&["--allow-id", "absent", "--format", "json"])?;
+    require(
+        empty.status.success(),
+        format!("filtered worklist failed: {empty:?}"),
+    )?;
+    let filtered = read_summary_json(&sidecar)?;
+    for summary in [populated, filtered] {
+        require(
+            summary.get("next_proof").is_none()
+                && summary.pointer("/primary_action/program").is_none()
+                && summary
+                    .pointer("/subject/limitations/0")
+                    .and_then(Value::as_str)
+                    == Some(reason),
+            format!("summary offered replay for an unrepresentable policy: {summary}"),
+        )?;
+    }
     for (path, bytes) in &policies {
         require(
             fs::read(path).map_err(|error| error.to_string())? == bytes.as_bytes(),

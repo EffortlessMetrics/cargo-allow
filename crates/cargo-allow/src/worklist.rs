@@ -1,6 +1,7 @@
 use allow_core::{CargoAllowError, CargoAllowErrorKind, CargoAllowResult};
 use allow_match::{CheckMode, evaluate};
 
+use crate::core_command_summary::WorklistReplayScope;
 use crate::evidence_inventory::current_evidence_source_tree_files;
 use crate::{
     EvidenceValidationMode, HumanJsonFormat, ProfileArg, SourceTreeReportContext, emit_text,
@@ -142,8 +143,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     } else {
         allow_report::Style::PLAIN
     };
-    let config = args.config.as_deref().map(std::path::Path::to_string_lossy);
-    let root_arg = replay_root_arg(&root);
+    let replay = replay_scope(&root, args.config.as_deref());
     // Hash the queue before attaching checkout-specific replay arguments.
     let detail_json = render_worklist_json_with_context(&items, context);
     // Common operator grammar (#3149). The detailed worklist artifact remains
@@ -152,7 +152,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let summary = worklist_summary(
         &detail_json,
         &root,
-        config.as_deref(),
+        replay,
         &items,
         // A paged queue, like a filtered queue, only ever describes the slice
         // it listed: an empty page must not read as a clean repository.
@@ -162,9 +162,9 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     )?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
 
-    let bind_replay = args.root.root.is_some() || config.is_some();
+    let bind_replay = args.root.root.is_some() || args.config.is_some() || replay.is_err();
     if bind_replay {
-        bind_read_only_commands(&mut items, &root_arg, config.as_deref());
+        bind_read_only_commands(&mut items, replay);
     }
     let text = match args.format {
         HumanJsonFormat::Json if bind_replay => render_worklist_json_with_context(&items, context),
@@ -212,27 +212,47 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
-fn replay_root_arg(root: &std::path::Path) -> String {
-    if cfg!(windows) {
-        allow_report::source_tree_path_text(root)
-    } else {
-        root.to_string_lossy().into_owned()
-    }
+fn replay_scope<'a>(
+    root: &'a std::path::Path,
+    config: Option<&'a std::path::Path>,
+) -> Result<WorklistReplayScope<'a>, &'static str> {
+    let root = root
+        .to_str()
+        .ok_or("read-only replay unavailable because the repository root is not valid Unicode")?;
+    let config = config
+        .map(|path| {
+            path.to_str().ok_or(
+        "read-only replay unavailable because the selected policy path is not valid Unicode",
+    )
+        })
+        .transpose()?;
+    Ok(WorklistReplayScope { root, config })
 }
 
 /// Add replay context to the existing read-only command projection.
-fn bind_read_only_commands(items: &mut [WorkItem], root: &str, config: Option<&str>) {
+fn bind_read_only_commands(
+    items: &mut [WorkItem],
+    replay: Result<WorklistReplayScope<'_>, &'static str>,
+) {
     use crate::core_command_summary::{
         append_config_arg, render_argv_for_display, rooted_command_args,
     };
 
-    let mut args = rooted_command_args(root, &[]);
-    if let Some(config) = config {
-        append_config_arg(&mut args, config);
-    }
-    let rendered = render_argv_for_display("cargo-allow", &args);
-    let suffix = rendered.strip_prefix("cargo-allow");
+    let rendered = replay.map(|scope| {
+        let mut args = rooted_command_args(scope.root, &[]);
+        if let Some(config) = scope.config {
+            append_config_arg(&mut args, config);
+        }
+        render_argv_for_display("cargo-allow", &args)
+    });
+    let suffix = match &rendered {
+        Ok(command) => command.strip_prefix("cargo-allow").ok_or(
+            "read-only replay unavailable in this shell because the selected paths cannot be quoted",
+        ),
+        Err(reason) => Err(*reason),
+    };
     for item in items {
+        let original_count = item.proof_commands.len();
         item.proof_commands.retain_mut(|command| {
             if !matches!(
                 command.split_whitespace().nth(1),
@@ -240,14 +260,17 @@ fn bind_read_only_commands(items: &mut [WorkItem], root: &str, config: Option<&s
             ) {
                 return true;
             }
-            // The shell renderer can reject paths its target shell cannot
-            // replay. Drop these strings instead of suggesting a fallback.
-            let Some(suffix) = suffix else {
+            let Ok(suffix) = suffix else {
                 return false;
             };
             command.push_str(suffix);
             true
         });
+        if let Err(reason) = suffix
+            && item.proof_commands.len() != original_count
+        {
+            item.suggested_actions.push(reason.to_string());
+        }
     }
 }
 
@@ -263,7 +286,7 @@ const DEFAULT_HUMAN_WORKLIST_PAGE: usize = 20;
 fn worklist_summary(
     detail_json: &str,
     root: &std::path::Path,
-    config_path: Option<&str>,
+    replay: Result<WorklistReplayScope<'_>, &'static str>,
     items: &[WorkItem],
     filtered: bool,
     inventory_facts: crate::InventoryFacts,
@@ -289,8 +312,7 @@ fn worklist_summary(
         crate::core_command_summary::WorklistSummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
-            root_path: replay_root_arg(root),
-            config_path: config_path.map(str::to_owned),
+            replay,
             completeness,
             coverage_limitation,
             items: items.iter().map(summary_item).collect(),

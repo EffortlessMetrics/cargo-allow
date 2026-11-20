@@ -96,16 +96,19 @@ pub struct WorklistSummaryItemV1 {
     pub suggested_actions: Vec<String>,
 }
 
+/// Filesystem arguments that can be represented exactly in replay output.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorklistReplayScope<'a> {
+    pub root: &'a str,
+    pub config: Option<&'a str>,
+}
+
 /// Facts `worklist` already holds about the queue it rendered.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct WorklistSummaryFactsV1 {
+pub struct WorklistSummaryFactsV1<'a> {
     pub tool_version: String,
     pub subject: CoreSourceSubjectV1,
-    /// Source-tree root in portable display form, so suggested argv can name
-    /// `--root` and stay executable from any working directory (#4393).
-    pub root_path: String,
-    /// Explicit policy override as accepted by the CLI under the resolved root.
-    pub config_path: Option<String>,
+    pub replay: Result<WorklistReplayScope<'a>, &'static str>,
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     /// The rendered queue, in the order `worklist` already ranked it.
@@ -486,13 +489,12 @@ fn why_disposition(
 /// so an empty filtered queue routes to the unfiltered listing instead of
 /// claiming the repository is clean.
 pub fn core_command_summary_from_worklist(
-    facts: WorklistSummaryFactsV1,
+    facts: WorklistSummaryFactsV1<'_>,
 ) -> Result<CoreCommandSummaryV1, String> {
     let WorklistSummaryFactsV1 {
         tool_version,
         mut subject,
-        root_path,
-        config_path,
+        replay,
         completeness,
         coverage_limitation,
         items,
@@ -510,21 +512,31 @@ pub fn core_command_summary_from_worklist(
         );
     }
 
+    if let Err(reason) = replay {
+        subject.limitations.insert(0, reason.to_string());
+    }
+
     let (result_class, posture, reason, mut primary_action) = worklist_disposition(
         completeness,
         filtered,
         &items,
         calendar_expiry_blocks_no_new,
-        &root_path,
+        replay.ok().map(|scope| scope.root),
     );
-    let mut next_proof = enforcing_gate_proof(
-        completeness,
-        result_class,
-        "worklist",
-        &root_path,
-        "the worklist is guidance and never evaluates the repository gate",
-    );
-    if let Some(config) = config_path.as_deref() {
+    let mut next_proof = replay.ok().and_then(|scope| {
+        enforcing_gate_proof(
+            completeness,
+            result_class,
+            "worklist",
+            scope.root,
+            "the worklist is guidance and never evaluates the repository gate",
+        )
+    });
+    if let Ok(WorklistReplayScope {
+        config: Some(config),
+        ..
+    }) = replay
+    {
         for action in primary_action.iter_mut().chain(next_proof.iter_mut()) {
             if action.program.as_deref() == Some("cargo-allow") {
                 super::append_config_arg(&mut action.args, config);
@@ -571,7 +583,7 @@ fn worklist_disposition(
     filtered: bool,
     items: &[WorklistSummaryItemV1],
     calendar_expiry_blocks_no_new: bool,
-    root_path: &str,
+    root_path: Option<&str>,
 ) -> (
     ResultClassV1,
     CoreCommandPostureV1,
@@ -602,7 +614,7 @@ fn worklist_disposition(
                         "the filtered work queue is empty; the unfiltered repository queue was not listed"
                             .to_string(),
                 },
-                Some(
+                root_path.map(|root_path| {
                     CoreCommandActionV1::command(
                         "worklist.list_unfiltered_queue",
                         "List the unfiltered work queue",
@@ -620,8 +632,8 @@ fn worklist_disposition(
                         "an empty filtered queue says nothing about work outside the selected filters",
                         "the complete current work queue is emitted",
                         "the worklist is guidance and does not mutate source or policy",
-                    ),
-                ),
+                    )
+                }),
             );
         }
         return (
