@@ -53,6 +53,10 @@ glibc-based Linux x86_64 or arm64 image with Bash, curl, CA certificates,
 standard GNU utilities and xz. A C compiler and linker are needed for later
 builds. [Codex Cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments)
 
+Official Node.js Linux binaries from version 25 onward require the `libatomic`
+runtime (`libatomic1` on Debian and Ubuntu). The install script runs the prepared
+Node.js binary before selecting it for tasks. [Node.js binary requirements](https://github.com/nodejs/node/blob/v26.x/BUILDING.md#official-binary-platforms-and-toolchains)
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
@@ -113,6 +117,7 @@ if [[ ! -x "$tool_dir/$node_dist/bin/node" ]]; then
     mv -T "$node_dist" "$tool_dir/$node_dist"
   )
 fi
+"$tool_dir/$node_dist/bin/node" --version
 ln -sfnT "$node_dist" "$tool_dir/node"
 
 download https://astral.sh/uv/install.sh | UV_UNMANAGED_INSTALL="$tool_dir/uv" sh
