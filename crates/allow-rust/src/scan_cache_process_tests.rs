@@ -346,10 +346,9 @@ fn child_process_lock_blocks_then_releases_for_flush() -> Result<(), String> {
         .write_all(&[1])
         .map_err(|e| e.to_string())?;
     let status = child.wait()?;
-    assert!(
-        child.reader.is_none(),
-        "release must join the stdout reader"
-    );
+    if child.reader.is_some() {
+        return Err("release must join the stdout reader".to_string());
+    }
     if !status.success() {
         return Err(format!("lock child failed: {status}"));
     }
@@ -369,7 +368,9 @@ fn killed_lock_holder_releases_os_lock() -> Result<(), String> {
     let (mut child, stdout) = spawn_helper(&root.0, "hold")?;
     wait_ready(&mut child, stdout)?;
     let status = child.kill_and_wait()?;
-    assert!(child.reader.is_none(), "kill must join the stdout reader");
+    if child.reader.is_some() {
+        return Err("kill must join the stdout reader".to_string());
+    }
     if status.success() {
         return Err("killed lock child unexpectedly succeeded".to_string());
     }
@@ -484,25 +485,28 @@ fn spawn_silent_child(root: &Path) -> Result<(ChildGuard, BufReader<ChildStdout>
 }
 
 fn assert_silent_child_settled(child: &mut ChildGuard, message: &str) -> Result<(), String> {
-    assert!(
-        child.reader.is_none(),
-        "timeout returned with an unjoined stdout reader"
-    );
+    if child.reader.is_some() {
+        return Err("timeout returned with an unjoined stdout reader".to_string());
+    }
     let status = child.child.try_wait().map_err(|error| error.to_string())?;
-    assert!(
-        status.is_some_and(|status| !status.success()),
-        "child status: {status:?}"
-    );
-    assert!(message.contains("mode silent-hold"), "{message}");
-    assert!(
-        message.contains("child still running at failure"),
-        "{message}"
-    );
-    assert!(message.contains("final exited with"), "{message}");
-    assert!(message.contains("stdout reader joined"), "{message}");
-    assert!(message.contains("silent child final marker"), "{message}");
-    assert!(message.contains("READY [truncated]"), "{message}");
-    assert!(!message.contains("noise line 0\n"), "{message}");
+    if !status.is_some_and(|status| !status.success()) {
+        return Err(format!("expected reaped, killed child, got {status:?}"));
+    }
+    for expected in [
+        "mode silent-hold",
+        "child still running at failure",
+        "final exited with",
+        "stdout reader joined",
+        "silent child final marker",
+        "READY [truncated]",
+    ] {
+        if !message.contains(expected) {
+            return Err(format!("missing {expected:?} in {message}"));
+        }
+    }
+    if message.contains("noise line 0\n") {
+        return Err(format!("stdout tail retained an evicted line: {message}"));
+    }
     Ok(())
 }
 
@@ -513,10 +517,9 @@ fn expired_ready_deadline_reaps_child_and_joins_reader() -> Result<(), String> {
     let Err(message) = wait_ready_with_timeout(&mut child, stdout, Duration::ZERO) else {
         return Err("already-expired READY deadline succeeded".to_string());
     };
-    assert!(
-        message.contains("READY deadline already passed at entry"),
-        "{message}"
-    );
+    if !message.contains("READY deadline already passed at entry") {
+        return Err(message);
+    }
     assert_silent_child_settled(&mut child, &message)
 }
 
@@ -526,16 +529,15 @@ fn silent_child_timeout_reports_child_state_and_stdout_tail() -> Result<(), Stri
     let (mut child, stdout) = spawn_silent_child(&root.0)?;
     let silent_deadline = Duration::from_secs(3);
     let started = Instant::now();
-    let message = wait_ready_with_timeout(&mut child, stdout, silent_deadline)
-        .expect_err("silent child must time out");
-    assert!(
-        started.elapsed() >= silent_deadline,
-        "timeout returned too early"
-    );
-    assert!(
-        message.contains("exceeded the 3s timeout budget"),
-        "{message}"
-    );
+    let Err(message) = wait_ready_with_timeout(&mut child, stdout, silent_deadline) else {
+        return Err("silent child must time out".to_string());
+    };
+    if started.elapsed() < silent_deadline {
+        return Err(format!("timeout returned too early: {message}"));
+    }
+    if !message.contains("exceeded the 3s timeout budget") {
+        return Err(message);
+    }
     assert_silent_child_settled(&mut child, &message)
 }
 
@@ -546,7 +548,9 @@ fn child_exit_before_ready_surfaces_immediately_with_exit_status() -> Result<(),
     std::fs::create_dir_all(&root.0).map_err(|e| e.to_string())?;
     let (mut child, stdout) = spawn_helper(&root.0, "unknown")?;
     let message = wait_ready(&mut child, stdout).expect_err("exiting child must not be silent");
-    assert!(child.reader.is_none(), "EOF must join the stdout reader");
+    if child.reader.is_some() {
+        return Err("EOF must join the stdout reader".to_string());
+    }
     let elapsed = started.elapsed();
     assert!(
         elapsed < READY_TIMEOUT,
