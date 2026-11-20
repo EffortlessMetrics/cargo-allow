@@ -1,0 +1,75 @@
+# Synthetic shiplog-shaped conversion input for cargo-allow #4846.
+# Materialize legacy_toml as clippy-exceptions.toml and each sources row at
+# its path. Main currently refuses this input before emitting a policy.
+# Receipts describe source citations only and carry no approval authority.
+fixture_version = 1
+legacy_toml = '''
+schema_version = 1
+policy = "clippy-exceptions"
+
+[[exception]]
+id = "fixture-clippy-shared"
+lint = "clippy::too_many_arguments"
+owner = "fixture"
+reason = "Synthetic shared signature exception."
+
+[exception.selector]
+kind = "fn-signature"
+container = "various"
+text_contains = "fixture_shared"
+
+[[exception]]
+id = "fixture-clippy-specific"
+lint = "clippy::too_many_arguments"
+owner = "fixture"
+reason = "Synthetic signature exception for one function."
+
+[exception.selector]
+kind = "fn-signature"
+container = "specific"
+text_contains = "fixture_specific"
+'''
+
+[[sources]]
+path = "src/alpha.rs"
+text = '''
+#[expect(clippy::too_many_arguments, reason = "policy:fixture-clippy-shared")]
+fn fixture_shared_alpha(_: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8) {}
+'''
+
+[[sources]]
+path = "src/beta.rs"
+text = '''
+#[expect(clippy::too_many_arguments, reason = "policy:fixture-clippy-shared")]
+fn fixture_shared_beta(_: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8) {}
+'''
+
+[[sources]]
+path = "src/specific.rs"
+text = '''
+#[expect(clippy::too_many_arguments, reason = "policy:fixture-clippy-specific")]
+fn fixture_specific(_: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8) {}
+
+#[allow(clippy::too_many_arguments)]
+fn bare_allow(_: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8, _: u8) {}
+'''
+
+# These rows enumerate every policy-tagged expect in the synthetic sources.
+# The bare allow in src/specific.rs is outside this citation set.
+[[receipts]]
+id = "fixture-clippy-shared"
+lint = "clippy::too_many_arguments"
+path = "src/alpha.rs"
+line = 1
+
+[[receipts]]
+id = "fixture-clippy-shared"
+lint = "clippy::too_many_arguments"
+path = "src/beta.rs"
+line = 1
+
+[[receipts]]
+id = "fixture-clippy-specific"
+lint = "clippy::too_many_arguments"
+path = "src/specific.rs"
+line = 1
