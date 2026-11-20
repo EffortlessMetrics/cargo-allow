@@ -104,6 +104,8 @@ pub struct WorklistSummaryFactsV1 {
     /// Source-tree root in portable display form, so suggested argv can name
     /// `--root` and stay executable from any working directory (#4393).
     pub root_path: String,
+    /// Explicit policy override as accepted by the CLI under the resolved root.
+    pub config_path: Option<String>,
     pub completeness: CompletenessV1,
     pub coverage_limitation: Option<String>,
     /// The rendered queue, in the order `worklist` already ranked it.
@@ -490,6 +492,7 @@ pub fn core_command_summary_from_worklist(
         tool_version,
         mut subject,
         root_path,
+        config_path,
         completeness,
         coverage_limitation,
         items,
@@ -507,13 +510,27 @@ pub fn core_command_summary_from_worklist(
         );
     }
 
-    let (result_class, posture, reason, primary_action) = worklist_disposition(
+    let (result_class, posture, reason, mut primary_action) = worklist_disposition(
         completeness,
         filtered,
         &items,
         calendar_expiry_blocks_no_new,
         &root_path,
     );
+    let mut next_proof = enforcing_gate_proof(
+        completeness,
+        result_class,
+        "worklist",
+        &root_path,
+        "the worklist is guidance and never evaluates the repository gate",
+    );
+    if let Some(config) = config_path.as_deref() {
+        for action in primary_action.iter_mut().chain(next_proof.iter_mut()) {
+            if action.program.as_deref() == Some("cargo-allow") {
+                super::append_config_arg(&mut action.args, config);
+            }
+        }
+    }
     // Every queue item beyond the promoted one stays retrievable in the
     // command's own artifact rather than being re-ranked here.
     let remaining = items
@@ -543,13 +560,7 @@ pub fn core_command_summary_from_worklist(
         additional_action_count,
         additional_actions_ref,
         operation_effects: CoreCommandEffectsV1::read_only(read_only_non_effects()),
-        next_proof: enforcing_gate_proof(
-            completeness,
-            result_class,
-            "worklist",
-            &root_path,
-            "the worklist is guidance and never evaluates the repository gate",
-        ),
+        next_proof,
         artifacts: Vec::new(),
         claim_boundary,
     })

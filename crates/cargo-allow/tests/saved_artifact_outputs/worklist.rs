@@ -44,14 +44,16 @@ fn saved_worklist_output_includes_broken_evidence_items() {
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/1")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow list --allow-id allow-broken-evidence --format json"),
         "worklist list allow-id proof command"
     );
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/2")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow worklist --allow-id allow-broken-evidence --format json"),
         "worklist worklist allow-id proof command"
     );
@@ -183,14 +185,16 @@ fn saved_worklist_output_includes_policy_missing_evidence_items() {
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/1")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow list --allow-id allow-missing-evidence --format json"),
         "worklist list allow-id proof command"
     );
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/2")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow worklist --allow-id allow-missing-evidence --format json"),
         "worklist worklist allow-id proof command"
     );
@@ -352,21 +356,24 @@ fn saved_worklist_output_includes_policy_baseline_debt_items() {
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/0")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow explain allow-baseline-debt"),
         "worklist explain proof command"
     );
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/1")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow list --allow-id allow-baseline-debt --format json"),
         "worklist list allow-id proof command"
     );
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/2")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow worklist --allow-id allow-baseline-debt --format json"),
         "worklist worklist allow-id proof command"
     );
@@ -485,21 +492,24 @@ fn saved_worklist_output_routes_unsafe_baseline_debt_closeout() {
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/0")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow explain allow-unsafe-baseline-debt"),
         "unsafe baseline-debt explain proof command"
     );
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/1")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow list --allow-id allow-unsafe-baseline-debt --format json"),
         "unsafe baseline-debt list allow-id proof command"
     );
     assert_eq!(
         value
             .pointer("/work_items/0/proof_commands/2")
-            .and_then(serde_json::Value::as_str),
+            .and_then(serde_json::Value::as_str)
+            .and_then(without_replay_scope),
         Some("cargo-allow worklist --allow-id allow-unsafe-baseline-debt --format json"),
         "unsafe baseline-debt worklist allow-id proof command"
     );
@@ -966,7 +976,17 @@ fn assert_proof_command_present(value: &serde_json::Value, pointer: &str, expect
     assert!(
         commands
             .iter()
-            .any(|command| command.as_str() == Some(expected)),
+            .filter_map(serde_json::Value::as_str)
+            .any(|command| without_replay_scope(command) == Some(expected)),
         "{pointer} should include `{expected}`: {commands:?}"
     );
+}
+
+// These fixtures pass an explicit policy and root. Check that the command
+// retains both before comparing the original subcommand and arguments.
+fn without_replay_scope(command: &str) -> Option<&str> {
+    let (invocation, scope) = command.split_once(" --root ")?;
+    scope
+        .ends_with(" --config policy/allow.toml")
+        .then_some(invocation)
 }

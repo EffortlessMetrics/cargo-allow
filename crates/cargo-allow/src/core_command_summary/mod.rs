@@ -320,6 +320,14 @@ pub(crate) fn rooted_command_args(root: &str, args: &[String]) -> Vec<String> {
     argv
 }
 
+pub(crate) fn append_config_arg(args: &mut Vec<String>, config: &str) {
+    if config.starts_with('-') {
+        args.push(format!("--config={config}"));
+    } else {
+        args.extend(["--config".to_string(), config.to_string()]);
+    }
+}
+
 pub fn build_core_command_summary(
     input: CoreCommandSummaryInputV1,
 ) -> Result<CoreCommandSummaryV1, String> {

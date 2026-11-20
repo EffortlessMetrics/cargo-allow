@@ -64,7 +64,6 @@ use worklist_types::WorkItemLedger;
 pub(super) use worklist_types::{WorkItem, WorkItemEvidenceReference};
 use worklist_types::{WorklistContext, WorklistFilters, WorklistPaging};
 
-use allow_core::normalize_path;
 #[cfg(test)]
 use allow_core::{AllowConfig, FindingKind, MatchOutcome, MatchStatus};
 
@@ -131,7 +130,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
         total: items.len(),
         unfiltered_total,
     };
-    let items = page_work_items(items, paging);
+    let mut items = page_work_items(items, paging);
     let source_context = SourceTreeReportContext::new(&root, inventory_facts);
     let context = WorklistContext {
         inventory: source_context.inventory(),
@@ -143,9 +142,9 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     } else {
         allow_report::Style::PLAIN
     };
-    // The JSON artifact is rendered for every format: it supplies the
-    // relocation-stable semantic identity the summary reports, and it is the
-    // command's own artifact when JSON was requested.
+    let config = args.config.as_deref().map(std::path::Path::to_string_lossy);
+    let root_arg = replay_root_arg(&root);
+    // Hash the queue before attaching checkout-specific replay arguments.
     let detail_json = render_worklist_json_with_context(&items, context);
     // Common operator grammar (#3149). The detailed worklist artifact remains
     // authoritative; this projection is additive and derived from the same
@@ -153,7 +152,7 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     let summary = worklist_summary(
         &detail_json,
         &root,
-        &source_context,
+        config.as_deref(),
         &items,
         // A paged queue, like a filtered queue, only ever describes the slice
         // it listed: an empty page must not read as a clean repository.
@@ -163,7 +162,12 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     )?;
     crate::core_command_router::write_summary_artifact(&root, &summary)?;
 
+    let bind_replay = args.root.root.is_some() || config.is_some();
+    if bind_replay {
+        bind_read_only_commands(&mut items, &root_arg, config.as_deref());
+    }
     let text = match args.format {
+        HumanJsonFormat::Json if bind_replay => render_worklist_json_with_context(&items, context),
         HumanJsonFormat::Json => detail_json,
         HumanJsonFormat::Human => {
             let mut rendered =
@@ -208,6 +212,45 @@ pub(crate) fn cmd_worklist(args: &WorklistArgs) -> CargoAllowResult<()> {
     Ok(())
 }
 
+fn replay_root_arg(root: &std::path::Path) -> String {
+    if cfg!(windows) {
+        allow_report::source_tree_path_text(root)
+    } else {
+        root.to_string_lossy().into_owned()
+    }
+}
+
+/// Add replay context to the existing read-only command projection.
+fn bind_read_only_commands(items: &mut [WorkItem], root: &str, config: Option<&str>) {
+    use crate::core_command_summary::{
+        append_config_arg, render_argv_for_display, rooted_command_args,
+    };
+
+    let mut args = rooted_command_args(root, &[]);
+    if let Some(config) = config {
+        append_config_arg(&mut args, config);
+    }
+    let rendered = render_argv_for_display("cargo-allow", &args);
+    let suffix = rendered.strip_prefix("cargo-allow");
+    for item in items {
+        item.proof_commands.retain_mut(|command| {
+            if !matches!(
+                command.split_whitespace().nth(1),
+                Some("check" | "doctor" | "explain" | "list" | "why" | "worklist")
+            ) {
+                return true;
+            }
+            // The shell renderer can reject paths its target shell cannot
+            // replay. Drop these strings instead of suggesting a fallback.
+            let Some(suffix) = suffix else {
+                return false;
+            };
+            command.push_str(suffix);
+            true
+        });
+    }
+}
+
 /// Default first-page size for human stdout `worklist` without paging
 /// flags (#4477 slice 2; mirrors the `list` bound).
 const DEFAULT_HUMAN_WORKLIST_PAGE: usize = 20;
@@ -220,7 +263,7 @@ const DEFAULT_HUMAN_WORKLIST_PAGE: usize = 20;
 fn worklist_summary(
     detail_json: &str,
     root: &std::path::Path,
-    source_context: &SourceTreeReportContext,
+    config_path: Option<&str>,
     items: &[WorkItem],
     filtered: bool,
     inventory_facts: crate::InventoryFacts,
@@ -231,7 +274,7 @@ fn worklist_summary(
     let completeness = crate::core_command_router::summary_completeness(&inventory_facts);
     let coverage_limitation = (completeness != effortless_repo_protocol::CompletenessV1::Complete)
         .then(|| crate::core_command_router::partial_coverage_reason(&inventory_facts));
-    let inventory_source = source_context.inventory_source();
+    let inventory_source = inventory_facts.source.as_str();
 
     let mut subject = crate::core_command_summary::CoreSourceSubjectV1::worktree(
         format!("local-repository:{semantic_identity}"),
@@ -246,7 +289,8 @@ fn worklist_summary(
         crate::core_command_summary::WorklistSummaryFactsV1 {
             tool_version: env!("CARGO_PKG_VERSION").to_string(),
             subject,
-            root_path: normalize_path(root),
+            root_path: replay_root_arg(root),
+            config_path: config_path.map(str::to_owned),
             completeness,
             coverage_limitation,
             items: items.iter().map(summary_item).collect(),

@@ -1339,6 +1339,7 @@ fn worklist_facts() -> WorklistSummaryFactsV1 {
             "worktree:git_tracked:current-unpinned",
         ),
         root_path: "F:/fixture-root".to_string(),
+        config_path: None,
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         items: Vec::new(),
