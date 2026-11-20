@@ -1,0 +1,4 @@
+kind: Fixed
+body: >-
+  Refuse multi-line rustc and Cargo version observations in source-candidate
+  smoke receipts and identify the malformed observation in the error.
