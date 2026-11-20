@@ -1331,14 +1331,17 @@ fn why_facts() -> WhySummaryFactsV1 {
     }
 }
 
-fn worklist_facts() -> WorklistSummaryFactsV1 {
+fn worklist_facts() -> WorklistSummaryFactsV1<'static> {
     WorklistSummaryFactsV1 {
         tool_version: "0.2.0".to_string(),
         subject: CoreSourceSubjectV1::worktree(
             "local-repository:sha256:v1:test",
             "worktree:git_tracked:current-unpinned",
         ),
-        root_path: "F:/fixture-root".to_string(),
+        replay: Ok(WorklistReplayScope {
+            root: "F:/fixture-root",
+            config: None,
+        }),
         completeness: CompletenessV1::Complete,
         coverage_limitation: None,
         items: Vec::new(),
