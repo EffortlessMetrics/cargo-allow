@@ -306,6 +306,12 @@ class UpgradeRollbackValidatorTests(unittest.TestCase):
             "stale_plan_wrong_disposition": lambda r: set_surface_disposition(
                 r, "why_add_from_plan_stale_input", "ReadUnchanged"
             ),
+            "unsupported_generation_on_passed_receipt": lambda r: set_surface_disposition(
+                r, "doctor", "UnsupportedGeneration"
+            ),
+            "explicit_migration_required_under_supported_upgrade": lambda r: set_surface_disposition(
+                r, "policy/allow.toml", "ExplicitMigrationRequired"
+            ),
             "unknown_evidence_step_ref": lambda r: r["surface_dispositions"][0]["evidence_step_ids"].append(
                 "candidate-0.2.0:invented-step"
             ),
@@ -328,6 +334,21 @@ class UpgradeRollbackValidatorTests(unittest.TestCase):
             "prune_preview_apply_disagree": lambda r: r["mutation_journey"]["prune"].__setitem__("preview_apply_agree", False),
             "migrate_dropped_baseline_debt": lambda r: r["mutation_journey"]["migrate"].__setitem__(
                 "preserved_allow_ids", ["allow-0001", "allow-0003"]
+            ),
+            "migrate_preserved_overlaps_prune_removed": lambda r: r["mutation_journey"]["migrate"]["preserved_allow_ids"].append(
+                "allow-0004"
+            ),
+            "migrate_wrong_summary_schema_id": lambda r: r["mutation_journey"]["migrate"].__setitem__(
+                "summary_schema_id", "cargo-allow.other.v1"
+            ),
+            "fixture_baseline_debt_not_in_pre_upgrade": lambda r: r["fixtures"][1]["baseline_debt_ids"].append(
+                "allow-9999"
+            ),
+            "fixture_location_drift_not_in_pre_upgrade": lambda r: r["fixtures"][1]["location_drift_ids"].append(
+                "allow-9999"
+            ),
+            "fixture_stale_not_in_pre_upgrade": lambda r: r["fixtures"][1]["stale_ids"].append(
+                "allow-9999"
             ),
             "stale_plan_accepted": lambda r: r["mutation_journey"]["stale_plan_rejection"].__setitem__("rejected_nonzero", False),
             "rollback_not_owned_only": lambda r: r["rollback"].__setitem__("owned_restore_only", False),

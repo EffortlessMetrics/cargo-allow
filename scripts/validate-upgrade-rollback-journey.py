@@ -285,6 +285,14 @@ def validate_receipt(receipt: dict[str, Any], schema: dict[str, Any], fixture_pa
             fail(f"fixture {fid!r} did not confirm optional_profiles_absent")
         if row["pre_upgrade_allow_ids"] != row["post_rollback_allow_ids"]:
             fail(f"fixture {fid!r} allow IDs drifted after rollback")
+        pre_ids = set(row["pre_upgrade_allow_ids"])
+        for subset_key in ("baseline_debt_ids", "location_drift_ids", "stale_ids"):
+            subset_ids = set(row[subset_key])
+            if not subset_ids <= pre_ids:
+                fail(
+                    f"fixture {fid!r} {subset_key} {sorted(subset_ids)} is not a subset of "
+                    f"pre_upgrade_allow_ids {sorted(pre_ids)}"
+                )
         for control in row["unrelated_controls"]:
             if control["preserved"] is not True:
                 fail(f"unrelated control {control['path']!r} was not preserved")
@@ -322,6 +330,16 @@ def validate_receipt(receipt: dict[str, Any], schema: dict[str, Any], fixture_pa
             fail(f"duplicate surface disposition {surface!r}")
         if row["disposition"] not in VALID_DISPOSITIONS:
             fail(f"invalid disposition {row['disposition']!r} for {surface!r}")
+        if row["disposition"] == "UnsupportedGeneration":
+            fail(f"Passed receipt cannot carry UnsupportedGeneration disposition for {surface!r}")
+        if (
+            receipt["upgrade_verdict"] == "SupportedUpgrade"
+            and row["disposition"] == "ExplicitMigrationRequired"
+        ):
+            fail(
+                f"SupportedUpgrade receipt cannot carry ExplicitMigrationRequired disposition "
+                f"for {surface!r}"
+            )
         for step_id in row["evidence_step_ids"]:
             if step_id not in all_step_ids:
                 fail(f"surface {surface!r} cites unknown evidence step {step_id!r}")
@@ -362,6 +380,8 @@ def validate_receipt(receipt: dict[str, Any], schema: dict[str, Any], fixture_pa
         fail("migrated policy output was not validated with check")
     if not set(stateful["baseline_debt_ids"]) <= set(migrate["preserved_allow_ids"]):
         fail("migrate dropped baseline_debt entry")
+    if not set(migrate["preserved_allow_ids"]).isdisjoint(set(prune["removed_allow_ids"])):
+        fail("migrate preserved_allow_ids overlaps prune removed_allow_ids")
 
     stale_plan = mutation["stale_plan_rejection"]
     if stale_plan["rejected_nonzero"] is not True or stale_plan["policy_unchanged"] is not True:

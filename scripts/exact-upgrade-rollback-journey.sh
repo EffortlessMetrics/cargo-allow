@@ -35,12 +35,22 @@ command -v git >/dev/null || fail "git is required"
 python3 - "${CANDIDATE_BIN}" "${PACKAGE_SET_DIR}/install" "${PACKAGE_RECEIPT}" <<'PY'
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
 binary = Path(sys.argv[1]).resolve(strict=True)
 install = Path(sys.argv[2]).resolve(strict=True)
 package_receipt = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+if not isinstance(package_receipt, dict):
+    raise SystemExit("package receipt must be a JSON object")
+if package_receipt.get("result") != "Passed":
+    raise SystemExit(
+        f"package receipt result must be 'Passed', got {package_receipt.get('result')!r}"
+    )
+candidate_head = (package_receipt.get("candidate") or {}).get("git_head")
+if not isinstance(candidate_head, str) or not re.fullmatch(r"[0-9a-f]{40}", candidate_head):
+    raise SystemExit(f"package receipt missing valid 40-hex candidate.git_head: {candidate_head!r}")
 try:
     binary.relative_to(install)
 except ValueError as error:
@@ -48,12 +58,13 @@ except ValueError as error:
 if binary.is_symlink() or not binary.is_file():
     raise SystemExit("candidate binary must be a regular non-symlink file")
 expected_sha = (package_receipt.get("install") or {}).get("binary_sha256")
-if expected_sha:
-    actual_sha = hashlib.sha256(binary.read_bytes()).hexdigest()
-    if actual_sha != expected_sha:
-        raise SystemExit(
-            f"candidate binary digest {actual_sha} does not match package receipt {expected_sha}"
-        )
+if not isinstance(expected_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
+    raise SystemExit(f"package receipt missing valid 64-hex install.binary_sha256: {expected_sha!r}")
+actual_sha = hashlib.sha256(binary.read_bytes()).hexdigest()
+if actual_sha != expected_sha:
+    raise SystemExit(
+        f"candidate binary digest {actual_sha} does not match package receipt {expected_sha}"
+    )
 PY
 
 if [[ -z "${OLD_BIN:-}" ]]; then
@@ -66,7 +77,7 @@ if [[ ! -f "${old_bin}" && -f "${old_bin}.exe" ]]; then
   old_bin="${old_bin}.exe"
 fi
 if [[ -n "${OLD_BIN:-}" ]]; then
-  old_bin="$(python3 - "${OLD_BIN}" "${WORK_DIR}" <<'PY'
+  old_bin="$(python3 - "${OLD_BIN}" "${WORK_DIR}" <<'PY' | tr -d '\r'
 import sys
 from pathlib import Path
 
@@ -243,15 +254,14 @@ def extract_list_snapshot(list_json: dict) -> dict:
     }
 
 
-def extract_changed_ids(report: dict) -> set[str]:
-    ids: set[str] = set()
-    for value in (report.get("mutation_receipt") or {}).get("changed_allow_ids") or []:
-        if isinstance(value, str):
-            ids.add(value)
-    for entry in report.get("stale_entries") or []:
-        if isinstance(entry, dict) and isinstance(entry.get("id"), str):
-            ids.add(entry["id"])
-    return ids
+def extract_changed_ids(report: dict, label: str) -> set[str]:
+    receipt = report.get("mutation_receipt")
+    if not isinstance(receipt, dict):
+        fail(f"{label} missing mutation_receipt object")
+    raw_ids = receipt.get("changed_allow_ids")
+    if not isinstance(raw_ids, list) or not all(isinstance(v, str) and v for v in raw_ids):
+        fail(f"{label} mutation_receipt.changed_allow_ids must be a list of non-empty strings")
+    return set(raw_ids)
 
 
 work_dir = Path(os.environ["WORK_DIR"]).resolve()
@@ -366,7 +376,10 @@ def run_readonly_suite(binary: Path, leg: str, label: str) -> dict:
     steps.append({"leg": leg, "id": f"{label}:list", "exit_code": p_lst.returncode})
 
     p_exp = run_cmd([str(binary), "explain", "allow-0001", "--root", str(repo), "--config", str(stateful_policy), "--format", "json"], repo, env)
-    parse_json_output(p_exp, f"{label}:explain")
+    exp = parse_json_output(p_exp, f"{label}:explain")
+    explained_id = (exp.get("allow_entry") or {}).get("id")
+    if explained_id != "allow-0001":
+        fail(f"{label}:explain expected allow_entry.id == 'allow-0001', got {explained_id!r}")
     steps.append({"leg": leg, "id": f"{label}:explain", "exit_code": p_exp.returncode})
 
     p_wrk = run_cmd([str(binary), "worklist", "--root", str(repo), "--config", str(stateful_policy), "--format", "json"], repo, env)
@@ -427,6 +440,10 @@ p_missing_base = run_cmd(
     expect_ok=False,
 )
 steps.append({"leg": "candidate", "id": "candidate-0.2.0:diff-missing-base", "exit_code": p_missing_base.returncode})
+if "could not be resolved" not in p_missing_base.stderr:
+    fail(
+        f"missing-base diff did not report unresolvable revision on stderr:\n{p_missing_base.stderr}"
+    )
 if sha256_file(repo / "policy/allow.toml") != post_readonly_policy_sha:
     fail("missing-base diff mutated policy/allow.toml")
 
@@ -467,9 +484,9 @@ if not refresh_preview_unchanged:
 ref_prev_json = json.loads(refresh_preview_path.read_text(encoding="utf-8"))
 if ref_prev_json.get("schema_id") != "cargo-allow.refresh.v1":
     fail(f"unexpected refresh preview schema_id: {ref_prev_json.get('schema_id')!r}")
-if (ref_prev_json.get("mode") or {}).get("write_requested") is True:
-    fail("refresh --dry-run reported write_requested=true")
-ref_prev_ids = extract_changed_ids(ref_prev_json)
+if (ref_prev_json.get("mode") or {}).get("write_requested") is not False:
+    fail("refresh --dry-run did not report mode.write_requested=false")
+ref_prev_ids = extract_changed_ids(ref_prev_json, "refresh --dry-run")
 if "allow-0003" not in ref_prev_ids:
     fail(f"refresh preview missing allow-0003: {sorted(ref_prev_ids)}")
 
@@ -494,7 +511,7 @@ p_ref_write = run_cmd(
 )
 steps.append({"leg": "candidate", "id": "candidate-0.2.0:refresh-write", "exit_code": p_ref_write.returncode})
 ref_write_json = json.loads(refresh_write_path.read_text(encoding="utf-8"))
-ref_write_ids = extract_changed_ids(ref_write_json)
+ref_write_ids = extract_changed_ids(ref_write_json, "refresh --write")
 if (ref_write_json.get("mutation_receipt") or {}).get("result") != "written":
     fail(f"refresh --write did not report written: {ref_write_json.get('mutation_receipt')!r}")
 refresh_agree = ref_prev_ids == ref_write_ids
@@ -503,6 +520,8 @@ if not refresh_agree:
 
 # Previewed mutation 2: prune --stale (--dry-run -> --write).
 post_refresh_policy_sha = sha256_file(repo / "policy/allow.toml")
+if post_refresh_policy_sha == post_readonly_policy_sha:
+    fail("refresh --write did not modify policy/allow.toml")
 prune_preview_rel = "target/cargo-allow/prune-preview.json"
 prune_write_rel = "target/cargo-allow/prune-write.json"
 prune_preview_path = repo / prune_preview_rel
@@ -534,7 +553,9 @@ if not prune_preview_unchanged:
 prn_prev_json = json.loads(prune_preview_path.read_text(encoding="utf-8"))
 if prn_prev_json.get("schema_id") != "cargo-allow.prune.v1":
     fail(f"unexpected prune preview schema_id: {prn_prev_json.get('schema_id')!r}")
-prn_prev_ids = extract_changed_ids(prn_prev_json)
+if (prn_prev_json.get("mode") or {}).get("write_requested") is not False:
+    fail("prune --dry-run did not report mode.write_requested=false")
+prn_prev_ids = extract_changed_ids(prn_prev_json, "prune --dry-run")
 if "allow-0004" not in prn_prev_ids:
     fail(f"prune preview missing allow-0004: {sorted(prn_prev_ids)}")
 
@@ -558,7 +579,7 @@ p_prn_write = run_cmd(
 )
 steps.append({"leg": "candidate", "id": "candidate-0.2.0:prune-write", "exit_code": p_prn_write.returncode})
 prn_write_json = json.loads(prune_write_path.read_text(encoding="utf-8"))
-prn_write_ids = extract_changed_ids(prn_write_json)
+prn_write_ids = extract_changed_ids(prn_write_json, "prune --write")
 if (prn_write_json.get("mutation_receipt") or {}).get("result") != "written":
     fail(f"prune --write did not report written: {prn_write_json.get('mutation_receipt')!r}")
 prune_agree = prn_prev_ids == prn_write_ids
@@ -594,7 +615,9 @@ p_mig = run_cmd(
 steps.append({"leg": "candidate", "id": "candidate-0.2.0:migrate", "exit_code": p_mig.returncode})
 migrated_policy_sha = sha256_file(migrated_policy_path)
 mig_summary = json.loads(migrate_summary_path.read_text(encoding="utf-8"))
-mig_schema_id = mig_summary.get("schema_id") or "cargo-allow.migrate.v1"
+mig_schema_id = mig_summary.get("schema_id")
+if mig_schema_id != "cargo-allow.migrate.v1":
+    fail(f"unexpected migrate summary schema_id: {mig_schema_id!r}")
 p_mig_check = run_cmd(
     [
         str(candidate_bin),
@@ -633,6 +656,10 @@ if mig_list_snap["allow_ids"] != ["allow-0001", "allow-0002", "allow-0003"]:
     fail(f"migrate altered allow_ids: {mig_list_snap['allow_ids']}")
 if mig_list_snap["baseline_debt_ids"] != ["allow-0002"]:
     fail(f"migrate altered baseline_debt classification: {mig_list_snap['baseline_debt_ids']}")
+if mig_list_snap["location_drift_ids"] != []:
+    fail(f"expected location_drift cleared after refresh, got {mig_list_snap['location_drift_ids']}")
+if mig_list_snap["stale_ids"] != []:
+    fail(f"expected stale entries cleared after prune, got {mig_list_snap['stale_ids']}")
 
 # Negative control: stale why --plan artifact rejected as write authority by add --from-plan.
 plan_rel = "target/cargo-allow/stale-probe-plan.json"
@@ -664,6 +691,11 @@ run_cmd(
     repo,
     env,
 )
+if not plan_path.is_file():
+    fail(f"why --plan did not write {plan_path}")
+plan_json = json.loads(plan_path.read_text(encoding="utf-8"))
+if plan_json.get("schema_id") != "cargo-allow.add-finding-plan.v1":
+    fail(f"unexpected why --plan schema_id: {plan_json.get('schema_id')!r}")
 # Mutate source so the plan becomes stale.
 write_lf(probe_src_path, "// drifted line\npub fn probe(v: Option<u8>) -> u8 {\n    v.unwrap_or(0)\n}\n")
 p_stale_add = run_cmd(
@@ -688,6 +720,10 @@ p_stale_add = run_cmd(
     expect_ok=False,
 )
 steps.append({"leg": "candidate", "id": "candidate-0.2.0:why-plan-stale-reject", "exit_code": p_stale_add.returncode})
+if "add --from-plan rejected:" not in p_stale_add.stderr or "(policy unchanged)" not in p_stale_add.stderr:
+    fail(
+        f"stale add --from-plan did not emit expected rejection diagnostic on stderr:\n{p_stale_add.stderr}"
+    )
 stale_plan_policy_unchanged = sha256_file(repo / "policy/allow.toml") == policy_before_stale_plan
 if not stale_plan_policy_unchanged:
     fail("stale add --from-plan mutated policy/allow.toml")
@@ -727,6 +763,11 @@ if unrelated_root_post_cand != unrelated_root_pre or unrelated_output_post_cand 
 
 # Leg 3: Owned-state rollback (restore ONLY owned modified files and delete ONLY
 # declared owned created files — never rm -rf the repository or target/cargo-allow).
+cache_dir = repo / "target/cargo-allow/cache"
+if cache_dir.is_dir():
+    for cache_file in sorted(p for p in cache_dir.rglob("*") if p.is_file()):
+        created_owned_files.append(cache_file.relative_to(repo).as_posix())
+
 restored_modified_files: list[str] = []
 for rel in modified_files:
     target = repo / rel
@@ -739,15 +780,46 @@ for rel in modified_files:
 removed_owned_files: list[str] = []
 for rel in created_owned_files:
     target = repo / rel
-    if target.exists():
-        target.unlink()
+    if not target.is_file():
+        fail(f"declared owned file does not exist before rollback removal: {rel}")
+    target.unlink()
     if target.exists():
         fail(f"failed to remove owned file {rel}")
     removed_owned_files.append(rel)
 
+if cache_dir.is_dir():
+    for subdir in sorted(
+        (p for p in cache_dir.rglob("*") if p.is_dir()),
+        key=lambda p: len(p.parts),
+        reverse=True,
+    ):
+        subdir.rmdir()
+    cache_dir.rmdir()
+
 restored_policy_sha = sha256_file(repo / "policy/allow.toml")
 if restored_policy_sha != pre_policy_sha:
     fail("restored policy/allow.toml digest does not match preimage")
+
+# Verify zero leftover undeclared files in the repository or target/cargo-allow/.
+# Note: target/cargo-allow/unrelated-user.txt is untracked (and target/** is not
+# git-ignored via .gitignore), so assert exact porcelain output contains only that
+# preserved unrelated output-root control and exact directory contents match.
+remaining_output_entries = sorted(p.name for p in (repo / "target/cargo-allow").iterdir())
+if remaining_output_entries != ["unrelated-user.txt"]:
+    fail(
+        f"leftover undeclared files in target/cargo-allow after rollback: {remaining_output_entries}"
+    )
+porcelain_lines = [
+    line
+    for line in run_cmd(
+        ["git", "status", "--porcelain", "--untracked-files=all"], repo, env
+    ).stdout.splitlines()
+    if line.strip()
+]
+if porcelain_lines != ["?? target/cargo-allow/unrelated-user.txt"]:
+    fail(
+        f"unexpected git status entries after owned-state rollback: {porcelain_lines}"
+    )
 
 clean_unrelated_post_rb = sha256_file(clean_repo / "unrelated.txt")
 unrelated_root_post_rb = sha256_file(repo / "unrelated.txt")
