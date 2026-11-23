@@ -58,6 +58,13 @@ _WORKER_STRIPPED_ENV_EXACT = frozenset({
     "GIT_NAMESPACE",
     "GIT_CONFIG",
     "GIT_ATTR_SOURCE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_EXEC_PATH",
+    "GIT_SSH",
+    "GIT_TEMPLATE_DIR",
+    "GIT_PROXY_COMMAND",
+    "GIT_EXTERNAL_DIFF",
 })
 
 
@@ -1422,24 +1429,35 @@ def _aggregate_phase_status(phases: dict[str, str]) -> str:
     return PHASE_INCOMPLETE
 
 
-def _preflight_receipt_output(path: Path) -> Path:
-    """Admit an artifact destination without changing source or output bytes."""
+def _is_filesystem_alias(metadata: os.stat_result) -> bool:
+    return bool(
+        stat.S_ISLNK(metadata.st_mode)
+        or getattr(metadata, "st_file_attributes", 0)
+        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    )
+
+
+def _preflight_alias_and_leaf(path: Path) -> Path:
+    """Reject symlink/reparse ancestors, non-directory parents, or alias/hardlinked leaf."""
     path = path.absolute()
     for component in (path, *path.parents):
         try:
             metadata = component.lstat()
         except FileNotFoundError:
             continue
-        if (stat.S_ISLNK(metadata.st_mode)
-                or getattr(metadata, "st_file_attributes", 0)
-                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+        if _is_filesystem_alias(metadata):
             raise OSError("receipt output cannot traverse a filesystem alias")
         if component == path:
             if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
                 raise OSError("receipt output must be a singly linked regular file")
         elif not stat.S_ISDIR(metadata.st_mode):
             raise OSError("receipt output parent must be a directory")
-    path = path.resolve()
+    return path.resolve()
+
+
+def _preflight_receipt_output(path: Path) -> Path:
+    """Admit an artifact destination without changing source or output bytes."""
+    path = _preflight_alias_and_leaf(path)
     root = ROOT.resolve()
     if path.is_relative_to(root):
         if not path.is_relative_to(root / "target") or path == root / "target":
@@ -1523,7 +1541,7 @@ def linux_worker_capability() -> tuple[bool, str]:
     try:
         probe = subprocess.run(
             [
-                tools["unshare"], "-Urmn", "--",
+                tools["unshare"], "-Urmnpf", "--mount-proc", "--kill-child", "--",
                 tools["setpriv"],
                 "--bounding-set=-all",
                 "--inh-caps=-all",
@@ -1581,11 +1599,29 @@ for ((i = 0; i < ro_count; i++)); do
 done
 rw_target="$1"
 shift
+[ ! -L "$rw_target" ] && [ -d "$rw_target" ]
 mount --bind "$rw_target" "$rw_target"
 mount -o remount,bind,rw "$rw_target"
 cd "$work_root"
 exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs -- "$@"
 """
+
+
+def _ensure_safe_writable_target_dir(root: Path) -> Path:
+    """Ensure root/target is a real, non-alias directory owned directly under root."""
+    writable_target = root / "target"
+    try:
+        metadata = writable_target.lstat()
+    except FileNotFoundError:
+        writable_target.mkdir()
+        metadata = writable_target.lstat()
+    if _is_filesystem_alias(metadata):
+        raise OSError("linux worker target root cannot be a filesystem alias")
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise OSError("linux worker target root must be a directory")
+    if writable_target.resolve() != root / "target":
+        raise OSError("linux worker target root resolved outside checkout")
+    return writable_target
 
 
 def run_in_linux_worker(
@@ -1597,15 +1633,17 @@ def run_in_linux_worker(
     repo_root: Path | None = None,
     script_path: Path | None = None,
     capture_output: bool = False,
+    timeout: int = 600,
 ) -> subprocess.CompletedProcess[str]:
     """Launch the rehearsal inside an externally confined Linux worker profile.
 
-    Confinement (user/mount/network namespaces, read-only bind mounts on the
-    checkout, Git metadata, common dir, and disposable sibling bare remote,
-    writable bind mount on target/, stripped environment, and full capability
-    drop with no-new-privs) is applied by this outer supervisor *before*
-    exec'ing the rehearsal process. The rehearsal itself never confines itself;
-    it measures and tries to break out of the boundary it inherited.
+    Confinement (user/mount/network/PID namespaces with --kill-child descendant
+    reaping, read-only bind mounts on the checkout, Git metadata, common dir,
+    and disposable sibling bare remote, alias-checked writable bind mount on
+    target/, stripped environment, and full capability drop with no-new-privs)
+    is applied by this outer supervisor *before* exec'ing the rehearsal process.
+    The rehearsal itself never confines itself; it measures and tries to break
+    out of the boundary it inherited.
     """
     _require_selected_token_absent()
     if (
@@ -1616,6 +1654,8 @@ def run_in_linux_worker(
         raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
     if (candidate_executable is None) != (candidate_sha256 is None):
         raise ValueError("candidate executable and SHA-256 must be supplied together")
+    if type(timeout) is not int or timeout <= 0:
+        raise ValueError("linux worker timeout must be a positive integer")
     capable, reason = linux_worker_capability()
     if not capable:
         raise OSError(f"linux worker profile unavailable: {reason}")
@@ -1629,11 +1669,14 @@ def run_in_linux_worker(
     root = (repo_root or ROOT).resolve()
     script = (script_path or Path(__file__)).resolve()
     if output is not None:
-        previous_root = ROOT
-        if root == previous_root.resolve():
+        if root == ROOT.resolve():
             output = _preflight_receipt_output(output)
         else:
-            output = output.absolute()
+            output = _preflight_alias_and_leaf(output)
+            if output.is_relative_to(root) and (
+                not output.is_relative_to(root / "target") or output == root / "target"
+            ):
+                raise ValueError("repository receipt output must be inside target/")
 
     dirs_result = subprocess.run(
         [git_exe, "--no-replace-objects", "rev-parse", "--path-format=absolute",
@@ -1656,10 +1699,7 @@ def run_in_linux_worker(
         raise ValueError("resolved Git metadata directories do not exist")
 
     tags_before = _snapshot_tags_external(git_exe, root, bare=False)
-    writable_target = root / "target"
-    writable_target.mkdir(parents=True, exist_ok=True)
-    if output is not None and not output.is_relative_to(root):
-        output.parent.mkdir(parents=True, exist_ok=True)
+    writable_target = _ensure_safe_writable_target_dir(root)
 
     with tempfile.TemporaryDirectory(prefix="cargo-allow-linux-worker-") as launcher_dir:
         base = Path(launcher_dir).resolve()
@@ -1711,7 +1751,7 @@ def run_in_linux_worker(
             ])
 
         command = [
-            unshare_exe, "-Urmn", "--",
+            unshare_exe, "-Urmnpf", "--mount-proc", "--kill-child", "--",
             bash_exe, str(supervisor_path),
             str(root),
             str(len(ro_mounts)),
@@ -1727,6 +1767,7 @@ def run_in_linux_worker(
             ),
             capture_output=capture_output,
             text=True,
+            timeout=timeout,
             check=False,
         )
 
@@ -1750,7 +1791,7 @@ def _check_tag_invocation_boundary(
     probes = (
         ("git_tag", ["git", "tag", canary_tag, commit_sha], "resolve-commit", "HEAD"),
         ("git_update_ref", ["git", "update-ref", f"refs/tags/{canary_tag}", commit_sha], "git-tags", None),
-        ("git_push", ["git", "push", remote, f"HEAD:refs/tags/{canary_tag}"], "tag-push", None),
+        ("git_push", ["git", "push", remote, f"{commit_sha}:refs/tags/{canary_tag}"], "tag-push", None),
     )
     options = dict(
         cwd=ROOT,
@@ -1977,7 +2018,7 @@ def _run_confined_tag_breakout_probes(
         ("direct_git_update_ref_denied",
          ["git", "--no-replace-objects", "update-ref", f"refs/tags/{canary_tag}", commit_sha]),
         ("direct_git_push_denied",
-         ["git", "--no-replace-objects", "push", str(canary_remote), f"HEAD:refs/tags/{canary_tag}"]),
+         ["git", "--no-replace-objects", "push", str(canary_remote), f"{commit_sha}:refs/tags/{canary_tag}"]),
     )
     outcomes: dict[str, bool] = {}
     for key, argv in commands:
@@ -2274,6 +2315,7 @@ def _build_rehearsal_receipt(
             "tag_mutation_prevented is measured true under external Linux worker "
             f"profile {LINUX_TAG_WORKER_PROFILE} (invocation-boundary guard plus "
             "externally imposed read-only Git/worktree/canary-remote mounts, "
+            "PID namespace with --kill-child descendant lifetime control, "
             "zero capabilities with no-new-privs, EPERM remount denial, "
             "ENETUNREACH network-namespace isolation, EROFS direct metadata "
             "write denial, and denied direct tag/update-ref/push probes). "

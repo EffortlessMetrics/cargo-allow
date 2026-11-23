@@ -1894,6 +1894,43 @@ class TestInvocationBoundary(unittest.TestCase):
                 REHEARSAL.run_in_linux_worker("HEAD")
             terminal.assert_not_called()
 
+        with self.assertRaisesRegex(ValueError, "timeout"):
+            REHEARSAL.run_in_linux_worker("HEAD", timeout=0)
+
+        dirty_env = {
+            "PATH": "/usr/bin",
+            "CARGO_REGISTRY_TOKEN": "secret",
+            "GIT_OBJECT_DIRECTORY": "/tmp/evil-obj",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES": "/tmp/evil-alt",
+            "GIT_EXEC_PATH": "/tmp/evil-exec",
+            "GIT_SSH": "/tmp/evil-ssh",
+            "GIT_TEMPLATE_DIR": "/tmp/evil-tpl",
+            "GIT_PROXY_COMMAND": "/tmp/evil-proxy",
+            "GIT_EXTERNAL_DIFF": "/tmp/evil-diff",
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
+        with mock.patch.object(REHEARSAL.os, "environ", dirty_env):
+            cleaned = REHEARSAL._linux_worker_env(
+                empty_home=self.root / "h",
+                empty_xdg=self.root / "x",
+                work_tmp=self.root / "t",
+            )
+        for forbidden in (
+            "CARGO_REGISTRY_TOKEN",
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            "GIT_EXEC_PATH",
+            "GIT_SSH",
+            "GIT_TEMPLATE_DIR",
+            "GIT_PROXY_COMMAND",
+            "GIT_EXTERNAL_DIFF",
+            "GIT_CONFIG_NOSYSTEM",
+        ):
+            self.assertNotIn(forbidden, cleaned)
+        self.assertEqual(cleaned["GIT_TERMINAL_PROMPT"], "0")
+        self.assertEqual(cleaned["GIT_SSH_COMMAND"], "/bin/false")
+        self.assertEqual(cleaned["GIT_ASKPASS"], "/bin/false")
+
 
 class TestLinuxTagConfinement(unittest.TestCase):
     """End-to-end Linux worker profile and tag-mutation denial falsifiers (#3792)."""
@@ -2346,6 +2383,82 @@ class TestLinuxTagConfinement(unittest.TestCase):
         )
         self.assertEqual(conflict.returncode, 2)
         self.assertIn("manages its own canary remote", conflict.stderr)
+
+    def test_linux_worker_rejects_symlinked_output_parent_without_creating_dirs(self) -> None:
+        escape_target = self.sandbox / "escape-target"
+        escape_target.mkdir()
+        symlink_dir = self.sandbox / "symlink-dir"
+        symlink_dir.symlink_to(escape_target, target_is_directory=True)
+        output_path = symlink_dir / "created-through-symlink" / "receipt.json"
+
+        with self.assertRaisesRegex(OSError, "filesystem alias"):
+            REHEARSAL.run_in_linux_worker(
+                "HEAD",
+                output=output_path,
+                repo_root=self.repo,
+                script_path=self.script,
+                capture_output=True,
+            )
+        self.assertEqual(list(escape_target.iterdir()), [])
+
+    def test_linux_worker_rejects_symlinked_target_dir_without_mounting(self) -> None:
+        external_dir = self.sandbox / "external-target"
+        external_dir.mkdir()
+        for target_dest in (self.repo / ".git/refs/tags", external_dir):
+            with self.subTest(dest=target_dest.name):
+                repo_target = self.repo / "target"
+                if repo_target.is_symlink() or repo_target.exists():
+                    if repo_target.is_symlink() or repo_target.is_file():
+                        repo_target.unlink()
+                    else:
+                        shutil.rmtree(repo_target)
+                repo_target.symlink_to(target_dest, target_is_directory=True)
+                with self.assertRaisesRegex(OSError, "filesystem alias"):
+                    REHEARSAL.run_in_linux_worker(
+                        "HEAD",
+                        repo_root=self.repo,
+                        script_path=self.script,
+                        capture_output=True,
+                    )
+                repo_target.unlink()
+        self.assertEqual(self.show_tags(self.repo), "")
+        self.assertEqual(list(external_dir.iterdir()), [])
+
+    def test_linux_worker_enforces_timeout_and_reaps_descendants(self) -> None:
+        marker = self.sandbox / "descendant-survived.txt"
+        hanging_script = self.sandbox / "hang_worker.py"
+        hanging_script.write_text(
+            "import os, subprocess, sys, time\n"
+            "from pathlib import Path\n"
+            "marker = Path(sys.argv[1])\n"
+            "# Spawn a detached background child that would write after 2s if not reaped.\n"
+            "subprocess.Popen([\n"
+            "    sys.executable, '-c',\n"
+            "    'import sys, time; from pathlib import Path; time.sleep(2.0); Path(sys.argv[1]).write_text(\"survived\")',\n"
+            "    str(marker),\n"
+            "], start_new_session=True)\n"
+            "time.sleep(30)\n",
+            encoding="utf-8",
+        )
+        # Verify PID namespace + --kill-child reaping on launcher timeout.
+        wrapper = self.sandbox / "wrap_hang.py"
+        wrapper.write_text(
+            "import subprocess, sys\n"
+            f"subprocess.run([sys.executable, {str(hanging_script)!r}, {str(marker)!r}], check=False)\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(subprocess.TimeoutExpired):
+            REHEARSAL.run_in_linux_worker(
+                "HEAD",
+                repo_root=self.repo,
+                script_path=wrapper,
+                capture_output=True,
+                timeout=1,
+            )
+        # Wait past the child's 2s sleep to prove --kill-child reaped the entire PID namespace.
+        import time
+        time.sleep(2.5)
+        self.assertFalse(marker.exists(), "detached descendant survived PID-namespace termination")
 
 
 if __name__ == "__main__":
