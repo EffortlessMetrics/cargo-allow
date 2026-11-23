@@ -1,14 +1,18 @@
-# Small deterministic repository input for the exact installed transition.
-schema_version = 1
-policy = "unsafe-allowlist"
+# Deterministic representative 0.1.11 repository policy fixture for the
+# exact installed 0.1.11 -> candidate 0.2.0 -> 0.1.11 stateful journey (#2485/#3853).
+#
+# Header section (before the first [[allow]]) is also reused as the clean-strict
+# 0.1.11 fixture policy with optional profiles absent.
+schema_version = "0.1"
+policy = "cargo-allow"
 owner = "cargo-allow-release-proof"
-status = "advisory"
+status = "active"
 
 [workspace]
 root = "."
 inventory = "git-tracked"
 default_mode = "no-new"
-ignored = [".git/**", "target/**"]
+ignored = [".git/**", "target/**", "policy/allow.toml", "unrelated.txt"]
 
 [requirements]
 owner_required = true
@@ -17,3 +21,93 @@ classification_required = true
 evidence_required = false
 expires_or_review_after_required = true
 stale_entries_fail = false
+
+# 1. Reviewed current entry with lifecycle, structural selector, legacy line_hint, and evidence.
+[[allow]]
+id = "allow-0001"
+kind = "panic"
+family = "expect"
+path = "src/main.rs"
+owner = "cargo-allow-release-proof"
+classification = "reviewed_exception"
+reason = "Reviewed startup invariant exercises structural selector, lifecycle dates, and evidence fields across 0.1.11 and 0.2.0."
+evidence = ["issue:2485"]
+created = "2026-08-25"
+review_after = "2028-12-31"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "reviewed_boot"
+callee = "expect"
+line_hint = 2
+
+[allow.last_seen]
+line = 2
+column = 7
+
+# 2. Brownfield baseline_debt entry with occurrence_limit that must never be laundered into approval.
+[[allow]]
+id = "allow-0002"
+kind = "panic"
+family = "unwrap"
+path = "src/legacy.rs"
+owner = "cargo-allow-release-proof"
+classification = "baseline_debt"
+reason = "Bounded brownfield baseline debt preserved across upgrade and rollback without silent approval laundering."
+evidence = ["issue:2485"]
+occurrence_limit = 1
+created = "2028-09-01"
+review_after = "2028-11-01"
+expires = "2028-12-20"
+
+[allow.selector]
+ast_kind = "method_call"
+callee = "unwrap"
+
+[allow.last_seen]
+line = 2
+column = 7
+
+# 3. Advisory location-drift entry (last_seen line 99 vs line 2 in src/drifted.rs) for previewed refresh.
+[[allow]]
+id = "allow-0003"
+kind = "panic"
+family = "unwrap"
+path = "src/drifted.rs"
+owner = "cargo-allow-release-proof"
+classification = "reviewed_exception"
+reason = "Intentional line drift exercises advisory location_drift reporting and previewed refresh --dry-run to --write."
+evidence = ["issue:2485"]
+created = "2026-08-25"
+review_after = "2028-12-31"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "drifted_helper"
+callee = "unwrap"
+
+[allow.last_seen]
+line = 99
+column = 5
+
+# 4. Stale entry (finding already removed in src/removed_finding.rs) for previewed prune.
+[[allow]]
+id = "allow-0004"
+kind = "panic"
+family = "unwrap"
+path = "src/removed_finding.rs"
+owner = "cargo-allow-release-proof"
+classification = "reviewed_exception"
+reason = "Intentional stale entry exercises stale detection and previewed prune --stale --dry-run to --write."
+evidence = ["issue:2485"]
+created = "2026-08-25"
+review_after = "2028-12-31"
+
+[allow.selector]
+ast_kind = "method_call"
+container = "cleaned_helper"
+callee = "unwrap"
+
+[allow.last_seen]
+line = 2
+column = 5

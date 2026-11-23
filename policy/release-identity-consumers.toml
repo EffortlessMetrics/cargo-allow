@@ -446,14 +446,13 @@ claim_boundary = "Parses changelog headings with an opaque version capture plus 
 id = "validate-upgrade-rollback-journey"
 path = "scripts/validate-upgrade-rollback-journey.py"
 role = "upgrade/rollback journey receipt validator"
-disposition = "deferred-with-named-owner"
-owner = "#2485"
+disposition = "exact-value-pass-through"
 marker_classes = []
 sites = [
-  "re.fullmatch(r\"cargo-allow 0\\.1\\.11.*\"",
-  "re.fullmatch(r\"cargo-allow 0\\.2\\.0.*\"",
+  "EXPECTED_FROM_VERSION = \"cargo-allow 0.1.11\"",
+  "EXPECTED_CANDIDATE_VERSION = \"cargo-allow 0.2.0\"",
 ]
-claim_boundary = "Hard-codes published/candidate version-prefix assumptions with wildcard tails that silently accept prerelease variants; replace with exact typed identity when the #2485 journey is refreshed."
+claim_boundary = "Compares receipt from/candidate/rollback version strings for exact equality against the declared 0.1.11 and 0.2.0 transition identities without wildcard tails or channel inference (#2485/#3853)."
 
 [[consumers]]
 id = "release-authorized-workflow"
