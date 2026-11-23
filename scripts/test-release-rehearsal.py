@@ -1900,6 +1900,10 @@ class TestInvocationBoundary(unittest.TestCase):
         dirty_env = {
             "PATH": "/usr/bin",
             "CARGO_REGISTRY_TOKEN": "secret",
+            "LD_PRELOAD": "/tmp/hook.so",
+            "LD_LIBRARY_PATH": "/tmp/libs",
+            "PYTHONPATH": "/tmp/py",
+            "PYTHONSTARTUP": "/tmp/startup.py",
             "GIT_OBJECT_DIRECTORY": "/tmp/evil-obj",
             "GIT_ALTERNATE_OBJECT_DIRECTORIES": "/tmp/evil-alt",
             "GIT_EXEC_PATH": "/tmp/evil-exec",
@@ -1917,6 +1921,10 @@ class TestInvocationBoundary(unittest.TestCase):
             )
         for forbidden in (
             "CARGO_REGISTRY_TOKEN",
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "PYTHONPATH",
+            "PYTHONSTARTUP",
             "GIT_OBJECT_DIRECTORY",
             "GIT_ALTERNATE_OBJECT_DIRECTORIES",
             "GIT_EXEC_PATH",
@@ -1927,6 +1935,9 @@ class TestInvocationBoundary(unittest.TestCase):
             "GIT_CONFIG_NOSYSTEM",
         ):
             self.assertNotIn(forbidden, cleaned)
+        self.assertEqual(cleaned["TMPDIR"], str(self.root / "t"))
+        self.assertEqual(cleaned["TEMP"], str(self.root / "t"))
+        self.assertEqual(cleaned["TMP"], str(self.root / "t"))
         self.assertEqual(cleaned["GIT_TERMINAL_PROMPT"], "0")
         self.assertEqual(cleaned["GIT_SSH_COMMAND"], "/bin/false")
         self.assertEqual(cleaned["GIT_ASKPASS"], "/bin/false")

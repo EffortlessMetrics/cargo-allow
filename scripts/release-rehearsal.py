@@ -12,8 +12,6 @@ import hashlib
 import json
 import os
 from os import getpid as _GETPID, name as _PLATFORM_NAME, pathsep as _PATH_SEPARATOR
-_STATVFS = getattr(os, "statvfs", None)
-_ST_RDONLY = getattr(os, "ST_RDONLY", None)
 from pathlib import Path
 import shutil
 import socket
@@ -22,6 +20,9 @@ import subprocess
 import sys
 import tempfile
 from typing import Any, Callable
+
+_STATVFS = getattr(os, "statvfs", None)
+_ST_RDONLY = getattr(os, "ST_RDONLY", None)
 
 ROOT = Path(__file__).resolve().parent.parent
 PHASE_COMPLETE = "Complete"
@@ -1509,12 +1510,14 @@ def _write_receipt(path: Path, json_text: str) -> None:
 def _linux_worker_env(
     *, empty_home: Path, empty_xdg: Path, work_tmp: Path,
 ) -> dict[str, str]:
-    """Build a stripped worker environment without ambient Git or credential hooks."""
+    """Build a stripped worker environment without ambient Git, LD, Python, or credential hooks."""
     cleaned: dict[str, str] = {}
     for name in os.environ:
         if (
             name in _WORKER_STRIPPED_ENV_EXACT
             or name.startswith("GIT_CONFIG_")
+            or name.startswith("LD_")
+            or name.startswith("PYTHON")
             or (name.startswith("CARGO_REGISTRIES_") and name.endswith("_TOKEN"))
         ):
             continue
@@ -1522,6 +1525,8 @@ def _linux_worker_env(
     cleaned["HOME"] = str(empty_home)
     cleaned["XDG_CONFIG_HOME"] = str(empty_xdg)
     cleaned["TMPDIR"] = str(work_tmp)
+    cleaned["TEMP"] = str(work_tmp)
+    cleaned["TMP"] = str(work_tmp)
     cleaned["GIT_TERMINAL_PROMPT"] = "0"
     cleaned["GIT_SSH_COMMAND"] = "/bin/false"
     cleaned["GIT_ASKPASS"] = "/bin/false"
@@ -1599,7 +1604,10 @@ for ((i = 0; i < ro_count; i++)); do
 done
 rw_target="$1"
 shift
-[ ! -L "$rw_target" ] && [ -d "$rw_target" ]
+if [ -L "$rw_target" ] || [ ! -d "$rw_target" ]; then
+  echo "unsafe writable target: $rw_target" >&2
+  exit 1
+fi
 mount --bind "$rw_target" "$rw_target"
 mount -o remount,bind,rw "$rw_target"
 cd "$work_root"
@@ -1738,6 +1746,7 @@ def run_in_linux_worker(
 
         worker_argv = [
             str(Path(sys.executable).absolute()),
+            "-I",
             str(script),
             "--commit", commit_ref,
             "--tag-canary-remote", str(canary_remote),
@@ -1863,7 +1872,10 @@ def _read_proc_self_capabilities() -> dict[str, int] | None:
 def _probe_remount_rw_eperm(path: Path) -> tuple[bool, str]:
     """Attempt a live kernel MS_REMOUNT|MS_BIND rw syscall and require exact EPERM."""
     try:
-        libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        try:
+            libc = ctypes.CDLL(None, use_errno=True)
+        except OSError:
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
         mount_fn = libc.mount
         mount_fn.argtypes = [
             ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p,
