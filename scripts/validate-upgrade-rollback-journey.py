@@ -123,7 +123,7 @@ def load(path: Path) -> dict[str, Any]:
 
     try:
         value = json.loads(
-            Path(path).read_text(encoding="utf-8"),
+            path.read_text(encoding="utf-8"),
             object_pairs_hook=unique_object,
             parse_constant=lambda token: fail(f"invalid JSON constant {token} in {path}"),
         )
@@ -135,7 +135,7 @@ def load(path: Path) -> dict[str, Any]:
 
 
 def digest(path: Path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def schema_type(value: Any, expected: str) -> bool:

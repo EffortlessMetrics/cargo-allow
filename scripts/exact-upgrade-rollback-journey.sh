@@ -39,7 +39,10 @@ import re
 import sys
 from pathlib import Path
 
-binary = Path(sys.argv[1]).resolve(strict=True)
+raw_binary = Path(sys.argv[1])
+if raw_binary.is_symlink():
+    raise SystemExit("candidate binary must not be a symlink")
+binary = raw_binary.resolve(strict=True)
 install = Path(sys.argv[2]).resolve(strict=True)
 package_receipt = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
 if not isinstance(package_receipt, dict):
@@ -55,7 +58,7 @@ try:
     binary.relative_to(install)
 except ValueError as error:
     raise SystemExit(f"candidate binary must be below exact install root {install}") from error
-if binary.is_symlink() or not binary.is_file():
+if not binary.is_file():
     raise SystemExit("candidate binary must be a regular non-symlink file")
 expected_sha = (package_receipt.get("install") or {}).get("binary_sha256")
 if not isinstance(expected_sha, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_sha):
@@ -67,6 +70,7 @@ if actual_sha != expected_sha:
     )
 PY
 
+[[ ! -L "${WORK_DIR}" ]] || fail "WORK_DIR must not be a symlink: ${WORK_DIR}"
 if [[ -z "${OLD_BIN:-}" ]]; then
   rm -rf "${WORK_DIR}"
 fi
@@ -81,13 +85,16 @@ if [[ -n "${OLD_BIN:-}" ]]; then
 import sys
 from pathlib import Path
 
-p = Path(sys.argv[1]).resolve(strict=True)
+raw_old = Path(sys.argv[1])
+if raw_old.is_symlink():
+    raise SystemExit("OLD_BIN must not be a symlink")
+p = raw_old.resolve(strict=True)
 root = Path(sys.argv[2]).resolve()
 try:
     p.relative_to(root)
 except ValueError as error:
     raise SystemExit(f"OLD_BIN must be under {root}") from error
-if p.is_symlink() or not p.is_file():
+if not p.is_file():
     raise SystemExit("OLD_BIN must be a regular file")
 print(p)
 PY
