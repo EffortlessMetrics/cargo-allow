@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4847,
+  "base_ref": "main",
+  "base_sha": "a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f",
+  "head_ref": "fix/2485-docs-first",
+  "head_sha": "fc599ba0905993f6f597d0297ede97dc850400a9",
+  "merge_base": "a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f",
+  "review_protocol": "review-current-head-gen1",
+  "scope_claim_boundary": "pull-request:4847",
+  "reviewed_diff_digest": "sha256:v2:45f4f586bc87e7118fd03fb784bfec6f98d442dae518bbfe8ff819402ee10075",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Non-author internal model reviewer who performed the exact-source re-review, retained in GitHub comment 7008341886 via the PR author's integration account. Shared account/repository context is a correlated-failure limit; no formal GitHub or independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4847#issuecomment-7008341886"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4847#discussion_r4627912276 \u2014 Gemini wording; verified repair reply r4628296818 and resolved.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4847#discussion_r4627918880 \u2014 Graphite saved source.txt location; verified repair reply r4628293058 and resolved.",
+    "Current source CodeRabbit remained neutral/rate-limited; it supplied no substantive review. Current Conversation and both resolved replies re-read after product CI."
+  ],
+  "required_ci": {
+    "owner": "Protected PR #4847 delivery process: the authorized delivery lead must inspect terminal exact-pair GitHub required checks and actual merge-group qualification separately; this record does not authorize either transition.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/44518460372 \u2014 terminal ordinary source PR CI success on fc599ba (pregate/test green); frozen-subject-lock run 44518460230 passed. Exact review-readiness is a separate currently failing context pending this retained record; queue qualification did not run on the PR event, and this is not release proof. Separate no-publish rehearsal observation (artifact 14527401553) recorded harness exit 1 / Incomplete; it is not a release-readiness result."
+  },
+  "evidence_class": "current_observation",
+  "reviewed_at_utc": "2026-11-19T11:54:30Z"
+}
