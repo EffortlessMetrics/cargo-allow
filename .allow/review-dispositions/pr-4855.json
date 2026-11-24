@@ -1,0 +1,37 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4855,
+  "base_ref": "main",
+  "base_sha": "fc6463992f52c086ce9e88612eeb0f656a0873c7",
+  "head_ref": "feat/3792-linux-tag-confinement",
+  "head_sha": "a9ac5ff0368f13cd55083eed9d629d46ae4baf03",
+  "merge_base": "a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f",
+  "reviewed_diff_digest": "sha256:v2:8db24c71cd345d321795752edc977a1658931b0bf93e6eced7897008be8e29f4",
+  "review_protocol": "review-current-head-gen1",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Non-author swarm exact-head ReadOnlyReview of PR #4855 at a9ac5ff0368f13cd55083eed9d629d46ae4baf03 (base main@fc6463992f52c086ce9e88612eeb0f656a0873c7, merge-base a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f) across 3 passes with independent WSL2 Ubuntu 22.04 execution (23/23 TestLinuxTagConfinement + TestInvocationBoundary PASS). Correlated-failure limit: shared repository instructions, account transport, and model family; no independent human approval or hosted GitHub Actions Linux unshare observation.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4855#issuecomment-7117720514 - Non-author swarm exact-head ReadOnlyReview verdict CLEAN ON SOURCE (0 blocking findings) at a9ac5ff0368f13cd55083eed9d629d46ae4baf03, base fc6463992f52c086ce9e88612eeb0f656a0873c7, merge-base a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f, reviewed_diff_digest=sha256:v2:8db24c71cd345d321795752edc977a1658931b0bf93e6eced7897008be8e29f4."
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "PRRT_kwDOSnyN3s67H5iN (Graphite): explicit shell if-guard for symlink/non-dir rw_target fixed in a9ac5ff0, replied PRRC_kwDOSnyN3s8AAAABFpGgqQ, resolved and read back isResolved=true.",
+    "PRRT_kwDOSnyN3s67H6a- (Gemini): _linux_worker_env strips LD_* and PYTHON* and sets TEMP/TMP alongside TMPDIR in a9ac5ff0, replied PRRC_kwDOSnyN3s8AAAABFpGiFQ, resolved and read back isResolved=true.",
+    "PRRT_kwDOSnyN3s67H6bG (Gemini): worker Python launched with -I isolated mode in a9ac5ff0, replied PRRC_kwDOSnyN3s8AAAABFpGjaw, resolved and read back isResolved=true.",
+    "PRRT_kwDOSnyN3s67H6bJ (Gemini): ctypes.CDLL(None, use_errno=True) primary with libc.so.6 fallback in a9ac5ff0, replied PRRC_kwDOSnyN3s8AAAABFpGk4Q, resolved and read back isResolved=true.",
+    "PRRT_kwDOSnyN3s67H6bM (Gemini): _STATVFS/_ST_RDONLY moved below stdlib imports in a9ac5ff0, replied PRRC_kwDOSnyN3s8AAAABFpGmrQ, resolved and read back isResolved=true.",
+    "CodeRabbit rate-limited (IC_kwDOSnyN3s8AAAABqDoP7A): skipped due to quota limit; explicitly not counted as a clean review."
+  ],
+  "required_ci": {
+    "owner": "PR #4855 owning session (rehearsal-3792): verify terminal review-readiness, pregate, test, frozen-subject-lock, and merge-group qualification before landing; this record does not authorize merge or release.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/45292330719"
+  },
+  "evidence_class": "current_observation",
+  "scope_claim_boundary": "pull-request:4855",
+  "reviewed_at_utc": "2026-11-24T00:07:00Z"
+}
