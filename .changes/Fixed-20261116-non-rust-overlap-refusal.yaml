@@ -1,0 +1,12 @@
+kind: Fixed
+body: >-
+  Refuse a single-file non-Rust migration whose selectors overlap in a way the
+  canonical ledger cannot rank (#4840). The legacy tool and the compat reader
+  resolve an overlap by literal specificity, but the canonical schema has no
+  rank field, so `migrate --from` now stops and names both selectors and the
+  finding they collide on instead of writing a policy that scans as
+  `Ambiguous`. The one mechanical case - an exact path shadowing one glob -
+  still resolves through the per-finding projection; `check --compat --kind
+  non-rust` keeps reading the legacy file unchanged. On shiplog `0e89da59`
+  the `.github/workflows/*.yml` and `.github/**` pair now produces that
+  refusal with both selectors named.

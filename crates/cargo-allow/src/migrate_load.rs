@@ -31,7 +31,11 @@ pub(super) fn load_single_file_migration_config(
     let inventory = inventory(&root, &InventoryOptions::default())?;
     let inventory_source = inventory.source;
     let files_scanned = inventory.files.len();
-    let (cfg, source) = load_single_file_policy(from)?;
+    let non_rust_findings = allow_files::scan_files(&inventory.files)
+        .into_iter()
+        .filter(|finding| finding.kind == FindingKind::NonRustFile)
+        .collect::<Vec<_>>();
+    let (cfg, source) = load_single_file_policy(from, &non_rust_findings)?;
     let repository_identity =
         crate::plan_bindings::inventory_identity_from_inventory(&root, &inventory)?;
     let inventory_completeness = inventory.completeness.as_str().to_string();
@@ -72,12 +76,13 @@ pub(super) fn load_single_file_migration_config(
 
 fn load_single_file_policy(
     from: &Path,
+    non_rust_findings: &[allow_core::Finding],
 ) -> CargoAllowResult<(allow_core::AllowConfig, SingleFileMigrationSource)> {
     if let Some(cfg) = import_bespoke_ledger_at(from)? {
         return Ok((cfg, SingleFileMigrationSource::BespokeLedger));
     }
     Ok((
-        allow_policy_legacy::load_legacy_or_canonical(from)?,
+        allow_policy_legacy::load_non_rust_migration_config(from, non_rust_findings)?,
         SingleFileMigrationSource::LegacyOrCanonical,
     ))
 }
