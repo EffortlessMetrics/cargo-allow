@@ -1,0 +1,45 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4857,
+  "base_ref": "main",
+  "base_sha": "cb0c60e18044d0be1df66296d01c6062c4bb4a02",
+  "head_ref": "fix/readme-first-run-add-example",
+  "head_sha": "c816d17fc8bb26e14f490f154924e344107a76ef",
+  "merge_base": "fc6463992f52c086ce9e88612eeb0f656a0873c7",
+  "review_protocol": "review-current-head-gen1",
+  "scope_claim_boundary": "pull-request:4857",
+  "reviewed_diff_digest": "sha256:v2:dbe3835e8fff30677c42a2d3e311c8af4b74073ac78b2adaf9ffe98fb7c1917d",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Independent non-author internal cargo reviewer. The retained rebind covers landed base cb0c60e and unchanged head c816d17. Source review is non-human evidence.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4857#pullrequestreview-6051761817"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [
+    {
+      "id": "gemini-inline-add-comment",
+      "severity": "advisory",
+      "owned_seam": "README core workflow example",
+      "source_path": "README.md",
+      "source_line": 117,
+      "repair_route": "Independent reviewer classified the comment as advisory. EffortlessSteven replied in r4689621001 and resolved the thread with the tested README line retained.",
+      "claim_boundary": "Restoring the inline comment is a style suggestion. It leaves the tested argv and installed CLI behavior unchanged."
+    }
+  ],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4857#discussion_r4689578367 — Gemini advisory at README.md:117. Reply r4689621001 and resolved state verified on c816d17; no source change.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4857#issuecomment-7150866242 — CodeRabbit quota notice, with no substantive review.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4857#pullrequestreview-6050963077 — exact-pair independent rebind and installed 0.1.11 and historical 0.2.0 CLI replay retained.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4857#pullrequestreview-6051761817 — independent rebind to landed base cb0c60e, unchanged source head c816d17, and effective merge base fc646399."
+  ],
+  "required_ci": {
+    "owner": "The protected PR delivery owner verifies exact-head terminal required checks and the native merge qualification before transition.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/45533738091 — initial automatic CI passed on c816d17 with prior base fc646399. #4854 landed as cb0c60e. Verify current disposition-only successor and its required checks independently."
+  },
+  "evidence_class": "current_observation",
+  "reviewed_at_utc": "2026-11-25T04:13:27Z"
+}
