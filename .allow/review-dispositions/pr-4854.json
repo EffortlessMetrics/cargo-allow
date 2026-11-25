@@ -1,0 +1,34 @@
+{
+  "schema_id": "cargo-allow.review-disposition.v1",
+  "schema_version": 1,
+  "repository": "EffortlessMetrics/cargo-allow",
+  "pr_number": 4854,
+  "base_ref": "main",
+  "base_sha": "fc6463992f52c086ce9e88612eeb0f656a0873c7",
+  "head_ref": "docs/3782-getting-started-rust-floor",
+  "head_sha": "f8acd6f6bd7490c4283ef65f7b3e66b293602963",
+  "merge_base": "a801c75d1a1ba285de2e2d3c4b2a015f92d0c85f",
+  "review_protocol": "review-current-head-gen1",
+  "scope_claim_boundary": "pull-request:4854",
+  "reviewed_diff_digest": "sha256:v2:809bbcafa2c688ba06384be967f3b103f3f165089d28c44e57631433c353559e",
+  "actor_class": "independent_model",
+  "reviewer_identity": "Non-author read-only internal model reviewer who performed the exact-head review of f8acd6f6 against a801c75d and confirmed disjointness from main@fc646399, retained in GitHub comment 7117477103 via the delivery account. Shared account/repository context is a correlated-failure limit; no formal GitHub or independent-human approval.",
+  "independent_review": {
+    "proven": {
+      "reference": "https://github.com/EffortlessMetrics/cargo-allow/pull/4854#issuecomment-7117477103"
+    }
+  },
+  "claimed_verdict": "review_clean",
+  "findings": [],
+  "threads_inspected": [
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4854#discussion_r4673441938 — Gemini low-priority possessive wording; replied (PRRC_kwDOSnyN3s8AAAABFo9OUw), resolved (PRRT_kwDOSnyN3s67HkzV), and read back isResolved=true.",
+    "https://github.com/EffortlessMetrics/cargo-allow/pull/4854#discussion_r4673441945 — Gemini low-priority table-cell punctuation; replied (PRRC_kwDOSnyN3s8AAAABFo9POw), resolved (PRRT_kwDOSnyN3s67Hkza), and read back isResolved=true.",
+    "CodeRabbit (IC_kwDOSnyN3s8AAAABqDUw0Q) completed clean with no actionable comments on a801c75d..f8acd6f6."
+  ],
+  "required_ci": {
+    "owner": "Protected PR #4854 delivery process: the authorized delivery lead must inspect terminal exact-pair GitHub required checks and actual merge-group qualification separately; this record does not authorize either transition.",
+    "observation_ref": "https://github.com/EffortlessMetrics/cargo-allow/actions/runs/45289239308 — source PR CI on f8acd6f6 (pregate, msrv, operator-latency, ubuntu/macos core platforms passed; coverage/test still running); frozen-subject-lock run 45289239434, Review contracts run 45289239340, and sentinel run 45289239304 passed. Terminal exact-head required checks (pregate, test, review-readiness, frozen-subject-lock) on this disposition commit and actual merge-group G qualification remain separately required."
+  },
+  "evidence_class": "current_observation",
+  "reviewed_at_utc": "2026-11-23T23:53:40Z"
+}
