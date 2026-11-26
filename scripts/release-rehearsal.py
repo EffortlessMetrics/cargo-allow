@@ -6,17 +6,23 @@ from __future__ import annotations
 import argparse
 import contextlib
 from contextvars import ContextVar
+import ctypes
+import errno
 import hashlib
 import json
 import os
-from os import name as _PLATFORM_NAME, pathsep as _PATH_SEPARATOR
+from os import getpid as _GETPID, name as _PLATFORM_NAME, pathsep as _PATH_SEPARATOR
 from pathlib import Path
 import shutil
+import socket
 import stat
 import subprocess
 import sys
 import tempfile
 from typing import Any, Callable
+
+_STATVFS = getattr(os, "statvfs", None)
+_ST_RDONLY = getattr(os, "ST_RDONLY", None)
 
 ROOT = Path(__file__).resolve().parent.parent
 PHASE_COMPLETE = "Complete"
@@ -24,6 +30,43 @@ PHASE_INCOMPLETE = "Incomplete"
 PHASE_MISMATCH = "Mismatch"
 PHASE_INSTRUMENT_FAILURE = "InstrumentFailure"
 CARGO_TOKEN_ENV = "CARGO_REGISTRY_TOKEN"
+LINUX_TAG_WORKER_PROFILE = "linux-userns-ro-git-netns-v1"
+ZERO_MUTATION_FLAGS = (
+    "tag_mutation_prevented",
+    "token_read_prevented",
+    "cargo_publish_prevented",
+    "registry_mutation_prevented",
+    "github_release_mutation_prevented",
+    "live_setting_mutation_prevented",
+    "external_repository_mutation_prevented",
+)
+_LINUX_MS_REMOUNT = 32
+_LINUX_MS_BIND = 4096
+_LINUX_NET_PROBE_TARGET = ("192.0.2.1", 443)  # RFC 5737 TEST-NET-1; UDP connect emits no packets
+_WORKER_STRIPPED_ENV_EXACT = frozenset({
+    CARGO_TOKEN_ENV,
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "SSH_AUTH_SOCK",
+    "SSH_AGENT_PID",
+    "GPG_AGENT_INFO",
+    "GIT_ASKPASS",
+    "SSH_ASKPASS",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_COMMON_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_NAMESPACE",
+    "GIT_CONFIG",
+    "GIT_ATTR_SOURCE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_EXEC_PATH",
+    "GIT_SSH",
+    "GIT_TEMPLATE_DIR",
+    "GIT_PROXY_COMMAND",
+    "GIT_EXTERNAL_DIFF",
+})
 
 
 def _selected_token_present() -> bool:
@@ -103,6 +146,8 @@ def _invocation_command(context: _Invocation, operation: str, selected: Any) -> 
             "--ignore-submodules=none",
         ], "git"),
         "output-tracked": (["git", "ls-files", "--cached", "-z"], "git"),
+        "git-dirs": (git + ["rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir"], "git"),
+        "git-tags": (git + ["show-ref", "--tags"], "git"),
         "publisher-proof": ([context.python, str(context.root / "scripts/test-release-topology-publisher.py")], "python"),
         "history-proof": ([context.python, str(context.root / "scripts/generate-changie-history.py"), "--check"], "python"),
         "manifest-proof": ([context.python, str(context.root / "scripts/test-final-packaged-surface.py")], "python"),
@@ -110,6 +155,13 @@ def _invocation_command(context: _Invocation, operation: str, selected: Any) -> 
     }
     if operation in fixed and selected is None:
         return fixed[operation]
+    if operation == "canary-remote-tags" and isinstance(selected, Path) and (
+        selected.is_absolute()
+        and not selected.is_relative_to(context.root)
+        and not str(selected).startswith("-")
+        and not any(char in str(selected) for char in "\r\n\0")
+    ):
+        return git + ["--git-dir", str(selected), "show-ref", "--tags"], "git"
     if operation == "resolve-commit" and isinstance(selected, str) and selected and (
         not selected.startswith("-") and not any(char in selected for char in "\r\n\0")
     ):
@@ -151,7 +203,8 @@ def _run_process(command: list[str], *, operation: str, selected: Any = None, **
             return _run_process(command, operation=operation, selected=selected, **options)
     expected, tool = _invocation_command(context, operation, selected)
     text_operations = {
-        "resolve-commit", "release-identity", "candidate-package", "shared-preflight",
+        "resolve-commit", "git-dirs", "git-tags", "canary-remote-tags",
+        "release-identity", "candidate-package", "shared-preflight",
         "publisher-proof", "history-proof", "manifest-proof", "corpus-proof",
     }
     timeout = 15 if tool == "git" else 300
@@ -1377,24 +1430,35 @@ def _aggregate_phase_status(phases: dict[str, str]) -> str:
     return PHASE_INCOMPLETE
 
 
-def _preflight_receipt_output(path: Path) -> Path:
-    """Admit an artifact destination without changing source or output bytes."""
+def _is_filesystem_alias(metadata: os.stat_result) -> bool:
+    return bool(
+        stat.S_ISLNK(metadata.st_mode)
+        or getattr(metadata, "st_file_attributes", 0)
+        & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)
+    )
+
+
+def _preflight_alias_and_leaf(path: Path) -> Path:
+    """Reject symlink/reparse ancestors, non-directory parents, or alias/hardlinked leaf."""
     path = path.absolute()
     for component in (path, *path.parents):
         try:
             metadata = component.lstat()
         except FileNotFoundError:
             continue
-        if (stat.S_ISLNK(metadata.st_mode)
-                or getattr(metadata, "st_file_attributes", 0)
-                & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)):
+        if _is_filesystem_alias(metadata):
             raise OSError("receipt output cannot traverse a filesystem alias")
         if component == path:
             if not stat.S_ISREG(metadata.st_mode) or metadata.st_nlink != 1:
                 raise OSError("receipt output must be a singly linked regular file")
         elif not stat.S_ISDIR(metadata.st_mode):
             raise OSError("receipt output parent must be a directory")
-    path = path.resolve()
+    return path.resolve()
+
+
+def _preflight_receipt_output(path: Path) -> Path:
+    """Admit an artifact destination without changing source or output bytes."""
+    path = _preflight_alias_and_leaf(path)
     root = ROOT.resolve()
     if path.is_relative_to(root):
         if not path.is_relative_to(root / "target") or path == root / "target":
@@ -1443,9 +1507,727 @@ def _write_receipt(path: Path, json_text: str) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def _linux_worker_env(
+    *, empty_home: Path, empty_xdg: Path, work_tmp: Path,
+) -> dict[str, str]:
+    """Build a stripped worker environment without ambient Git, LD, Python, or credential hooks."""
+    cleaned: dict[str, str] = {}
+    for name in os.environ:
+        if (
+            name in _WORKER_STRIPPED_ENV_EXACT
+            or name.startswith("GIT_CONFIG_")
+            or name.startswith("LD_")
+            or name.startswith("PYTHON")
+            or (name.startswith("CARGO_REGISTRIES_") and name.endswith("_TOKEN"))
+        ):
+            continue
+        cleaned[name] = os.environ[name]
+    cleaned["HOME"] = str(empty_home)
+    cleaned["XDG_CONFIG_HOME"] = str(empty_xdg)
+    cleaned["TMPDIR"] = str(work_tmp)
+    cleaned["TEMP"] = str(work_tmp)
+    cleaned["TMP"] = str(work_tmp)
+    cleaned["GIT_TERMINAL_PROMPT"] = "0"
+    cleaned["GIT_SSH_COMMAND"] = "/bin/false"
+    cleaned["GIT_ASKPASS"] = "/bin/false"
+    return cleaned
+
+
+def linux_worker_capability() -> tuple[bool, str]:
+    """Probe whether this host can actually launch the confined Linux worker profile."""
+    if sys.platform != "linux":
+        return False, "unsupported_platform"
+    tools: dict[str, str] = {}
+    for name in ("unshare", "setpriv", "mount", "bash", "git"):
+        found = shutil.which(name)
+        if not found:
+            return False, f"missing_tool:{name}"
+        tools[name] = found
+    try:
+        probe = subprocess.run(
+            [
+                tools["unshare"], "-Urmnpf", "--mount-proc", "--kill-child", "--",
+                tools["setpriv"],
+                "--bounding-set=-all",
+                "--inh-caps=-all",
+                "--ambient-caps=-all",
+                "--no-new-privs",
+                "--",
+                "true",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False, "capability_probe_error"
+    if probe.returncode != 0:
+        return False, "unshare_or_setpriv_unavailable"
+    return True, "available"
+
+
+def _snapshot_tags_external(git_exe: str, target_dir: Path, *, bare: bool = False) -> str:
+    """Read refs/tags from outside the worker namespace for outer launcher verification."""
+    command = [git_exe, "--no-replace-objects"]
+    if bare:
+        command.extend(["--git-dir", str(target_dir)])
+    command.extend(["show-ref", "--tags"])
+    result = subprocess.run(
+        command,
+        cwd=None if bare else target_dir,
+        env=_sanitized_environment(),
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if result.returncode == 0:
+        return result.stdout
+    if result.returncode == 1 and not result.stdout and not result.stderr.strip():
+        return ""
+    raise OSError("could not snapshot Git tags outside worker")
+
+
+_LINUX_WORKER_SUPERVISOR = """#!/usr/bin/env bash
+set -euo pipefail
+work_root="$1"
+shift
+ro_count="$1"
+shift
+mount --make-rprivate / 2>/dev/null || true
+for ((i = 0; i < ro_count; i++)); do
+  target="$1"
+  shift
+  mount --bind "$target" "$target"
+  mount -o remount,bind,ro,nosuid,nodev "$target"
+done
+rw_target="$1"
+shift
+if [ -L "$rw_target" ] || [ ! -d "$rw_target" ]; then
+  echo "unsafe writable target: $rw_target" >&2
+  exit 1
+fi
+mount --bind "$rw_target" "$rw_target"
+mount -o remount,bind,rw "$rw_target"
+cd "$work_root"
+exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs -- "$@"
+"""
+
+
+def _ensure_safe_writable_target_dir(root: Path) -> Path:
+    """Ensure root/target is a real, non-alias directory owned directly under root."""
+    writable_target = root / "target"
+    try:
+        metadata = writable_target.lstat()
+    except FileNotFoundError:
+        writable_target.mkdir()
+        metadata = writable_target.lstat()
+    if _is_filesystem_alias(metadata):
+        raise OSError("linux worker target root cannot be a filesystem alias")
+    if not stat.S_ISDIR(metadata.st_mode):
+        raise OSError("linux worker target root must be a directory")
+    if writable_target.resolve() != root / "target":
+        raise OSError("linux worker target root resolved outside checkout")
+    return writable_target
+
+
+def run_in_linux_worker(
+    commit_ref: str,
+    *,
+    output: Path | None = None,
+    candidate_executable: Path | None = None,
+    candidate_sha256: str | None = None,
+    repo_root: Path | None = None,
+    script_path: Path | None = None,
+    capture_output: bool = False,
+    timeout: int = 600,
+) -> subprocess.CompletedProcess[str]:
+    """Launch the rehearsal inside an externally confined Linux worker profile.
+
+    Confinement (user/mount/network/PID namespaces with --kill-child descendant
+    reaping, read-only bind mounts on the checkout, Git metadata, common dir,
+    and disposable sibling bare remote, alias-checked writable bind mount on
+    target/, stripped environment, and full capability drop with no-new-privs)
+    is applied by this outer supervisor *before* exec'ing the rehearsal process.
+    The rehearsal itself never confines itself; it measures and tries to break
+    out of the boundary it inherited.
+    """
+    _require_selected_token_absent()
+    if (
+        not commit_ref
+        or commit_ref.startswith("-")
+        or any(char in commit_ref for char in "\r\n\0")
+    ):
+        raise ValueError("commit ref must be non-empty, single-line, and not start with a dash")
+    if (candidate_executable is None) != (candidate_sha256 is None):
+        raise ValueError("candidate executable and SHA-256 must be supplied together")
+    if type(timeout) is not int or timeout <= 0:
+        raise ValueError("linux worker timeout must be a positive integer")
+    capable, reason = linux_worker_capability()
+    if not capable:
+        raise OSError(f"linux worker profile unavailable: {reason}")
+
+    git_exe = shutil.which("git")
+    unshare_exe = shutil.which("unshare")
+    bash_exe = shutil.which("bash")
+    if not (git_exe and unshare_exe and bash_exe):
+        raise OSError("linux worker launcher tools are unavailable")
+
+    root = (repo_root or ROOT).resolve()
+    script = (script_path or Path(__file__)).resolve()
+    if output is not None:
+        if root == ROOT.resolve():
+            output = _preflight_receipt_output(output)
+        else:
+            output = _preflight_alias_and_leaf(output)
+            if output.is_relative_to(root) and (
+                not output.is_relative_to(root / "target") or output == root / "target"
+            ):
+                raise ValueError("repository receipt output must be inside target/")
+
+    dirs_result = subprocess.run(
+        [git_exe, "--no-replace-objects", "rev-parse", "--path-format=absolute",
+         "--git-dir", "--git-common-dir"],
+        cwd=root,
+        env=_sanitized_environment(),
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    if dirs_result.returncode != 0:
+        raise ValueError("could not resolve Git metadata directories for linux worker")
+    dir_lines = [line.strip() for line in dirs_result.stdout.splitlines() if line.strip()]
+    if len(dir_lines) != 2:
+        raise ValueError("unexpected Git metadata directory output for linux worker")
+    git_dir = Path(dir_lines[0]).resolve()
+    git_common_dir = Path(dir_lines[1]).resolve()
+    if not git_dir.is_dir() or not git_common_dir.is_dir():
+        raise ValueError("resolved Git metadata directories do not exist")
+
+    tags_before = _snapshot_tags_external(git_exe, root, bare=False)
+    writable_target = _ensure_safe_writable_target_dir(root)
+
+    with tempfile.TemporaryDirectory(prefix="cargo-allow-linux-worker-") as launcher_dir:
+        base = Path(launcher_dir).resolve()
+        work_tmp = base / "tmp"
+        empty_home = base / "home"
+        empty_xdg = base / "xdg"
+        canary_remote = base / "canary-remote.git"
+        work_tmp.mkdir()
+        empty_home.mkdir()
+        empty_xdg.mkdir()
+        init_remote = subprocess.run(
+            [git_exe, "init", "--bare", "--quiet", str(canary_remote)],
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if init_remote.returncode != 0:
+            raise OSError("could not initialize disposable canary bare remote")
+        remote_tags_before = _snapshot_tags_external(git_exe, canary_remote, bare=True)
+        if remote_tags_before:
+            raise OSError("fresh canary bare remote unexpectedly contained tags")
+
+        raw_ro_mounts = sorted(
+            {root, git_dir, git_common_dir, canary_remote},
+            key=lambda path: (len(path.parts), str(path)),
+        )
+        ro_mounts: list[Path] = []
+        for candidate in raw_ro_mounts:
+            if not any(candidate.is_relative_to(existing) for existing in ro_mounts):
+                ro_mounts.append(candidate)
+
+        supervisor_path = base / "supervisor.sh"
+        supervisor_path.write_text(_LINUX_WORKER_SUPERVISOR, encoding="utf-8")
+
+        worker_argv = [
+            str(Path(sys.executable).absolute()),
+            "-I",
+            str(script),
+            "--commit", commit_ref,
+            "--tag-canary-remote", str(canary_remote),
+        ]
+        if output is not None:
+            worker_argv.extend(["--output", str(output)])
+        if candidate_executable is not None and candidate_sha256 is not None:
+            worker_argv.extend([
+                "--candidate-executable", str(candidate_executable),
+                "--candidate-sha256", candidate_sha256,
+            ])
+
+        command = [
+            unshare_exe, "-Urmnpf", "--mount-proc", "--kill-child", "--",
+            bash_exe, str(supervisor_path),
+            str(root),
+            str(len(ro_mounts)),
+            *(str(path) for path in ro_mounts),
+            str(writable_target),
+            *worker_argv,
+        ]
+        result = subprocess.run(
+            command,
+            cwd=root,
+            env=_linux_worker_env(
+                empty_home=empty_home, empty_xdg=empty_xdg, work_tmp=work_tmp,
+            ),
+            capture_output=capture_output,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+
+        tags_after = _snapshot_tags_external(git_exe, root, bare=False)
+        remote_tags_after = _snapshot_tags_external(git_exe, canary_remote, bare=True)
+        if tags_after != tags_before or remote_tags_after != remote_tags_before:
+            raise OSError("outer launcher observed unexpected Git tag mutation")
+        return result
+
+
+def _check_tag_invocation_boundary(
+    commit_sha: str, *, tag_canary_remote: Path | None = None,
+) -> tuple[bool, list[str]]:
+    """Verify the owned _run_process boundary denies tag, update-ref, and push."""
+    canary_tag = f"rehearsal-canary-{_GETPID()}"
+    remote = str(
+        tag_canary_remote
+        if tag_canary_remote is not None
+        else ROOT.resolve().parent / "rehearsal-canary-remote.git"
+    )
+    probes = (
+        ("git_tag", ["git", "tag", canary_tag, commit_sha], "resolve-commit", "HEAD"),
+        ("git_update_ref", ["git", "update-ref", f"refs/tags/{canary_tag}", commit_sha], "git-tags", None),
+        ("git_push", ["git", "push", remote, f"{commit_sha}:refs/tags/{canary_tag}"], "tag-push", None),
+    )
+    options = dict(
+        cwd=ROOT,
+        env=_sanitized_environment(),
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    denied: list[str] = []
+    for label, command, operation, selected in probes:
+        try:
+            _run_process(command, operation=operation, selected=selected, **options)
+        except OSError as error:
+            if "not selected" in str(error):
+                denied.append(label)
+    return len(denied) == len(probes), denied
+
+
+def _path_is_read_only(path: Path) -> bool:
+    """Inspect kernel VFS ST_RDONLY mount flag without mutating the path."""
+    if _STATVFS is None or _ST_RDONLY is None:
+        return False
+    try:
+        return bool(_STATVFS(path).f_flag & _ST_RDONLY)
+    except OSError:
+        return False
+
+
+def _read_proc_self_capabilities() -> dict[str, int] | None:
+    """Read Linux capability masks and NoNewPrivs via raw fd I/O."""
+    try:
+        fd = os.open("/proc/self/status", os.O_RDONLY)
+    except OSError:
+        return None
+    chunks: list[bytes] = []
+    try:
+        while True:
+            chunk = os.read(fd, 4096)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    except OSError:
+        return None
+    finally:
+        os.close(fd)
+    text = b"".join(chunks).decode("ascii", errors="replace")
+    parsed: dict[str, int] = {}
+    for line in text.splitlines():
+        if ":" not in line:
+            continue
+        key, raw_value = line.split(":", 1)
+        value = raw_value.strip()
+        if key in {"CapEff", "CapPrm", "CapBnd", "CapAmb"}:
+            try:
+                parsed[key] = int(value, 16)
+            except ValueError:
+                return None
+        elif key == "NoNewPrivs":
+            try:
+                parsed[key] = int(value, 10)
+            except ValueError:
+                return None
+    if len(parsed) != 5:
+        return None
+    return parsed
+
+
+def _probe_remount_rw_eperm(path: Path) -> tuple[bool, str]:
+    """Attempt a live kernel MS_REMOUNT|MS_BIND rw syscall and require exact EPERM."""
+    try:
+        try:
+            libc = ctypes.CDLL(None, use_errno=True)
+        except OSError:
+            libc = ctypes.CDLL("libc.so.6", use_errno=True)
+        mount_fn = libc.mount
+        mount_fn.argtypes = [
+            ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p,
+            ctypes.c_ulong, ctypes.c_void_p,
+        ]
+        mount_fn.restype = ctypes.c_int
+    except OSError:
+        return False, "libc_unavailable"
+    ctypes.set_errno(0)
+    rc = mount_fn(None, os.fsencode(path), None, _LINUX_MS_REMOUNT | _LINUX_MS_BIND, None)
+    if rc == 0:
+        return False, "remount_succeeded"
+    err = ctypes.get_errno()
+    name = errno.errorcode.get(err, f"errno_{err}")
+    return err == errno.EPERM, name
+
+
+def _probe_network_egress_denied() -> tuple[bool, str]:
+    """Verify kernel network-namespace isolation via zero-packet UDP connect()."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(_LINUX_NET_PROBE_TARGET)
+        return False, "connected"
+    except OSError as error:
+        name = errno.errorcode.get(error.errno, f"errno_{error.errno}")
+        return error.errno == errno.ENETUNREACH, name
+    finally:
+        sock.close()
+
+
+def _probe_direct_write_erofs(path: Path, *, flags: int) -> tuple[bool, str]:
+    """Attempt a direct kernel open() for write and require exact EROFS."""
+    try:
+        fd = os.open(path, flags, 0o600)
+    except OSError as error:
+        name = errno.errorcode.get(error.errno, f"errno_{error.errno}")
+        return error.errno == errno.EROFS, name
+    os.close(fd)
+    if flags & os.O_EXCL:
+        path.unlink(missing_ok=True)
+    return False, "write_succeeded"
+
+
+def _resolve_git_metadata_dirs() -> tuple[Path, Path] | None:
+    """Resolve git_dir and git_common_dir through the owned invocation boundary."""
+    try:
+        result = _run_process(
+            ["git", "--no-replace-objects", "rev-parse", "--path-format=absolute",
+             "--git-dir", "--git-common-dir"],
+            operation="git-dirs",
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if len(lines) != 2:
+        return None
+    git_dir, git_common_dir = Path(lines[0]), Path(lines[1])
+    if not git_dir.is_absolute() or not git_common_dir.is_absolute():
+        return None
+    git_dir = git_dir.resolve()
+    git_common_dir = git_common_dir.resolve()
+    if not git_dir.is_dir() or not git_common_dir.is_dir():
+        return None
+    return git_dir, git_common_dir
+
+
+def _read_git_tags(canary_remote: Path | None = None) -> str | None:
+    """Read refs/tags through the owned invocation boundary; fail closed on errors."""
+    if canary_remote is None:
+        command = ["git", "--no-replace-objects", "show-ref", "--tags"]
+        operation = "git-tags"
+        selected = None
+    else:
+        command = ["git", "--no-replace-objects", "--git-dir", str(canary_remote),
+                   "show-ref", "--tags"]
+        operation = "canary-remote-tags"
+        selected = canary_remote
+    try:
+        result = _run_process(
+            command,
+            operation=operation,
+            selected=selected,
+            cwd=ROOT,
+            env=_sanitized_environment(),
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode == 0:
+        return result.stdout
+    if result.returncode == 1 and not result.stdout and not result.stderr.strip():
+        return ""
+    return None
+
+
+def _run_confined_tag_breakout_probes(
+    commit_sha: str, canary_remote: Path,
+) -> dict[str, bool]:
+    """Attempt direct Git tag/update-ref/push commands bypassing _run_process.
+
+    MUST ONLY be called after kernel RO-mount, zero-cap/no-new-privs, EPERM
+    remount, ENETUNREACH network, and EROFS direct-write invariants have all
+    been proven on the live process boundary.
+    """
+    context = _INVOCATION.get()
+    if context is None:
+        return {
+            "direct_git_tag_denied": False,
+            "direct_git_update_ref_denied": False,
+            "direct_git_push_denied": False,
+            "tags_unchanged": False,
+            "canary_remote_tags_unchanged": False,
+        }
+    try:
+        git_exe = context.executable("git")
+    except OSError:
+        return {
+            "direct_git_tag_denied": False,
+            "direct_git_update_ref_denied": False,
+            "direct_git_push_denied": False,
+            "tags_unchanged": False,
+            "canary_remote_tags_unchanged": False,
+        }
+    local_before = _read_git_tags(None)
+    remote_before = _read_git_tags(canary_remote)
+    if local_before is None or remote_before is None:
+        return {
+            "direct_git_tag_denied": False,
+            "direct_git_update_ref_denied": False,
+            "direct_git_push_denied": False,
+            "tags_unchanged": False,
+            "canary_remote_tags_unchanged": False,
+        }
+    canary_tag = f"rehearsal-canary-{_GETPID()}"
+    env = _sanitized_environment()
+    env.setdefault("GIT_TERMINAL_PROMPT", "0")
+    root = context.root
+    commands = (
+        ("direct_git_tag_denied",
+         ["git", "--no-replace-objects", "tag", canary_tag, commit_sha]),
+        ("direct_git_update_ref_denied",
+         ["git", "--no-replace-objects", "update-ref", f"refs/tags/{canary_tag}", commit_sha]),
+        ("direct_git_push_denied",
+         ["git", "--no-replace-objects", "push", str(canary_remote), f"{commit_sha}:refs/tags/{canary_tag}"]),
+    )
+    outcomes: dict[str, bool] = {}
+    for key, argv in commands:
+        try:
+            proc = subprocess.run(
+                argv,
+                executable=git_exe,
+                cwd=root,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            outcomes[key] = proc.returncode != 0
+        except (OSError, subprocess.SubprocessError):
+            outcomes[key] = False
+
+    local_after = _read_git_tags(None)
+    remote_after = _read_git_tags(canary_remote)
+    outcomes["tags_unchanged"] = (
+        local_after is not None
+        and local_after == local_before
+        and f"refs/tags/{canary_tag}" not in local_after
+    )
+    outcomes["canary_remote_tags_unchanged"] = (
+        remote_after is not None
+        and remote_after == remote_before
+        and f"refs/tags/{canary_tag}" not in remote_after
+    )
+    return outcomes
+
+
+def _evaluate_tag_mutation_proof(
+    commit_sha: str, *, tag_canary_remote: Path | None = None,
+) -> tuple[bool, dict[str, Any]]:
+    """Measure the live tag-mutation denial boundary without self-confinement."""
+    argv_denied, argv_denied_commands = _check_tag_invocation_boundary(
+        commit_sha, tag_canary_remote=tag_canary_remote,
+    )
+    evidence: dict[str, Any] = {
+        "worker_profile": LINUX_TAG_WORKER_PROFILE,
+        "argv_denied": argv_denied,
+        "argv_denied_commands": argv_denied_commands,
+        "runtime_confined": False,
+        "all_mounts_ro": False,
+        "capabilities_dropped": False,
+        "remount_denied_eperm": False,
+        "network_egress_denied": False,
+        "direct_fs_write_denied_erofs": False,
+        "direct_git_tag_denied": False,
+        "direct_git_update_ref_denied": False,
+        "direct_git_push_denied": False,
+        "tags_unchanged": False,
+        "canary_remote_tags_unchanged": False,
+        "prevented": False,
+        "reason": "unmeasured",
+    }
+
+    if sys.platform != "linux" or _STATVFS is None or _ST_RDONLY is None:
+        evidence["reason"] = "unsupported_platform"
+        return False, evidence
+
+    root = ROOT.resolve()
+    if not _path_is_read_only(root):
+        evidence["reason"] = "unconfined_runtime_boundary"
+        return False, evidence
+
+    meta_dirs = _resolve_git_metadata_dirs()
+    if meta_dirs is None:
+        evidence["reason"] = "git_metadata_unresolved"
+        return False, evidence
+    git_dir, git_common_dir = meta_dirs
+
+    if not (_path_is_read_only(git_dir) and _path_is_read_only(git_common_dir)):
+        evidence["reason"] = "git_metadata_not_read_only"
+        return False, evidence
+
+    if tag_canary_remote is None or not tag_canary_remote.is_absolute():
+        evidence["reason"] = "canary_remote_missing"
+        return False, evidence
+    canary_remote = tag_canary_remote.resolve()
+    if (
+        not canary_remote.is_dir()
+        or canary_remote.is_relative_to(root)
+        or canary_remote.is_relative_to(git_dir)
+        or canary_remote.is_relative_to(git_common_dir)
+        or not (canary_remote / "HEAD").is_file()
+        or not (canary_remote / "refs/tags").is_dir()
+        or not _path_is_read_only(canary_remote)
+    ):
+        evidence["reason"] = "canary_remote_invalid_or_writable"
+        return False, evidence
+
+    evidence["all_mounts_ro"] = True
+
+    caps = _read_proc_self_capabilities()
+    capabilities_dropped = (
+        caps is not None
+        and caps["CapEff"] == 0
+        and caps["CapPrm"] == 0
+        and caps["CapBnd"] == 0
+        and caps["CapAmb"] == 0
+        and caps["NoNewPrivs"] == 1
+    )
+    evidence["capabilities_dropped"] = capabilities_dropped
+    if not capabilities_dropped:
+        evidence["reason"] = "privileges_not_dropped"
+        return False, evidence
+
+    unique_targets: list[Path] = []
+    for target in (root, git_dir, git_common_dir, canary_remote):
+        if target not in unique_targets:
+            unique_targets.append(target)
+    remount_errnos: list[str] = []
+    remount_all_eperm = True
+    for target in unique_targets:
+        ok, err_name = _probe_remount_rw_eperm(target)
+        remount_errnos.append(err_name)
+        if not ok:
+            remount_all_eperm = False
+    evidence["remount_denied_eperm"] = remount_all_eperm
+    evidence["remount_errnos"] = remount_errnos
+    if not remount_all_eperm:
+        evidence["reason"] = "remount_not_eperm"
+        return False, evidence
+
+    net_ok, net_errno = _probe_network_egress_denied()
+    evidence["network_egress_denied"] = net_ok
+    evidence["network_probe_errno"] = net_errno
+    if not net_ok:
+        evidence["reason"] = "network_not_isolated"
+        return False, evidence
+
+    refs_tags_dir = git_common_dir / "refs/tags"
+    if not refs_tags_dir.is_dir():
+        evidence["reason"] = "missing_refs_tags_dir"
+        return False, evidence
+
+    pid = _GETPID()
+    write_targets = (
+        ("refs_tags", refs_tags_dir / f".rehearsal-canary-{pid}",
+         os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+        ("packed_refs", git_common_dir / "packed-refs",
+         os.O_WRONLY | os.O_CREAT | os.O_APPEND),
+        ("git_head", git_dir / "HEAD", os.O_WRONLY | os.O_APPEND),
+        ("worktree_root", root / f".rehearsal-canary-{pid}",
+         os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+        ("cwd_relative", Path(f".rehearsal-cwd-canary-{pid}"),
+         os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+        ("canary_remote_tags", canary_remote / "refs/tags" / f".rehearsal-canary-{pid}",
+         os.O_WRONLY | os.O_CREAT | os.O_EXCL),
+    )
+    write_errnos: dict[str, str] = {}
+    all_erofs = True
+    for label, target, flags in write_targets:
+        ok, err_name = _probe_direct_write_erofs(target, flags=flags)
+        write_errnos[label] = err_name
+        if not ok:
+            all_erofs = False
+    evidence["direct_fs_write_denied_erofs"] = all_erofs
+    evidence["direct_write_errnos"] = write_errnos
+    if not all_erofs:
+        evidence["reason"] = "direct_write_not_erofs"
+        return False, evidence
+
+    evidence["runtime_confined"] = True
+    breakouts = _run_confined_tag_breakout_probes(commit_sha, canary_remote)
+    evidence.update(breakouts)
+
+    prevented = (
+        evidence["argv_denied"]
+        and evidence["runtime_confined"]
+        and evidence["all_mounts_ro"]
+        and evidence["capabilities_dropped"]
+        and evidence["remount_denied_eperm"]
+        and evidence["network_egress_denied"]
+        and evidence["direct_fs_write_denied_erofs"]
+        and evidence["direct_git_tag_denied"]
+        and evidence["direct_git_update_ref_denied"]
+        and evidence["direct_git_push_denied"]
+        and evidence["tags_unchanged"]
+        and evidence["canary_remote_tags_unchanged"]
+    )
+    evidence["prevented"] = prevented
+    evidence["reason"] = (
+        "confined_tag_mutation_denied"
+        if prevented
+        else ("invocation_boundary_bypassed" if not evidence["argv_denied"] else "breakout_probe_failed")
+    )
+    return prevented, evidence
+
+
 def build_rehearsal_receipt(
     commit_ref: str, *, candidate_executable: Path | None = None,
     candidate_sha256: str | None = None,
+    tag_canary_remote: Path | None = None,
 ) -> dict[str, Any]:
     """Build an honest characterization receipt for one verified commit."""
     _require_selected_token_absent()
@@ -1453,12 +2235,14 @@ def build_rehearsal_receipt(
         return _build_rehearsal_receipt(
             commit_ref, candidate_executable=candidate_executable,
             candidate_sha256=candidate_sha256,
+            tag_canary_remote=tag_canary_remote,
         )
 
 
 def _build_rehearsal_receipt(
     commit_ref: str, *, candidate_executable: Path | None,
     candidate_sha256: str | None,
+    tag_canary_remote: Path | None = None,
 ) -> dict[str, Any]:
     if (candidate_executable is None) != (candidate_sha256 is None):
         raise ValueError("candidate executable and SHA-256 must be supplied together")
@@ -1475,15 +2259,7 @@ def _build_rehearsal_receipt(
         "commit_sha": commit_sha,
         "subject_lockfile_digest": lockfile_digest,
         "subject_topology_digest": topology_digest,
-        "zero_mutation_proof": {
-            "tag_mutation_prevented": False,
-            "token_read_prevented": False,
-            "cargo_publish_prevented": False,
-            "registry_mutation_prevented": False,
-            "github_release_mutation_prevented": False,
-            "live_setting_mutation_prevented": False,
-            "external_repository_mutation_prevented": False,
-        },
+        "zero_mutation_proof": {flag: False for flag in ZERO_MUTATION_FLAGS},
         "phases": {},
         "aggregate_status": PHASE_INCOMPLETE,
         "claim_boundary": (
@@ -1531,10 +2307,34 @@ def _build_rehearsal_receipt(
         receipt["phases"][phase_name] = runner(receipt)
 
     require_clean_checkout(commit_sha)
+    tag_prevented, tag_evidence = _evaluate_tag_mutation_proof(
+        commit_sha, tag_canary_remote=tag_canary_remote,
+    )
     if _selected_token_present():
         receipt["phases"]["authorization_boundary"] = PHASE_INSTRUMENT_FAILURE
         # The final refusal supersedes the earlier token-absence detail.
         receipt.pop("authorization_boundary", None)
+        tag_prevented = False
+        tag_evidence["prevented"] = False
+        tag_evidence["reason"] = "selected_token_present"
+
+    receipt["zero_mutation_proof"]["tag_mutation_prevented"] = tag_prevented
+    receipt["zero_mutation_evidence"] = {
+        "tag_mutation_prevented": tag_evidence,
+    }
+    if tag_prevented:
+        receipt["claim_boundary"] = (
+            "tag_mutation_prevented is measured true under external Linux worker "
+            f"profile {LINUX_TAG_WORKER_PROFILE} (invocation-boundary guard plus "
+            "externally imposed read-only Git/worktree/canary-remote mounts, "
+            "PID namespace with --kill-child descendant lifetime control, "
+            "zero capabilities with no-new-privs, EPERM remount denial, "
+            "ENETUNREACH network-namespace isolation, EROFS direct metadata "
+            "write denial, and denied direct tag/update-ref/push probes). "
+            "The other six zero_mutation_proof flags, alternate credential "
+            "sources, and whole-workflow authorization/publication remain "
+            "unproven, so the aggregate cannot satisfy a release gate."
+        )
     receipt["aggregate_status"] = _aggregate_phase_status(receipt["phases"])
     return receipt
 
@@ -1549,7 +2349,30 @@ def main() -> int:
                         help="Absolute path to the caller's just-built cargo-allow")
     parser.add_argument("--candidate-sha256",
                         help="Paired executable digest in sha256:v1:<hex> form")
+    parser.add_argument("--linux-worker", action="store_true",
+                        help="Launch the rehearsal inside the confined Linux worker profile")
+    parser.add_argument("--tag-canary-remote", type=Path,
+                        help="Read-only bare Git canary remote supplied by an external worker supervisor")
     args = parser.parse_args()
+
+    if args.linux_worker:
+        if args.tag_canary_remote is not None:
+            print(
+                "release rehearsal instrumentation failed: --linux-worker manages its own canary remote",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            launched = run_in_linux_worker(
+                args.commit,
+                output=Path(args.output) if args.output is not None else None,
+                candidate_executable=args.candidate_executable,
+                candidate_sha256=args.candidate_sha256,
+            )
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            print(f"release rehearsal instrumentation failed: {error}", file=sys.stderr)
+            return 2
+        return launched.returncode
 
     try:
         _require_selected_token_absent()
@@ -1559,6 +2382,7 @@ def main() -> int:
             receipt = build_rehearsal_receipt(
                 args.commit, candidate_executable=args.candidate_executable,
                 candidate_sha256=args.candidate_sha256,
+                tag_canary_remote=args.tag_canary_remote,
             )
             json_text = json.dumps(receipt, indent=2, sort_keys=True)
             if output_path is not None:

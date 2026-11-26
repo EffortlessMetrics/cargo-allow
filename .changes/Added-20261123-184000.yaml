@@ -1,0 +1,2 @@
+kind: Added
+body: Add external Linux worker confinement profile (`linux-userns-ro-git-netns-v1`) and non-self-confined tag-mutation denial proof with kernel and invocation-boundary falsifiers to `scripts/release-rehearsal.py` (#3792).

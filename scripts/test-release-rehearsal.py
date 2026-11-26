@@ -10,6 +10,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import stat
 import subprocess
 import sys
@@ -1848,6 +1849,627 @@ class TestInvocationBoundary(unittest.TestCase):
                 REHEARSAL.resolve_commit("HEAD")
             terminal.assert_not_called()
             self.assertIsNone(REHEARSAL._INVOCATION.get())
+
+    def test_tag_mutation_invocation_boundary_and_bypass_falsifier(self) -> None:
+        with mock.patch.object(REHEARSAL.subprocess, "run") as terminal:
+            denied, commands = REHEARSAL._check_tag_invocation_boundary("a" * 40)
+            self.assertTrue(denied)
+            self.assertEqual(commands, ["git_tag", "git_update_ref", "git_push"])
+            terminal.assert_not_called()
+
+        def bypassed(command, *, operation, selected=None, **options):
+            return subprocess.CompletedProcess(command, 0, "", "")
+
+        with mock.patch.object(REHEARSAL, "_run_process", side_effect=bypassed):
+            denied, commands = REHEARSAL._check_tag_invocation_boundary("a" * 40)
+            self.assertFalse(denied)
+            self.assertEqual(commands, [])
+
+    def test_unconfined_tag_mutation_proof_stays_false_without_mutating_repo(self) -> None:
+        with mock.patch.object(REHEARSAL.subprocess, "run") as terminal:
+            prevented, evidence = REHEARSAL._evaluate_tag_mutation_proof("a" * 40)
+        self.assertFalse(prevented)
+        self.assertTrue(evidence["argv_denied"])
+        self.assertFalse(evidence["runtime_confined"])
+        self.assertFalse(evidence["prevented"])
+        self.assertIn(
+            evidence["reason"],
+            {"unsupported_platform", "unconfined_runtime_boundary"},
+        )
+        terminal.assert_not_called()
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_linux_worker_launcher_refuses_selected_token_and_unavailable_host(self) -> None:
+        trap = TokenValueTrap({"CARGO_REGISTRY_TOKEN": "synthetic-private-token"})
+        with mock.patch.object(REHEARSAL.os, "environ", trap):
+            with self.assertRaisesRegex(ValueError, "CARGO_REGISTRY_TOKEN"):
+                REHEARSAL.run_in_linux_worker("HEAD")
+        self.assertNotIn("CARGO_REGISTRY_TOKEN", trap.value_reads)
+
+        with mock.patch.object(
+            REHEARSAL, "linux_worker_capability",
+            return_value=(False, "unshare_or_setpriv_unavailable"),
+        ), mock.patch.object(REHEARSAL.subprocess, "run") as terminal:
+            with self.assertRaisesRegex(OSError, "unshare_or_setpriv_unavailable"):
+                REHEARSAL.run_in_linux_worker("HEAD")
+            terminal.assert_not_called()
+
+        with self.assertRaisesRegex(ValueError, "timeout"):
+            REHEARSAL.run_in_linux_worker("HEAD", timeout=0)
+
+        dirty_env = {
+            "PATH": "/usr/bin",
+            "CARGO_REGISTRY_TOKEN": "secret",
+            "LD_PRELOAD": "/tmp/hook.so",
+            "LD_LIBRARY_PATH": "/tmp/libs",
+            "PYTHONPATH": "/tmp/py",
+            "PYTHONSTARTUP": "/tmp/startup.py",
+            "GIT_OBJECT_DIRECTORY": "/tmp/evil-obj",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES": "/tmp/evil-alt",
+            "GIT_EXEC_PATH": "/tmp/evil-exec",
+            "GIT_SSH": "/tmp/evil-ssh",
+            "GIT_TEMPLATE_DIR": "/tmp/evil-tpl",
+            "GIT_PROXY_COMMAND": "/tmp/evil-proxy",
+            "GIT_EXTERNAL_DIFF": "/tmp/evil-diff",
+            "GIT_CONFIG_NOSYSTEM": "1",
+        }
+        with mock.patch.object(REHEARSAL.os, "environ", dirty_env):
+            cleaned = REHEARSAL._linux_worker_env(
+                empty_home=self.root / "h",
+                empty_xdg=self.root / "x",
+                work_tmp=self.root / "t",
+            )
+        for forbidden in (
+            "CARGO_REGISTRY_TOKEN",
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "PYTHONPATH",
+            "PYTHONSTARTUP",
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            "GIT_EXEC_PATH",
+            "GIT_SSH",
+            "GIT_TEMPLATE_DIR",
+            "GIT_PROXY_COMMAND",
+            "GIT_EXTERNAL_DIFF",
+            "GIT_CONFIG_NOSYSTEM",
+        ):
+            self.assertNotIn(forbidden, cleaned)
+        self.assertEqual(cleaned["TMPDIR"], str(self.root / "t"))
+        self.assertEqual(cleaned["TEMP"], str(self.root / "t"))
+        self.assertEqual(cleaned["TMP"], str(self.root / "t"))
+        self.assertEqual(cleaned["GIT_TERMINAL_PROMPT"], "0")
+        self.assertEqual(cleaned["GIT_SSH_COMMAND"], "/bin/false")
+        self.assertEqual(cleaned["GIT_ASKPASS"], "/bin/false")
+
+
+class TestLinuxTagConfinement(unittest.TestCase):
+    """End-to-end Linux worker profile and tag-mutation denial falsifiers (#3792)."""
+
+    UNPROVEN_SIX = (
+        "token_read_prevented",
+        "cargo_publish_prevented",
+        "registry_mutation_prevented",
+        "github_release_mutation_prevented",
+        "live_setting_mutation_prevented",
+        "external_repository_mutation_prevented",
+    )
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        capable, reason = REHEARSAL.linux_worker_capability()
+        if not capable:
+            raise unittest.SkipTest(f"Linux worker confinement unavailable on host: {reason}")
+
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory(prefix="rehearsal-linux-worker-")
+        self.addCleanup(directory.cleanup)
+        self.sandbox = Path(directory.name).resolve()
+        self.repo = self.sandbox / "repo"
+        self.repo.mkdir()
+        self.git(self.repo, "init", "--quiet")
+        files = {
+            ".gitignore": "target/\n__pycache__/\n",
+            "Cargo.lock": "version = 4\n",
+            "policy/product-package-topology-v2.toml": "schema_version = '2.0'\n",
+            ".github/workflows/release.yml": "name: fixture\n",
+            "scripts/release-rehearsal.py": REHEARSAL_PATH.read_text(encoding="utf-8"),
+        }
+        for rel, content in files.items():
+            path = self.repo / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+        self.git(self.repo, "add", ".")
+        self.git(self.repo, "commit", "--quiet", "-m", "fixture subject")
+        self.head = self.git(self.repo, "rev-parse", "HEAD").strip()
+        self.script = self.repo / "scripts/release-rehearsal.py"
+
+    @staticmethod
+    def git(cwd: Path, *args: str, check: bool = True) -> str:
+        result = subprocess.run(
+            [
+                "git", "-c", "core.autocrlf=false", "-c", "commit.gpgsign=false",
+                "-c", f"core.hooksPath={cwd / 'no-hooks'}",
+                "-c", "user.name=Rehearsal fixture",
+                "-c", "user.email=rehearsal@example.invalid",
+                *args,
+            ],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=check,
+        )
+        return result.stdout
+
+    def init_bare_remote(self, name: str = "canary-remote.git") -> Path:
+        remote = self.sandbox / name
+        subprocess.run(
+            ["git", "init", "--bare", "--quiet", str(remote)],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=True,
+        )
+        return remote
+
+    def show_tags(self, path: Path, *, bare: bool = False) -> str:
+        cmd = ["git", "--no-replace-objects"]
+        if bare:
+            cmd.extend(["--git-dir", str(path)])
+        cmd.extend(["show-ref", "--tags"])
+        res = subprocess.run(
+            cmd,
+            cwd=None if bare else path,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        return res.stdout
+
+    def test_linux_worker_produces_first_true_flag_and_leaves_six_false(self) -> None:
+        target_receipt = self.repo / "target/cargo-allow/worker-receipt.json"
+        external_receipt = self.sandbox / "external-worker-receipt.json"
+        for output_path in (target_receipt, external_receipt):
+            with self.subTest(output=output_path.name):
+                launched = REHEARSAL.run_in_linux_worker(
+                    "HEAD",
+                    output=output_path,
+                    repo_root=self.repo,
+                    script_path=self.script,
+                    capture_output=True,
+                )
+                self.assertEqual(
+                    launched.returncode, 1,
+                    f"expected non-Complete exit 1, got {launched.returncode}: {launched.stderr}",
+                )
+                receipt = json.loads(output_path.read_text(encoding="utf-8"))
+                self.assertEqual(receipt["commit_sha"], self.head)
+                self.assertNotEqual(receipt["aggregate_status"], "Complete")
+                self.assertIn("cannot satisfy a release gate", receipt["claim_boundary"])
+                self.assertIn(REHEARSAL.LINUX_TAG_WORKER_PROFILE, receipt["claim_boundary"])
+
+                proof = receipt["zero_mutation_proof"]
+                self.assertEqual(len(proof), 7)
+                self.assertIs(proof["tag_mutation_prevented"], True)
+                for flag in self.UNPROVEN_SIX:
+                    self.assertIs(proof[flag], False, f"{flag} must remain unproven False")
+
+                evidence = receipt["zero_mutation_evidence"]["tag_mutation_prevented"]
+                self.assertEqual(evidence["worker_profile"], REHEARSAL.LINUX_TAG_WORKER_PROFILE)
+                self.assertEqual(evidence["reason"], "confined_tag_mutation_denied")
+                for key in (
+                    "argv_denied",
+                    "runtime_confined",
+                    "all_mounts_ro",
+                    "capabilities_dropped",
+                    "remount_denied_eperm",
+                    "network_egress_denied",
+                    "direct_fs_write_denied_erofs",
+                    "direct_git_tag_denied",
+                    "direct_git_update_ref_denied",
+                    "direct_git_push_denied",
+                    "tags_unchanged",
+                    "canary_remote_tags_unchanged",
+                    "prevented",
+                ):
+                    self.assertIs(evidence[key], True, f"expected {key}=True, got {evidence}")
+                self.assertTrue(all(err == "EPERM" for err in evidence["remount_errnos"]))
+                self.assertEqual(evidence["network_probe_errno"], "ENETUNREACH")
+                self.assertTrue(all(err == "EROFS" for err in evidence["direct_write_errnos"].values()))
+                self.assertEqual(self.show_tags(self.repo), "")
+
+    def test_linked_worktree_confinement_protects_external_common_dir(self) -> None:
+        worktree = self.sandbox / "linked-wt"
+        self.git(self.repo, "worktree", "add", "--quiet", "--detach", str(worktree), self.head)
+        self.addCleanup(self.git, self.repo, "worktree", "remove", "--force", str(worktree), check=False)
+        wt_script = worktree / "scripts/release-rehearsal.py"
+        output_path = self.sandbox / "linked-wt-receipt.json"
+
+        launched = REHEARSAL.run_in_linux_worker(
+            "HEAD",
+            output=output_path,
+            repo_root=worktree,
+            script_path=wt_script,
+            capture_output=True,
+        )
+        self.assertEqual(launched.returncode, 1, launched.stderr)
+        receipt = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertIs(receipt["zero_mutation_proof"]["tag_mutation_prevented"], True)
+        for flag in self.UNPROVEN_SIX:
+            self.assertIs(receipt["zero_mutation_proof"][flag], False)
+
+        # Falsifier: mount only the worktree RO while leaving external git_common_dir RW.
+        remote = self.init_bare_remote("wt-partial-remote.git")
+        partial_out = self.sandbox / "wt-partial-receipt.json"
+        sup = self.sandbox / "partial-wt.sh"
+        sup.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'wt="$1"; remote="$2"; shift 2\n'
+            "mount --make-rprivate / 2>/dev/null || true\n"
+            'mount --bind "$wt" "$wt"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$wt"\n'
+            'mount --bind "$wt/target" "$wt/target"\n'
+            'mount -o remount,bind,rw "$wt/target"\n'
+            'mount --bind "$remote" "$remote"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$remote"\n'
+            'cd "$wt"\n'
+            'exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs -- "$@"\n',
+            encoding="utf-8",
+        )
+        partial = subprocess.run(
+            [
+                "unshare", "-Urmn", "--", "bash", str(sup), str(worktree), str(remote),
+                sys.executable, str(wt_script), "--commit", "HEAD",
+                "--tag-canary-remote", str(remote), "--output", str(partial_out),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(partial.returncode, 1, partial.stderr)
+        partial_receipt = json.loads(partial_out.read_text(encoding="utf-8"))
+        self.assertIs(partial_receipt["zero_mutation_proof"]["tag_mutation_prevented"], False)
+        self.assertEqual(
+            partial_receipt["zero_mutation_evidence"]["tag_mutation_prevented"]["reason"],
+            "git_metadata_not_read_only",
+        )
+
+    def test_falsifier_removing_ro_mount_allows_tag_mutation_and_flips_flag_false(self) -> None:
+        remote = self.init_bare_remote("unconfined-remote.git")
+        output_path = self.sandbox / "unconfined-receipt.json"
+        unconfined = subprocess.run(
+            [
+                sys.executable, str(self.script), "--commit", "HEAD",
+                "--tag-canary-remote", str(remote), "--output", str(output_path),
+            ],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(unconfined.returncode, 1, unconfined.stderr)
+        receipt = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertIs(receipt["zero_mutation_proof"]["tag_mutation_prevented"], False)
+        self.assertEqual(
+            receipt["zero_mutation_evidence"]["tag_mutation_prevented"]["reason"],
+            "unconfined_runtime_boundary",
+        )
+        self.assertEqual(self.show_tags(self.repo), "")
+        self.assertEqual(self.show_tags(remote, bare=True), "")
+
+        # Prove the forbidden effects actually succeed when the boundary is removed.
+        self.git(self.repo, "tag", "falsifier-local-tag", "HEAD")
+        self.assertIn("refs/tags/falsifier-local-tag", self.show_tags(self.repo))
+        self.git(self.repo, "push", str(remote), "HEAD:refs/tags/falsifier-pushed-tag")
+        self.assertIn("refs/tags/falsifier-pushed-tag", self.show_tags(remote, bare=True))
+
+    def test_falsifier_omitting_setpriv_cap_drop_flips_flag_false(self) -> None:
+        remote = self.init_bare_remote("nocapdrop-remote.git")
+        output_path = self.sandbox / "nocapdrop-receipt.json"
+        (self.repo / "target").mkdir(exist_ok=True)
+        sup = self.sandbox / "nocapdrop.sh"
+        sup.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'repo="$1"; remote="$2"; shift 2\n'
+            "mount --make-rprivate / 2>/dev/null || true\n"
+            'mount --bind "$repo" "$repo"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$repo"\n'
+            'mount --bind "$repo/target" "$repo/target"\n'
+            'mount -o remount,bind,rw "$repo/target"\n'
+            'mount --bind "$remote" "$remote"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$remote"\n'
+            'cd "$repo"\n'
+            'exec "$@"\n',
+            encoding="utf-8",
+        )
+        run = subprocess.run(
+            [
+                "unshare", "-Urmn", "--", "bash", str(sup), str(self.repo), str(remote),
+                sys.executable, str(self.script), "--commit", "HEAD",
+                "--tag-canary-remote", str(remote), "--output", str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(run.returncode, 1, run.stderr)
+        receipt = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertIs(receipt["zero_mutation_proof"]["tag_mutation_prevented"], False)
+        evidence = receipt["zero_mutation_evidence"]["tag_mutation_prevented"]
+        self.assertIs(evidence["capabilities_dropped"], False)
+        self.assertEqual(evidence["reason"], "privileges_not_dropped")
+
+        # Also prove libc.mount remount succeeds when CAP_SYS_ADMIN is kept.
+        probe = subprocess.run(
+            [
+                "unshare", "-Urmn", "--", "bash", str(sup), str(self.repo), str(remote),
+                sys.executable, "-c",
+                "import importlib.util, sys; from pathlib import Path; "
+                "s = importlib.util.spec_from_file_location('r', sys.argv[1]); "
+                "m = importlib.util.module_from_spec(s); s.loader.exec_module(m); "
+                "ok, reason = m._probe_remount_rw_eperm(Path(sys.argv[2])); "
+                "print(f'{ok}:{reason}')",
+                str(self.script), str(self.repo),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=True,
+        )
+        self.assertEqual(probe.stdout.strip(), "False:remount_succeeded")
+
+    def test_falsifier_omitting_network_namespace_flips_flag_false(self) -> None:
+        # Skip only if the ambient test host itself has no default route.
+        ambient_denied, _ = REHEARSAL._probe_network_egress_denied()
+        if ambient_denied:
+            self.skipTest("host itself has no default IPv4 route to distinguish -n omission")
+        remote = self.init_bare_remote("nonetns-remote.git")
+        output_path = self.sandbox / "nonetns-receipt.json"
+        (self.repo / "target").mkdir(exist_ok=True)
+        sup = self.sandbox / "nonetns.sh"
+        sup.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'repo="$1"; remote="$2"; shift 2\n'
+            "mount --make-rprivate / 2>/dev/null || true\n"
+            'mount --bind "$repo" "$repo"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$repo"\n'
+            'mount --bind "$repo/target" "$repo/target"\n'
+            'mount -o remount,bind,rw "$repo/target"\n'
+            'mount --bind "$remote" "$remote"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$remote"\n'
+            'cd "$repo"\n'
+            'exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs -- "$@"\n',
+            encoding="utf-8",
+        )
+        run = subprocess.run(
+            [
+                "unshare", "-Urm", "--", "bash", str(sup), str(self.repo), str(remote),
+                sys.executable, str(self.script), "--commit", "HEAD",
+                "--tag-canary-remote", str(remote), "--output", str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(run.returncode, 1, run.stderr)
+        receipt = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertIs(receipt["zero_mutation_proof"]["tag_mutation_prevented"], False)
+        evidence = receipt["zero_mutation_evidence"]["tag_mutation_prevented"]
+        self.assertIs(evidence["network_egress_denied"], False)
+        self.assertEqual(evidence["reason"], "network_not_isolated")
+
+    def test_falsifier_writable_canary_remote_allows_push_and_flips_flag_false(self) -> None:
+        remote = self.init_bare_remote("writable-remote.git")
+        output_path = self.sandbox / "writable-remote-receipt.json"
+        (self.repo / "target").mkdir(exist_ok=True)
+        sup = self.sandbox / "writable-remote.sh"
+        sup.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -euo pipefail\n"
+            'repo="$1"; shift 1\n'
+            "mount --make-rprivate / 2>/dev/null || true\n"
+            'mount --bind "$repo" "$repo"\n'
+            'mount -o remount,bind,ro,nosuid,nodev "$repo"\n'
+            'mount --bind "$repo/target" "$repo/target"\n'
+            'mount -o remount,bind,rw "$repo/target"\n'
+            'cd "$repo"\n'
+            'exec setpriv --bounding-set=-all --inh-caps=-all --ambient-caps=-all --no-new-privs -- "$@"\n',
+            encoding="utf-8",
+        )
+        run = subprocess.run(
+            [
+                "unshare", "-Urmn", "--", "bash", str(sup), str(self.repo),
+                sys.executable, str(self.script), "--commit", "HEAD",
+                "--tag-canary-remote", str(remote), "--output", str(output_path),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(run.returncode, 1, run.stderr)
+        receipt = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertIs(receipt["zero_mutation_proof"]["tag_mutation_prevented"], False)
+        self.assertEqual(
+            receipt["zero_mutation_evidence"]["tag_mutation_prevented"]["reason"],
+            "canary_remote_invalid_or_writable",
+        )
+        # Prove a direct git push to that unconfined remote succeeds even with repo RO.
+        push = subprocess.run(
+            [
+                "unshare", "-Urmn", "--", "bash", str(sup), str(self.repo),
+                "git", "--no-replace-objects", "push", str(remote),
+                "HEAD:refs/tags/falsifier-writable-remote",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(push.returncode, 0, push.stderr)
+        self.assertIn("refs/tags/falsifier-writable-remote", self.show_tags(remote, bare=True))
+
+    def test_falsifier_bypassing_invocation_boundary_flips_flag_false_even_when_confined(self) -> None:
+        remote = self.init_bare_remote("bypass-argv-remote.git")
+        (self.repo / "target").mkdir(exist_ok=True)
+        driver = self.sandbox / "bypass_driver.py"
+        driver.write_text(
+            "import importlib.util, json, subprocess, sys\n"
+            "from pathlib import Path\n"
+            "from unittest import mock\n"
+            "spec = importlib.util.spec_from_file_location('r', sys.argv[1])\n"
+            "mod = importlib.util.module_from_spec(spec)\n"
+            "spec.loader.exec_module(mod)\n"
+            "real_run_process = mod._run_process\n"
+            "def bypass(command, *, operation, selected=None, **options):\n"
+            "    if command[:2] in (['git', 'tag'], ['git', 'update-ref'], ['git', 'push']):\n"
+            "        return subprocess.CompletedProcess(command, 1, '', 'bypassed')\n"
+            "    return real_run_process(command, operation=operation, selected=selected, **options)\n"
+            "with mod._invocation_scope(), mock.patch.object(mod, '_run_process', side_effect=bypass):\n"
+            "    prevented, evidence = mod._evaluate_tag_mutation_proof(\n"
+            "        sys.argv[2], tag_canary_remote=Path(sys.argv[3])\n"
+            "    )\n"
+            "print(json.dumps({'prevented': prevented, 'evidence': evidence}))\n",
+            encoding="utf-8",
+        )
+        sup = self.sandbox / "full-confinement.sh"
+        sup.write_text(REHEARSAL._LINUX_WORKER_SUPERVISOR, encoding="utf-8")
+        run = subprocess.run(
+            [
+                "unshare", "-Urmn", "--", "bash", str(sup),
+                str(self.repo), "2", str(self.repo), str(remote),
+                str(self.repo / "target"),
+                sys.executable, str(driver), str(self.script), self.head, str(remote),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
+        payload = json.loads(run.stdout)
+        self.assertIs(payload["prevented"], False)
+        self.assertIs(payload["evidence"]["argv_denied"], False)
+        self.assertIs(payload["evidence"]["runtime_confined"], True)
+        self.assertEqual(payload["evidence"]["reason"], "invocation_boundary_bypassed")
+
+    def test_cli_linux_worker_flag_end_to_end_and_conflicting_remote_rejected(self) -> None:
+        output_path = self.sandbox / "cli-worker-receipt.json"
+        cli = subprocess.run(
+            [
+                sys.executable, str(self.script),
+                "--linux-worker", "--commit", "HEAD", "--output", str(output_path),
+            ],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        self.assertEqual(cli.returncode, 1, cli.stderr)
+        receipt = json.loads(output_path.read_text(encoding="utf-8"))
+        self.assertIs(receipt["zero_mutation_proof"]["tag_mutation_prevented"], True)
+        for flag in self.UNPROVEN_SIX:
+            self.assertIs(receipt["zero_mutation_proof"][flag], False)
+
+        conflict = subprocess.run(
+            [
+                sys.executable, str(self.script),
+                "--linux-worker", "--commit", "HEAD",
+                "--tag-canary-remote", str(self.sandbox / "unused.git"),
+            ],
+            cwd=self.repo,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        self.assertEqual(conflict.returncode, 2)
+        self.assertIn("manages its own canary remote", conflict.stderr)
+
+    def test_linux_worker_rejects_symlinked_output_parent_without_creating_dirs(self) -> None:
+        escape_target = self.sandbox / "escape-target"
+        escape_target.mkdir()
+        symlink_dir = self.sandbox / "symlink-dir"
+        symlink_dir.symlink_to(escape_target, target_is_directory=True)
+        output_path = symlink_dir / "created-through-symlink" / "receipt.json"
+
+        with self.assertRaisesRegex(OSError, "filesystem alias"):
+            REHEARSAL.run_in_linux_worker(
+                "HEAD",
+                output=output_path,
+                repo_root=self.repo,
+                script_path=self.script,
+                capture_output=True,
+            )
+        self.assertEqual(list(escape_target.iterdir()), [])
+
+    def test_linux_worker_rejects_symlinked_target_dir_without_mounting(self) -> None:
+        external_dir = self.sandbox / "external-target"
+        external_dir.mkdir()
+        for target_dest in (self.repo / ".git/refs/tags", external_dir):
+            with self.subTest(dest=target_dest.name):
+                repo_target = self.repo / "target"
+                if repo_target.is_symlink() or repo_target.exists():
+                    if repo_target.is_symlink() or repo_target.is_file():
+                        repo_target.unlink()
+                    else:
+                        shutil.rmtree(repo_target)
+                repo_target.symlink_to(target_dest, target_is_directory=True)
+                with self.assertRaisesRegex(OSError, "filesystem alias"):
+                    REHEARSAL.run_in_linux_worker(
+                        "HEAD",
+                        repo_root=self.repo,
+                        script_path=self.script,
+                        capture_output=True,
+                    )
+                repo_target.unlink()
+        self.assertEqual(self.show_tags(self.repo), "")
+        self.assertEqual(list(external_dir.iterdir()), [])
+
+    def test_linux_worker_enforces_timeout_and_reaps_descendants(self) -> None:
+        marker = self.sandbox / "descendant-survived.txt"
+        hanging_script = self.sandbox / "hang_worker.py"
+        hanging_script.write_text(
+            "import os, subprocess, sys, time\n"
+            "from pathlib import Path\n"
+            "marker = Path(sys.argv[1])\n"
+            "# Spawn a detached background child that would write after 2s if not reaped.\n"
+            "subprocess.Popen([\n"
+            "    sys.executable, '-c',\n"
+            "    'import sys, time; from pathlib import Path; time.sleep(2.0); Path(sys.argv[1]).write_text(\"survived\")',\n"
+            "    str(marker),\n"
+            "], start_new_session=True)\n"
+            "time.sleep(30)\n",
+            encoding="utf-8",
+        )
+        # Verify PID namespace + --kill-child reaping on launcher timeout.
+        wrapper = self.sandbox / "wrap_hang.py"
+        wrapper.write_text(
+            "import subprocess, sys\n"
+            f"subprocess.run([sys.executable, {str(hanging_script)!r}, {str(marker)!r}], check=False)\n",
+            encoding="utf-8",
+        )
+        with self.assertRaises(subprocess.TimeoutExpired):
+            REHEARSAL.run_in_linux_worker(
+                "HEAD",
+                repo_root=self.repo,
+                script_path=wrapper,
+                capture_output=True,
+                timeout=1,
+            )
+        # Wait past the child's 2s sleep to prove --kill-child reaped the entire PID namespace.
+        import time
+        time.sleep(2.5)
+        self.assertFalse(marker.exists(), "detached descendant survived PID-namespace termination")
 
 
 if __name__ == "__main__":
