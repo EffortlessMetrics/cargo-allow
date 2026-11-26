@@ -222,10 +222,15 @@ bash scripts/exact-upgrade-rollback-journey.sh
 ```
 
 It installs `0.1.11` into a separate root, invokes both binaries by absolute
-path, restores a captured repository preimage, and reruns the old binary. The
-receipt proves binary identity, candidate package-set binding, and preservation
-of an unrelated file. It is deliberately read-only with respect to the
-fixture's policy state; migration-write compatibility remains a separate claim.
+path with exact version checks, executes representative clean and stateful
+brownfield/lifecycle fixtures (including previewed `refresh`, `prune`,
+`migrate`, stale `why --plan` rejection, and missing-base `diff` refusal),
+restores only cargo-allow-owned state from preimages while preserving unrelated
+files (including inside `target/cargo-allow/`), and reruns `0.1.11` to confirm
+semantic parity. The receipt binds binary identities, candidate package-set
+identity, per-surface compatibility dispositions, mutation write-sets, and
+owned-state rollback controls. Post-publication crates.io `0.2.0` verification
+remains a separate step after publication.
 
 Schema/example characterization remains
 `cargo test -p cargo-allow --test source_candidate_smoke --locked`.
