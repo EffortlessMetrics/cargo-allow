@@ -114,7 +114,7 @@ cargo-allow diff --base origin/main   # PR-oriented report with git changed file
 cargo-allow list                      # list allow entries
 cargo-allow explain <allow-id>        # explain one allow entry
 cargo-allow why --kind panic --path src/lib.rs --line 42  # diagnose an unreceipted finding
-cargo-allow add --kind panic --path src/lib.rs --line 42 --update  # receipt a finding
+cargo-allow add --kind panic --path src/lib.rs --line 42 --owner core --reason "reviewed invariant" --update
 cargo-allow worklist --format json    # actionable work items
 cargo-allow worklist --limit 10 --offset 20 --format json  # page a long queue
 ```
