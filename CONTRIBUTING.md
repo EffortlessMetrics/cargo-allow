@@ -45,6 +45,120 @@ cargo run -p cargo-allow -- audit --format human
 cargo run -p cargo-allow -- check --mode no-new
 ```
 
+### Codex Cloud development environment
+
+In **Settings > Codex Cloud > Environments**, edit the environment for this
+repository. Paste the complete Bash block below into **Install script**. Use a
+glibc-based Linux x86_64 or arm64 image with Bash, curl, CA certificates,
+standard GNU utilities and xz. A C compiler and linker are needed for later
+builds. [Codex Cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments)
+
+Official Node.js Linux binaries from version 25 onward require the `libatomic`
+runtime (`libatomic1` on Debian and Ubuntu). The install script runs the prepared
+Node.js binary before selecting it for tasks. [Node.js binary requirements](https://github.com/nodejs/node/blob/v26.x/BUILDING.md#official-binary-platforms-and-toolchains)
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ ! -f Cargo.lock || ! -f rust-toolchain.toml ]]; then
+  printf '%s\n' 'Run this script from the cargo-allow checkout root.' >&2
+  exit 1
+fi
+
+case "$(uname -sm)" in
+  "Linux x86_64") node_arch=x64 ;;
+  "Linux aarch64") node_arch=arm64 ;;
+  *)
+    printf '%s\n' 'Use a Linux x86_64 or arm64 image.' >&2
+    exit 1
+    ;;
+esac
+
+download() {
+  curl --proto '=https' --tlsv1.2 -fsSL "$@"
+}
+
+export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+if ! command -v rustup >/dev/null 2>&1; then
+  download https://sh.rustup.rs | sh -s -- -y --default-toolchain none --no-modify-path
+fi
+
+# The development channel and the CI MSRV pin are separate.
+rustup toolchain install stable --profile minimal --component rustfmt \
+  --component clippy --no-self-update
+msrv=1.95.0
+rustup toolchain install "$msrv" --profile minimal --no-self-update
+rustup run "$msrv" cargo fetch --locked
+
+# Resolve the latest official stable release once, then download its versioned archive.
+tool_dir="$HOME/.local/share/cargo-allow-cloud"
+node_url=https://nodejs.org/dist
+node_checksum=$(download "$node_url/latest/SHASUMS256.txt" |
+  awk -v arch="$node_arch" '$2 ~ ("^node-v[0-9]+[.][0-9]+[.][0-9]+-linux-" arch "[.]tar[.]xz$") { print }')
+if [[ -z "$node_checksum" ]]; then
+  printf '%s\n' "No official stable Node.js archive found for Linux $node_arch." >&2
+  exit 1
+fi
+read -r node_sha node_archive <<< "$node_checksum"
+node_dist=${node_archive%.tar.xz}
+node_version=${node_dist%-linux-*}
+node_version=${node_version#node-}
+
+mkdir -p "$tool_dir"
+if [[ ! -x "$tool_dir/$node_dist/bin/node" ]]; then
+  stage=$(mktemp -d "$tool_dir/node-download.XXXXXX")
+  trap 'rm -rf -- "$stage"' EXIT
+  (
+    cd "$stage"
+    download "$node_url/$node_version/$node_archive" -o "$node_archive"
+    printf '%s  %s\n' "$node_sha" "$node_archive" | sha256sum --check
+    tar -xJf "$node_archive"
+    mv -T "$node_dist" "$tool_dir/$node_dist"
+  )
+fi
+"$tool_dir/$node_dist/bin/node" --version
+ln -sfnT "$node_dist" "$tool_dir/node"
+
+download https://astral.sh/uv/install.sh | UV_UNMANAGED_INSTALL="$tool_dir/uv" sh
+```
+
+Installation needs network access to the official Rust, Node.js and uv
+distributions and the Cargo registry under the environment's network policy.
+The script reuses rustup when available and provisions the moving Rust
+`stable` channel with the repository's rustfmt and Clippy components. Node.js
+uses the official latest stable channel (Current when available), and uv uses
+Astral's latest release installer. These copies live under
+`~/.local/share/cargo-allow-cloud` alongside any image-provided Node.js or uv.
+
+The locked Cargo fetch uses Rust `1.95.0`, the CI pin for the declared
+`1.95` MSRV of the cargo-allow release set. See [Support](SUPPORT.md#rust-version).
+
+After installation, run this from the checkout in a fresh agent shell with
+agent internet access off. The preflight disables rustup auto-installation for
+the check and verifies that both Rust toolchains are installed before running
+them. Both pinned Rust version lines should report `1.95.0`. The final command
+checks the cached dependency graph against `Cargo.lock` without compiling.
+
+```bash
+(
+  tool_dir="$HOME/.local/share/cargo-allow-cloud"
+  export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
+  export RUSTUP_AUTO_INSTALL=0
+
+  rustup which --toolchain stable rustc >/dev/null &&
+    rustup which --toolchain 1.95.0 rustc >/dev/null &&
+    command -v cc &&
+    "$tool_dir/node/bin/node" --version &&
+    "$tool_dir/uv/uv" --version &&
+    rustup run stable rustfmt --version &&
+    rustup run stable cargo-clippy --version &&
+    rustup run 1.95.0 rustc --version &&
+    rustup run 1.95.0 cargo --version &&
+    rustup run 1.95.0 cargo metadata --frozen --format-version 1 >/dev/null
+)
+```
+
 ## Changelog
 
 User-facing changes require a Changie fragment. The repository compatibility
