@@ -576,15 +576,21 @@ class ObservedToolchainTests(GateHarness):
 
     def test_observed_versions_fail_closed(self):
         for tool in ("rustc", "cargo"):
+            other_tool = "cargo" if tool == "rustc" else "rustc"
             for value in (None, "", " ", 195, [], {}, "1.95.0", "wrong 1.95.0",
-                          f"{tool} 1.100.0", f"{tool} 1.95.0-beta.1", f"{tool} 1.95.00"):
+                          f"{tool} 1.100.0", f"{tool} 1.95.0-beta.1", f"{tool} 1.95.00",
+                          f"{tool} 1.95.0-rc.1", f"{tool} 1.95.0+build", f"{tool} 1.95.0.0",
+                          f"{tool} 1.95", f"{tool.title()} 1.95.0", f"{other_tool} 1.95.0",
+                          f"{tool} 1.95.0\n{other_tool} 1.100.0"):
                 with self.subTest(tool=tool, value=value), tempfile.TemporaryDirectory() as directory:
-                    rows = self.green_rows(Path(directory))
+                    root = Path(directory)
+                    rows = self.green_rows(root)
                     env = harness_receipt("linux")["environment"]
                     env[f"{tool}_version"] = value
                     self.rewrite_environment(rows, env)
-                    message = self.refuse_message(lambda: self.run_gate(expected_args(rows_dir=str(rows))))
-                    self.assertIn(f"observed {tool} version", message)
+                    args = expected_args(rows_dir=str(rows), output=str(root / "out.json"))
+                    message = self.refuse_message(lambda: self.run_gate(args))
+                    self.assertIn(f"observed {tool} version {value!r}", message)
 
     def test_absent_fields_and_environment_refuse(self):
         for missing in ("rustc_version", "cargo_version", "environment"):
@@ -600,14 +606,17 @@ class ObservedToolchainTests(GateHarness):
                 self.assertIn("harness", message)
 
     def test_realistic_matching_version_output_passes(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            rows = self.green_rows(root)
-            env = harness_receipt("linux")["environment"]
-            for tool in ("rustc", "cargo"):
-                env[f"{tool}_version"] = f"{tool} 1.95.0 (abcdef012 2026-04-01)"
-            self.rewrite_environment(rows, env)
-            self.assertEqual(self.run_gate(expected_args(rows_dir=str(rows), output=str(root / "out.json"))), 0)
+        for format_string in ("{tool} 1.95.0 (abcdef012 2026-04-01)", "{tool} 1.95.0\r",
+                              "{tool} 1.95.0\r\n", "{tool}\t1.95.0", " {tool} 1.95.0",
+                              "{tool} 1.95.0 (hash) extra"):
+            with self.subTest(format_string=format_string), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                rows = self.green_rows(root)
+                env = harness_receipt("linux")["environment"]
+                for tool in ("rustc", "cargo"):
+                    env[f"{tool}_version"] = format_string.format(tool=tool)
+                self.rewrite_environment(rows, env)
+                self.assertEqual(self.run_gate(expected_args(rows_dir=str(rows), output=str(root / "out.json"))), 0)
 
     def test_producer_observes_commands_and_strips_cr(self):
         import ast
