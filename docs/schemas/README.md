@@ -274,7 +274,12 @@ runtime, reachability, or semantic analysis.
 |---|---|---|
 | Current topology-derived release payload and execution envelope | `cargo-allow.release-manifest.v2` | release workflow / topology receipt / typed `allow-report` contract |
 | [Topology candidate receipt](topology-publish-receipt.schema.json) | `cargo-allow.topology-publish-receipt.v1` | `scripts/release-topology-publisher.py` |
-| Shared package candidate receipt | `cargo-allow.shared-package-candidate.v1` | `scripts/release-topology-publisher.py --mode shared --package-only` |
+| [Shared package candidate receipt](shared-package-candidate.v1.schema.json) | `cargo-allow.shared-package-candidate.v1` | Package-only evidence from `scripts/release-topology-publisher.py --mode shared --package-only` |
+| [Allow-files Changie package admission](allow-files-changie-package-admission.schema.json) | `cargo-allow.allow-files-changie-package-admission.v1` | Internal test record for the `allow-files` `changie` feature closure and API surface, built by `allow_files_changie_admission_tests::admission_record` |
+| [Mixed-version package candidate](package-candidate-v2.schema.json) | `cargo-allow.package-candidate.v2` | Internal package identity and manifest expectations from `scripts/exact-candidate-package-candidate.py` |
+| [Isolated local-registry install receipt](isolated-install-receipt-v2.schema.json) | `cargo-allow.isolated-install.v2` | Internal evidence of the exact candidate install and graph comparison from `scripts/exact-candidate-isolated-install.py` |
+| [Exact candidate qualification receipt](exact-candidate-receipt-v2.schema.json) | `cargo-allow.exact-candidate.v2` | Internal evidence binding the package candidate and isolated install to the installed-binary journey, assembled by `scripts/exact-candidate-qualification.sh` |
+| [GitHub PR check projection](github-pr-check-v1.schema.json) | `cargo-allow.github-pr-check.v1` | Advisory evidence for one exact-head diff evaluation from `allow_report::project_github_pr_check` |
 | [RC publication incident reconciliation](rc-publication-incident-v1.schema.json) | `cargo-allow.rc-publication-incident.v1` | retained evidence record (`docs/release/evidence/`), typed `allow-report` contract (#3759) |
 | [Candidate preparation result](candidate-preparation-plan-v1.schema.json) | `cargo-allow.candidate-preparation-result.v1` (embedding `cargo-allow.candidate-preparation-plan.v1`) | hidden `cargo-allow prep-candidate plan` projection, typed `allow-report` contract (#3831) |
 | [Candidate preparation receipt](candidate-preparation-receipt-v1.schema.json) | `cargo-allow.candidate-preparation-receipt.v1` | hidden `cargo-allow prep-candidate apply --final-receipt`, typed `allow-report` contract (#3834) |
